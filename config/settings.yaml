@@ -1,0 +1,46 @@
+jira:
+  # 사용자별 URL/계정/비밀번호는 .env에서 입력합니다.
+  # JIRA_BASE_URL, JIRA_USERNAME, JIRA_PASSWORD
+  api_base_path: "/rest/api/2"
+
+  # Jira Server/Data Center 버전에 따라 아래 경로만 조정하면 됩니다.
+  myself_path: "/myself"
+  project_list_path: "/project"
+  issue_search_path: "/search"
+  issue_path: "/issue/{issue_key}"
+  comment_path: "/issue/{issue_key}/comment"
+
+  pagination:
+    project_page_size: 50
+    search_page_size: 30
+    comment_page_size: 100
+
+  collection:
+    project_scope: "all_accessible"
+    issues_per_project: 30
+    issue_order: "updated_desc"
+    collect_comments: true
+    download_attachments: false
+
+  rate_limit:
+    requests_per_minute: 20
+    max_concurrency: 1
+
+  timeout:
+    connect_seconds: 10
+    read_seconds: 60
+
+  retry:
+    max_attempts: 3
+    backoff_initial_seconds: 3
+    backoff_max_seconds: 60
+
+storage:
+  data_root: "./data"
+  raw_directory: "raw"
+  state_directory: "state"
+  report_directory: "reports"
+
+logging:
+  level: "INFO"
+  log_response_body: false
