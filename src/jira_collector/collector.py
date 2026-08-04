@@ -249,36 +249,26 @@ class JiraCollector:
         )
 
         if settings.collection.collect_comments:
-            self._collect_missing_comment_pages(run_id, project_key, issue_key, result.payload)
+            self._collect_comment_pages(run_id, project_key, issue_key)
 
-    def _collect_missing_comment_pages(
+    def _collect_comment_pages(
         self,
         run_id: str,
         project_key: str,
         issue_key: str,
-        issue_payload: Any,
     ) -> None:
+        """Fetch the complete comment collection from the dedicated Jira endpoint.
+
+        The issue detail response may embed all, some, or none of the comments depending
+        on Jira version and server configuration. To keep the raw storage contract
+        consistent, comment collection always starts at zero and saves every response
+        page under the issue's comments directory, including an empty first page.
+        """
+
         settings = self.client.settings
-        embedded_start = 0
-        embedded_count = 0
-        embedded_total: int | None = None
-
-        if isinstance(issue_payload, dict):
-            fields = issue_payload.get("fields")
-            if isinstance(fields, dict):
-                comment = fields.get("comment")
-                if isinstance(comment, dict):
-                    comments = comment.get("comments", [])
-                    if isinstance(comments, list):
-                        embedded_count = len(comments)
-                    embedded_start = int(comment.get("startAt", 0))
-                    embedded_total = int(comment.get("total", embedded_count))
-
-        if embedded_total is not None and embedded_start == 0 and embedded_count >= embedded_total:
-            return
-
-        start_at = embedded_count if embedded_start == 0 else 0
+        start_at = 0
         page_number = 1
+
         while True:
             result = self.client.get_json(
                 settings.comment_path.format(issue_key=issue_key),
@@ -309,11 +299,20 @@ class JiraCollector:
             comments = result.payload.get("comments", [])
             if not isinstance(comments, list):
                 raise ValueError("댓글 응답의 comments가 배열이 아닙니다.")
+
             page_start = int(result.payload.get("startAt", start_at))
             total = int(result.payload.get("total", page_start + len(comments)))
-            if not comments or page_start + len(comments) >= total:
+            next_start = page_start + len(comments)
+
+            if not comments or next_start >= total:
                 break
-            start_at = page_start + len(comments)
+            if next_start <= start_at:
+                raise ValueError(
+                    f"댓글 페이지네이션이 진행되지 않습니다: issue={issue_key}, "
+                    f"startAt={start_at}, nextStart={next_start}, total={total}"
+                )
+
+            start_at = next_start
             page_number += 1
 
     @staticmethod
