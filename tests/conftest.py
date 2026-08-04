@@ -19,6 +19,8 @@ jira:
   issue_search_path: /search
   issue_path: /issue/{issue_key}
   comment_path: /issue/{issue_key}/comment
+  tls:
+    verify_ssl: false
   pagination:
     project_page_size: 2
     search_page_size: 2
