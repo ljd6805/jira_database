@@ -81,6 +81,7 @@ class JiraSettings:
     issue_search_path: str
     issue_path: str
     comment_path: str
+    verify_ssl: bool
     pagination: PaginationSettings
     collection: CollectionSettings
     rate_limit: RateLimitSettings
@@ -168,11 +169,16 @@ def load_settings(
     username = _required_env(environment, "JIRA_USERNAME")
     password = _required_env(environment, "JIRA_PASSWORD")
 
+    tls_raw = jira_raw.get("tls", {})
     pagination_raw = jira_raw.get("pagination", {})
     collection_raw = jira_raw.get("collection", {})
     rate_raw = jira_raw.get("rate_limit", {})
     timeout_raw = jira_raw.get("timeout", {})
     retry_raw = jira_raw.get("retry", {})
+
+    verify_ssl = tls_raw.get("verify_ssl", True)
+    if not isinstance(verify_ssl, bool):
+        raise SettingsError("jira.tls.verify_ssl은 true 또는 false여야 합니다.")
 
     requests_per_minute = int(rate_raw.get("requests_per_minute", 20))
     if not 1 <= requests_per_minute <= 20:
@@ -198,6 +204,7 @@ def load_settings(
         issue_search_path=str(jira_raw.get("issue_search_path", "/search")),
         issue_path=str(jira_raw.get("issue_path", "/issue/{issue_key}")),
         comment_path=str(jira_raw.get("comment_path", "/issue/{issue_key}/comment")),
+        verify_ssl=verify_ssl,
         pagination=PaginationSettings(
             project_page_size=int(pagination_raw.get("project_page_size", 50)),
             search_page_size=int(pagination_raw.get("search_page_size", 30)),
