@@ -8,6 +8,8 @@ from jira_collector.parser.value_helpers import html_to_text
 
 
 def _source(tmp_path: Path, *, issue_key: str = "ABC-1") -> IssueSource:
+    """테스트용 IssueSource와 실제 저장 경로 형태를 생성합니다."""
+
     issue_dir = tmp_path / "projects" / "ABC" / "issues" / issue_key
     issue_dir.mkdir(parents=True)
     return IssueSource(
@@ -20,6 +22,8 @@ def _source(tmp_path: Path, *, issue_key: str = "ABC-1") -> IssueSource:
 
 
 def test_html_to_text_removes_style_and_keeps_blocks() -> None:
+    """HTML style을 제거하면서 문단과 목록 구조를 유지하는지 확인합니다."""
+
     value = (
         '<p dir="auto">First <span style="color:red">warning</span></p>'
         "<ul><li>One</li><li>Two</li></ul>"
@@ -30,6 +34,8 @@ def test_html_to_text_removes_style_and_keeps_blocks() -> None:
 
 
 def test_parses_core_issue_fields_and_html_description(tmp_path: Path) -> None:
+    """핵심 이슈 필드와 HTML description을 정상 파싱하는지 확인합니다."""
+
     source = _source(tmp_path)
     payload = {
         "id": "10001",
@@ -69,6 +75,8 @@ def test_parses_core_issue_fields_and_html_description(tmp_path: Path) -> None:
 
 
 def test_uses_rendered_description_when_raw_is_object(tmp_path: Path) -> None:
+    """Raw description이 객체면 rendered HTML을 대체 텍스트로 사용하는지 확인합니다."""
+
     source = _source(tmp_path)
     payload = {
         "key": "ABC-1",
@@ -90,6 +98,8 @@ def test_uses_rendered_description_when_raw_is_object(tmp_path: Path) -> None:
 
 
 def test_reports_path_and_payload_key_mismatch(tmp_path: Path) -> None:
+    """경로와 JSON 내부 키가 다를 때 두 경고를 남기는지 확인합니다."""
+
     source = _source(tmp_path, issue_key="ABC-1")
     payload = {
         "key": "ABC-2",
