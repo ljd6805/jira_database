@@ -15,13 +15,15 @@ from .value_helpers import (
 
 
 class IssueParseError(ValueError):
-    """Raised when an issue artifact cannot produce a meaningful record."""
+    """이슈 원본에서 의미 있는 레코드를 만들 수 없을 때 발생합니다."""
 
 
 class IssueParser:
-    """Parse first-stage issue fields while preserving source traceability."""
+    """원본 추적 정보를 유지하면서 Jira 이슈 핵심 필드를 파싱합니다."""
 
     def parse_file(self, source: IssueSource) -> IssueParseResult:
+        """issue.json 파일을 읽고 1차 정규화 결과를 반환합니다."""
+
         payload = self._load_payload(source.issue_path)
         return self.parse_payload(payload, source)
 
@@ -30,13 +32,16 @@ class IssueParser:
         payload: dict[str, Any],
         source: IssueSource,
     ) -> IssueParseResult:
+        """이미 읽은 Jira 이슈 객체를 표준 IssueRecord로 변환합니다."""
+
         warnings: list[ParseWarning] = []
         fields = payload.get("fields")
         if not isinstance(fields, dict):
             raise IssueParseError(
-                f"issue fields must be an object: {source.issue_path}"
+                f"이슈 fields가 객체 형식이 아닙니다: {source.issue_path}"
             )
 
+        # 경로의 이슈 키와 JSON 내부 키를 비교하되, 불일치는 경고로만 남깁니다.
         payload_issue_key = optional_string(payload.get("key"))
         issue_key = payload_issue_key or source.issue_key
         if payload_issue_key and payload_issue_key != source.issue_key:
@@ -44,8 +49,8 @@ class IssueParser:
                 ParseWarning(
                     code="issue_key_mismatch",
                     message=(
-                        f"path issue key {source.issue_key!r} differs from "
-                        f"payload key {payload_issue_key!r}"
+                        f"경로 이슈 키 {source.issue_key!r}와 "
+                        f"JSON 이슈 키 {payload_issue_key!r}가 다릅니다."
                     ),
                     json_path="/key",
                 )
@@ -58,8 +63,8 @@ class IssueParser:
                 ParseWarning(
                     code="project_key_mismatch",
                     message=(
-                        f"path project key {source.project_key!r} differs from "
-                        f"payload project key {payload_project_key!r}"
+                        f"경로 프로젝트 키 {source.project_key!r}와 "
+                        f"JSON 프로젝트 키 {payload_project_key!r}가 다릅니다."
                     ),
                     json_path="/fields/project/key",
                 )
@@ -75,6 +80,7 @@ class IssueParser:
             fields.get("updated"), "/fields/updated", warnings
         )
 
+        # Raw description과 rendered description을 각각 보존하고 검색용 텍스트를 만듭니다.
         description_raw = fields.get("description")
         rendered_fields = payload.get("renderedFields")
         rendered_description_value = (
@@ -115,17 +121,23 @@ class IssueParser:
 
     @staticmethod
     def _load_payload(path: Path) -> dict[str, Any]:
+        """UTF-8 issue.json을 읽고 최상위 객체 형식을 검증합니다."""
+
         try:
             with path.open("r", encoding="utf-8") as handle:
                 payload = json.load(handle)
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            raise IssueParseError(f"cannot read issue JSON: {path}: {exc}") from exc
+            raise IssueParseError(
+                f"이슈 JSON을 읽을 수 없습니다: {path}: {exc}"
+            ) from exc
         if not isinstance(payload, dict):
-            raise IssueParseError(f"issue JSON root must be an object: {path}")
+            raise IssueParseError(f"이슈 JSON 최상위 값은 객체여야 합니다: {path}")
         return payload
 
     @staticmethod
     def _project_key(value: Any) -> str | None:
+        """Jira project 객체에서 프로젝트 키를 안전하게 추출합니다."""
+
         if not isinstance(value, dict):
             return None
         return optional_string(value.get("key"))
@@ -138,12 +150,14 @@ class IssueParser:
         *,
         warn_on_none: bool = False,
     ) -> str | None:
+        """문자열 필드를 검증하고 예상과 다른 타입은 경고로 기록합니다."""
+
         if value is None:
             if warn_on_none:
                 warnings.append(
                     ParseWarning(
                         code="missing_value",
-                        message=f"missing value at {json_path}",
+                        message=f"값이 없습니다: {json_path}",
                         json_path=json_path,
                     )
                 )
@@ -154,8 +168,8 @@ class IssueParser:
             ParseWarning(
                 code="unexpected_type",
                 message=(
-                    f"expected string at {json_path}, "
-                    f"observed {value_type_name(value)}"
+                    f"문자열이 필요한 위치 {json_path}에서 "
+                    f"{value_type_name(value)} 타입을 발견했습니다."
                 ),
                 json_path=json_path,
             )
@@ -168,6 +182,8 @@ class IssueParser:
         rendered_value: str | None,
         warnings: list[ParseWarning],
     ) -> tuple[str | None, str]:
+        """description 원본 형식을 판별하고 분석용 텍스트를 생성합니다."""
+
         if isinstance(raw_value, str):
             if looks_like_html(raw_value):
                 return html_to_text(raw_value), "html"
@@ -183,7 +199,7 @@ class IssueParser:
         warnings.append(
             ParseWarning(
                 code="unsupported_description_type",
-                message=f"description has unsupported type: {raw_type}",
+                message=f"지원하지 않는 description 타입입니다: {raw_type}",
                 json_path="/fields/description",
             )
         )
