@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 import requests
+import urllib3
+from urllib3.exceptions import InsecureRequestWarning
 
 from .rate_limiter import IntervalRateLimiter
 from .settings import JiraSettings
@@ -53,12 +55,19 @@ class JiraClient:
         self.settings = settings
         self.session = session or requests.Session()
         self.session.auth = (settings.username, settings.password)
+        self.session.verify = settings.verify_ssl
         self.session.headers.update(
             {
                 "Accept": "application/json",
                 "User-Agent": "jira-raw-data-collector/0.1.0",
             }
         )
+        if not settings.verify_ssl:
+            urllib3.disable_warnings(InsecureRequestWarning)
+            LOGGER.warning(
+                "Jira HTTPS 인증서 검증이 비활성화되어 있습니다. "
+                "신뢰할 수 있는 사내 Jira에서만 사용하십시오."
+            )
         self.limiter = limiter or IntervalRateLimiter(
             settings.rate_limit.requests_per_minute,
             sleeper=sleeper,
