@@ -7,7 +7,7 @@ from typing import Any
 
 @dataclass(frozen=True, slots=True)
 class IssueSource:
-    """Filesystem locations that belong to one collected Jira issue."""
+    """수집된 Jira 이슈 하나에 속하는 원본 파일 경로를 나타냅니다."""
 
     run_id: str
     project_key: str
@@ -18,7 +18,7 @@ class IssueSource:
 
 @dataclass(frozen=True, slots=True)
 class ParseWarning:
-    """Non-fatal parser observation that should be reviewed later."""
+    """파싱은 계속할 수 있지만 추후 검토가 필요한 관찰 결과를 나타냅니다."""
 
     code: str
     message: str
@@ -27,7 +27,7 @@ class ParseWarning:
 
 @dataclass(frozen=True, slots=True)
 class IssueRecord:
-    """First-stage normalized view of one Jira issue."""
+    """Jira 이슈 하나를 1차 정규화한 중간 레코드입니다."""
 
     run_id: str
     project_key: str
@@ -48,7 +48,7 @@ class IssueRecord:
 
 @dataclass(frozen=True, slots=True)
 class IssueParseResult:
-    """Parsed issue plus observations that did not prevent parsing."""
+    """파싱된 이슈 레코드와 비치명적 경고를 함께 보관합니다."""
 
     record: IssueRecord
     warnings: tuple[ParseWarning, ...] = ()
