@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -11,12 +10,13 @@ from jira_collector.parser.models import IssueRecord, IssueSource, ParseWarning
 
 from .atomic_writer import AtomicTextWriter
 from .models import IssueExportResult
+from .run_summary_store import RunSummaryStore
+from .run_warning_store import RunWarningStore
 
 
 class IssueJsonlExporter:
-    """수집된 Jira 이슈를 파싱해 분석용 JSONL 파일 묶음으로 내보냅니다."""
+    """수집된 Jira 이슈를 파싱해 분석용 JSONL과 공통 실행 요약으로 내보냅니다."""
 
-    SCHEMA_VERSION = "1.0"
     PARSER_VERSION = "0.1"
 
     def __init__(
@@ -24,7 +24,7 @@ class IssueJsonlExporter:
         data_root: str | Path,
         analysis_directory: str = "analysis",
     ) -> None:
-        """데이터 루트 아래의 분석 출력 디렉터리를 초기화합니다."""
+        """분석 저장 루트와 공통 요약·경고 저장소를 초기화합니다."""
 
         self.data_root = Path(data_root).resolve()
         self.analysis_root = (self.data_root / analysis_directory).resolve()
@@ -33,9 +33,18 @@ class IssueJsonlExporter:
             and self.data_root not in self.analysis_root.parents
         ):
             raise ValueError(
-                f"analysis 디렉터리는 data_root 아래에 있어야 합니다: {self.analysis_root}"
+                f"analysis 디렉터리는 data_root 아래에 있어야 합니다: "
+                f"{self.analysis_root}"
             )
         self.writer = AtomicTextWriter(self.analysis_root)
+        self.summary_store = RunSummaryStore(
+            self.data_root,
+            analysis_directory,
+        )
+        self.warning_store = RunWarningStore(
+            self.data_root,
+            analysis_directory,
+        )
 
     def export_run(
         self,
@@ -43,21 +52,18 @@ class IssueJsonlExporter:
         reader: RunReader,
         parser: IssueParser,
     ) -> IssueExportResult:
-        """run_id의 모든 이슈를 파싱하고 JSONL·경고·요약 파일을 생성합니다."""
+        """run_id의 모든 이슈를 파싱하고 JSONL·공통 경고·공통 요약 파일을 갱신합니다."""
 
         sources = reader.list_issue_sources(run_id)
-        run_relative = Path(run_id)
-        issues_relative = run_relative / "issues.jsonl"
-        warnings_relative = run_relative / "parse_warnings.jsonl"
-        summary_relative = run_relative / "summary.json"
-
+        issues_relative = Path(run_id) / "issues.jsonl"
+        issues_path = (self.analysis_root / issues_relative).resolve()
         exported_issue_count = 0
         failed_issue_count = 0
         parse_error_count = 0
         warning_documents: list[dict[str, Any]] = []
         description_formats: Counter[str] = Counter()
 
-        # 이슈 데이터는 한 줄씩 기록해 전체 본문을 메모리에 쌓지 않습니다.
+        # 이슈 데이터는 한 줄씩 기록해 전체 description을 메모리에 쌓지 않습니다.
         with self.writer.open_text(issues_relative) as issues_handle:
             for source in sources:
                 try:
@@ -86,44 +92,37 @@ class IssueJsonlExporter:
                         self._warning_document(source, warning)
                     )
 
-        # 경고가 없더라도 0바이트 파일을 생성해 경고 검사가 완료됐음을 명시합니다.
-        with self.writer.open_text(warnings_relative) as warnings_handle:
-            for document in warning_documents:
-                warnings_handle.write(
-                    json.dumps(
-                        document,
-                        ensure_ascii=False,
-                        separators=(",", ":"),
-                    )
-                )
-                warnings_handle.write("\n")
-
-        issues_path = (self.analysis_root / issues_relative).resolve()
-        warnings_path = (self.analysis_root / warnings_relative).resolve()
-        summary_path = (self.analysis_root / summary_relative).resolve()
-        summary_document = {
-            "schema_version": self.SCHEMA_VERSION,
-            "parser_version": self.PARSER_VERSION,
-            "run_id": run_id,
-            "generated_at": self._utc_now_text(),
-            "status": "completed" if failed_issue_count == 0 else "partial",
-            "discovered_issue_count": len(sources),
-            "exported_issue_count": exported_issue_count,
-            "failed_issue_count": failed_issue_count,
-            "warning_count": len(warning_documents),
-            "parse_error_count": parse_error_count,
-            "description_formats": dict(sorted(description_formats.items())),
-            "output_files": {
+        # 댓글 Exporter가 기록한 경고는 유지하고 이슈 영역의 경고만 현재 결과로 교체합니다.
+        warnings_path = self.warning_store.replace_component(
+            run_id,
+            "issues",
+            warning_documents,
+        )
+        issue_status = (
+            "completed" if failed_issue_count == 0 else "partial"
+        )
+        summary_path = self.summary_store.update_section(
+            run_id,
+            "issues",
+            {
+                "status": issue_status,
+                "parser_version": self.PARSER_VERSION,
+                "discovered_count": len(sources),
+                "exported_count": exported_issue_count,
+                "failed_count": failed_issue_count,
+                "warning_count": len(warning_documents),
+                "parse_error_count": parse_error_count,
+                "description_formats": dict(
+                    sorted(description_formats.items())
+                ),
+            },
+            {
                 "issues": self._relative_to_data_root(issues_path),
                 "warnings": self._relative_to_data_root(warnings_path),
-                "summary": self._relative_to_data_root(summary_path),
+                "summary": self._relative_to_data_root(
+                    self.analysis_root / run_id / "summary.json"
+                ),
             },
-        }
-
-        # summary.json을 마지막에 기록해 세 파일 묶음의 완료 표시로 사용합니다.
-        self.writer.write_text(
-            summary_relative,
-            json.dumps(summary_document, ensure_ascii=False, indent=2) + "\n",
         )
 
         return IssueExportResult(
@@ -163,10 +162,10 @@ class IssueJsonlExporter:
         source: IssueSource,
         warning: ParseWarning,
     ) -> dict[str, Any]:
-        """비치명적 ParseWarning을 원본 추적 가능한 JSON 객체로 변환합니다."""
+        """비치명적 ParseWarning을 원본 추적 가능한 공통 경고 문서로 변환합니다."""
 
         return {
-            "severity": "warning",
+            "severity": warning.severity,
             "run_id": source.run_id,
             "project_key": source.project_key,
             "issue_key": source.issue_key,
@@ -197,10 +196,4 @@ class IssueJsonlExporter:
     def _relative_to_data_root(self, path: Path) -> str:
         """출력 파일 경로를 data_root 기준의 이식 가능한 POSIX 경로로 바꿉니다."""
 
-        return path.relative_to(self.data_root).as_posix()
-
-    @staticmethod
-    def _utc_now_text() -> str:
-        """요약 파일에 기록할 현재 UTC 시각을 ISO 8601 형식으로 반환합니다."""
-
-        return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        return path.resolve().relative_to(self.data_root).as_posix()
