@@ -140,6 +140,14 @@ def named_value(value: Any) -> str | None:
     return None
 
 
+def author_key_value(value: Any) -> str | None:
+    """Jira 작성자 객체에서 내부 식별에 사용할 name 또는 key 값을 추출합니다."""
+
+    if not isinstance(value, dict):
+        return None
+    return optional_string(value.get("name")) or optional_string(value.get("key"))
+
+
 def looks_like_html(value: str) -> bool:
     """문자열에 HTML 태그로 보이는 패턴이 포함됐는지 확인합니다."""
 
