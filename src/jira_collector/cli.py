@@ -6,7 +6,9 @@ import logging
 import sys
 
 from .collector import JiraCollector, new_run_id
+from .exporter import IssueJsonlExporter
 from .jira_client import JiraClient, JiraClientError
+from .parser import IssueParser, RunReader
 from .project_discovery import ProjectDiscovery
 from .raw_store import RawStore
 from .report import ReportWriter
@@ -17,9 +19,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """지원하는 CLI 명령과 공통 설정 인자를 구성합니다."""
+
     parser = argparse.ArgumentParser(
         prog="jira-collector",
-        description="Jira 원본 JSON 읽기 전용 수집기",
+        description="Jira 원본 JSON 수집·검증·로컬 파싱 도구",
     )
     parser.add_argument("--config", default="config/settings.yaml", help="기본 YAML 설정 파일")
     parser.add_argument(
@@ -44,10 +48,18 @@ def build_parser() -> argparse.ArgumentParser:
     verify = subparsers.add_parser("verify", help="저장 파일 SHA-256 검증")
     verify.add_argument("--run-id", required=True)
 
+    export_issues = subparsers.add_parser(
+        "export-issues",
+        help="수집된 issue.json을 분석용 JSONL로 변환",
+    )
+    export_issues.add_argument("--run-id", required=True)
+
     return parser
 
 
 def configure_logging(settings: AppSettings) -> None:
+    """YAML 설정의 로그 레벨을 Python logging에 적용합니다."""
+
     level = getattr(logging, settings.logging.level, logging.INFO)
     logging.basicConfig(
         level=level,
@@ -56,6 +68,8 @@ def configure_logging(settings: AppSettings) -> None:
 
 
 def _build_components(settings: AppSettings) -> tuple[RawStore, StateStore, ReportWriter]:
+    """수집과 검증 명령에서 공통으로 사용하는 저장 구성요소를 생성합니다."""
+
     settings.storage.data_root.mkdir(parents=True, exist_ok=True)
     raw_store = RawStore(settings.storage.data_root, settings.storage.raw_directory)
     state = StateStore(settings.storage.state_root / "collector.db")
@@ -64,6 +78,8 @@ def _build_components(settings: AppSettings) -> tuple[RawStore, StateStore, Repo
 
 
 def command_check_connection(settings: AppSettings) -> int:
+    """Jira 인증과 기본 REST 연결을 확인합니다."""
+
     with JiraClient(settings.jira) as client:
         result = client.check_connection()
     payload = result.payload if isinstance(result.payload, dict) else {}
@@ -73,6 +89,8 @@ def command_check_connection(settings: AppSettings) -> int:
 
 
 def command_discover_projects(settings: AppSettings) -> int:
+    """현재 계정이 조회 가능한 프로젝트를 발견하고 원본으로 저장합니다."""
+
     raw_store, state, report_writer = _build_components(settings)
     run_id = f"discover-{new_run_id()}"
     state.create_run(run_id, settings.jira.collection.issues_per_project)
@@ -89,6 +107,8 @@ def command_discover_projects(settings: AppSettings) -> int:
 
 
 def command_collect(settings: AppSettings, args: argparse.Namespace) -> int:
+    """새 run_id를 만들고 Jira 원본 수집을 실행합니다."""
+
     raw_store, state, report_writer = _build_components(settings)
     limit = args.issues_per_project or settings.jira.collection.issues_per_project
     if limit <= 0:
@@ -107,6 +127,8 @@ def command_collect(settings: AppSettings, args: argparse.Namespace) -> int:
 
 
 def command_resume(settings: AppSettings, args: argparse.Namespace) -> int:
+    """기존 run_id의 미완료 또는 실패 수집 작업을 재개합니다."""
+
     raw_store, state, report_writer = _build_components(settings)
     with JiraClient(settings.jira) as client:
         collector = JiraCollector(client, raw_store, state)
@@ -118,6 +140,8 @@ def command_resume(settings: AppSettings, args: argparse.Namespace) -> int:
 
 
 def command_verify(settings: AppSettings, args: argparse.Namespace) -> int:
+    """SQLite에 기록된 SHA-256과 실제 원본 파일의 해시를 비교합니다."""
+
     raw_store, state, _ = _build_components(settings)
     if not state.run_exists(args.run_id):
         raise KeyError(f"run_id를 찾을 수 없습니다: {args.run_id}")
@@ -141,7 +165,30 @@ def command_verify(settings: AppSettings, args: argparse.Namespace) -> int:
     return 0
 
 
+def command_export_issues(settings: AppSettings, args: argparse.Namespace) -> int:
+    """수집된 이슈 원본을 파싱해 JSONL·경고·요약 파일로 저장합니다."""
+
+    reader = RunReader(
+        settings.storage.data_root,
+        settings.storage.raw_directory,
+    )
+    parser = IssueParser()
+    exporter = IssueJsonlExporter(settings.storage.data_root)
+    result = exporter.export_run(args.run_id, reader, parser)
+
+    print(f"발견 이슈: {result.discovered_issue_count}개")
+    print(f"저장 성공: {result.exported_issue_count}개")
+    print(f"저장 실패: {result.failed_issue_count}개")
+    print(f"경고 및 오류: {result.warning_count}개")
+    print(f"이슈 JSONL: {result.issues_path}")
+    print(f"경고 JSONL: {result.warnings_path}")
+    print(f"요약 JSON: {result.summary_path}")
+    return 0 if result.failed_issue_count == 0 else 2
+
+
 def main(argv: list[str] | None = None) -> int:
+    """명령행 인자를 해석하고 해당 기능을 실행한 뒤 종료 코드를 반환합니다."""
+
     parser = build_parser()
     args = parser.parse_args(argv)
 
@@ -163,8 +210,10 @@ def main(argv: list[str] | None = None) -> int:
             return command_resume(settings, args)
         if args.command == "verify":
             return command_verify(settings, args)
+        if args.command == "export-issues":
+            return command_export_issues(settings, args)
         parser.error(f"지원하지 않는 명령입니다: {args.command}")
-    except (SettingsError, JiraClientError, KeyError, ValueError) as exc:
+    except (SettingsError, JiraClientError, KeyError, ValueError, OSError) as exc:
         LOGGER.error("%s", exc)
         print(f"오류: {exc}", file=sys.stderr)
         return 1
