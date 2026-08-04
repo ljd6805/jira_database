@@ -65,7 +65,7 @@ def _valid_payload(issue_key: str) -> dict[str, object]:
 
 
 def test_export_run_writes_jsonl_warnings_and_summary(tmp_path: Path) -> None:
-    """정상 이슈와 파싱 실패 이슈를 분리해 세 출력 파일에 저장하는지 확인합니다."""
+    """정상 이슈와 파싱 실패 이슈를 분리해 공통 출력 계약으로 저장하는지 확인합니다."""
 
     data_root = tmp_path / "data"
     _write_issue(
@@ -108,19 +108,25 @@ def test_export_run_writes_jsonl_warnings_and_summary(tmp_path: Path) -> None:
     assert "description_rendered" not in issue
 
     warning = json.loads(warning_lines[0])
+    assert warning["component"] == "issues"
     assert warning["severity"] == "error"
     assert warning["code"] == "issue_parse_error"
     assert warning["issue_key"] == "ABC-2"
 
+    assert summary["schema_version"] == "2.0"
     assert summary["status"] == "partial"
-    assert summary["discovered_issue_count"] == 2
-    assert summary["exported_issue_count"] == 1
-    assert summary["failed_issue_count"] == 1
-    assert summary["description_formats"] == {"html": 1}
+    assert summary["issues"]["status"] == "partial"
+    assert summary["issues"]["discovered_count"] == 2
+    assert summary["issues"]["exported_count"] == 1
+    assert summary["issues"]["failed_count"] == 1
+    assert summary["issues"]["description_formats"] == {"html": 1}
+    assert summary["comments"]["status"] == "not_run"
     assert summary["output_files"]["issues"] == "analysis/run1/issues.jsonl"
 
 
-def test_export_run_creates_empty_warning_file_when_no_warnings(tmp_path: Path) -> None:
+def test_export_run_creates_empty_warning_file_when_no_warnings(
+    tmp_path: Path,
+) -> None:
     """경고가 없을 때도 빈 parse_warnings.jsonl을 생성하는지 확인합니다."""
 
     data_root = tmp_path / "data"
@@ -144,6 +150,8 @@ def test_export_run_creates_empty_warning_file_when_no_warnings(tmp_path: Path) 
     assert result.warnings_path.read_text(encoding="utf-8") == ""
 
     summary = json.loads(result.summary_path.read_text(encoding="utf-8"))
-    assert summary["status"] == "completed"
-    assert summary["warning_count"] == 0
-    assert summary["parse_error_count"] == 0
+    assert summary["status"] == "incomplete"
+    assert summary["issues"]["status"] == "completed"
+    assert summary["issues"]["warning_count"] == 0
+    assert summary["issues"]["parse_error_count"] == 0
+    assert summary["comments"]["status"] == "not_run"
