@@ -7,7 +7,7 @@ from typing import Any
 
 @dataclass(frozen=True, slots=True)
 class IssueSource:
-    """수집된 Jira 이슈 하나에 속하는 원본 파일 경로를 나타냅니다."""
+    """수집된 Jira 이슈 한 건과 연결된 파일 시스템 위치를 나타냅니다."""
 
     run_id: str
     project_key: str
@@ -18,16 +18,17 @@ class IssueSource:
 
 @dataclass(frozen=True, slots=True)
 class ParseWarning:
-    """파싱은 계속할 수 있지만 추후 검토가 필요한 관찰 결과를 나타냅니다."""
+    """파싱은 계속할 수 있지만 나중에 검토해야 하는 관찰 결과를 나타냅니다."""
 
     code: str
     message: str
     json_path: str | None = None
+    severity: str = "warning"
 
 
 @dataclass(frozen=True, slots=True)
 class IssueRecord:
-    """Jira 이슈 하나를 1차 정규화한 중간 레코드입니다."""
+    """Jira 이슈 한 건의 1차 표준화 결과를 나타냅니다."""
 
     run_id: str
     project_key: str
@@ -48,7 +49,41 @@ class IssueRecord:
 
 @dataclass(frozen=True, slots=True)
 class IssueParseResult:
-    """파싱된 이슈 레코드와 비치명적 경고를 함께 보관합니다."""
+    """이슈 파싱 결과와 비치명적 경고를 함께 보관합니다."""
 
     record: IssueRecord
     warnings: tuple[ParseWarning, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class CommentRecord:
+    """Jira 댓글 한 건의 1차 표준화 결과를 나타냅니다."""
+
+    run_id: str
+    project_key: str
+    issue_key: str
+    comment_id: str
+    sequence: int
+    author_name: str | None
+    author_key: str | None
+    created_at: str | None
+    updated_at: str | None
+    body_raw: Any
+    body_text: str | None
+    body_format: str
+    source_path: str
+    source_page: str
+
+
+@dataclass(frozen=True, slots=True)
+class CommentParseResult:
+    """한 이슈의 댓글 페이지 전체를 파싱한 결과와 집계값을 보관합니다."""
+
+    records: tuple[CommentRecord, ...]
+    warnings: tuple[ParseWarning, ...] = ()
+    page_count: int = 0
+    discovered_comment_count: int = 0
+    duplicate_comment_count: int = 0
+    failed_page_count: int = 0
+    failed_comment_count: int = 0
+    missing_comment_source_count: int = 0
