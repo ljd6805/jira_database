@@ -23,7 +23,17 @@ class RoutedFakeClient:
         return ApiResult(payload=payload, status_code=200, url=f"https://jira{path}", headers={})
 
 
-def test_collects_issue_and_only_missing_comment_pages(app_settings, tmp_path: Path) -> None:
+def _new_collector(app_settings, tmp_path: Path, client: RoutedFakeClient):
+    state = StateStore(tmp_path / "collector.db")
+    state.create_run("run1", 30)
+    state.add_projects("run1", [("ABC", "Alpha")], 30)
+    return JiraCollector(client, RawStore(tmp_path / "data"), state), state
+
+
+def test_collects_all_comment_pages_from_zero_even_when_issue_embeds_comments(
+    app_settings,
+    tmp_path: Path,
+) -> None:
     client = RoutedFakeClient(
         app_settings.jira,
         {
@@ -44,28 +54,31 @@ def test_collects_issue_and_only_missing_comment_pages(app_settings, tmp_path: P
                             "startAt": 0,
                             "maxResults": 1,
                             "total": 3,
-                            "comments": [{"id": "1", "body": "first"}],
+                            "comments": [{"id": "1", "body": "embedded"}],
                         },
                     },
                 }
             ],
             "/issue/ABC-1/comment": [
                 {
-                    "startAt": 1,
+                    "startAt": 0,
                     "maxResults": 2,
                     "total": 3,
                     "comments": [
+                        {"id": "1", "body": "first"},
                         {"id": "2", "body": "second"},
-                        {"id": "3", "body": "third"},
                     ],
-                }
+                },
+                {
+                    "startAt": 2,
+                    "maxResults": 2,
+                    "total": 3,
+                    "comments": [{"id": "3", "body": "third"}],
+                },
             ],
         },
     )
-    state = StateStore(tmp_path / "collector.db")
-    state.create_run("run1", 30)
-    state.add_projects("run1", [("ABC", "Alpha")], 30)
-    collector = JiraCollector(client, RawStore(tmp_path / "data"), state)
+    collector, state = _new_collector(app_settings, tmp_path, client)
 
     count = collector.collect_project("run1", "ABC", issues_per_project=30)
 
@@ -75,12 +88,16 @@ def test_collects_issue_and_only_missing_comment_pages(app_settings, tmp_path: P
         "issue_search_page",
         "issue",
         "comment_page",
+        "comment_page",
     ]
-    comment_call = next(call for call in client.calls if call[0].endswith("/comment"))
-    assert comment_call[1]["startAt"] == 1
+    comment_calls = [call for call in client.calls if call[0].endswith("/comment")]
+    assert [call[1]["startAt"] for call in comment_calls] == [0, 2]
 
 
-def test_skips_comment_api_when_issue_contains_all_comments(app_settings, tmp_path: Path) -> None:
+def test_calls_comment_api_even_when_issue_contains_all_comments(
+    app_settings,
+    tmp_path: Path,
+) -> None:
     client = RoutedFakeClient(
         app_settings.jira,
         {
@@ -94,17 +111,56 @@ def test_skips_comment_api_when_issue_contains_all_comments(app_settings, tmp_pa
                         "comment": {
                             "startAt": 0,
                             "total": 1,
-                            "comments": [{"id": "1"}],
+                            "comments": [{"id": "1", "body": "embedded"}],
                         }
                     },
                 }
             ],
+            "/issue/ABC-1/comment": [
+                {
+                    "startAt": 0,
+                    "total": 1,
+                    "comments": [{"id": "1", "body": "from comment API"}],
+                }
+            ],
         },
     )
-    state = StateStore(tmp_path / "collector.db")
-    state.create_run("run1", 30)
-    state.add_projects("run1", [("ABC", "Alpha")], 30)
-    collector = JiraCollector(client, RawStore(tmp_path / "data"), state)
+    collector, state = _new_collector(app_settings, tmp_path, client)
 
     assert collector.collect_project("run1", "ABC", issues_per_project=30) == 1
-    assert all(not path.endswith("/comment") for path, _ in client.calls)
+
+    comment_calls = [call for call in client.calls if call[0].endswith("/comment")]
+    assert len(comment_calls) == 1
+    assert comment_calls[0][1]["startAt"] == 0
+    assert [item.artifact_type for item in state.list_artifacts("run1")].count(
+        "comment_page"
+    ) == 1
+
+
+def test_saves_empty_comment_page_for_issue_without_comments(
+    app_settings,
+    tmp_path: Path,
+) -> None:
+    client = RoutedFakeClient(
+        app_settings.jira,
+        {
+            "/search": [
+                {"startAt": 0, "total": 1, "issues": [{"key": "ABC-1"}]}
+            ],
+            "/issue/ABC-1": [{"key": "ABC-1", "fields": {}}],
+            "/issue/ABC-1/comment": [
+                {"startAt": 0, "maxResults": 100, "total": 0, "comments": []}
+            ],
+        },
+    )
+    collector, state = _new_collector(app_settings, tmp_path, client)
+
+    assert collector.collect_project("run1", "ABC", issues_per_project=30) == 1
+    assert state.issue_is_complete("run1", "ABC", "ABC-1")
+    comment_artifacts = [
+        item for item in state.list_artifacts("run1") if item.artifact_type == "comment_page"
+    ]
+    assert len(comment_artifacts) == 1
+    assert comment_artifacts[0].relative_path.endswith(
+        "projects/ABC/issues/ABC-1/comments/page_0001.json"
+    )
