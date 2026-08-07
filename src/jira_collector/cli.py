@@ -8,6 +8,7 @@ import sys
 from .collector import JiraCollector, new_run_id
 from .exporter import CommentJsonlExporter, IssueJsonlExporter, IssueStructureJsonlExporter
 from .jira_client import JiraClient, JiraClientError
+from .knowledge_input import IssueKnowledgeInputBuilder
 from .parser import CommentParser, IssueParser, IssueStructureParser, RunReader
 from .project_discovery import ProjectDiscovery
 from .raw_store import RawStore
@@ -66,6 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     export_structure.add_argument("--run-id", required=True)
 
+    build_knowledge_input = subparsers.add_parser(
+        "build-knowledge-input",
+        help="완료된 ANALYSIS 데이터를 이슈별 최종 분석 입력 JSON으로 조립",
+    )
+    build_knowledge_input.add_argument("--run-id", required=True)
     return parser
 
 
@@ -284,6 +290,29 @@ def command_export_structure(settings: AppSettings, args: argparse.Namespace) ->
     return 2 if has_failure else 0
 
 
+def command_build_knowledge_input(
+    settings: AppSettings,
+    args: argparse.Namespace,
+) -> int:
+    """완료된 ANALYSIS를 이슈별 KNOWLEDGE INPUT JSON으로 조립합니다."""
+
+    builder = IssueKnowledgeInputBuilder(settings.storage.data_root)
+    result = builder.build_run(args.run_id)
+    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+
+    print(f"대상 이슈: {result.issue_count}개")
+    print(f"생성 패키지: {result.package_count}개")
+    print(f"포함 댓글: {result.comment_count}개")
+    print(f"포함 첨부파일: {result.attachment_count}개")
+    print(f"canonical 관계: {result.relationship_count}개")
+    print(f"Custom Field 값: {result.custom_field_value_count}개")
+    print(f"패키지 경고: {result.warning_count}개")
+    print(f"이슈 패키지 디렉터리: {result.issues_directory}")
+    print(f"Manifest: {result.manifest_path}")
+    print(f"경고 JSONL: {result.warnings_path}")
+    return 0 if manifest.get("status") == "completed" else 2
+
+
 def main(argv: list[str] | None = None) -> int:
     """명령행 인자를 해석하고 해당 기능을 실행한 뒤 종료 코드를 반환합니다."""
 
@@ -314,6 +343,8 @@ def main(argv: list[str] | None = None) -> int:
             return command_export_comments(settings, args)
         if args.command == "export-structure":
             return command_export_structure(settings, args)
+        if args.command == "build-knowledge-input":
+            return command_build_knowledge_input(settings, args)
         parser.error(f"지원하지 않는 명령입니다: {args.command}")
     except (
         SettingsError,
