@@ -51,6 +51,39 @@ def test_preserves_other_component_and_replaces_current_component(
     ] == [("comments", "comment_warning")]
 
 
+def test_replaces_multiple_components_in_one_write(tmp_path: Path) -> None:
+    """4단계 component 여러 개를 교체하면서 기존 Issue/Comment 경고를 보존합니다."""
+
+    data_root = tmp_path / "data"
+    store = RunWarningStore(data_root)
+    path = store.replace_components(
+        "run1",
+        {
+            "issues": [{"code": "issue_warning"}],
+            "comments": [{"code": "comment_warning"}],
+        },
+    )
+
+    store.replace_components(
+        "run1",
+        {
+            "attachments": [{"code": "attachment_warning"}],
+            "relationships": [{"code": "relationship_warning"}],
+            "custom_fields": [{"code": "custom_warning"}],
+            "structure": [],
+        },
+    )
+
+    pairs = [(item["component"], item["code"]) for item in _read_lines(path)]
+    assert pairs == [
+        ("issues", "issue_warning"),
+        ("comments", "comment_warning"),
+        ("attachments", "attachment_warning"),
+        ("relationships", "relationship_warning"),
+        ("custom_fields", "custom_warning"),
+    ]
+
+
 def test_treats_legacy_warning_without_component_as_issue_warning(
     tmp_path: Path,
 ) -> None:
