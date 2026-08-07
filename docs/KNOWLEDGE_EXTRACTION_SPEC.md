@@ -131,7 +131,9 @@ data/knowledge/runs/<run_id>/
 
   "issue_summary": {
     "text": "...",
-    "evidence_refs": []
+    "evidence_refs": [
+      {"source_type": "issue_description", "source_id": "ABC-123"}
+    ]
   },
 
   "problem_or_goal": [],
@@ -149,6 +151,8 @@ data/knowledge/runs/<run_id>/
 }
 ```
 
+`issue_summary`는 Description이 비어 있거나 의미 있는 요약 근거를 만들 수 없는 극단적인 경우 `null`을 허용할 수 있습니다.
+
 ---
 
 ## 6. Knowledge Statement
@@ -158,7 +162,7 @@ data/knowledge/runs/<run_id>/
 ```json
 {
   "text": "...",
-  "state": "confirmed",
+  "state": "observed",
   "evidence_refs": [
     {
       "source_type": "comment",
@@ -182,9 +186,12 @@ v1 공통 상태값:
 stated
 proposed
 active
+observed
 confirmed
 rejected
+attempted
 completed
+failed
 cancelled
 superseded
 unresolved
@@ -193,13 +200,21 @@ unknown
 
 카테고리가 이미 의미를 표현하므로 state는 필요한 경우에만 추가 의미를 제공합니다.
 
-예:
+권장 예:
 
 ```text
+observations + observed
+hypotheses + active
 hypotheses + rejected
-plans + proposed
-plans + cancelled
+hypotheses + superseded
+confirmed_causes + confirmed
+actions_taken + attempted
 actions_taken + completed
+actions_taken + failed
+plans + proposed
+plans + active
+plans + cancelled
+plans + completed
 open_questions + unresolved
 ```
 
@@ -255,6 +270,8 @@ Attachment는 현재 metadata만 제공됩니다.
 ### Relationship
 
 `relationship_id`가 존재하는 관계만 직접 evidence id로 사용하는 것을 v1 기본 정책으로 합니다.
+
+Hierarchy 등 `relationship_id`가 없는 관계는 다른 Description/Comment 근거를 우선 사용합니다.
 
 ### Custom Field
 
@@ -321,6 +338,8 @@ Issue 전체를 1~3문장으로 요약합니다.
 
 실제로 관찰되거나 확인된 사실입니다.
 
+권장 상태는 `observed`입니다.
+
 예:
 
 ```text
@@ -368,6 +387,8 @@ state = superseded
 
 명시적으로 확인된 원인만 저장합니다.
 
+권장 상태는 `confirmed`입니다.
+
 다음만으로는 confirmed cause가 아닙니다.
 
 ```text
@@ -394,6 +415,15 @@ state = superseded
 시험 수행
 롤백
 패치 적용
+```
+
+상태 예:
+
+```text
+attempted  시도했음
+completed  실제 완료됨
+failed     수행했으나 목적 달성 실패
+active     현재 수행 중
 ```
 
 `~할 예정`은 여기에 넣지 않고 `plans`에 넣습니다.
@@ -449,6 +479,8 @@ unknown
 가설이 실험으로 반박됨
 ```
 
+결과 자체가 성공/실패를 나타내면 `observed`, `confirmed`, `failed` 등을 문맥에 맞게 사용할 수 있습니다.
+
 ---
 
 ## 18. conclusions
@@ -464,6 +496,8 @@ Jira가 해결 상태라고 해서 Agent가 내용 없는 결론을 자동 생�
 ## 19. open_questions
 
 아직 해결되지 않은 질문입니다.
+
+권장 상태는 `unresolved`입니다.
 
 예:
 
