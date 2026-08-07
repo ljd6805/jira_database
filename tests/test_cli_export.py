@@ -34,3 +34,14 @@ def test_export_structure_command_requires_run_id() -> None:
 
     assert args.command == "export-structure"
     assert args.run_id == "run1"
+
+
+def test_build_knowledge_input_command_requires_run_id() -> None:
+    """build-knowledge-input 명령이 최종 분석 입력용 run_id를 정상적으로 해석하는지 확인합니다."""
+
+    args = build_parser().parse_args(
+        ["build-knowledge-input", "--run-id", "run1"]
+    )
+
+    assert args.command == "build-knowledge-input"
+    assert args.run_id == "run1"
