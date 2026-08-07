@@ -39,15 +39,27 @@
 - `stated`
 - `proposed`
 - `active`
+- `observed`
 - `confirmed`
 - `rejected`
+- `attempted`
 - `completed`
+- `failed`
 - `cancelled`
 - `superseded`
 - `unresolved`
 - `unknown`
 
 카테고리 자체가 의미를 충분히 표현하면 `state`는 `stated`를 기본값으로 사용할 수 있습니다.
+
+권장 예:
+
+- observations → `observed`
+- hypotheses → `active` / `rejected` / `superseded`
+- confirmed_causes → `confirmed`
+- actions_taken → `attempted` / `completed` / `failed`
+- plans → `proposed` / `active` / `cancelled` / `completed`
+- open_questions → `unresolved`
 
 ## Category 의미
 
@@ -70,7 +82,7 @@ Issue가 해결하려는 문제 또는 달성하려는 목표입니다.
 직접적인 근거로 확인된 원인만 넣으십시오. 추측, 시간적 선후관계, 단순 상관관계는 제외하십시오.
 
 ### actions_taken
-실제로 수행됐다는 근거가 있는 조치만 넣으십시오.
+실제로 수행됐다는 근거가 있는 조치만 넣으십시오. 시도했으나 실패한 조치도 `state=failed` 또는 `attempted`로 기록할 수 있습니다.
 
 ### plans
 예정, 제안, 합의된 다음 작업입니다. 완료된 작업과 혼동하지 마십시오.
@@ -130,7 +142,7 @@ Issue가 해결하려는 문제 또는 달성하려는 목표입니다.
 ```json
 {
   "text": "하나의 명확한 업무 사실 또는 판단",
-  "state": "stated",
+  "state": "observed",
   "evidence_refs": [
     {
       "source_type": "comment",
