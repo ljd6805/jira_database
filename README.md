@@ -13,19 +13,44 @@ Jira 연결 확인
 → Raw JSON SHA-256 검증
 → IssueParser
 → CommentParser
+→ IssueStructureParser
 → issues.jsonl / comments.jsonl
+→ attachments.jsonl / issue_relationships.jsonl
+→ custom_field_catalog.jsonl / custom_field_values.jsonl
 → parse_warnings.jsonl / summary.json 2.0
 ```
 
 아직 포함하지 않는 범위:
 
-- 첨부파일 바이너리 다운로드
-- 첨부파일 메타데이터 정규화
-- 이슈 링크 Parser
-- Custom field Parser
-- Excel Exporter
+- 첨부파일 바이너리 다운로드 및 본문 분석
+- OpenCode Agent 지식 재가공
+- Excel/Data Profiling 보고서
 - DB 적재
+- 청크 생성
 - 임베딩, FAISS, RAG, MCP, 생성형 LLM
+
+---
+
+## 데이터 계층
+
+경로를 사용할 때는 항상 어느 계층인지 구분합니다.
+
+```text
+[RAW]
+data/raw/runs/<run_id>/...
+Jira API 원본. 사실의 기준이며 Parser가 수정하지 않음.
+
+[ANALYSIS]
+data/analysis/<run_id>/...
+결정적 Parser/Exporter 결과. JSONL·Summary·Warning.
+
+[KNOWLEDGE]  # 향후
+data/knowledge/<run_id>/...
+OpenCode Agent가 Issue 전체를 분석해 만든 파생 지식.
+
+[DB] / [VECTOR]  # 향후
+SQLite / Embedding / FAISS
+```
 
 ---
 
@@ -36,9 +61,11 @@ Jira 연결 확인
 - [Parser Core](docs/PARSER_CORE.md)
 - [Issue JSONL Exporter 명세](docs/ISSUE_EXPORT_SPEC.md)
 - [Comment JSONL Exporter 명세](docs/COMMENT_EXPORT_SPEC.md)
+- [4단계 Structure Export 명세](docs/STRUCTURE_EXPORT_SPEC.md)
+- [실제 Jira 4단계 RAW 구조 조사 기록](docs/JIRA_STRUCTURE_PROFILE.md)
 - [공통 Summary·Warning 저장 계약](docs/RUN_SUMMARY_SPEC.md)
 
-코드 또는 저장 형식을 바꾸면 README와 관련 명세를 같은 변경 단위에서 함께 갱신해야 합니다.
+코드 또는 저장 형식을 바꾸면 README와 관련 명세를 같은 변경 단위에서 함께 갱신합니다.
 
 ---
 
@@ -60,18 +87,40 @@ Jira 연결 확인
 
 ### Parser와 Exporter
 
-- Jira API를 다시 호출하지 않고 `data/raw`만 읽음
+- Jira API를 다시 호출하지 않고 `[RAW] data/raw`만 읽음
 - HTML description과 HTML comment body를 일반 텍스트로 변환
-- 이슈와 댓글의 HTML 원문은 Raw JSON에만 보존
-- 댓글 페이지를 파일명 순서로 병합
-- `comment.id` 기준 중복 제거
+- 이슈와 댓글의 HTML 원문은 RAW JSON에만 보존
+- 댓글 페이지를 파일명 순서로 병합하고 `comment.id` 중복 제거
 - 작성자는 `displayName → name → key` 순서로 추출
-- 작성자 이메일, avatar URL, Jira self URL은 JSONL에 저장하지 않음
-- 한 이슈 또는 댓글 페이지의 오류가 전체 run을 중단시키지 않음
-- 결과를 JSONL로 한 줄씩 기록해 전체 본문을 메모리에 쌓지 않음
-- 분석 결과도 임시 파일 작성 후 `os.replace`로 원자 저장
+- 작성자 이메일, avatar URL, Jira self URL은 일반 분석 JSONL에 불필요하게 복제하지 않음
+- 한 이슈 또는 댓글 페이지 오류가 전체 run을 중단시키지 않음
+- 결과를 JSONL 한 줄씩 스트리밍 기록
+- 임시 파일 작성 후 `os.replace`로 원자 저장
 - Windows `WinError 5`, `32`, `33` 재시도
-- Issue와 Comment Exporter가 공통 `summary.json`과 `parse_warnings.jsonl`을 안전하게 병합
+- Exporter가 공통 `summary.json`과 `parse_warnings.jsonl`을 영역별로 안전하게 병합
+
+### 4단계 Structure Parser
+
+Attachment·Issue Link·Hierarchy·Custom Field가 모두 같은 `[RAW] issue.json` 안에 있으므로 같은 파일을 세 번 읽지 않습니다.
+
+```text
+issue.json 1회 읽기
+       ↓
+IssueStructureParser
+       ├─ Attachment metadata
+       ├─ Issue Link + Hierarchy
+       ├─ Custom Field definitions
+       └─ Custom Field values
+       ↓
+IssueStructureJsonlExporter
+```
+
+Issue Relationship은 그래프에서 중복을 줄이기 위해 canonical edge로 저장합니다.
+
+```text
+Issue Link: Jira type.outward 방향
+Hierarchy : parent --parent_of--> child
+```
 
 ---
 
@@ -152,7 +201,7 @@ storage:
   report_directory: reports
 ```
 
-현재 `download_attachments: false`이며 실제 첨부파일 바이너리 다운로드 로직도 없습니다. `issue.json`에는 Jira가 반환한 첨부파일 메타데이터가 들어 있을 수 있습니다.
+현재 `download_attachments: false`이며 실제 첨부파일 바이너리 다운로드 로직도 없습니다. `issue.json`에 들어 있는 Attachment 메타데이터만 4단계에서 정규화합니다.
 
 ---
 
@@ -166,16 +215,15 @@ jira-collector resume --run-id <RUN_ID>
 jira-collector verify --run-id <RUN_ID>
 jira-collector export-issues --run-id <RUN_ID>
 jira-collector export-comments --run-id <RUN_ID>
+jira-collector export-structure --run-id <RUN_ID>
 ```
 
-도움말:
+Windows에서 오래된 `jira-collector.exe`가 잡히면 다음 방식을 우선 사용합니다.
 
 ```powershell
 python -m jira_collector.cli --help
-python -m jira_collector.cli export-comments --help
+python -m jira_collector.cli export-structure --help
 ```
-
-Windows에서 오래된 `jira-collector.exe`가 잡히면 우선 `python -m jira_collector.cli` 방식으로 실행하십시오.
 
 ---
 
@@ -207,25 +255,27 @@ jira-collector verify --run-id <RUN_ID>
 
 ---
 
-## Issue Exporter 실행
+## Issue Exporter
 
 ```powershell
-jira-collector export-issues --run-id <RUN_ID>
+python -m jira_collector.cli export-issues --run-id <RUN_ID>
 ```
 
 읽는 원본:
 
 ```text
+[RAW]
 data/raw/runs/<run_id>/projects/<project_key>/issues/<issue_key>/issue.json
 ```
 
 저장 결과:
 
 ```text
+[ANALYSIS]
 data/analysis/<run_id>/issues.jsonl
 ```
 
-Issue JSONL 필드:
+주요 필드:
 
 ```text
 run_id
@@ -243,78 +293,146 @@ updated_at
 source_path
 ```
 
-`description_raw`과 `description_rendered`는 Raw JSON에 이미 있으므로 JSONL에 중복 저장하지 않습니다.
-
 ---
 
-## Comment Exporter 실행
+## Comment Exporter
 
 ```powershell
-jira-collector export-comments --run-id <RUN_ID>
+python -m jira_collector.cli export-comments --run-id <RUN_ID>
 ```
 
 읽는 원본:
 
 ```text
+[RAW]
 data/raw/runs/<run_id>/projects/<project_key>/issues/<issue_key>/comments/page_*.json
 ```
 
 저장 결과:
 
 ```text
+[ANALYSIS]
 data/analysis/<run_id>/comments.jsonl
 ```
 
-Comment JSONL 필드:
+실환경 검증 결과:
 
 ```text
-run_id
-project_key
-issue_key
-comment_id
-sequence
-author_name
-author_key
-created_at
-updated_at
-body_text
-body_format
-source_path
-source_page
-```
-
-저장하지 않는 값:
-
-```text
-body_raw HTML
-emailAddress
-avatarUrls
-self URL
-전체 author 객체
-```
-
-댓글은 `page_0001.json`, `page_0002.json` 순으로 읽으며, `comment.id`가 중복되면 첫 번째 값만 저장하고 경고를 남깁니다.
-
-정상 실행 출력 예:
-
-```text
-대상 이슈: 30개
-댓글 페이지: 30개
-발견 댓글: 142개
-저장 댓글: 142개
-중복 댓글: 0개
-실패 페이지: 0개
-실패 댓글: 0개
-댓글 원본 누락 이슈: 0개
-경고 및 오류: 0개
-댓글 JSONL: ...\comments.jsonl
-경고 JSONL: ...\parse_warnings.jsonl
-요약 JSON: ...\summary.json
+대상 이슈: 30
+발견 댓글: 278
+저장 댓글: 278
+중복: 0
+실패: 0
+경고: 0
 ```
 
 ---
 
-## 분석 결과 구조
+## 4단계 Structure Exporter
+
+실행:
+
+```powershell
+$runId = "<RUN_ID>"
+python -m jira_collector.cli export-structure --run-id $runId
+```
+
+읽는 원본:
+
+```text
+[RAW]
+data/raw/runs/<run_id>/projects/<project_key>/issues/<issue_key>/issue.json
+```
+
+생성 결과:
+
+```text
+[ANALYSIS]
+data/analysis/<run_id>/
+├─ attachments.jsonl
+├─ issue_relationships.jsonl
+├─ custom_field_catalog.jsonl
+├─ custom_field_values.jsonl
+├─ parse_warnings.jsonl
+└─ summary.json
+```
+
+### Attachment
+
+저장 내용:
+
+```text
+attachment_id
+filename
+author_name
+author_key
+created_at
+size_bytes
+mime_type
+content_url
+thumbnail_url
+source_path
+```
+
+바이너리는 다운로드하지 않습니다.
+
+### Relationship
+
+입력:
+
+```text
+fields.issuelinks
+fields.parent
+fields.subtasks
+```
+
+출력은 canonical edge입니다.
+
+```text
+relationship_category=issue_link
+source_issue_key --relationship_text--> target_issue_key
+
+relationship_category=hierarchy
+parent --parent_of--> child
+```
+
+`relationship_id`가 같은 Jira Link 또는 동일 parent-child 관계는 중복 제거합니다.
+
+### Custom Field Catalog
+
+`names`와 `schema`를 이용해 전체 Custom Field 정의를 `field_id` 기준으로 한 번씩 저장합니다.
+
+파일럿 RAW 조사:
+
+```text
+UniqueCustomFieldIds = 220
+```
+
+### Custom Field Values
+
+null이 아닌 값만 저장합니다.
+
+파일럿 RAW 조사:
+
+```text
+UniqueNonNullCustomFieldIds = 16
+TotalNonNullValues          = 447
+```
+
+확인된 주요 값 종류:
+
+```text
+string
+option
+user_array
+generic_object / generic_array
+```
+
+Multi User Picker에서 `emailAddress`, `avatarUrls`, `self`, `timeZone` 같은 원본 사용자 속성은 ANALYSIS에 복제하지 않습니다.
+
+---
+
+## 전체 분석 결과 구조
 
 ```text
 data/
@@ -333,6 +451,10 @@ data/
 │  └─ <run_id>/
 │     ├─ issues.jsonl
 │     ├─ comments.jsonl
+│     ├─ attachments.jsonl
+│     ├─ issue_relationships.jsonl
+│     ├─ custom_field_catalog.jsonl
+│     ├─ custom_field_values.jsonl
 │     ├─ parse_warnings.jsonl
 │     └─ summary.json
 ├─ state/
@@ -347,69 +469,44 @@ data/
 
 ## 공통 `summary.json` 2.0
 
-Issue와 Comment Exporter는 같은 파일에서 자기 영역만 갱신합니다.
+지원 영역:
 
-```json
-{
-  "schema_version": "2.0",
-  "run_id": "20260804T043628Z",
-  "status": "completed",
-  "issues": {
-    "status": "completed",
-    "discovered_count": 30,
-    "exported_count": 30,
-    "failed_count": 0,
-    "warning_count": 0,
-    "parse_error_count": 0,
-    "description_formats": {"html": 30}
-  },
-  "comments": {
-    "status": "completed",
-    "issue_count": 30,
-    "page_count": 30,
-    "discovered_count": 142,
-    "exported_count": 142,
-    "duplicate_count": 0,
-    "failed_page_count": 0,
-    "failed_comment_count": 0,
-    "missing_comment_source_count": 0,
-    "warning_count": 0,
-    "body_formats": {"html": 142}
-  }
-}
+```text
+issues
+comments
+attachments
+relationships
+custom_fields
 ```
 
-동작 규칙:
+Issue/Comment의 기존 2.0 의미를 깨지 않기 위해 `attachments`, `relationships`, `custom_fields`가 아직 `not_run`이어도 Issue와 Comment가 정상 완료됐다면 기존 전체 status는 `completed`를 유지할 수 있습니다.
 
-- 기존 파일이 없으면 2.0 문서를 새로 생성
-- 기존 1.0 Issue 요약은 자동으로 2.0으로 변환
-- 기존 2.0 파일에서는 다른 Exporter 영역을 보존
-- 깨진 JSON은 자동으로 덮어쓰지 않음
-- 파일 경로의 run_id와 내부 run_id가 다르면 중단
-- Issue와 Comment가 모두 `completed`일 때 전체 상태가 `completed`
-- 한 영역만 실행됐으면 전체 상태가 `incomplete`
-- 한 영역에 실패가 있으면 전체 상태가 `partial` 또는 `failed`
+4단계 `export-structure`는 세 새 영역을 한 번의 `update_sections()` 호출로 원자 갱신합니다.
 
 ---
 
 ## 공통 `parse_warnings.jsonl`
 
-각 경고에는 `component`가 포함됩니다.
+지원 component:
 
-```json
-{"component":"issues","severity":"warning","code":"issue_key_mismatch"}
-{"component":"comments","severity":"error","code":"comment_page_parse_error"}
+```text
+issues
+comments
+attachments
+relationships
+custom_fields
+structure
 ```
 
-Exporter를 다시 실행하면 자기 component의 기존 경고만 교체하고 다른 component 경고는 보존합니다.
+각 Exporter 재실행 시 자기 component 경고만 교체하고 다른 component 경고는 보존합니다.
 
-기존 Issue 전용 경고에는 `component`가 없을 수 있으며, 이 경우 `issues` 경고로 해석합니다.
+4단계는 여러 component를 `replace_components()` 한 번으로 갱신합니다.
 
 ---
 
 ## 결과 확인
 
-요약:
+Summary:
 
 ```powershell
 Get-Content ".\data\analysis\<RUN_ID>\summary.json" -Raw |
@@ -417,10 +514,18 @@ Get-Content ".\data\analysis\<RUN_ID>\summary.json" -Raw |
     Format-List
 ```
 
-첫 댓글 레코드:
+첫 Structure 결과:
 
 ```powershell
-Get-Content ".\data\analysis\<RUN_ID>\comments.jsonl" -TotalCount 1 |
+Get-Content ".\data\analysis\<RUN_ID>\attachments.jsonl" -TotalCount 1 |
+    ConvertFrom-Json |
+    Format-List
+
+Get-Content ".\data\analysis\<RUN_ID>\issue_relationships.jsonl" -TotalCount 1 |
+    ConvertFrom-Json |
+    Format-List
+
+Get-Content ".\data\analysis\<RUN_ID>\custom_field_values.jsonl" -TotalCount 1 |
     ConvertFrom-Json |
     Format-List
 ```
@@ -436,61 +541,59 @@ Get-Content ".\data\analysis\<RUN_ID>\parse_warnings.jsonl" |
 
 ---
 
-## 재실행 의미
-
-Exporter는 증분 append가 아니라 해당 component의 현재 결과를 다시 생성합니다.
-
-- `issues.jsonl`은 Issue Exporter 실행 결과로 전체 교체
-- `comments.jsonl`은 Comment Exporter 실행 결과로 전체 교체
-- `summary.json`은 해당 영역만 병합
-- `parse_warnings.jsonl`은 해당 component 경고만 교체
-
-따라서 다음 실행 순서는 모두 안전해야 합니다.
-
-```text
-export-issues → export-comments
-export-comments → export-issues
-export-comments 재실행
-export-issues 재실행
-```
-
----
-
 ## 보안 원칙
 
 - 실제 Jira 원본과 분석 결과를 Git에 올리지 않음
 - 인증정보를 소스, 문서, 테스트 fixture에 넣지 않음
 - 실제 제목·description·comment body를 로그에 출력하지 않음
-- 작성자 이메일과 avatar URL을 분석 JSONL에서 제외
-- 원본 HTML은 Raw JSON에만 보존
+- 사용자 이메일과 avatar URL을 일반 ANALYSIS JSONL에서 최소화
+- 원본 HTML과 복잡한 plugin 객체는 RAW JSON을 사실 기준으로 유지
 - 테스트는 가짜 JSON만 사용
 
 ---
 
 ## 테스트
 
+전체:
+
 ```powershell
 pytest
 ```
 
-Parser와 Exporter 관련 테스트만 실행:
+Parser/Exporter 집중 테스트:
 
 ```powershell
 pytest tests/parser tests/exporter tests/test_cli_export.py
 ```
 
-테스트는 실제 Jira API를 호출하지 않고 임시 디렉터리와 가짜 JSON을 사용합니다.
+4단계만:
+
+```powershell
+pytest tests/parser/test_structure_parser.py
+pytest tests/exporter/test_structure_jsonl_exporter.py
+pytest tests/test_cli_export.py
+```
 
 ---
 
-## 다음 개발 순서
+## 구현 진행 상태와 다음 순서
 
 ```text
-1. Issue Parser / Exporter       완료
-2. Comment Parser / Exporter     완료
-3. Attachment metadata Parser
-4. Issue Link Parser
-5. Custom field Profiler
-6. Excel Exporter
-7. DB 논리 스키마 결정
+1. Jira Raw 수집                         완료
+2. Issue Parser / Exporter               완료 + 실환경 검증
+3. Comment Parser / Exporter             완료 + 실환경 검증
+4. Structure Parser / Exporter           구현 완료, 실환경 검증 대기
+   ├─ Attachment metadata
+   ├─ Issue Link + Hierarchy
+   ├─ Custom Field Catalog
+   └─ Custom Field Values
+5. OpenCode Agent 입력 패키지            예정
+6. OpenCode Agent 지식 재가공            예정
+7. 지식 추출 검증                        예정
+8. Data Profiling / Excel                예정
+9. DB 논리 스키마 및 SQLite 적재         예정
+10. 원문·지식 Chunk                      예정
+11. BGE-M3 Embedding / FAISS             예정
+12. Retrieval 검증                       예정
+13. MCP                                  예정
 ```
