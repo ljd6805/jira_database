@@ -31,21 +31,33 @@ class RunWarningStore:
         component: str,
         documents: list[dict[str, Any]],
     ) -> Path:
-        """다른 component 경고는 보존하고 현재 component 경고만 새 결과로 교체합니다."""
+        """단일 component 교체를 다중 component 원자 교체 메서드에 위임합니다."""
+
+        return self.replace_components(run_id, {component: documents})
+
+    def replace_components(
+        self,
+        run_id: str,
+        documents_by_component: dict[str, list[dict[str, Any]]],
+    ) -> Path:
+        """지정한 여러 component의 기존 경고만 제거하고 새 경고 묶음을 한 번에 저장합니다."""
 
         relative_path = Path(run_id) / "parse_warnings.jsonl"
         path = self.analysis_root / relative_path
         existing = self._read_documents(path)
+        replaced_components = set(documents_by_component)
         preserved = [
             item
             for item in existing
-            if item.get("component", "issues") != component
+            if item.get("component", "issues") not in replaced_components
         ]
+
         normalized: list[dict[str, Any]] = []
-        for item in documents:
-            document = dict(item)
-            document["component"] = component
-            normalized.append(document)
+        for component, documents in documents_by_component.items():
+            for item in documents:
+                document = dict(item)
+                document["component"] = component
+                normalized.append(document)
 
         with self.writer.open_text(relative_path) as handle:
             for document in [*preserved, *normalized]:
@@ -74,8 +86,7 @@ class RunWarningStore:
                     value = json.loads(line)
                     if not isinstance(value, dict):
                         raise RunWarningStoreError(
-                            f"경고 JSONL의 {line_number}번째 줄이 객체가 아닙니다: "
-                            f"{path}"
+                            f"경고 JSONL의 {line_number}번째 줄이 객체가 아닙니다: {path}"
                         )
                     documents.append(value)
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
