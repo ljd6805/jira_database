@@ -13,6 +13,7 @@ class KnowledgeInputBuildResult:
     """한 run_id의 이슈 패키지 생성 결과를 요약합니다."""
 
     run_id: str
+    status: str
     issue_count: int
     package_count: int
     comment_count: int
