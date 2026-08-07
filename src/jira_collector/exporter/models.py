@@ -36,3 +36,34 @@ class CommentExportResult:
     comments_path: Path
     warnings_path: Path
     summary_path: Path
+
+
+@dataclass(frozen=True, slots=True)
+class StructureExportResult:
+    """4단계 구조 데이터 JSONL 묶음의 실행 결과와 파일 경로를 요약합니다."""
+
+    run_id: str
+    issue_count: int
+    discovered_attachment_count: int
+    exported_attachment_count: int
+    failed_attachment_count: int
+    discovered_relationship_count: int
+    exported_relationship_count: int
+    duplicate_relationship_count: int
+    issue_link_count: int
+    hierarchy_count: int
+    failed_relationship_count: int
+    custom_field_catalog_count: int
+    used_custom_field_count: int
+    discovered_custom_field_value_count: int
+    exported_custom_field_value_count: int
+    failed_custom_field_value_count: int
+    definition_mismatch_count: int
+    failed_issue_count: int
+    warning_count: int
+    attachments_path: Path
+    relationships_path: Path
+    custom_field_catalog_path: Path
+    custom_field_values_path: Path
+    warnings_path: Path
+    summary_path: Path
