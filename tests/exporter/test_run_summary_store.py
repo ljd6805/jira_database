@@ -25,6 +25,63 @@ def test_creates_summary_when_file_does_not_exist(tmp_path: Path) -> None:
     assert summary["status"] == "incomplete"
     assert summary["issues"]["status"] == "not_run"
     assert summary["comments"]["exported_count"] == 8
+    assert summary["attachments"]["status"] == "not_run"
+    assert summary["relationships"]["status"] == "not_run"
+    assert summary["custom_fields"]["status"] == "not_run"
+
+
+def test_updates_structure_sections_atomically_and_keeps_base_status(
+    tmp_path: Path,
+) -> None:
+    """Issue/Comment 완료 상태를 보존하면서 4단계 세 영역을 한 번에 갱신합니다."""
+
+    data_root = tmp_path / "data"
+    store = RunSummaryStore(data_root)
+    store.update_sections(
+        "run1",
+        {
+            "issues": {"status": "completed"},
+            "comments": {"status": "completed"},
+        },
+        {},
+    )
+    path = store.update_sections(
+        "run1",
+        {
+            "attachments": {"status": "completed", "exported_count": 3},
+            "relationships": {"status": "completed", "exported_count": 6},
+            "custom_fields": {"status": "completed", "catalog_count": 220},
+        },
+        {"attachments": "analysis/run1/attachments.jsonl"},
+    )
+
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    assert summary["status"] == "completed"
+    assert summary["issues"]["status"] == "completed"
+    assert summary["comments"]["status"] == "completed"
+    assert summary["attachments"]["exported_count"] == 3
+    assert summary["relationships"]["exported_count"] == 6
+    assert summary["custom_fields"]["catalog_count"] == 220
+
+
+def test_optional_not_run_sections_do_not_break_existing_completed_status(
+    tmp_path: Path,
+) -> None:
+    """기존 2.0 의미 호환을 위해 새 선택 영역이 not_run이어도 Issue/Comment 완료는 completed입니다."""
+
+    data_root = tmp_path / "data"
+    path = RunSummaryStore(data_root).update_sections(
+        "run1",
+        {
+            "issues": {"status": "completed"},
+            "comments": {"status": "completed"},
+        },
+        {},
+    )
+    summary = json.loads(path.read_text(encoding="utf-8"))
+
+    assert summary["status"] == "completed"
+    assert summary["attachments"]["status"] == "not_run"
 
 
 def test_rejects_invalid_json_without_overwriting_existing_file(
