@@ -13,6 +13,7 @@ from .analysis_loader import AnalysisRunLoader
 from .models import KnowledgeInputBuildError, KnowledgeInputBuildResult
 
 
+# issue_key는 그대로 파일명이 되므로 디렉터리 탈출 문자나 경로 구분자를 허용하지 않습니다.
 _SAFE_ISSUE_KEY = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
@@ -29,23 +30,29 @@ class IssueKnowledgeInputBuilder:
     ) -> None:
         """ANALYSIS 입력 루트와 KNOWLEDGE INPUT 출력 루트를 초기화합니다."""
 
+        # 모든 경로를 절대 경로로 고정해 실행 위치에 따른 상대 경로 해석 차이를 없앱니다.
         self.data_root = Path(data_root).resolve()
         self.analysis_root = (self.data_root / analysis_directory).resolve()
         self.output_root = (
             self.data_root / knowledge_input_directory / "runs"
         ).resolve()
+
+        # Loader는 ANALYSIS 계약 검증과 issue_key 인덱싱을 담당하고,
+        # Builder는 검증된 데이터의 조립과 파일 출력을 담당합니다.
         self.loader = AnalysisRunLoader(self.analysis_root)
         self.writer = AtomicTextWriter(self.output_root)
 
     def build_run(self, run_id: str) -> KnowledgeInputBuildResult:
         """완료된 ANALYSIS run에서 package, package_warnings, manifest를 생성합니다."""
 
+        # ANALYSIS 5개 영역이 모두 completed인지 확인한 뒤에만 실제 빌드를 시작합니다.
         loaded = self.loader.load(run_id)
         warnings = loaded["warnings"]
         manifest_relative = Path(run_id) / "manifest.json"
         manifest_path = (self.output_root / manifest_relative).resolve()
 
-        # manifest는 완료 표식이다. 빌드 도중 중단되면 manifest가 없어야 한다.
+        # manifest는 run 전체의 완료 표식입니다.
+        # 재실행 시작과 동시에 과거 manifest를 제거해 중간 실패를 완료 상태로 오해하지 않게 합니다.
         try:
             manifest_path.unlink()
         except FileNotFoundError:
@@ -57,9 +64,12 @@ class IssueKnowledgeInputBuilder:
         entries: list[dict[str, Any]] = []
         issues = loaded["issues"]
 
+        # issue_key 순서로 처리해 파일 생성 순서와 manifest package 목록을 재현 가능하게 유지합니다.
         for issue_key in sorted(issues):
             filename = self._issue_filename(issue_key)
             expected_files.add(filename)
+
+            # ANALYSIS의 여러 JSONL에서 이미 issue_key 기준으로 인덱싱한 데이터를 하나의 계층형 package로 조립합니다.
             package = self._package(
                 run_id,
                 issues[issue_key],
@@ -71,11 +81,15 @@ class IssueKnowledgeInputBuilder:
                 generated_at,
                 warnings,
             )
+
+            # 각 Issue package도 기존 Exporter와 같은 AtomicTextWriter를 사용해 중간 파일 노출을 막습니다.
             relative = issues_relative / filename
             self.writer.write_text(
                 relative,
                 json.dumps(package, ensure_ascii=False, indent=2) + "\n",
             )
+
+            # manifest에는 package를 다시 열지 않아도 증분 판단과 구성 건수를 확인할 수 있는 최소 index를 기록합니다.
             entries.append(
                 {
                     "issue_key": issue_key,
@@ -85,13 +99,19 @@ class IssueKnowledgeInputBuilder:
                 }
             )
 
+        # Knowledge Input은 append log가 아니라 현재 ANALYSIS snapshot의 재현물이므로 과거에만 있던 package를 제거합니다.
         self._remove_stale(
             (self.output_root / issues_relative).resolve(),
             expected_files,
         )
+
+        # Loader와 Builder가 만든 경고에 run_id를 통일해 후속 자동화에서 단독으로 읽어도 출처를 알 수 있게 합니다.
         for warning in warnings:
             warning.setdefault("run_id", run_id)
         warnings_path = self._write_warnings(run_id, warnings)
+
+        # manifest는 package와 warning 저장이 모두 끝난 뒤 생성합니다.
+        # 이 순서를 유지해야 manifest 존재 자체를 완료 신호로 사용할 수 있습니다.
         manifest = self._manifest(
             run_id,
             loaded,
@@ -133,11 +153,17 @@ class IssueKnowledgeInputBuilder:
         """한 이슈의 ANALYSIS 레코드를 계층형 입력 패키지로 바꿉니다."""
 
         issue_key = str(issue["issue_key"])
+
+        # 각 하위 영역은 Agent에게 필요한 필드만 선택하며 RAW의 복잡한 객체를 다시 복제하지 않습니다.
         issue_doc = self._issue_doc(issue)
+
+        # 댓글은 업무 논의 흐름이 중요하므로 sequence를 최우선으로 정렬합니다.
         comment_docs = [
             self._comment_doc(item)
             for item in sorted(comments, key=self._comment_sort)
         ]
+
+        # Attachment는 현재 metadata만 있으므로 ID 기준의 안정된 순서로 정렬합니다.
         attachment_docs = [
             self._attachment_doc(item)
             for item in sorted(
@@ -145,6 +171,8 @@ class IssueKnowledgeInputBuilder:
                 key=lambda item: str(item.get("attachment_id") or ""),
             )
         ]
+
+        # canonical relationship에 현재 Issue 관점을 붙인 결과도 일정한 순서로 정렬해 hash 재현성을 확보합니다.
         relation_docs = [self._relationship_doc(item) for item in relationships]
         relation_docs.sort(
             key=lambda item: (
@@ -154,6 +182,8 @@ class IssueKnowledgeInputBuilder:
             )
         )
 
+        # Custom Field Value는 field_id로 Catalog 정의와 결합합니다.
+        # 정의가 빠져 있어도 실제 값은 버리지 않고 warning을 남긴 뒤 최대한 package에 보존합니다.
         field_docs: list[dict[str, Any]] = []
         for value in sorted(
             custom_values,
@@ -172,7 +202,8 @@ class IssueKnowledgeInputBuilder:
                 )
             field_docs.append(self._field_doc(value, definition))
 
-        # source_hash는 의미 데이터만 사용한다. PC 절대 경로나 생성 시각은 제외한다.
+        # source_hash는 OpenCode Agent의 증분 재분석 기준입니다.
+        # 생성 시각이나 PC별 파일 경로가 아니라 실제 업무 의미 데이터가 바뀔 때만 hash가 달라져야 합니다.
         hash_material = self._strip_paths(
             {
                 "issue": issue_doc,
@@ -182,6 +213,8 @@ class IssueKnowledgeInputBuilder:
                 "custom_fields": field_docs,
             }
         )
+
+        # JSON key를 정렬하고 공백을 제거한 canonical 문자열을 사용해 같은 의미 입력의 hash를 안정적으로 만듭니다.
         source_hash = "sha256:" + hashlib.sha256(
             json.dumps(
                 hash_material,
@@ -222,19 +255,24 @@ class IssueKnowledgeInputBuilder:
         """전체 패키지 생성 상태와 입력 ANALYSIS 파일을 기록합니다."""
 
         warnings = loaded["warnings"]
+
+        # warning은 정보성일 수 있지만 error가 하나라도 있으면 일부 Join이 누락됐을 가능성이 있으므로 partial로 표시합니다.
+        status = (
+            "partial"
+            if any(item.get("severity") == "error" for item in warnings)
+            else "completed"
+        )
+
         return {
             "schema_version": self.SCHEMA_VERSION,
             "run_id": run_id,
             "generated_at": generated_at,
-            "status": (
-                "partial"
-                if any(item.get("severity") == "error" for item in warnings)
-                else "completed"
-            ),
+            "status": status,
             "issue_count": len(loaded["issues"]),
             "package_count": len(entries),
             "comment_count": sum(map(len, loaded["comments"].values())),
             "attachment_count": sum(map(len, loaded["attachments"].values())),
+            # 각 package에서 Relationship이 양 endpoint 관점으로 보일 수 있으므로 manifest는 원본 canonical edge 수를 기록합니다.
             "relationship_count": len(loaded["relationship_rows"]),
             "custom_field_catalog_count": len(loaded["catalog"]),
             "custom_field_value_count": sum(
@@ -255,6 +293,7 @@ class IssueKnowledgeInputBuilder:
     def _issue_doc(self, item: dict[str, Any]) -> dict[str, Any]:
         """Issue 핵심 필드를 분석 입력 구조로 선택합니다."""
 
+        # description_raw HTML이 아니라 ANALYSIS에서 정제한 description_text만 Agent 입력으로 사용합니다.
         return {
             "jira_id": item.get("jira_id"),
             "summary": item.get("summary"),
@@ -271,6 +310,7 @@ class IssueKnowledgeInputBuilder:
     def _comment_doc(self, item: dict[str, Any]) -> dict[str, Any]:
         """댓글의 시간 순서와 출처를 유지한 입력 구조를 만듭니다."""
 
+        # comment_id와 sequence를 모두 보존해 Agent 결과의 evidence를 특정 댓글로 역추적할 수 있게 합니다.
         return {
             "comment_id": item.get("comment_id"),
             "sequence": item.get("sequence"),
@@ -287,6 +327,7 @@ class IssueKnowledgeInputBuilder:
     def _attachment_doc(self, item: dict[str, Any]) -> dict[str, Any]:
         """첨부파일은 메타데이터만 포함하고 본문 미수집 상태를 명시합니다."""
 
+        # 현재 파일 바이너리를 수집하지 않았으므로 Agent가 내용을 읽었다고 오해하지 않게 false를 고정합니다.
         return {
             "attachment_id": item.get("attachment_id"),
             "filename": item.get("filename"),
@@ -302,6 +343,7 @@ class IssueKnowledgeInputBuilder:
     def _relationship_doc(self, item: dict[str, Any]) -> dict[str, Any]:
         """canonical 관계와 현재 이슈의 source/target 관점을 함께 유지합니다."""
 
+        # DB/그래프용 canonical source/target과 Agent용 current issue 관점을 동시에 보존합니다.
         return {
             "relationship_id": item.get("relationship_id"),
             "relationship_category": item.get("relationship_category"),
@@ -328,6 +370,8 @@ class IssueKnowledgeInputBuilder:
     ) -> dict[str, Any]:
         """Catalog와 Value를 합치되 ANALYSIS에 없는 개인정보는 다시 꺼내지 않습니다."""
 
+        # value 쪽에 이름/스키마가 있으면 그것을 우선하고, 없을 때만 Catalog 정의를 보완 정보로 사용합니다.
+        # RAW를 읽지 않으므로 emailAddress 같은 원본 사용자 정보는 이 단계에서 되살아나지 않습니다.
         return {
             "field_id": value.get("field_id"),
             "field_name": value.get("field_name") or definition.get("field_name"),
@@ -353,6 +397,8 @@ class IssueKnowledgeInputBuilder:
         """패키지 조립 중 발견한 정합성 경고를 별도 JSONL로 저장합니다."""
 
         relative = Path(run_id) / "package_warnings.jsonl"
+
+        # Warning 파일도 package와 마찬가지로 원자 교체해 부분 JSONL이 남지 않게 합니다.
         with self.writer.open_text(relative) as handle:
             for row in warnings:
                 handle.write(
@@ -370,9 +416,12 @@ class IssueKnowledgeInputBuilder:
 
         if not isinstance(value, str) or not value.strip():
             return None
+
         try:
+            # 같은 data_root 아래의 절대 경로라면 이식 가능한 POSIX 상대 경로로 바꿉니다.
             return Path(value).resolve().relative_to(self.data_root).as_posix()
         except (OSError, ValueError):
+            # 다른 OS에서 생성된 경로 등 안전하게 변환할 수 없는 문자열은 정보 손실 방지를 위해 그대로 둡니다.
             return value
 
     @classmethod
@@ -381,12 +430,14 @@ class IssueKnowledgeInputBuilder:
 
         if isinstance(value, list):
             return [cls._strip_paths(item) for item in value]
+
         if isinstance(value, dict):
             return {
                 key: cls._strip_paths(item)
                 for key, item in value.items()
                 if key not in {"source_path", "source_page"}
             }
+
         return value
 
     @staticmethod
@@ -394,6 +445,8 @@ class IssueKnowledgeInputBuilder:
         """댓글 sequence를 우선해 재현 가능한 순서를 만듭니다."""
 
         sequence = item.get("sequence")
+
+        # sequence가 깨진 예외 데이터는 맨 뒤로 보내고 comment_id로 최종 순서를 고정합니다.
         return (
             sequence if isinstance(sequence, int) else 2**31 - 1,
             str(item.get("comment_id") or ""),
@@ -416,6 +469,7 @@ class IssueKnowledgeInputBuilder:
         if directory.is_dir():
             for path in directory.glob("*.json"):
                 if path.name not in expected:
+                    # 현재 ANALYSIS에 없는 이슈 파일을 남기면 snapshot 의미가 깨지므로 제거합니다.
                     path.unlink()
 
     def _relative(self, path: Path) -> str:
