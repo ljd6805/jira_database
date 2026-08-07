@@ -1,68 +1,169 @@
-# Jira Raw Data Collector
+# Jira Raw Data Collector & Parser
 
-Jira REST API를 이용해 **현재 계정이 조회할 수 있는 모든 프로젝트**를 발견하고, 파일럿에서는 각 프로젝트의 **최근 수정 이슈 최대 30개**를 원본 JSON으로 저장하는 읽기 전용 수집기입니다.
+Jira REST API를 이용해 현재 계정이 조회할 수 있는 프로젝트와 이슈를 읽기 전용으로 수집하고, 저장된 Raw JSON을 로컬 Parser와 JSONL Exporter로 분석 가능한 중간 데이터로 변환하는 프로젝트입니다.
 
-현재 범위는 원본 수집과 검증까지입니다. 임베딩, FAISS, RAG, MCP, 생성형 LLM은 포함하지 않습니다.
+현재 파일럿 기본값은 프로젝트별 최근 수정 이슈 최대 30개입니다.
+
+## 현재 구현 범위
+
+```text
+Jira 연결 확인
+→ 접근 가능한 프로젝트 발견
+→ 이슈 상세와 댓글 전용 API 원본 수집
+→ Raw JSON SHA-256 검증
+→ IssueParser
+→ CommentParser
+→ IssueStructureParser
+→ issues.jsonl / comments.jsonl
+→ attachments.jsonl / issue_relationships.jsonl
+→ custom_field_catalog.jsonl / custom_field_values.jsonl
+→ parse_warnings.jsonl / summary.json 2.0
+```
+
+아직 포함하지 않는 범위:
+
+- 첨부파일 바이너리 다운로드 및 본문 분석
+- OpenCode Agent 지식 재가공
+- Excel/Data Profiling 보고서
+- DB 적재
+- 청크 생성
+- 임베딩, FAISS, RAG, MCP, 생성형 LLM
+
+---
+
+## 데이터 계층
+
+경로를 사용할 때는 항상 어느 계층인지 구분합니다.
+
+```text
+[RAW]
+data/raw/runs/<run_id>/...
+Jira API 원본. 사실의 기준이며 Parser가 수정하지 않음.
+
+[ANALYSIS]
+data/analysis/<run_id>/...
+결정적 Parser/Exporter 결과. JSONL·Summary·Warning.
+
+[KNOWLEDGE]  # 향후
+data/knowledge/<run_id>/...
+OpenCode Agent가 Issue 전체를 분석해 만든 파생 지식.
+
+[DB] / [VECTOR]  # 향후
+SQLite / Embedding / FAISS
+```
+
+---
 
 ## 프로젝트 문서
 
-- **[상세 설계 명세](docs/DESIGN.md)**: 아키텍처, 모듈 책임, 설정 계약, Jira API 요청·응답 형식, 저장 구조, SQLite 스키마, 상태 전이, resume 의미, 오류 처리, 보안, 테스트 전략, 알려진 제한과 Agent 인수인계 절차를 설명합니다.
-- `README.md`: 설치, 설정, 실행과 기본 운영 방법을 빠르게 확인하는 문서입니다.
+- [상세 Collector 설계](docs/DESIGN.md)
+- [댓글 원본 수집 계약](docs/COMMENT_COLLECTION.md)
+- [Parser Core](docs/PARSER_CORE.md)
+- [Issue JSONL Exporter 명세](docs/ISSUE_EXPORT_SPEC.md)
+- [Comment JSONL Exporter 명세](docs/COMMENT_EXPORT_SPEC.md)
+- [4단계 Structure Export 명세](docs/STRUCTURE_EXPORT_SPEC.md)
+- [실제 Jira 4단계 RAW 구조 조사 기록](docs/JIRA_STRUCTURE_PROFILE.md)
+- [공통 Summary·Warning 저장 계약](docs/RUN_SUMMARY_SPEC.md)
 
-다른 개발자나 Agent가 후속 개발을 시작할 때는 이 README를 확인한 뒤 반드시 [`docs/DESIGN.md`](docs/DESIGN.md)를 읽으십시오. 코드 또는 설정 계약을 변경하면 README와 상세 설계 명세도 같은 변경 단위에서 갱신해야 합니다.
+코드 또는 저장 형식을 바꾸면 README와 관련 명세를 같은 변경 단위에서 함께 갱신합니다.
+
+---
 
 ## 주요 특징
 
+### Collector
+
 - ID/Password 기반 HTTP Basic 인증
-- Jira URL, 사용자명, 비밀번호를 `.env`에서 각각 입력
-- 일반 동작값은 `config/settings.yaml`에서 수정
+- `.env`에서 Jira URL, 사용자명, 비밀번호 입력
+- 일반 설정은 `config/settings.yaml`에서 관리
 - Jira API 호출을 분당 최대 20회로 제한
-- 계정이 조회 가능한 프로젝트 전체 발견
+- 접근 가능한 프로젝트 전체 발견
 - 프로젝트별 최근 수정 이슈 최대 30개 수집
-- 이슈 상세 원본을 `issue.json`으로 보존
-- 댓글 전용 API를 `startAt=0`부터 끝까지 호출해 `comments/page_*.json`으로 일관되게 보존
-- 댓글이 없는 이슈도 빈 첫 댓글 페이지를 저장해 수집 완료 사실을 명시
-- 프로젝트 하나가 실패해도 다음 프로젝트 계속 진행
-- SQLite checkpoint를 이용한 중단 후 재개
-- 임시 파일 작성 후 atomic replace
-- SHA-256 기반 파일 무결성 검증
-- 비밀번호, Authorization, Cookie를 로그에 출력하지 않음
+- 이슈 상세 응답을 `issue.json`으로 보존
+- 댓글 전용 API를 항상 `startAt=0`부터 마지막 페이지까지 수집
+- 댓글이 없어도 빈 `comments/page_0001.json` 저장
+- 프로젝트별 실패 격리와 SQLite checkpoint 재개
+- 원자적 파일 저장과 SHA-256 검증
+
+### Parser와 Exporter
+
+- Jira API를 다시 호출하지 않고 `[RAW] data/raw`만 읽음
+- HTML description과 HTML comment body를 일반 텍스트로 변환
+- 이슈와 댓글의 HTML 원문은 RAW JSON에만 보존
+- 댓글 페이지를 파일명 순서로 병합하고 `comment.id` 중복 제거
+- 작성자는 `displayName → name → key` 순서로 추출
+- 작성자 이메일, avatar URL, Jira self URL은 일반 분석 JSONL에 불필요하게 복제하지 않음
+- 한 이슈 또는 댓글 페이지 오류가 전체 run을 중단시키지 않음
+- 결과를 JSONL 한 줄씩 스트리밍 기록
+- 임시 파일 작성 후 `os.replace`로 원자 저장
+- Windows `WinError 5`, `32`, `33` 재시도
+- Exporter가 공통 `summary.json`과 `parse_warnings.jsonl`을 영역별로 안전하게 병합
+
+### 4단계 Structure Parser
+
+Attachment·Issue Link·Hierarchy·Custom Field가 모두 같은 `[RAW] issue.json` 안에 있으므로 같은 파일을 세 번 읽지 않습니다.
+
+```text
+issue.json 1회 읽기
+       ↓
+IssueStructureParser
+       ├─ Attachment metadata
+       ├─ Issue Link + Hierarchy
+       ├─ Custom Field definitions
+       └─ Custom Field values
+       ↓
+IssueStructureJsonlExporter
+```
+
+Issue Relationship은 그래프에서 중복을 줄이기 위해 canonical edge로 저장합니다.
+
+```text
+Issue Link: Jira type.outward 방향
+Hierarchy : parent --parent_of--> child
+```
+
+---
 
 ## 요구 환경
 
 - Python 3.11 이상
-- HTTPS로 접근 가능한 Jira Server/Data Center 또는 호환 REST API
+- Jira Server/Data Center 또는 호환 REST API
+- Windows PowerShell, Linux shell 또는 macOS shell
+
+---
 
 ## 설치
 
 ```bash
 python -m venv .venv
-
-# Linux/macOS
-source .venv/bin/activate
-
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-
-python -m pip install --upgrade pip
-pip install -e .
-```
-
-개발 및 테스트 의존성까지 설치하려면 다음을 사용합니다.
-
-```bash
-pip install -e '.[dev]'
-```
-
-## 사용자 설정
-
-`.env.example`을 `.env`로 복사한 뒤 세 값을 입력합니다.
-
-```bash
-cp .env.example .env
 ```
 
 Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Linux/macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+설치:
+
+```bash
+python -m pip install --upgrade pip
+pip install -e ".[dev]"
+```
+
+브랜치를 변경하거나 코드를 갱신한 뒤에는 editable install을 다시 실행하는 것이 안전합니다.
+
+---
+
+## 환경 설정
+
+`.env.example`을 `.env`로 복사합니다.
 
 ```powershell
 Copy-Item .env.example .env
@@ -76,194 +177,423 @@ JIRA_USERNAME=my-user-id
 JIRA_PASSWORD=my-password
 ```
 
-> `.env`는 Git에 올라가지 않습니다. 실제 인증정보를 `config/settings.yaml`이나 소스코드에 넣지 마십시오.
-
-일반 설정은 `config/settings.yaml`에서 수정합니다.
+주요 YAML 설정:
 
 ```yaml
 jira:
   api_base_path: /rest/api/2
-  project_list_path: /project
-  issue_search_path: /search
   issue_path: /issue/{issue_key}
   comment_path: /issue/{issue_key}/comment
 
   collection:
     issues_per_project: 30
-    issue_order: updated_desc
     collect_comments: true
+    download_attachments: false
 
   rate_limit:
     requests_per_minute: 20
     max_concurrency: 1
+
+storage:
+  data_root: ./data
+  raw_directory: raw
+  state_directory: state
+  report_directory: reports
 ```
 
-Jira 환경마다 REST 경로가 다르면 이 YAML만 바꾸면 됩니다.
+현재 `download_attachments: false`이며 실제 첨부파일 바이너리 다운로드 로직도 없습니다. `issue.json`에 들어 있는 Attachment 메타데이터만 4단계에서 정규화합니다.
 
-## 실행
+---
 
-### 1. 연결 확인
+## 명령 요약
 
-```bash
+```text
 jira-collector check-connection
-```
-
-### 2. 접근 가능한 프로젝트 확인
-
-```bash
 jira-collector discover-projects
+jira-collector collect
+jira-collector resume --run-id <RUN_ID>
+jira-collector verify --run-id <RUN_ID>
+jira-collector export-issues --run-id <RUN_ID>
+jira-collector export-comments --run-id <RUN_ID>
+jira-collector export-structure --run-id <RUN_ID>
 ```
 
-### 3. 전체 파일럿 수집
+Windows에서 오래된 `jira-collector.exe`가 잡히면 다음 방식을 우선 사용합니다.
 
-```bash
+```powershell
+python -m jira_collector.cli --help
+python -m jira_collector.cli export-structure --help
+```
+
+---
+
+## Collector 실행
+
+```powershell
+jira-collector check-connection
+jira-collector discover-projects
 jira-collector collect
 ```
 
-### 4. 특정 프로젝트만 수집
+특정 프로젝트만 수집:
 
-```bash
+```powershell
 jira-collector collect --project ABC
 ```
 
-### 5. 프로젝트별 이슈 수를 일시적으로 변경
+중단된 실행 재개:
 
-```bash
-jira-collector collect --issues-per-project 10
-```
-
-### 6. 중단된 실행 재개
-
-```bash
+```powershell
 jira-collector resume --run-id <RUN_ID>
 ```
 
-실패한 프로젝트도 다시 시도하려면:
+무결성 검증:
 
-```bash
-jira-collector resume --run-id <RUN_ID> --include-failed
-```
-
-### 7. 저장 파일 검증
-
-```bash
+```powershell
 jira-collector verify --run-id <RUN_ID>
 ```
 
-## 저장 구조
+---
+
+## Issue Exporter
+
+```powershell
+python -m jira_collector.cli export-issues --run-id <RUN_ID>
+```
+
+읽는 원본:
+
+```text
+[RAW]
+data/raw/runs/<run_id>/projects/<project_key>/issues/<issue_key>/issue.json
+```
+
+저장 결과:
+
+```text
+[ANALYSIS]
+data/analysis/<run_id>/issues.jsonl
+```
+
+주요 필드:
+
+```text
+run_id
+project_key
+issue_key
+jira_id
+summary
+description_text
+description_format
+issue_type
+status
+priority
+created_at
+updated_at
+source_path
+```
+
+---
+
+## Comment Exporter
+
+```powershell
+python -m jira_collector.cli export-comments --run-id <RUN_ID>
+```
+
+읽는 원본:
+
+```text
+[RAW]
+data/raw/runs/<run_id>/projects/<project_key>/issues/<issue_key>/comments/page_*.json
+```
+
+저장 결과:
+
+```text
+[ANALYSIS]
+data/analysis/<run_id>/comments.jsonl
+```
+
+실환경 검증 결과:
+
+```text
+대상 이슈: 30
+발견 댓글: 278
+저장 댓글: 278
+중복: 0
+실패: 0
+경고: 0
+```
+
+---
+
+## 4단계 Structure Exporter
+
+실행:
+
+```powershell
+$runId = "<RUN_ID>"
+python -m jira_collector.cli export-structure --run-id $runId
+```
+
+읽는 원본:
+
+```text
+[RAW]
+data/raw/runs/<run_id>/projects/<project_key>/issues/<issue_key>/issue.json
+```
+
+생성 결과:
+
+```text
+[ANALYSIS]
+data/analysis/<run_id>/
+├─ attachments.jsonl
+├─ issue_relationships.jsonl
+├─ custom_field_catalog.jsonl
+├─ custom_field_values.jsonl
+├─ parse_warnings.jsonl
+└─ summary.json
+```
+
+### Attachment
+
+저장 내용:
+
+```text
+attachment_id
+filename
+author_name
+author_key
+created_at
+size_bytes
+mime_type
+content_url
+thumbnail_url
+source_path
+```
+
+바이너리는 다운로드하지 않습니다.
+
+### Relationship
+
+입력:
+
+```text
+fields.issuelinks
+fields.parent
+fields.subtasks
+```
+
+출력은 canonical edge입니다.
+
+```text
+relationship_category=issue_link
+source_issue_key --relationship_text--> target_issue_key
+
+relationship_category=hierarchy
+parent --parent_of--> child
+```
+
+`relationship_id`가 같은 Jira Link 또는 동일 parent-child 관계는 중복 제거합니다.
+
+### Custom Field Catalog
+
+`names`와 `schema`를 이용해 전체 Custom Field 정의를 `field_id` 기준으로 한 번씩 저장합니다.
+
+파일럿 RAW 조사:
+
+```text
+UniqueCustomFieldIds = 220
+```
+
+### Custom Field Values
+
+null이 아닌 값만 저장합니다.
+
+파일럿 RAW 조사:
+
+```text
+UniqueNonNullCustomFieldIds = 16
+TotalNonNullValues          = 447
+```
+
+확인된 주요 값 종류:
+
+```text
+string
+option
+user_array
+generic_object / generic_array
+```
+
+Multi User Picker에서 `emailAddress`, `avatarUrls`, `self`, `timeZone` 같은 원본 사용자 속성은 ANALYSIS에 복제하지 않습니다.
+
+---
+
+## 전체 분석 결과 구조
 
 ```text
 data/
 ├─ raw/
 │  └─ runs/
 │     └─ <run_id>/
-│        ├─ project_discovery/
-│        │  └─ page_0001.json
 │        └─ projects/
 │           └─ ABC/
-│              ├─ project.json
-│              ├─ issue_search/
-│              │  └─ page_0001.json
 │              └─ issues/
 │                 └─ ABC-123/
 │                    ├─ issue.json
 │                    └─ comments/
 │                       ├─ page_0001.json
 │                       └─ page_0002.json
+├─ analysis/
+│  └─ <run_id>/
+│     ├─ issues.jsonl
+│     ├─ comments.jsonl
+│     ├─ attachments.jsonl
+│     ├─ issue_relationships.jsonl
+│     ├─ custom_field_catalog.jsonl
+│     ├─ custom_field_values.jsonl
+│     ├─ parse_warnings.jsonl
+│     └─ summary.json
 ├─ state/
 │  └─ collector.db
 └─ reports/
    └─ <run_id>.json
 ```
 
-각 API 응답은 가급적 변형하지 않고 저장합니다. 수집기 메타데이터와 checkpoint는 SQLite에 별도로 기록합니다.
+`data/raw`와 `data/analysis`는 Git에 올리지 않습니다.
 
-`collect_comments: true`이면 이슈 상세 응답 안의 `fields.comment` 내용과 관계없이 댓글 전용 API를 항상 `startAt=0`부터 호출합니다. 따라서 후속 처리에서는 댓글의 기준 원본을 `comments/page_*.json`으로 일관되게 사용할 수 있습니다. 이슈 상세 응답에도 댓글이 포함되어 있다면 동일 댓글이 `issue.json`과 댓글 페이지 양쪽에 존재할 수 있습니다.
+---
 
-정확히 말하면 현재 Raw JSON은 Jira 응답 JSON을 파싱한 뒤 UTF-8 pretty JSON으로 다시 직렬화한 파일입니다. HTTP wire byte, 응답 header 전체, 요청 parameter 전체를 그대로 보존하는 구조는 아닙니다. 정확한 저장 계약과 향후 개선점은 [상세 설계 명세](docs/DESIGN.md#15-raw-저장-명세)를 참고하십시오.
+## 공통 `summary.json` 2.0
 
-## 호출 제한
-
-기본 정책은 다음과 같습니다.
+지원 영역:
 
 ```text
-20 requests/minute
-= 요청 시작 간 최소 3초
-= 동시 요청 1개
+issues
+comments
+attachments
+relationships
+custom_fields
 ```
 
-재시도 요청도 호출 횟수에 포함됩니다. HTTP 429 응답에 `Retry-After`가 있으면 해당 시간을 우선합니다.
+Issue/Comment의 기존 2.0 의미를 깨지 않기 위해 `attachments`, `relationships`, `custom_fields`가 아직 `not_run`이어도 Issue와 Comment가 정상 완료됐다면 기존 전체 status는 `completed`를 유지할 수 있습니다.
 
-현재 limiter는 하나의 Python 프로세스 안에서만 적용됩니다. 여러 프로세스를 동시에 실행하면 합산 20회/분을 보장하지 않으므로 파일럿에서는 수집 프로세스를 하나만 실행하십시오.
+4단계 `export-structure`는 세 새 영역을 한 번의 `update_sections()` 호출로 원자 갱신합니다.
 
-댓글 수집을 켜면 이슈마다 댓글 전용 API 호출이 최소 1회 추가됩니다. 댓글이 많으면 페이지 수만큼 호출이 늘어나므로 기존보다 수집 시간이 길어지는 것이 정상입니다.
+---
 
-## 수집 방식
+## 공통 `parse_warnings.jsonl`
 
-1. `/project` 계열 API를 호출해 접근 가능한 프로젝트를 발견합니다.
-2. 각 프로젝트에 대해 다음과 같은 JQL을 사용합니다.
+지원 component:
 
 ```text
-project = "ABC" ORDER BY updated DESC
+issues
+comments
+attachments
+relationships
+custom_fields
+structure
 ```
 
-3. 검색 결과에서 최대 30개 이슈를 선택합니다.
-4. 각 이슈의 상세 원본을 `issue.json`으로 저장합니다.
-5. `collect_comments: true`이면 댓글 전용 API를 `startAt=0`부터 마지막 페이지까지 호출해 모든 페이지를 저장합니다.
-6. 댓글이 0개여도 `comments/page_0001.json`에 빈 응답을 저장합니다.
-7. 이슈 상세와 댓글 전체 페이지 저장이 모두 끝난 뒤에만 해당 이슈 checkpoint를 `completed`로 기록합니다.
-8. 한 프로젝트가 실패하면 오류를 기록하고 다음 프로젝트로 넘어갑니다.
+각 Exporter 재실행 시 자기 component 경고만 교체하고 다른 component 경고는 보존합니다.
 
-resume의 정확한 상태 전이와 현재 제한은 [상세 설계 명세의 Resume 의미론](docs/DESIGN.md#13-resume-의미론)을 확인하십시오.
+4단계는 여러 component를 `replace_components()` 한 번으로 갱신합니다.
+
+---
+
+## 결과 확인
+
+Summary:
+
+```powershell
+Get-Content ".\data\analysis\<RUN_ID>\summary.json" -Raw |
+    ConvertFrom-Json |
+    Format-List
+```
+
+첫 Structure 결과:
+
+```powershell
+Get-Content ".\data\analysis\<RUN_ID>\attachments.jsonl" -TotalCount 1 |
+    ConvertFrom-Json |
+    Format-List
+
+Get-Content ".\data\analysis\<RUN_ID>\issue_relationships.jsonl" -TotalCount 1 |
+    ConvertFrom-Json |
+    Format-List
+
+Get-Content ".\data\analysis\<RUN_ID>\custom_field_values.jsonl" -TotalCount 1 |
+    ConvertFrom-Json |
+    Format-List
+```
+
+경고 코드 집계:
+
+```powershell
+Get-Content ".\data\analysis\<RUN_ID>\parse_warnings.jsonl" |
+    ForEach-Object { $_ | ConvertFrom-Json } |
+    Group-Object component, code |
+    Select-Object Count, Name
+```
+
+---
 
 ## 보안 원칙
 
-- Jira 쓰기 API는 구현하지 않습니다.
-- `.env`, `data/`, SQLite DB는 Git에서 제외됩니다.
-- Authorization, Cookie, Password는 로그에 남기지 않습니다.
-- 응답 전체를 기본 로그에 출력하지 않습니다.
-- 읽기 전용 계정 사용을 권장합니다.
-- 운영 환경에서는 HTTPS Jira URL을 사용합니다.
+- 실제 Jira 원본과 분석 결과를 Git에 올리지 않음
+- 인증정보를 소스, 문서, 테스트 fixture에 넣지 않음
+- 실제 제목·description·comment body를 로그에 출력하지 않음
+- 사용자 이메일과 avatar URL을 일반 ANALYSIS JSONL에서 최소화
+- 원본 HTML과 복잡한 plugin 객체는 RAW JSON을 사실 기준으로 유지
+- 테스트는 가짜 JSON만 사용
+
+---
 
 ## 테스트
 
-```bash
+전체:
+
+```powershell
 pytest
 ```
 
-테스트는 실제 Jira에 접속하지 않으며 mock HTTP session과 임시 디렉터리를 사용합니다.
+Parser/Exporter 집중 테스트:
 
-테스트가 통과해도 실제 사내 Jira API 형식과의 호환성이 자동으로 보장되는 것은 아닙니다. 실제 성공 응답에서 민감정보를 제거한 fixture와 소규모 end-to-end 검증이 추가로 필요합니다. 현재 테스트 범위와 누락된 테스트는 [상세 설계 명세의 테스트 전략](docs/DESIGN.md#21-테스트-전략)을 참고하십시오.
-
-## 후속 개발 시작 순서
-
-```bash
-pip install -e '.[dev]'
-pytest
-jira-collector --help
+```powershell
+pytest tests/parser tests/exporter tests/test_cli_export.py
 ```
 
-그 다음 아래 문서를 순서대로 읽으십시오.
+4단계만:
 
-1. `README.md`
-2. [`docs/DESIGN.md`](docs/DESIGN.md)
-3. `config/settings.yaml`
-4. `src/jira_collector/settings.py`
-5. `src/jira_collector/jira_client.py`
-6. `src/jira_collector/collector.py`
-7. `src/jira_collector/state_store.py`
-8. `tests/`
+```powershell
+pytest tests/parser/test_structure_parser.py
+pytest tests/exporter/test_structure_jsonl_exporter.py
+pytest tests/test_cli_export.py
+```
 
-## 현재 MVP 완료 기준
+---
 
-- 접근 가능한 프로젝트 전체 발견
-- 프로젝트별 최근 수정 이슈 최대 30개 저장
-- 댓글 전용 API 전체 페이지 저장
-- 원본 JSON 파일 SHA-256 검증
-- 프로젝트별 실패 격리
-- 강제 종료 후 checkpoint 재개
-- 분당 20회 제한 준수
-- 인증정보 미노출
-- README와 상세 설계 명세 최신 상태 유지
+## 구현 진행 상태와 다음 순서
 
-코드 단위 테스트만 통과한 상태와 실제 Jira 파일럿 완료 상태는 다릅니다. 실제 사내 Jira에서 `check-connection → discover-projects → 소규모 collect → verify` 순서의 검증을 통과해야 실환경 MVP 완료로 판단합니다.
+```text
+1. Jira Raw 수집                         완료
+2. Issue Parser / Exporter               완료 + 실환경 검증
+3. Comment Parser / Exporter             완료 + 실환경 검증
+4. Structure Parser / Exporter           구현 완료, 실환경 검증 대기
+   ├─ Attachment metadata
+   ├─ Issue Link + Hierarchy
+   ├─ Custom Field Catalog
+   └─ Custom Field Values
+5. OpenCode Agent 입력 패키지            예정
+6. OpenCode Agent 지식 재가공            예정
+7. 지식 추출 검증                        예정
+8. Data Profiling / Excel                예정
+9. DB 논리 스키마 및 SQLite 적재         예정
+10. 원문·지식 Chunk                      예정
+11. BGE-M3 Embedding / FAISS             예정
+12. Retrieval 검증                       예정
+13. MCP                                  예정
+```
