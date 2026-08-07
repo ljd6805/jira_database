@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge_extraction_v1.schema.json",
+  "title": "Jira Knowledge Extraction v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "knowledge_schema_version",
+    "run_id",
+    "project_key",
+    "issue_key",
+    "source_hash",
+    "prompt_version",
+    "extractor_model",
+    "extracted_at",
+    "issue_summary",
+    "problem_or_goal",
+    "context",
+    "observations",
+    "hypotheses",
+    "confirmed_causes",
+    "actions_taken",
+    "plans",
+    "decisions",
+    "results",
+    "conclusions",
+    "open_questions",
+    "blockers"
+  ],
+  "properties": {
+    "knowledge_schema_version": {
+      "const": "1.0"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_key": {
+      "type": ["string", "null"]
+    },
+    "issue_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "prompt_version": {
+      "const": "knowledge-extraction-v1"
+    },
+    "extractor_model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "extracted_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "issue_summary": {
+      "$ref": "#/$defs/summaryStatement"
+    },
+    "problem_or_goal": {
+      "$ref": "#/$defs/statements"
+    },
+    "context": {
+      "$ref": "#/$defs/statements"
+    },
+    "observations": {
+      "$ref": "#/$defs/statements"
+    },
+    "hypotheses": {
+      "$ref": "#/$defs/statements"
+    },
+    "confirmed_causes": {
+      "$ref": "#/$defs/statements"
+    },
+    "actions_taken": {
+      "$ref": "#/$defs/statements"
+    },
+    "plans": {
+      "$ref": "#/$defs/statements"
+    },
+    "decisions": {
+      "$ref": "#/$defs/statements"
+    },
+    "results": {
+      "$ref": "#/$defs/statements"
+    },
+    "conclusions": {
+      "$ref": "#/$defs/statements"
+    },
+    "open_questions": {
+      "$ref": "#/$defs/statements"
+    },
+    "blockers": {
+      "$ref": "#/$defs/statements"
+    }
+  },
+  "$defs": {
+    "summaryStatement": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/baseStatementWithoutState"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "statements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/baseStatement"
+      }
+    },
+    "baseStatement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "state", "evidence_refs"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "enum": [
+            "stated",
+            "proposed",
+            "active",
+            "confirmed",
+            "rejected",
+            "completed",
+            "cancelled",
+            "superseded",
+            "unresolved",
+            "unknown"
+          ]
+        },
+        "evidence_refs": {
+          "$ref": "#/$defs/evidenceRefs"
+        }
+      }
+    },
+    "baseStatementWithoutState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "evidence_refs"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "$ref": "#/$defs/evidenceRefs"
+        }
+      }
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/evidenceRef"
+      }
+    },
+    "evidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_type", "source_id"],
+      "properties": {
+        "source_type": {
+          "enum": [
+            "issue_description",
+            "comment",
+            "attachment_metadata",
+            "relationship",
+            "custom_field"
+          ]
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
