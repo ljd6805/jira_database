@@ -87,3 +87,102 @@ class CommentParseResult:
     failed_page_count: int = 0
     failed_comment_count: int = 0
     missing_comment_source_count: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class AttachmentRecord:
+    """Jira 이슈에 연결된 첨부파일의 메타데이터만 보관합니다."""
+
+    run_id: str
+    project_key: str
+    issue_key: str
+    attachment_id: str
+    filename: str | None
+    author_name: str | None
+    author_key: str | None
+    created_at: str | None
+    size_bytes: int | None
+    mime_type: str | None
+    content_url: str | None
+    thumbnail_url: str | None
+    source_path: str
+
+
+@dataclass(frozen=True, slots=True)
+class IssueRelationshipRecord:
+    """Issue Link와 계층 관계를 canonical source -> target edge로 표현합니다."""
+
+    run_id: str
+    observed_project_key: str
+    relationship_id: str | None
+    relationship_category: str
+    relationship_type: str
+    relationship_text: str
+    source_issue_key: str
+    target_issue_key: str
+    source_summary: str | None
+    source_status: str | None
+    target_summary: str | None
+    target_status: str | None
+    observed_from_issue_key: str
+    observed_direction: str
+    derived: bool
+    source_path: str
+
+
+@dataclass(frozen=True, slots=True)
+class CustomFieldDefinitionRecord:
+    """Jira names/schema에서 얻은 Custom Field 정의 한 건을 나타냅니다."""
+
+    run_id: str
+    field_id: str
+    field_name: str
+    schema_type: str | None
+    schema_items: str | None
+    schema_custom: str | None
+    schema_custom_id: str | None
+    source_path: str
+
+
+@dataclass(frozen=True, slots=True)
+class CustomFieldValueRecord:
+    """Custom Field 실제 값을 개인정보 최소화 규칙으로 정규화한 레코드입니다."""
+
+    run_id: str
+    project_key: str
+    issue_key: str
+    field_id: str
+    field_name: str
+    schema_type: str | None
+    schema_items: str | None
+    schema_custom: str | None
+    actual_type: str
+    value_kind: str
+    display_value: str | None
+    display_values: tuple[str, ...]
+    value_id: str | None
+    value_ids: tuple[str, ...]
+    user_keys: tuple[str, ...]
+    value_shape: tuple[str, ...]
+    source_path: str
+
+
+@dataclass(frozen=True, slots=True)
+class IssueStructureParseResult:
+    """한 issue.json에서 추출한 4단계 구조 데이터와 영역별 경고·집계를 보관합니다."""
+
+    attachments: tuple[AttachmentRecord, ...]
+    relationships: tuple[IssueRelationshipRecord, ...]
+    custom_field_definitions: tuple[CustomFieldDefinitionRecord, ...]
+    custom_field_values: tuple[CustomFieldValueRecord, ...]
+    attachment_warnings: tuple[ParseWarning, ...] = ()
+    relationship_warnings: tuple[ParseWarning, ...] = ()
+    custom_field_warnings: tuple[ParseWarning, ...] = ()
+    discovered_attachment_count: int = 0
+    failed_attachment_count: int = 0
+    discovered_relationship_count: int = 0
+    issue_link_count: int = 0
+    hierarchy_count: int = 0
+    failed_relationship_count: int = 0
+    discovered_custom_field_value_count: int = 0
+    failed_custom_field_value_count: int = 0
