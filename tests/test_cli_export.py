@@ -23,3 +23,14 @@ def test_export_comments_command_requires_run_id() -> None:
 
     assert args.command == "export-comments"
     assert args.run_id == "run1"
+
+
+def test_export_structure_command_requires_run_id() -> None:
+    """export-structure 명령이 4단계 구조 데이터용 run_id를 정상적으로 해석하는지 확인합니다."""
+
+    args = build_parser().parse_args(
+        ["export-structure", "--run-id", "run1"]
+    )
+
+    assert args.command == "export-structure"
+    assert args.run_id == "run1"
