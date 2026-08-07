@@ -28,118 +28,66 @@
     "blockers"
   ],
   "properties": {
-    "knowledge_schema_version": {
-      "const": "1.0"
-    },
-    "run_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "project_key": {
-      "type": ["string", "null"]
-    },
-    "issue_key": {
-      "type": "string",
-      "minLength": 1
-    },
+    "knowledge_schema_version": {"const": "1.0"},
+    "run_id": {"type": "string", "minLength": 1},
+    "project_key": {"type": ["string", "null"]},
+    "issue_key": {"type": "string", "minLength": 1},
     "source_hash": {
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
-    "prompt_version": {
-      "const": "knowledge-extraction-v1"
-    },
-    "extractor_model": {
-      "type": "string",
-      "minLength": 1
-    },
-    "extracted_at": {
-      "type": "string",
-      "minLength": 1
-    },
-    "issue_summary": {
-      "$ref": "#/$defs/summaryStatement"
-    },
-    "problem_or_goal": {
-      "$ref": "#/$defs/statements"
-    },
-    "context": {
-      "$ref": "#/$defs/statements"
-    },
-    "observations": {
-      "$ref": "#/$defs/statements"
-    },
-    "hypotheses": {
-      "$ref": "#/$defs/statements"
-    },
-    "confirmed_causes": {
-      "$ref": "#/$defs/statements"
-    },
-    "actions_taken": {
-      "$ref": "#/$defs/statements"
-    },
-    "plans": {
-      "$ref": "#/$defs/statements"
-    },
-    "decisions": {
-      "$ref": "#/$defs/statements"
-    },
-    "results": {
-      "$ref": "#/$defs/statements"
-    },
-    "conclusions": {
-      "$ref": "#/$defs/statements"
-    },
-    "open_questions": {
-      "$ref": "#/$defs/statements"
-    },
-    "blockers": {
-      "$ref": "#/$defs/statements"
-    }
+    "prompt_version": {"const": "knowledge-extraction-v1"},
+    "extractor_model": {"type": "string", "minLength": 1},
+    "extracted_at": {"type": "string", "minLength": 1},
+    "issue_summary": {"$ref": "#/$defs/summaryStatement"},
+    "problem_or_goal": {"$ref": "#/$defs/statements"},
+    "context": {"$ref": "#/$defs/statements"},
+    "observations": {"$ref": "#/$defs/statements"},
+    "hypotheses": {"$ref": "#/$defs/statements"},
+    "confirmed_causes": {"$ref": "#/$defs/statements"},
+    "actions_taken": {"$ref": "#/$defs/statements"},
+    "plans": {"$ref": "#/$defs/statements"},
+    "decisions": {"$ref": "#/$defs/statements"},
+    "results": {"$ref": "#/$defs/statements"},
+    "conclusions": {"$ref": "#/$defs/statements"},
+    "open_questions": {"$ref": "#/$defs/statements"},
+    "blockers": {"$ref": "#/$defs/statements"}
   },
   "$defs": {
     "summaryStatement": {
       "oneOf": [
-        {
-          "$ref": "#/$defs/baseStatementWithoutState"
-        },
-        {
-          "type": "null"
-        }
+        {"$ref": "#/$defs/baseStatementWithoutState"},
+        {"type": "null"}
       ]
     },
     "statements": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/baseStatement"
-      }
+      "items": {"$ref": "#/$defs/baseStatement"}
     },
     "baseStatement": {
       "type": "object",
       "additionalProperties": false,
       "required": ["text", "state", "evidence_refs"],
       "properties": {
-        "text": {
-          "type": "string",
-          "minLength": 1
-        },
+        "text": {"type": "string", "minLength": 1},
         "state": {
           "enum": [
             "stated",
             "proposed",
             "active",
+            "observed",
             "confirmed",
             "rejected",
+            "attempted",
             "completed",
+            "failed",
             "cancelled",
             "superseded",
             "unresolved",
             "unknown"
           ]
         },
-        "evidence_refs": {
-          "$ref": "#/$defs/evidenceRefs"
-        }
+        "evidence_refs": {"$ref": "#/$defs/evidenceRefs"}
       }
     },
     "baseStatementWithoutState": {
@@ -147,21 +95,14 @@
       "additionalProperties": false,
       "required": ["text", "evidence_refs"],
       "properties": {
-        "text": {
-          "type": "string",
-          "minLength": 1
-        },
-        "evidence_refs": {
-          "$ref": "#/$defs/evidenceRefs"
-        }
+        "text": {"type": "string", "minLength": 1},
+        "evidence_refs": {"$ref": "#/$defs/evidenceRefs"}
       }
     },
     "evidenceRefs": {
       "type": "array",
       "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/evidenceRef"
-      }
+      "items": {"$ref": "#/$defs/evidenceRef"}
     },
     "evidenceRef": {
       "type": "object",
@@ -177,10 +118,7 @@
             "custom_field"
           ]
         },
-        "source_id": {
-          "type": "string",
-          "minLength": 1
-        }
+        "source_id": {"type": "string", "minLength": 1}
       }
     }
   }
