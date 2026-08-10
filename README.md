@@ -24,6 +24,8 @@ OpenCode Agent Knowledge Extraction   # 다음 단계
 
 중요한 아키텍처 원칙은 **LLM이 개입하기 전에 사실 데이터를 완전하고 재현 가능하게 정리하는 것**입니다.
 
+> 프로젝트의 현재 상태와 데이터 연결 구조를 빠르게 보고 싶다면 **[HTML 문서 인덱스](docs/index.html)** 에서 시작하는 것을 권장합니다.
+
 ---
 
 # 1. 현재 구현 상태
@@ -253,6 +255,24 @@ evidence_refs
 
 # 4. 프로젝트 문서
 
+프로젝트 문서는 **HTML 시각 문서**와 **Markdown 상세 명세**를 함께 관리합니다.
+
+## HTML 문서 — 현재 상태와 구조를 빠르게 볼 때
+
+저장소를 clone하거나 HTML 파일을 내려받은 뒤 브라우저에서 `docs/index.html`을 열면 전체 시각 문서로 이동할 수 있습니다.
+
+1. **[HTML 문서 인덱스](docs/index.html)**  
+   현재 관리 중인 HTML 문서의 진입점입니다.
+2. **[Jira Knowledge DB 현재 상태와 향후 계획](docs/status/jira_knowledge_db_current_status.html)**  
+   현재 구현 완료 범위, 실환경 검증 결과, 데이터 계층, Schema Observation 계획, 향후 Knowledge/RAG/MCP 로드맵을 종합해서 보여줍니다.
+3. **[Jira 데이터 관계 맵](docs/architecture/jira_data_relationship_map.html)**  
+   Project / Issue / Comment / Attachment / Issue Link / Hierarchy / Custom Field / Knowledge Input의 연결을 여러 관점에서 탐색하는 인터랙티브 맵입니다.
+
+HTML 문서는 외부 CDN이나 웹 폰트에 의존하지 않는 self-contained 문서로 관리합니다.
+기능 상태, 실환경 검증 결과, 데이터 구조 또는 향후 계획이 변경되면 관련 HTML도 함께 갱신합니다.
+
+## Markdown 상세 명세 — 구현 계약과 세부 규칙을 볼 때
+
 전체 흐름을 이해하려면 다음 순서로 읽는 것을 권장합니다.
 
 1. **[전체 Pipeline 아키텍처](docs/PIPELINE_OVERVIEW.md)**
@@ -268,7 +288,7 @@ evidence_refs
 11. **[Knowledge Input 코드 읽기 가이드](docs/KNOWLEDGE_INPUT_CODE_GUIDE.md)**
 12. **[Knowledge Input 실환경 검증 기록](docs/KNOWLEDGE_INPUT_VALIDATION.md)**
 
-코드 또는 저장 계약을 변경하면 README와 관련 명세 및 테스트를 같은 변경 단위에서 갱신합니다.
+코드 또는 저장 계약을 변경하면 README, 관련 Markdown 명세, HTML 현황/아키텍처 문서 및 테스트를 같은 변경 단위에서 갱신합니다.
 
 ---
 
@@ -696,7 +716,6 @@ other_package_available=false
 ```text
 content_available=false
 ```
-
 를 명시합니다.
 
 Agent는 filename과 metadata의 존재는 알 수 있지만 파일 내용을 읽었다고 가정하면 안 됩니다.
