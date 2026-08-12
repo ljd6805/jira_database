@@ -1,24 +1,513 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="description" content="Jira Project의 Issue, Comment, Attachment, Relationship, Hierarchy, Custom Field, Knowledge Input 연결을 다각도로 탐색하는 인터랙티브 데이터 맵" />
-<title>Jira Project Data Relationship Map</title>
-<style>
-:root{--bg:#0b1020;--panel:#141b34;--panel2:#1c2444;--line:#2d3967;--text:#eaf0ff;--muted:#aeb9d9;--issue:#5aa9ff;--comment:#7ee787;--attach:#f6c177;--rel:#c792ea;--custom:#ff8ba7;--store:#78dce8;--plan:#ffcc66;--shadow:0 14px 38px rgba(0,0,0,.28)}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#172041 0%,var(--bg) 58%);color:var(--text);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.55}.wrap{width:min(1500px,calc(100vw - 28px));margin:auto;padding:26px 0 38px}.hero,.panel,.metric{border:1px solid rgba(255,255,255,.07);box-shadow:var(--shadow)}.hero{border-radius:24px;padding:26px 28px;background:linear-gradient(135deg,rgba(90,169,255,.18),rgba(199,146,234,.14));margin-bottom:15px}.hero h1{margin:0 0 8px;font-size:34px;letter-spacing:-.03em}.hero p{margin:6px 0;color:var(--muted)}.pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}.pill{font-size:12px;border-radius:999px;padding:7px 10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}.metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:15px 0}.metric{border-radius:15px;background:var(--panel);padding:14px}.metric .l{font-size:11px;color:var(--muted)}.metric .v{font-size:25px;font-weight:900;margin-top:2px}.metric .s{font-size:10px;color:var(--muted);margin-top:4px}.panel{background:var(--panel);border-radius:22px;padding:14px;margin-bottom:16px}.toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}.tabs,.filters{display:flex;gap:7px;flex-wrap:wrap}button{border:1px solid rgba(255,255,255,.08);background:#17203e;color:var(--text);border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer}button.active{background:#24335f;border-color:#5975cf}button.on{outline:2px solid rgba(139,213,255,.35)}.title{padding:4px 7px 11px}.title h2{margin:0;font-size:21px}.title p{margin:4px 0 0;color:var(--muted);font-size:13px}.mapgrid{display:grid;grid-template-columns:1.45fr .55fr;gap:13px}.svgbox{min-height:750px;border-radius:17px;overflow:hidden;border:1px solid rgba(255,255,255,.06);background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.005))}svg{width:100%;height:100%;display:block}.side{display:flex;flex-direction:column;gap:10px}.card{background:var(--panel2);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:14px}.card h3{margin:0 0 7px;font-size:15px}.card p,.card li{color:var(--muted);font-size:12px}.card ul{padding-left:18px;margin:7px 0 0}.legend{display:grid;grid-template-columns:1fr 1fr;gap:7px}.legend div{display:flex;gap:7px;align-items:center;color:var(--muted);font-size:11px}.dot{width:12px;height:12px;border-radius:4px}.node{cursor:pointer;transition:opacity .2s}.node.hidden,.edgegroup.hidden{opacity:.09}.node text{fill:var(--text);font-size:13px;font-weight:800;pointer-events:none}.node .small{fill:#dce5ff;font-size:10px;font-weight:500}.edge{fill:none;stroke:rgba(216,230,255,.38);stroke-width:2;marker-end:url(#arrow)}.tag{fill:rgba(11,16,32,.84);stroke:rgba(255,255,255,.08)}.etag{fill:#dbe5ff;font-size:10px;font-weight:700}.note{margin-top:12px;border-left:3px solid var(--plan);background:rgba(255,204,102,.08);border-radius:0 11px 11px 0;padding:11px 13px;color:#e7ddbf;font-size:12px}@media(max-width:1150px){.mapgrid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(3,1fr)}.svgbox{min-height:650px}}@media(max-width:700px){.metrics{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:26px}.wrap{width:calc(100vw - 16px)}.svgbox{min-height:540px}}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jira Data Relationship Map</title>
+  <style>
+    :root {
+      --bg: #09111f;
+      --panel: #121c32;
+      --panel-2: #1a2744;
+      --line: #30466d;
+      --line-soft: rgba(216,230,255,.34);
+      --text: #edf3ff;
+      --muted: #adc0e8;
+      --issue: #67b2ff;
+      --comment: #8fe388;
+      --attach: #f6c177;
+      --rel: #c79af0;
+      --custom: #ff99b1;
+      --store: #7ee0e7;
+      --radius: 18px;
+      --shadow: 0 14px 34px rgba(0,0,0,.28);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "Noto Sans KR", Arial, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at top, #18284a 0%, var(--bg) 55%);
+      line-height: 1.55;
+    }
+    .wrap { width: min(1540px, calc(100vw - 28px)); margin: 0 auto; padding: 28px 0 42px; }
+    .hero, .panel, .metric, .card, .mini {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,.07);
+      box-shadow: var(--shadow);
+    }
+    .hero {
+      padding: 28px 32px 24px;
+      border-radius: 26px;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, rgba(103,178,255,.14), rgba(199,154,240,.12));
+    }
+    .hero h1 { margin: 0 0 10px; font-size: 34px; line-height: 1.2; }
+    .hero p { margin: 8px 0; color: var(--muted); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    .pill {
+      padding: 8px 12px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.06);
+      font-size: 13px;
+    }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 18px; }
+    .metric { border-radius: 18px; padding: 18px; }
+    .metric .label { font-size: 13px; color: var(--muted); }
+    .metric .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+    .metric .sub { margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+    .panel { border-radius: 24px; padding: 16px; margin-bottom: 18px; }
+    .toolbar { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .tabs, .toggles { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      border: 1px solid rgba(255,255,255,.08); background: var(--panel); color: var(--text);
+      border-radius: 12px; padding: 10px 14px; cursor: pointer; font-weight: 700;
+    }
+    button.active { background: #24345f; border-color: #5877d6; }
+    button.toggle.on { outline: 2px solid rgba(103,178,255,.32); }
+    h2 { margin: 2px 8px 10px; font-size: 23px; }
+    .help { margin: 0 8px 12px; color: var(--muted); }
+
+    .map-grid { display: grid; grid-template-columns: 1.45fr .55fr; gap: 16px; align-items: start; }
+    .svg-box {
+      border-radius: 20px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,.06);
+      background: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.01));
+      min-height: 840px;
+    }
+    svg { display: block; width: 100%; height: 100%; }
+    .side { display: flex; flex-direction: column; gap: 14px; }
+    .card, .mini { border-radius: 18px; padding: 16px; }
+    .card h3, .mini h4 { margin: 0 0 10px; }
+    .card p, .card li, .mini p, .mini li { color: var(--muted); }
+    .card ul, .mini ul { margin: 8px 0 0 18px; padding: 0; }
+    .legend { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px 12px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
+    .swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+    .info-title { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+    .info-body { color: var(--muted); font-size: 14px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgba(255,255,255,.055); padding: 2px 6px; border-radius: 6px; color: #dff2ff; }
+    .section-list { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+    .footer-note { text-align: center; color: var(--muted); font-size: 13px; margin-top: 14px; }
+
+    .node { cursor: pointer; transition: opacity .2s ease; }
+    .node.hidden, .edge-group.hidden { opacity: .12; }
+    .node rect, .node circle { stroke-width: 1.4; }
+    .node text { fill: var(--text); font-size: 14px; font-weight: 700; pointer-events: none; }
+    .node .small { font-size: 11px; font-weight: 500; fill: #d8e5ff; }
+    .edge { fill: none; stroke: var(--line-soft); stroke-width: 2.2; marker-end: url(#arrow); }
+    .edge.orth { stroke-linecap: round; stroke-linejoin: round; }
+    .label-tag { fill: rgba(10,16,30,.92); stroke: rgba(255,255,255,.07); stroke-width: 1; }
+    .edge-label { fill: #dce8ff; font-size: 11px; font-weight: 700; }
+
+    @media (max-width: 1240px) {
+      .map-grid { grid-template-columns: 1fr; }
+      .grid-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .section-list { grid-template-columns: 1fr; }
+      .svg-box { min-height: 760px; }
+    }
+    @media (max-width: 760px) {
+      .wrap { width: calc(100vw - 18px); }
+      .hero h1 { font-size: 27px; }
+      .grid-4 { grid-template-columns: 1fr; }
+      .svg-box { min-height: 620px; }
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-<section class="hero"><h1>Jira Project Data Relationship Map</h1><p>현재 실환경에서 검증된 Jira 구조와 Knowledge Input까지의 연결을 <b>Project / Pipeline / One Issue / Schema Evolution</b> 네 관점으로 탐색합니다.</p><p>민감 원문은 포함하지 않고, 구조·건수·관계 방향·산출물만 표현합니다.</p><div class="pills"><span class="pill">Document v0.6 · 2026-08-10</span><span class="pill">main @ 98e1219</span><span class="pill">Structure Export 완료</span><span class="pill">Knowledge Input 완료</span><span class="pill">Schema Observation planned</span></div></section>
-<section class="metrics"><div class="metric"><div class="l">Issue</div><div class="v">30</div><div class="s">verified</div></div><div class="metric"><div class="l">Comment</div><div class="v">278</div><div class="s">verified</div></div><div class="metric"><div class="l">Attachment</div><div class="v">79</div><div class="s">metadata</div></div><div class="metric"><div class="l">Relationship</div><div class="v">6</div><div class="s">2 link + 4 hierarchy</div></div><div class="metric"><div class="l">Custom Fields</div><div class="v">220 / 447</div><div class="s">catalog / values</div></div><div class="metric"><div class="l">Issue Packages</div><div class="v">30</div><div class="s">manifest completed</div></div></section>
-<section class="panel"><div class="toolbar"><div class="tabs"><button class="tab active" data-view="entity">Project Entity</button><button class="tab" data-view="pipeline">Layer Pipeline</button><button class="tab" data-view="issue">One Issue</button><button class="tab" data-view="schema">Schema Evolution</button></div><div class="filters"><button class="filter on" data-group="issue">Issue</button><button class="filter on" data-group="comment">Comment</button><button class="filter on" data-group="attach">Attachment</button><button class="filter on" data-group="rel">Relationship</button><button class="filter on" data-group="custom">Custom Field</button></div></div><div class="title"><h2 id="viewTitle"></h2><p id="viewHelp"></p></div><div class="mapgrid"><div class="svgbox"><svg id="svg" viewBox="0 0 1120 760"><defs><marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto"><path d="M0 0 L11 5.5 L0 11z" fill="rgba(216,230,255,.55)"/></marker></defs></svg></div><div class="side"><div class="card"><h3>선택한 노드</h3><p id="info">노드를 클릭하면 설명이 표시됩니다.</p></div><div class="card"><h3>범례</h3><div class="legend"><div><span class="dot" style="background:var(--issue)"></span>Issue</div><div><span class="dot" style="background:var(--comment)"></span>Comment</div><div><span class="dot" style="background:var(--attach)"></span>Attachment</div><div><span class="dot" style="background:var(--rel)"></span>Relationship</div><div><span class="dot" style="background:var(--custom)"></span>Custom Field</div><div><span class="dot" style="background:var(--store)"></span>Storage / Output</div></div></div><div class="card"><h3>현재 구현 경계</h3><ul><li>RAW → ANALYSIS → KNOWLEDGE INPUT까지 deterministic</li><li>OpenCode Agent Knowledge Extraction은 다음 기능 단계</li><li>Schema Observation은 run 간 변화 감지를 위한 planned hardening</li></ul></div></div></div><div class="note"><b>Schema 변화 원칙:</b> 새 project/run에서 새로운 field_id나 value shape가 등장해도 전체 Export를 실패시키지 않습니다. Known handler → generic safe fallback → warning/observation 순으로 흡수하고 RAW는 그대로 보존합니다.</div></section>
-</div>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Jira Data Relationship Map</h1>
+      <p>
+        지금까지 확인된 Jira 프로젝트 데이터 구조를 <strong>Issue 중심 네트워크</strong>로 정리한 시각화 문서입니다.
+        이번 버전은 특히 <strong>Project Entity Map</strong>에서 화살표가 박스 위를 가로지르지 않도록 레이아웃과 라우팅을 정리해,
+        각 엔티티와 산출물의 연결을 더 읽기 쉽게 다듬었습니다.
+      </p>
+      <p>
+        현재 문서는 <strong>최신 구현 상태</strong>를 기준으로 작성되어 있습니다.
+        즉, Structure Export는 완료되었고, Attachment / Relationship / Custom Field / Knowledge Input까지 반영된 구조를 보여줍니다.
+      </p>
+      <div class="pill-row">
+        <div class="pill">Issue 30건</div>
+        <div class="pill">Comment 278건</div>
+        <div class="pill">Attachment 79건</div>
+        <div class="pill">Canonical Relationship 6건</div>
+        <div class="pill">Custom Field Catalog 220 / Values 447</div>
+        <div class="pill">Knowledge Input Package 30건</div>
+      </div>
+    </section>
+
+    <section class="grid-4">
+      <div class="metric"><div class="label">정규화 완료</div><div class="value">ANALYSIS</div><div class="sub">issues / comments / attachments / relationships / custom fields</div></div>
+      <div class="metric"><div class="label">구조 데이터</div><div class="value">79 · 6 · 447</div><div class="sub">Attachment 79 / Relationship 6 / Custom Field Value 447</div></div>
+      <div class="metric"><div class="label">입력 패키지</div><div class="value">30</div><div class="sub">Knowledge Input Builder 완료</div></div>
+      <div class="metric"><div class="label">다음 핵심 단계</div><div class="value">Knowledge</div><div class="sub">OpenCode Agent 기반 지식 재가공 및 추출</div></div>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <div class="tabs">
+          <button class="tab active" data-view="entity">1. Project Entity Map</button>
+          <button class="tab" data-view="pipeline">2. Layer Pipeline</button>
+          <button class="tab" data-view="issue">3. One-Issue Perspective</button>
+        </div>
+        <div class="toggles">
+          <button class="toggle on" data-group="issue">Issue</button>
+          <button class="toggle on" data-group="comment">Comment</button>
+          <button class="toggle on" data-group="attach">Attachment</button>
+          <button class="toggle on" data-group="rel">Relationship</button>
+          <button class="toggle on" data-group="custom">Custom Field</button>
+        </div>
+      </div>
+      <h2 id="viewTitle">Project Entity Map</h2>
+      <div class="help" id="viewHelp">프로젝트 내부 엔티티와 산출물을 한눈에 보여줍니다. Issue를 중심으로 텍스트·구조 데이터·정규화 산출물이 어떻게 연결되는지 볼 수 있습니다.</div>
+
+      <div class="map-grid">
+        <div class="svg-box">
+          <svg viewBox="0 0 1280 860" id="networkSvg" aria-label="Jira relationship map">
+            <defs>
+              <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M0,0 L12,6 L0,12 z" fill="rgba(216,230,255,.58)"></path>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+
+        <div class="side">
+          <div class="card">
+            <h3>범례</h3>
+            <div class="legend">
+              <div class="legend-item"><span class="swatch" style="background:var(--issue)"></span>Issue 계열</div>
+              <div class="legend-item"><span class="swatch" style="background:var(--comment)"></span>Comment 계열</div>
+              <div class="legend-item"><span class="swatch" style="background:var(--attach)"></span>Attachment 계열</div>
+              <div class="legend-item"><span class="swatch" style="background:var(--rel)"></span>Relationship 계열</div>
+              <div class="legend-item"><span class="swatch" style="background:var(--custom)"></span>Custom Field 계열</div>
+              <div class="legend-item"><span class="swatch" style="background:var(--store)"></span>저장소 / 산출물</div>
+            </div>
+          </div>
+
+          <div class="card" id="infoPanel">
+            <div class="info-title">Project</div>
+            <div class="info-body">프로젝트는 여러 Issue를 포함하는 최상위 컨테이너입니다. 현재 파일럿에서는 프로젝트별 최근 이슈 30건을 수집하고, 이슈 중심으로 구조를 정규화했습니다.</div>
+          </div>
+
+          <div class="card">
+            <h3>이번 레이아웃 개선 포인트</h3>
+            <ul>
+              <li>화살표가 노드 박스 위를 길게 가로지르지 않도록 <strong>직교 라우팅(orthogonal routing)</strong> 적용</li>
+              <li>Project → Issue Hub → 상세 엔티티 → 산출물의 <strong>좌·중앙·우 계층 구조</strong> 강화</li>
+              <li>Edge label이 다른 박스와 겹치지 않도록 각 경로의 <strong>주요 세그먼트</strong>에 배치</li>
+              <li>Project Entity / Layer Pipeline / One-Issue 관점을 분리해 <strong>읽기 목적별 탐색</strong> 가능</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>기술적 해석 포인트</h2>
+      <div class="section-list">
+        <div class="mini">
+          <h4>1. RAW는 사실 기준</h4>
+          <p><span class="mono">data/raw/runs/&lt;run_id&gt;/...</span> 아래의 Jira 원본 JSON은 수정하지 않습니다. 모든 파생 데이터는 이 계층으로 되돌아갈 수 있어야 합니다.</p>
+        </div>
+        <div class="mini">
+          <h4>2. ANALYSIS는 검색 가능한 정규화 계층</h4>
+          <p><span class="mono">issues.jsonl</span>, <span class="mono">comments.jsonl</span>, <span class="mono">attachments.jsonl</span>, <span class="mono">issue_relationships.jsonl</span>, <span class="mono">custom_field_*.jsonl</span>로 의미 단위를 분리합니다.</p>
+        </div>
+        <div class="mini">
+          <h4>3. Relationship는 두 층으로 해석</h4>
+          <ul>
+            <li><strong>Issue Link</strong> — blocks / relates / duplicates 등</li>
+            <li><strong>Hierarchy</strong> — subtasks 기반의 parent_of 관계</li>
+          </ul>
+        </div>
+        <div class="mini">
+          <h4>4. Custom Field는 Catalog + Values</h4>
+          <p>220개 정의 전체는 Catalog로 보존하고, 실제 값 447개는 Values로 분리합니다. 그래야 새 프로젝트가 들어와도 DB 스키마를 흔들지 않고 흡수할 수 있습니다.</p>
+        </div>
+        <div class="mini">
+          <h4>5. Knowledge Input은 Issue 중심 허브</h4>
+          <p>Issue + Comments + Attachments + Relationships + Custom Field를 한 패키지로 묶어 Agent 입력 단위로 사용합니다. 이는 이후 Knowledge Extraction의 직접 입력이 됩니다.</p>
+        </div>
+        <div class="mini">
+          <h4>6. 다음 단계는 Knowledge Extraction</h4>
+          <p>이후에는 OpenCode Agent가 이슈 전체를 읽고 problem, context, action, decision, result, conclusion을 추출하는 구조화 지식 계층을 생성합니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer-note">이 문서는 학습용 구조 시각화입니다. 민감한 업무 본문은 포함하지 않고, 현재까지 검증된 구조와 산출물 연결만 시각적으로 정리했습니다.</div>
+  </div>
+
 <script>
-const colors={issue:'#5aa9ff',comment:'#7ee787',attach:'#f6c177',rel:'#c792ea',custom:'#ff8ba7',store:'#78dce8',plan:'#ffcc66'};
-const info={project:'프로젝트는 여러 Issue를 포함하는 상위 컨테이너입니다. 파일럿은 프로젝트별 최근 수정 이슈 최대 30건으로 검증했습니다.',issues:'Issue는 지식화의 중심 허브입니다. 핵심 속성뿐 아니라 Comment, Attachment, Relationship, Custom Field를 연결합니다.',core:'issues.jsonl에는 summary, description_text, issue_type, status, priority, created_at, updated_at, source_path 등 결정적 사실을 저장합니다.',comments:'Comment 278건을 전용 API page_*.json에서 병합·중복 제거·sequence 부여 후 comments.jsonl로 저장했습니다.',attachments:'Attachment metadata 79건을 정규화했습니다. 바이너리는 다운로드하지 않으며 Knowledge Input에는 content_available=false로 전달합니다.',links:'Explicit Issue Link 2건을 outward 의미 기준 canonical edge로 저장합니다. 반대쪽 issue.json에서 관찰돼도 같은 relationship_id는 중복 제거합니다.',hierarchy:'Hierarchy 4건은 parent --parent_of--> child canonical 방향으로 저장합니다.',catalog:'Custom Field Catalog 220개 정의를 run 내 field_id 기준으로 dedupe합니다. 동일 field_id 정의 불일치는 warning 대상입니다.',values:'실제 non-null Custom Field Value 447건, 사용 필드 16종입니다. String/Option/User Array/plugin any를 안전하게 정규화합니다.',analysis:'ANALYSIS에는 issues/comments/attachments/relationships/custom_field_catalog/custom_field_values JSONL과 summary/warnings가 존재합니다.',kinput:'Knowledge Input Builder는 ANALYSIS만 읽어 30개 Issue package를 만들었습니다. 각 package에는 source_hash가 있습니다.',knowledge:'다음 단계에서 OpenCode Agent가 problem, hypothesis, cause, action, decision, result, conclusion을 evidence와 함께 추출합니다.',schemaobs:'Schema Observation은 아직 planned입니다. 서로 다른 run의 Catalog와 필드 구조를 비교해 NEW/CHANGED/MISSING/unsupported를 기록합니다.',raw:'RAW는 Jira API 원본이자 Source of Truth입니다. 향후 parser가 바뀌어도 여기서 재처리할 수 있습니다.',db:'향후 SQLite와 Vector 계층이 추가됩니다. Custom Field는 컬럼 확장보다 Catalog/Values row 모델을 사용합니다.'};
-const views={entity:{title:'Project Entity Map',help:'현재 검증된 Jira 엔티티 연결과 ANALYSIS/Knowledge Input 산출물을 한눈에 봅니다.',nodes:[['project','issue',120,70,150,54,'Project','container'],['issues','issue',340,70,170,58,'Issues','30 verified'],['core','issue',220,220,220,86,'Core Fields','issues.jsonl'],['comments','comment',515,220,210,86,'Comments','278'],['attachments','attach',830,115,195,84,'Attachments','79 metadata'],['links','rel',830,275,195,84,'Issue Links','2'],['hierarchy','rel',830,430,195,84,'Hierarchy','4'],['catalog','custom',220,455,220,88,'CF Catalog','220 definitions'],['values','custom',520,455,220,88,'CF Values','447 values'],['analysis','store',370,640,250,70,'ANALYSIS','6 JSONL + summary'],['kinput','store',720,640,250,70,'KNOWLEDGE INPUT','30 packages'],['knowledge','rel',1000,640,190,70,'KNOWLEDGE','next']],edges:[['project','issues','contains'],['issues','core','core'],['issues','comments','has'],['issues','attachments','has'],['issues','links','links'],['issues','hierarchy','subtasks'],['issues','values','values'],['catalog','values','defines'],['core','analysis','export'],['comments','analysis','export'],['attachments','analysis','export'],['links','analysis','canonical'],['hierarchy','analysis','canonical'],['catalog','analysis','catalog'],['values','analysis','values'],['analysis','kinput','join by issue'],['kinput','knowledge','agent']]},pipeline:{title:'Layer Pipeline',help:'사실 보존에서 Agent 지식 추출, DB/Vector/MCP로 이어지는 계층 흐름입니다.',nodes:[['raw','store',115,330,190,82,'RAW','source of truth'],['core','issue',390,80,215,76,'Issue Parser','done'],['comments','comment',390,185,215,76,'Comment Parser','done'],['attachments','attach',390,290,215,76,'Attachment Parser','done'],['links','rel',390,395,215,76,'Relationship Parser','done'],['catalog','custom',390,500,215,76,'Custom Field Parser','done'],['analysis','store',700,265,235,100,'ANALYSIS','normalized facts'],['kinput','store',970,245,215,90,'KNOWLEDGE INPUT','30 packages'],['schemaobs','plan',700,475,235,88,'Schema Observation','planned hardening'],['knowledge','rel',970,410,215,88,'KNOWLEDGE','next'],['db','store',970,585,215,82,'DB / VECTOR','later']],edges:[['raw','core','issue.json'],['raw','comments','comment pages'],['raw','attachments','attachment'],['raw','links','links/subtasks'],['raw','catalog','names/schema'],['core','analysis','jsonl'],['comments','analysis','jsonl'],['attachments','analysis','jsonl'],['links','analysis','jsonl'],['catalog','analysis','catalog+values'],['analysis','kinput','assemble'],['analysis','schemaobs','compare runs'],['kinput','knowledge','agent'],['analysis','db','facts'],['knowledge','db','knowledge']]},issue:{title:'One Issue Perspective',help:'하나의 Issue package가 어떤 사실을 모아 Agent에 전달하는지 보는 뷰입니다.',nodes:[['issues','issue',550,80,180,60,'One Issue','knowledge hub'],['core','issue',140,230,210,82,'Core Fields','summary / description'],['comments','comment',400,230,210,82,'Comments','discussion'],['attachments','attach',660,230,210,82,'Attachments','79 total'],['values','custom',920,230,210,82,'Custom Fields','context'],['links','rel',245,435,220,82,'Related Issues','canonical edge'],['hierarchy','rel',555,435,220,82,'Hierarchy','parent_of'],['kinput','store',400,640,270,78,'Issue Package','source_hash'],['knowledge','rel',790,640,250,78,'Issue Knowledge','next']],edges:[['issues','core','owns'],['issues','comments','has'],['issues','attachments','has'],['issues','values','has'],['issues','links','links'],['issues','hierarchy','subtasks'],['core','kinput','merge'],['comments','kinput','merge'],['attachments','kinput','merge'],['values','kinput','merge'],['links','kinput','merge'],['hierarchy','kinput','merge'],['kinput','knowledge','agent extraction']]},schema:{title:'Schema Evolution Map',help:'새 project/run에서 Custom Field 또는 Jira 구조가 달라졌을 때 어떻게 흡수할지 보여줍니다.',nodes:[['raw','store',120,120,190,76,'New Run RAW','new project/issues'],['catalog','custom',410,120,220,82,'Observed Catalog','names + schema'],['values','custom',410,285,220,82,'Actual Values','actual type / shape'],['schemaobs','plan',710,200,245,98,'Schema Observation','NEW / CHANGED / MISSING'],['analysis','store',710,420,245,90,'Safe ANALYSIS','known + fallback'],['kinput','store',1000,420,205,90,'Knowledge Input','pipeline continues'],['db','store',1000,610,205,80,'History / DB','row based']],edges:[['raw','catalog','observe definitions'],['raw','values','observe values'],['catalog','schemaobs','compare previous run'],['values','schemaobs','shape changes'],['schemaobs','analysis','warning + fallback'],['analysis','kinput','non-fatal'],['catalog','db','snapshots'],['analysis','db','values']]}};
-let current='entity';const visible={issue:true,comment:true,attach:true,rel:true,custom:true};const svg=document.getElementById('svg');function el(name,attrs,parent){const e=document.createElementNS('http://www.w3.org/2000/svg',name);for(const[k,v]of Object.entries(attrs||{}))e.setAttribute(k,v);if(parent)parent.appendChild(e);return e}function color(type){return type==='plan'?colors.plan:(colors[type]||colors.store)}function draw(){const v=views[current];svg.innerHTML='<defs><marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto"><path d="M0 0 L11 5.5 L0 11z" fill="rgba(216,230,255,.55)"/></marker></defs>';document.getElementById('viewTitle').textContent=v.title;document.getElementById('viewHelp').textContent=v.help;const m=Object.fromEntries(v.nodes.map(n=>[n[0],n]));v.edges.forEach(x=>edge(m[x[0]],m[x[1]],x[2]));v.nodes.forEach(n=>node(n));apply();document.getElementById('info').textContent=info[v.nodes[0][0]]||''}function node(n){const[id,type,x,y,w,h,label,sub]=n,g=el('g',{class:'node',transform:`translate(${x},${y})`},svg);g.dataset.group=type;g.dataset.id=id;el('rect',{x:-w/2,y:-h/2,width:w,height:h,rx:18,fill:color(type)+'22',stroke:color(type),'stroke-width':1.3},g);const t=el('text',{x:0,y:-4,'text-anchor':'middle'},g);t.textContent=label;const s=el('text',{x:0,y:18,'text-anchor':'middle',class:'small'},g);s.textContent=sub||'';g.onclick=()=>document.getElementById('info').textContent=info[id]||'구조 설명'}function edge(a,b,label){const g=el('g',{class:'edgegroup'},svg);g.dataset.a=a[1];g.dataset.b=b[1];const[x1,y1,x2,y2]=[a[2],a[3],b[2],b[3]],mx=(x1+x2)/2,my=(y1+y2)/2,curve=Math.abs(x2-x1)>260?0:18;el('path',{d:`M ${x1} ${y1} Q ${mx} ${my+curve} ${x2} ${y2}`,class:'edge'},g);const tw=Math.max(48,label.length*6.2);el('rect',{x:mx-tw/2,y:my-11+curve*.08,width:tw,height:20,rx:10,class:'tag'},g);const t=el('text',{x:mx,y:my+3+curve*.08,'text-anchor':'middle',class:'etag'},g);t.textContent=label}function showGroup(g){return g==='store'||g==='plan'||visible[g]!==false}function apply(){svg.querySelectorAll('.node').forEach(n=>n.classList.toggle('hidden',!showGroup(n.dataset.group)));svg.querySelectorAll('.edgegroup').forEach(e=>e.classList.toggle('hidden',!(showGroup(e.dataset.a)&&showGroup(e.dataset.b))))}document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');current=b.dataset.view;draw()});document.querySelectorAll('.filter').forEach(b=>b.onclick=()=>{const g=b.dataset.group;visible[g]=!visible[g];b.classList.toggle('on',visible[g]);apply()});draw();
+const palette = {
+  issue: getComputedStyle(document.documentElement).getPropertyValue('--issue').trim(),
+  comment: getComputedStyle(document.documentElement).getPropertyValue('--comment').trim(),
+  attach: getComputedStyle(document.documentElement).getPropertyValue('--attach').trim(),
+  rel: getComputedStyle(document.documentElement).getPropertyValue('--rel').trim(),
+  custom: getComputedStyle(document.documentElement).getPropertyValue('--custom').trim(),
+  store: getComputedStyle(document.documentElement).getPropertyValue('--store').trim(),
+};
+const groupColors = { issue: palette.issue, comment: palette.comment, attach: palette.attach, rel: palette.rel, custom: palette.custom, store: palette.store };
+
+const infoMap = {
+  project: { title:'Project', body:'프로젝트는 여러 Issue를 포함하는 최상위 업무 컨테이너입니다. 파일럿 범위에서는 프로젝트별 최근 이슈 30건을 수집했습니다.' },
+  issueHub: { title:'Issue Hub', body:'Issue는 텍스트, 구조 데이터, 산출물의 허브입니다. 이후 Knowledge Input과 Knowledge Extraction도 모두 이 Issue 단위를 기준으로 결합됩니다.' },
+  issueCore: { title:'Issue Core Fields', body:'summary, description, issue_type, status, priority, created_at, updated_at 같은 핵심 속성이 issues.jsonl에 정규화됩니다.' },
+  comments: { title:'Comments', body:'CommentParser는 comments/page_*.json을 병합하고, 중복 제거, sequence 부여, HTML 본문 정제, 작성자 정규화를 수행합니다.' },
+  attachments: { title:'Attachments', body:'Attachment는 파일 내용을 직접 파싱하지 않고 메타데이터를 정규화합니다. 현재 파일럿에서는 79건의 첨부 메타데이터가 확인되었습니다.' },
+  relLinks: { title:'Issue Links', body:'Jira issuelinks의 inward/outward 방향을 유지하여 blocks, relates, duplicates 같은 명시적 관계를 정규화합니다.' },
+  relHierarchy: { title:'Hierarchy', body:'subtasks로부터 parent_of 관계를 정규화합니다. 일반 issue link와는 성격이 다른 계층 관계입니다.' },
+  cfCatalog: { title:'Custom Field Catalog', body:'names와 schema를 이용해 220개 field definition snapshot을 Catalog로 정리합니다.' },
+  cfValues: { title:'Custom Field Values', body:'실제 non-null 값 447개를 issue_key와 함께 정규화합니다. option, user array, string, generic any 타입을 보수적으로 처리합니다.' },
+  analysis: { title:'ANALYSIS Outputs', body:'이 계층은 구조화된 JSONL 산출물의 집합입니다. 이후 프로파일링, DB 적재, Knowledge Input Builder의 직접 입력으로 사용됩니다.' },
+  knowledgeInput: { title:'Knowledge Input Package', body:'Issue 중심 허브의 통합 패키지입니다. 30개 입력 패키지가 생성되었고, OpenCode Agent 지식 재가공의 직접 입력이 됩니다.' },
+  summary: { title:'Summary & Warnings', body:'summary.json과 parse_warnings.jsonl은 각 단계의 실행 결과와 통계를 보존합니다.' },
+  raw: { title:'RAW', body:'Jira API 원본 응답이 저장되는 사실 기준 계층입니다. 구조 조사와 역추적은 항상 여기서 시작합니다.' },
+  knowledge: { title:'KNOWLEDGE (향후)', body:'향후 OpenCode Agent가 issue knowledge를 추출해 구조화 지식 계층을 만들 예정입니다.' },
+  db: { title:'DB / VECTOR (향후)', body:'정규화 데이터와 구조화 지식은 SQLite, 청크, 임베딩, FAISS, MCP 검색으로 이어집니다.' },
+  oneIssue: { title:'One-Issue Perspective', body:'이슈 하나를 허브로 보면 Core / Comments / Attachments / Relationships / Custom Fields가 모두 한 곳에 모입니다.' },
+};
+
+const views = {
+  entity: {
+    title: 'Project Entity Map',
+    help: 'Project → Issue Hub → 세부 엔티티 → 산출물의 흐름으로 재배치했습니다. 화살표가 노드 위를 덮지 않도록 직교 라우팅을 사용합니다.',
+    nodes: [
+      {id:'project', type:'issue', kind:'issue', shape:'pill', x:150, y:90,  w:150, h:58, label:'Project', sub:'파일럿 시작점'},
+      {id:'issueHub', type:'issue', kind:'issue', shape:'pill', x:420, y:90,  w:190, h:62, label:'Issue Hub', sub:'Issue 30건'},
+      {id:'issueCore', type:'issue', kind:'issue', shape:'rect', x:230, y:260, w:230, h:94, label:'Issue Core Fields', sub:'summary / status / priority / description'},
+      {id:'comments', type:'comment', kind:'comment', shape:'rect', x:490, y:260, w:220, h:94, label:'Comments', sub:'278 comments'},
+      {id:'attachments', type:'attach', kind:'attach', shape:'rect', x:780, y:160, w:210, h:90, label:'Attachments', sub:'79 metadata rows'},
+      {id:'relLinks', type:'rel', kind:'rel', shape:'rect', x:780, y:300, w:210, h:90, label:'Issue Links', sub:'explicit canonical links'},
+      {id:'relHierarchy', type:'rel', kind:'rel', shape:'rect', x:780, y:440, w:210, h:90, label:'Hierarchy', sub:'subtasks / parent_of'},
+      {id:'cfCatalog', type:'custom', kind:'custom', shape:'rect', x:160, y:470, w:240, h:94, label:'Custom Field Catalog', sub:'220 definitions'},
+      {id:'cfValues', type:'custom', kind:'custom', shape:'rect', x:430, y:470, w:230, h:94, label:'Custom Field Values', sub:'16 field kinds / 447 values'},
+      {id:'analysis', type:'store', kind:'store', shape:'pill', x:395, y:690, w:270, h:68, label:'ANALYSIS Outputs', sub:'jsonl exports'},
+      {id:'knowledgeInput', type:'store', kind:'store', shape:'rect', x:690, y:690, w:250, h:86, label:'Knowledge Input Package', sub:'30 integrated issue packages'},
+      {id:'summary', type:'store', kind:'store', shape:'rect', x:970, y:690, w:220, h:80, label:'Summary & Warnings', sub:'status / counts / warnings'},
+    ],
+    edges: [
+      {from:'project', to:'issueHub', label:'contains', fromSide:'right', toSide:'left'},
+      {from:'issueHub', to:'issueCore', label:'core fields', fromSide:'bottom', toSide:'top', route:[[420,150],[230,150],[230,213]]},
+      {from:'issueHub', to:'comments', label:'discussion', fromSide:'bottom', toSide:'top', route:[[420,152],[490,152],[490,213]]},
+      {from:'issueHub', to:'attachments', label:'attachments', fromSide:'right', toSide:'left', route:[[520,90],[610,90],[610,160],[675,160]]},
+      {from:'issueHub', to:'relLinks', label:'links', fromSide:'right', toSide:'left', route:[[520,90],[640,90],[640,300],[675,300]]},
+      {from:'issueHub', to:'relHierarchy', label:'hierarchy', fromSide:'right', toSide:'left', route:[[520,90],[670,90],[670,440],[675,440]]},
+      {from:'issueHub', to:'cfValues', label:'field values', fromSide:'bottom', toSide:'top', route:[[420,152],[420,390],[430,390],[430,423]]},
+      {from:'cfCatalog', to:'cfValues', label:'defines', fromSide:'right', toSide:'left'},
+      {from:'issueCore', to:'analysis', label:'issues.jsonl', fromSide:'bottom', toSide:'top', route:[[230,307],[230,610],[320,610],[320,656]]},
+      {from:'comments', to:'analysis', label:'comments.jsonl', fromSide:'bottom', toSide:'top', route:[[490,307],[490,625],[380,625],[380,656]]},
+      {from:'attachments', to:'analysis', label:'attachments.jsonl', fromSide:'bottom', toSide:'right', route:[[780,205],[780,585],[530,585],[530,690]]},
+      {from:'relLinks', to:'analysis', label:'relationships.jsonl', fromSide:'left', toSide:'right', route:[[675,300],[620,300],[620,595],[530,595],[530,690]]},
+      {from:'relHierarchy', to:'analysis', label:'relationships.jsonl', fromSide:'left', toSide:'right', route:[[675,440],[605,440],[605,605],[530,605],[530,690]]},
+      {from:'cfCatalog', to:'analysis', label:'catalog.jsonl', fromSide:'bottom', toSide:'left', route:[[160,517],[160,630],[260,630],[260,690]]},
+      {from:'cfValues', to:'analysis', label:'values.jsonl', fromSide:'bottom', toSide:'top', route:[[430,517],[430,620],[430,656]]},
+      {from:'analysis', to:'knowledgeInput', label:'compose package', fromSide:'right', toSide:'left'},
+      {from:'analysis', to:'summary', label:'update summary', fromSide:'right', toSide:'left', route:[[530,690],[560,690],[560,780],[860,780],[860,690]]},
+    ]
+  },
+  pipeline: {
+    title: 'Layer Pipeline',
+    help: 'RAW → ANALYSIS → KNOWLEDGE INPUT → KNOWLEDGE → DB / VECTOR 흐름을 보여줍니다. 현재 완료된 구간과 다음 단계가 함께 드러납니다.',
+    nodes: [
+      {id:'raw', type:'store', kind:'store', shape:'rect', x:120, y:140, w:240, h:98, label:'RAW', sub:'issue.json / comments/page_*.json'},
+      {id:'issueCore', type:'issue', kind:'issue', shape:'rect', x:430, y:80, w:260, h:88, label:'Issue Parser / Exporter', sub:'issues.jsonl 완료'},
+      {id:'comments', type:'comment', kind:'comment', shape:'rect', x:430, y:200, w:260, h:88, label:'Comment Parser / Exporter', sub:'comments.jsonl 완료'},
+      {id:'attachments', type:'attach', kind:'attach', shape:'rect', x:430, y:320, w:260, h:88, label:'Attachment Structure Export', sub:'attachments.jsonl 완료'},
+      {id:'relLinks', type:'rel', kind:'rel', shape:'rect', x:430, y:440, w:260, h:88, label:'Relationship Structure Export', sub:'issue_relationships.jsonl 완료'},
+      {id:'cfValues', type:'custom', kind:'custom', shape:'rect', x:430, y:560, w:260, h:88, label:'Custom Field Export', sub:'catalog + values 완료'},
+      {id:'analysis', type:'store', kind:'store', shape:'rect', x:820, y:240, w:270, h:120, label:'ANALYSIS', sub:'normalized jsonl outputs'},
+      {id:'knowledgeInput', type:'store', kind:'store', shape:'rect', x:820, y:430, w:270, h:102, label:'KNOWLEDGE INPUT', sub:'issue package 30건 완료'},
+      {id:'knowledge', type:'rel', kind:'rel', shape:'rect', x:820, y:610, w:270, h:96, label:'KNOWLEDGE (향후)', sub:'Agent extraction'},
+      {id:'db', type:'store', kind:'store', shape:'rect', x:1120, y:610, w:120, h:88, label:'DB / VECTOR', sub:'향후'},
+    ],
+    edges: [
+      {from:'raw', to:'issueCore', label:'issue.json', fromSide:'right', toSide:'left'},
+      {from:'raw', to:'comments', label:'comment pages', fromSide:'right', toSide:'left'},
+      {from:'raw', to:'attachments', label:'attachment', fromSide:'right', toSide:'left'},
+      {from:'raw', to:'relLinks', label:'issuelinks / subtasks', fromSide:'right', toSide:'left'},
+      {from:'raw', to:'cfValues', label:'fields + names + schema', fromSide:'right', toSide:'left'},
+      {from:'issueCore', to:'analysis', label:'issues.jsonl', fromSide:'right', toSide:'left'},
+      {from:'comments', to:'analysis', label:'comments.jsonl', fromSide:'right', toSide:'left'},
+      {from:'attachments', to:'analysis', label:'attachments.jsonl', fromSide:'right', toSide:'left'},
+      {from:'relLinks', to:'analysis', label:'relationships.jsonl', fromSide:'right', toSide:'left'},
+      {from:'cfValues', to:'analysis', label:'catalog / values', fromSide:'right', toSide:'left'},
+      {from:'analysis', to:'knowledgeInput', label:'compose issue package', fromSide:'bottom', toSide:'top'},
+      {from:'knowledgeInput', to:'knowledge', label:'agent extraction', fromSide:'bottom', toSide:'top'},
+      {from:'knowledge', to:'db', label:'load / embed', fromSide:'right', toSide:'left'},
+    ]
+  },
+  issue: {
+    title: 'One-Issue Perspective',
+    help: 'Issue 하나를 데이터 허브로 보면 Core / Comments / Attachments / Relationships / Custom Fields가 모두 이 Issue 주변으로 모입니다.',
+    nodes: [
+      {id:'oneIssue', type:'issue', kind:'issue', shape:'pill', x:520, y:110, w:190, h:66, label:'One Issue', sub:'하나의 업무 단위'},
+      {id:'issueCore', type:'issue', kind:'issue', shape:'rect', x:180, y:270, w:240, h:96, label:'Core Fields', sub:'summary / description / status'},
+      {id:'comments', type:'comment', kind:'comment', shape:'rect', x:440, y:270, w:220, h:96, label:'Comments', sub:'discussion / evidence / progress'},
+      {id:'attachments', type:'attach', kind:'attach', shape:'rect', x:720, y:270, w:220, h:96, label:'Attachments', sub:'logs / screenshots / docs metadata'},
+      {id:'relLinks', type:'rel', kind:'rel', shape:'rect', x:180, y:500, w:250, h:96, label:'Related Issues', sub:'blocks / relates / duplicates'},
+      {id:'relHierarchy', type:'rel', kind:'rel', shape:'rect', x:470, y:500, w:230, h:96, label:'Subtasks', sub:'parent_of relations'},
+      {id:'cfValues', type:'custom', kind:'custom', shape:'rect', x:760, y:500, w:230, h:96, label:'Custom Field Values', sub:'option / user array / string / any'},
+      {id:'knowledgeInput', type:'store', kind:'store', shape:'rect', x:360, y:720, w:290, h:92, label:'Knowledge Input Package', sub:'Issue + Comments + Attachments + Relationships + Fields'},
+      {id:'knowledge', type:'rel', kind:'rel', shape:'rect', x:720, y:720, w:250, h:92, label:'Issue Knowledge (향후)', sub:'problem / action / decision / result / conclusion'},
+    ],
+    edges: [
+      {from:'oneIssue', to:'issueCore', label:'owns', fromSide:'bottom', toSide:'top', route:[[520,143],[180,143],[180,222]]},
+      {from:'oneIssue', to:'comments', label:'has', fromSide:'bottom', toSide:'top', route:[[520,143],[440,143],[440,222]]},
+      {from:'oneIssue', to:'attachments', label:'has', fromSide:'bottom', toSide:'top', route:[[520,143],[720,143],[720,222]]},
+      {from:'oneIssue', to:'relLinks', label:'links to', fromSide:'bottom', toSide:'top', route:[[520,143],[120,143],[120,500],[180,452]]},
+      {from:'oneIssue', to:'relHierarchy', label:'subtasks', fromSide:'bottom', toSide:'top', route:[[520,143],[520,452]]},
+      {from:'oneIssue', to:'cfValues', label:'field values', fromSide:'bottom', toSide:'top', route:[[520,143],[970,143],[970,500],[760,452]]},
+      {from:'issueCore', to:'knowledgeInput', label:'merge', fromSide:'bottom', toSide:'top', route:[[180,318],[180,650],[300,650],[300,674]]},
+      {from:'comments', to:'knowledgeInput', label:'merge', fromSide:'bottom', toSide:'top', route:[[440,318],[440,674]]},
+      {from:'attachments', to:'knowledgeInput', label:'merge', fromSide:'bottom', toSide:'top', route:[[720,318],[720,640],[520,640],[520,674]]},
+      {from:'relLinks', to:'knowledgeInput', label:'merge', fromSide:'bottom', toSide:'left', route:[[180,548],[180,690],[215,690]]},
+      {from:'relHierarchy', to:'knowledgeInput', label:'merge', fromSide:'bottom', toSide:'top', route:[[470,548],[470,674]]},
+      {from:'cfValues', to:'knowledgeInput', label:'merge', fromSide:'bottom', toSide:'top', route:[[760,548],[760,660],[570,660],[570,674]]},
+      {from:'knowledgeInput', to:'knowledge', label:'agent extraction', fromSide:'right', toSide:'left'},
+    ]
+  }
+};
+
+let currentView = 'entity';
+const visibleGroups = { issue:true, comment:true, attach:true, rel:true, custom:true };
+
+function createEl(name, attrs = {}, parent) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', name);
+  Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v));
+  if (parent) parent.appendChild(el);
+  return el;
+}
+
+function getPort(node, side='right') {
+  const halfW = node.w/2, halfH = node.h/2;
+  switch(side) {
+    case 'left': return [node.x - halfW, node.y];
+    case 'right': return [node.x + halfW, node.y];
+    case 'top': return [node.x, node.y - halfH];
+    case 'bottom': return [node.x, node.y + halfH];
+    default: return [node.x, node.y];
+  }
+}
+
+function pointsToPath(points) {
+  return points.map((p, i) => `${i===0?'M':'L'} ${p[0]} ${p[1]}`).join(' ');
+}
+
+function getLabelPoint(points) {
+  let best = { len: -1, idx: 0 };
+  for (let i=0; i<points.length-1; i++) {
+    const dx = points[i+1][0] - points[i][0];
+    const dy = points[i+1][1] - points[i][1];
+    const len = Math.abs(dx) + Math.abs(dy);
+    if (len > best.len) best = { len, idx: i };
+  }
+  const a = points[best.idx];
+  const b = points[best.idx+1];
+  return [(a[0]+b[0])/2, (a[1]+b[1])/2];
+}
+
+function buildEdgePoints(from, to, edge) {
+  if (edge.route) {
+    const start = getPort(from, edge.fromSide || 'right');
+    const end = getPort(to, edge.toSide || 'left');
+    return [start, ...edge.route, end];
+  }
+  const start = getPort(from, edge.fromSide || (to.x > from.x ? 'right' : 'left'));
+  const end = getPort(to, edge.toSide || (to.x > from.x ? 'left' : 'right'));
+
+  if ((edge.fromSide === 'right' || edge.fromSide === 'left') && (edge.toSide === 'right' || edge.toSide === 'left')) {
+    const mx = (start[0] + end[0]) / 2;
+    return [start, [mx, start[1]], [mx, end[1]], end];
+  }
+  if ((edge.fromSide === 'top' || edge.fromSide === 'bottom') && (edge.toSide === 'top' || edge.toSide === 'bottom')) {
+    const my = (start[1] + end[1]) / 2;
+    return [start, [start[0], my], [end[0], my], end];
+  }
+  return [start, [start[0], end[1]], end];
+}
+
+function drawView(name) {
+  currentView = name;
+  const svg = document.getElementById('networkSvg');
+  svg.innerHTML = '<defs><marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 z" fill="rgba(216,230,255,.58)"></path></marker></defs>';
+
+  const view = views[name];
+  document.getElementById('viewTitle').textContent = view.title;
+  document.getElementById('viewHelp').textContent = view.help;
+  const nodeMap = Object.fromEntries(view.nodes.map(n => [n.id, n]));
+
+  view.edges.forEach(edge => createEdge(svg, nodeMap[edge.from], nodeMap[edge.to], edge));
+  view.nodes.forEach(node => createNode(svg, node));
+
+  applyVisibility();
+  showInfo(view.nodes[0].id);
+}
+
+function createNode(svg, node) {
+  const g = createEl('g', { class:'node', transform:`translate(${node.x},${node.y})`, 'data-id':node.id, 'data-group':node.kind }, svg);
+  const color = groupColors[node.type] || '#999';
+  createEl('rect', {
+    x: -node.w/2, y: -node.h/2, width: node.w, height: node.h,
+    rx: node.shape === 'pill' ? node.h/2 : 18,
+    fill: color + '22', stroke: color
+  }, g);
+  createEl('text', { x:0, y:-4, 'text-anchor':'middle' }, g).textContent = node.label;
+  createEl('text', { x:0, y:18, 'text-anchor':'middle', class:'small' }, g).textContent = node.sub || '';
+  g.addEventListener('click', () => showInfo(node.id));
+}
+
+function createEdge(svg, from, to, edge) {
+  const points = buildEdgePoints(from, to, edge);
+  const labelPoint = getLabelPoint(points);
+  const g = createEl('g', { class:'edge-group', 'data-from':edge.from, 'data-to':edge.to }, svg);
+  createEl('path', { d: pointsToPath(points), class:'edge orth' }, g);
+
+  const tagWidth = Math.max(58, edge.label.length * 7.4);
+  createEl('rect', { x: labelPoint[0] - tagWidth/2, y: labelPoint[1] - 12, width: tagWidth, height: 22, rx: 11, class:'label-tag' }, g);
+  createEl('text', { x: labelPoint[0], y: labelPoint[1] + 3, 'text-anchor':'middle', class:'edge-label' }, g).textContent = edge.label;
+}
+
+function showInfo(id) {
+  const info = infoMap[id] || { title:id, body:'설명 정보가 아직 정의되지 않았습니다.' };
+  document.getElementById('infoPanel').innerHTML = `<div class="info-title">${info.title}</div><div class="info-body">${info.body}</div>`;
+}
+
+function edgeVisible(view, edge) {
+  const from = view.nodes.find(n => n.id === edge.from);
+  const to = view.nodes.find(n => n.id === edge.to);
+  return (from.kind === 'store' || visibleGroups[from.kind]) && (to.kind === 'store' || visibleGroups[to.kind]);
+}
+
+function applyVisibility() {
+  const svg = document.getElementById('networkSvg');
+  svg.querySelectorAll('.node').forEach(n => {
+    const group = n.dataset.group;
+    const visible = group === 'store' ? true : visibleGroups[group];
+    n.classList.toggle('hidden', !visible);
+  });
+  const view = views[currentView];
+  svg.querySelectorAll('.edge-group').forEach((g, idx) => {
+    g.classList.toggle('hidden', !edgeVisible(view, view.edges[idx]));
+  });
+}
+
+document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  drawView(btn.dataset.view);
+}));
+
+document.querySelectorAll('.toggle').forEach(btn => btn.addEventListener('click', () => {
+  const key = btn.dataset.group;
+  visibleGroups[key] = !visibleGroups[key];
+  btn.classList.toggle('on', visibleGroups[key]);
+  applyVisibility();
+}));
+
+drawView('entity');
 </script>
-</body></html>
+</body>
+</html>
