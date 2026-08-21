@@ -1,0 +1,16 @@
+{
+  "knowledge_schema_version": "0.1",
+  "issue_key": "EXAMPLE-001",
+  "issue_summary": {
+    "statement": "품질 문제를 조사해 공정 조건의 영향을 확인했고 추가 검증이 남아 있는 이슈이다.",
+    "evidence_refs": [
+      "description",
+      "comment:EX-C03"
+    ]
+  },
+  "problem_or_goal": [],
+  "key_findings": [],
+  "actions_and_decisions": [],
+  "outcomes": [],
+  "open_items": []
+}
