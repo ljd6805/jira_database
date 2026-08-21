@@ -1,0 +1,12 @@
+# OpenCode/ripgrep 탐색용 예외 규칙
+# Git에서는 .gitignore의 data/ 규칙을 그대로 유지한다.
+# M4 Knowledge Extraction에 필요한 로컬 입력/출력만 검색 가능하게 연다.
+
+!data/
+data/*
+
+!data/knowledge_input/
+!data/knowledge_input/**
+
+!data/knowledge/
+!data/knowledge/**
