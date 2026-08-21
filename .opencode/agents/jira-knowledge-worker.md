@@ -1,15 +1,10 @@
 ---
-description: Jira Knowledge Input 한 건을 생성하고 Python Validator PASS까지 반복하는 전용 Subagent
+description: 로컬 Jira Knowledge Input 한 건을 생성하고 Python Validator PASS까지 반복하는 전용 Subagent
 mode: subagent
 permission:
+  "*": deny
   read: allow
   edit: allow
-  glob: deny
-  grep: deny
-  list: deny
-  task: deny
-  webfetch: deny
-  websearch: deny
   external_directory: deny
   skill:
     "*": deny
@@ -24,8 +19,44 @@ permission:
 
 ## 역할
 
-전달받은 Knowledge Input JSON 한 건만 처리한다.
+전달받은 로컬 Knowledge Input JSON 한 건만 처리한다.
 반드시 `jira-knowledge-extraction` Skill을 로드한다.
+
+이 단계에서는 Jira 웹/API/MCP/Connector에 다시 접근하지 않는다.
+Knowledge Input 파일이 유일한 사실 입력이다.
+
+## Local Input Boundary
+
+허용되는 사실 입력:
+
+```text
+[KNOWLEDGE INPUT]
+사용자가 전달한 현재 Issue의 로컬 JSON 한 건
+```
+
+REGENERATE일 때만 추가로 허용:
+
+```text
+[REVIEW FEEDBACK]
+직전 Review JSON 한 건
+```
+
+절대 하지 않는다.
+
+- Jira 웹사이트 접근
+- Jira REST API 호출
+- Jira MCP/Connector/Custom Tool 호출
+- Issue Key를 이용한 외부 재조회
+- URL이 Input에 있어도 해당 URL 접근
+- curl/wget/requests 등 네트워크 호출
+- Knowledge Input에 없는 사실을 외부에서 보충
+
+입력 파일이 없거나 읽을 수 없으면 외부에서 다시 가져오지 않는다.
+다음 형식으로 종료한다.
+
+```text
+INPUT_ERROR <ISSUE_KEY> <INPUT_PATH>
+```
 
 ## MODE=GENERATE
 
@@ -94,6 +125,7 @@ Reviewer가 의미 결함을 발견한 상태다.
 - 중요한 trade-off/중간 결과를 삭제하지 않았는가?
 - 동일 핵심 지식을 중복하지 않았는가?
 - 일정/잡담을 제거했는가?
+- 외부 Jira/웹/API에서 사실을 보충하지 않았는가?
 
 ## Validator Loop
 
@@ -107,11 +139,18 @@ python tools/jira_knowledge/validate_knowledge.py \
 
 FAIL이면 같은 Worker 안에서 최대 3회 수정/재검증한다.
 
+Validator 실행 외의 Bash 명령은 사용하지 않는다.
+
 ## 반환
 
 성공:
 ```text
 VALIDATED_PASS <ISSUE_KEY> <OUTPUT_PATH>
+```
+
+입력 오류:
+```text
+INPUT_ERROR <ISSUE_KEY> <INPUT_PATH>
 ```
 
 실패:
