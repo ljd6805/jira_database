@@ -17,11 +17,27 @@
     "improvement_points"
   ],
   "properties": {
-    "issue_key": {"type": "string"},
-    "score": {"type": "number", "minimum": 0, "maximum": 10},
-    "verdict": {"enum": ["PASS", "REGENERATE"]},
-    "critical_error": {"type": "boolean"},
-    "major_issue_count": {"type": "integer", "minimum": 0},
+    "issue_key": {
+      "type": "string"
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "verdict": {
+      "enum": [
+        "PASS",
+        "REGENERATE"
+      ]
+    },
+    "critical_error": {
+      "type": "boolean"
+    },
+    "major_issue_count": {
+      "type": "integer",
+      "minimum": 0
+    },
     "category_scores": {
       "type": "object",
       "additionalProperties": false,
@@ -34,12 +50,36 @@
         "language_quality"
       ],
       "properties": {
-        "factual_fidelity": {"type": "number", "minimum": 0, "maximum": 3},
-        "evidence_coverage": {"type": "number", "minimum": 0, "maximum": 2},
-        "certainty_preservation": {"type": "number", "minimum": 0, "maximum": 1.5},
-        "classification": {"type": "number", "minimum": 0, "maximum": 1.5},
-        "retrieval_value": {"type": "number", "minimum": 0, "maximum": 1},
-        "language_quality": {"type": "number", "minimum": 0, "maximum": 1}
+        "factual_fidelity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "evidence_coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "certainty_preservation": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1.5
+        },
+        "classification": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1.5
+        },
+        "retrieval_value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "language_quality": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
       }
     },
     "audit_findings": {
@@ -54,46 +94,173 @@
         "duplication_audit"
       ],
       "properties": {
-        "fact_audit": {"type": "array", "items": {"$ref": "#/$defs/audit_item"}},
-        "causal_claim_audit": {"type": "array", "items": {"$ref": "#/$defs/audit_item"}},
-        "evidence_audit": {"type": "array", "items": {"$ref": "#/$defs/audit_item"}},
-        "classification_audit": {"type": "array", "items": {"$ref": "#/$defs/audit_item"}},
-        "missing_knowledge_audit": {"type": "array", "items": {"$ref": "#/$defs/audit_item"}},
-        "duplication_audit": {"type": "array", "items": {"$ref": "#/$defs/audit_item"}}
+        "fact_audit": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "location",
+              "message"
+            ],
+            "properties": {
+              "location": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "causal_claim_audit": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "location",
+              "message"
+            ],
+            "properties": {
+              "location": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "evidence_audit": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "location",
+              "message"
+            ],
+            "properties": {
+              "location": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "classification_audit": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "location",
+              "message"
+            ],
+            "properties": {
+              "location": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "missing_knowledge_audit": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "location",
+              "message"
+            ],
+            "properties": {
+              "location": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "duplication_audit": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "location",
+              "message"
+            ],
+            "properties": {
+              "location": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
       }
     },
     "critical_issues": {
       "type": "array",
-      "items": {"type": "string"}
+      "items": {
+        "type": "string"
+      }
     },
     "major_issues": {
       "type": "array",
-      "items": {"$ref": "#/$defs/issue_item"}
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "location",
+          "message"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
     },
     "improvement_points": {
       "type": "array",
       "maxItems": 5,
-      "items": {"$ref": "#/$defs/issue_item"}
-    }
-  },
-  "$defs": {
-    "audit_item": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["location", "message"],
-      "properties": {
-        "location": {"type": "string"},
-        "message": {"type": "string"}
-      }
-    },
-    "issue_item": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["type", "location", "message"],
-      "properties": {
-        "type": {"type": "string"},
-        "location": {"type": "string"},
-        "message": {"type": "string"}
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "location",
+          "message"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
       }
     }
   }
