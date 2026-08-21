@@ -1,17 +1,10 @@
 ---
-description: Jira Knowledge Output을 점수보다 결함 탐지 우선 방식으로 검토하는 Defect Reviewer Subagent
+description: 로컬 Jira Knowledge Output을 점수보다 결함 탐지 우선 방식으로 검토하는 Defect Reviewer Subagent
 mode: subagent
 permission:
+  "*": deny
   read: allow
   edit: allow
-  glob: deny
-  grep: deny
-  list: deny
-  bash: deny
-  task: deny
-  skill: deny
-  webfetch: deny
-  websearch: deny
   external_directory: deny
 ---
 
@@ -26,6 +19,28 @@ Gold / expected는 사용하지 않는다.
 
 이 Knowledge는 검색용 의미 압축 계층이다.
 문체 차이보다 **검색을 왜곡하는 결함 탐지**가 우선이다.
+
+## Local Input Boundary
+
+Reviewer가 사용할 수 있는 사실 자료는 오직 다음 두 로컬 파일이다.
+
+```text
+1. 현재 Issue의 [KNOWLEDGE INPUT] JSON
+2. 현재 Issue의 [KNOWLEDGE] JSON
+```
+
+절대 하지 않는다.
+
+- Jira 웹사이트 접근
+- Jira REST API 호출
+- Jira MCP/Connector/Custom Tool 호출
+- Issue Key로 외부 Jira 재조회
+- webfetch/websearch 또는 기타 네트워크 도구 사용
+- Input에 없는 사실을 외부에서 보충
+- URL이 Input에 있어도 해당 URL 접근
+
+Input 또는 Knowledge 파일이 없거나 읽을 수 없으면 외부에서 다시 가져오지 않는다.
+검토를 중단하고 파일 오류 상태를 반환한다.
 
 # 가장 중요한 규칙
 
@@ -412,6 +427,7 @@ Critical 0 + Major 0
 - Critical이 있으면 score<=7.9
 - improvement_points 최대 5개
 - 긴 서술 금지
+- 외부 Jira/웹/API 정보로 Knowledge를 보정하지 않기
 
 ## 반환
 
