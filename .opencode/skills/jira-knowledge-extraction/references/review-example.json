@@ -1,0 +1,43 @@
+{
+  "issue_key": "EXAMPLE-001",
+  "score": 8.4,
+  "verdict": "REGENERATE",
+  "critical_error": false,
+  "major_issue_count": 1,
+  "category_scores": {
+    "factual_fidelity": 2.7,
+    "evidence_coverage": 1.7,
+    "certainty_preservation": 1.0,
+    "classification": 1.3,
+    "retrieval_value": 0.9,
+    "language_quality": 0.8
+  },
+  "audit_findings": {
+    "fact_audit": [],
+    "causal_claim_audit": [
+      {
+        "location": "issue_summary",
+        "message": "원인 확정 표현이 입력 근거보다 강하다."
+      }
+    ],
+    "evidence_audit": [],
+    "classification_audit": [],
+    "missing_knowledge_audit": [],
+    "duplication_audit": []
+  },
+  "critical_issues": [],
+  "major_issues": [
+    {
+      "type": "certainty",
+      "location": "issue_summary",
+      "message": "가능성을 확정 원인처럼 표현했다."
+    }
+  ],
+  "improvement_points": [
+    {
+      "type": "certainty",
+      "location": "issue_summary",
+      "message": "인과 표현의 강도를 낮춰라."
+    }
+  ]
+}
