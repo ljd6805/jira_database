@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="description" content="jira_database 프로젝트 M0~M16 Master Source of Truth. M4 실제 Jira 30건 Knowledge Extraction 완료 기록과 Prompt Runbook을 보존하고, M5 Knowledge/Review Profiling을 현재 단계로 관리하는 기준 문서" />
+<title>Jira Knowledge DB — Master Source of Truth</title>
+<style>
+:root{--bg:#f4f7fb;--surface:#fff;--text:#172033;--muted:#61708a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#b76a00;--red:#b83c4b;--shadow:0 10px 28px rgba(31,49,84,.08);--max:1260px}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 8% 0%,rgba(49,87,213,.1),transparent 30rem),var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.65;word-break:keep-all}.layout{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh}aside{position:sticky;top:0;height:100vh;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:rgba(255,255,255,.96)}.brand{display:flex;gap:10px;align-items:center;margin-bottom:20px}.mark{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;color:#fff;background:linear-gradient(145deg,#3157d5,#7794f1);font-weight:900}.brand small{display:block;color:var(--muted);font-size:11px}.brand strong{font-size:14px}nav a{display:block;padding:6px 8px;border-radius:8px;text-decoration:none;color:#46536a;font-size:11px;font-weight:800}nav a:hover{background:#eef3f9;color:#173aa6}.side{margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--muted);font-size:11px}.progress{height:8px;margin:8px 0;border-radius:99px;background:#dfe6f1;overflow:hidden}.progress b{display:block;width:32%;height:100%;background:linear-gradient(90deg,#3157d5,#7b98ff)}main{min-width:0}.content{max-width:var(--max);margin:auto;padding:42px 34px 90px}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#19294f,#3157d5 62%,#6684ea);box-shadow:var(--shadow)}.eyebrow{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.14);font-size:11px;font-weight:900}.hero h1{margin:15px 0 12px;font-size:clamp(33px,4.5vw,54px);line-height:1.08;letter-spacing:-.04em}.hero p{max-width:980px;margin:0;color:rgba(255,255,255,.9)}.hero-grid,.grid2,.grid3,.grid4{display:grid;gap:12px}.hero-grid{grid-template-columns:repeat(3,1fr);margin-top:24px}.hero-grid div{padding:13px;border:1px solid rgba(255,255,255,.15);border-radius:14px;background:rgba(12,25,58,.26)}.hero-grid b{display:block;font-size:13px}.hero-grid span{font-size:11px;color:rgba(255,255,255,.78)}section{margin-top:48px;scroll-margin-top:18px}h2{margin:0 0 10px;font-size:28px;letter-spacing:-.02em}h3{margin:22px 0 8px}.lead{max-width:1000px;margin:0 0 20px;color:var(--muted)}.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{padding:17px;border:1px solid var(--line);border-radius:15px;background:#fff;box-shadow:0 5px 14px rgba(31,49,84,.04)}.card h3{margin:0 0 6px}.card p,.card li{color:#4b5970}.metric{font-size:27px;font-weight:900}.label,.note{color:var(--muted);font-size:11px}.badge,.status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.done{background:#e5f7ef;color:#0d6b4b}.current{background:#e8eeff;color:#2447b8}.plan{background:#edf1f6;color:#5c6879}.callout{margin:15px 0;padding:14px 16px;border-left:5px solid var(--blue);border-radius:0 12px 12px 0;background:#edf3ff}.callout.good{border-color:var(--green);background:#eaf8f3}.callout.warn{border-color:var(--amber);background:#fff6e9}.callout.bad{border-color:var(--red);background:#fff0f2}.callout strong{display:block}.track-wrap,.table-wrap{overflow:auto}.track{display:grid;grid-template-columns:repeat(11,minmax(108px,1fr));gap:7px;min-width:1180px}.track.ops{grid-template-columns:repeat(6,minmax(150px,1fr));min-width:980px}.ms{min-height:83px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#f7f9fc}.ms.done{background:#eef9f4;border-color:#b9e2d1}.ms.current{background:#eef2ff;border:2px solid var(--blue)}.ms-code{display:inline-flex;padding:2px 6px;border-radius:999px;background:#738198;color:#fff;font-size:9px;font-weight:900}.ms.done .ms-code{background:var(--green)}.ms.current .ms-code{background:var(--blue)}.ms b{display:block;margin:6px 0 3px;font-size:11px}.ms span:last-child{display:block;color:var(--muted);font-size:9px;line-height:1.35}.checkpoint{display:grid;grid-template-columns:190px 1fr;gap:15px;margin:17px 0;padding:18px;border:1px solid #bccaff;border-left:6px solid var(--blue);border-radius:15px;background:#f7f9ff}.checkpoint h3{margin:0;color:#173aa6}.cp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}.cp-grid div{padding-bottom:7px;border-bottom:1px dashed var(--line)}.cp-grid b{display:block;font-size:11px}.cp-grid span{color:var(--muted);font-size:11px}.table-wrap{border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:11px}th{background:#edf2f8;color:#3f4e66;font-weight:900}tr:last-child td{border-bottom:0}.wide{min-width:1650px}.normal{min-width:960px}.code{white-space:pre-wrap;overflow:auto;padding:14px;border-radius:12px;background:#101827;color:#d9e7ff;font:11px/1.6 "Cascadia Code","D2Coding",Consolas,monospace}.decision{padding:12px 0;border-bottom:1px solid var(--line)}.decision:last-child{border-bottom:0}.decision b{display:block}.decision span{color:var(--muted);font-size:12px}.footer{margin-top:42px;padding-top:18px;border-top:1px solid var(--line);text-align:center;color:var(--muted);font-size:11px}@media(max-width:1000px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}nav{display:none}.content{padding:26px 18px 70px}.grid4{grid-template-columns:repeat(2,1fr)}.grid3,.grid2,.hero-grid,.checkpoint{grid-template-columns:1fr}.cp-grid{grid-template-columns:1fr}}@media(max-width:600px){.grid4{grid-template-columns:1fr}.hero{padding:28px 21px}}
+</style>
+</head>
+<body><div class="layout"><aside>
+<div class="brand"><div class="mark">J</div><div><small>업무지식DB생성</small><strong>Jira Knowledge Pipeline</strong></div></div>
+<nav>
+<a href="#overview">1. 현재 기준</a><a href="#roadmap">2. Master Roadmap</a><a href="#verified">3. 현재 검증 상태</a><a href="#architecture">4. 아키텍처 원칙</a><a href="#m4">5. M4 완료 기록 · Prompt</a><a href="#phase1">6. Phase 1 상세</a><a href="#phase2">7. Phase 2 상세</a><a href="#data">8. 데이터 · Skill · Model</a><a href="#next">9. 현재 실행 순서</a><a href="#decisions">10. 고정 결정</a><a href="#done">11. Definition of Done</a>
+</nav>
+<div class="side"><b>Document</b> v16 · 2026-08-24<br/><b>Roadmap</b> M0~M16 · 17 Milestones<br/><b>현재</b> M5 · Knowledge / Review Profiling<div class="progress"><b></b></div><b>M4</b> Gate PASS · 30건 + Human Validation 5/5<br/><b>현재 작업</b> 실제 분포 Profiling<br/><br/>M10 = Functional MVP<br/>M16 = Operational System</div>
+</aside><main><div class="content">
+<header class="hero" id="overview"><span class="eyebrow">MASTER SOURCE OF TRUTH · v16 · 2026-08-24</span><h1>Jira 원문을 보존하고<br/>검색 가능한 업무지식 시스템으로 운영하기</h1><p><strong>M4 · 실제 Jira Knowledge Pilot은 완료</strong>했습니다. 실제 30건 Knowledge 생성, 자동 Review Loop, deterministic 집계, Human Validation 5/5까지 Gate를 통과했습니다. 현재는 <strong>M5 · Knowledge / Review Profiling</strong>으로 이동해 실제 산출물의 분포를 측정하고 M6 DB Logical Schema와 향후 Chunk 정책의 근거를 만듭니다. 이전 M4 프롬프트·문제 해결·판단 기록은 단계 산출물로 계속 보존합니다.</p><div class="hero-grid"><div><b>완료 · M4</b><span>30/30 PASS · Human Validation 5/5 · Gate PASS</span></div><div><b>현재 · M5</b><span>실제 Knowledge / Review 분포 Profiling</span></div><div><b>Phase 1 Gate · M10</b><span>질문 → 검색 → 원문 Evidence → MCP E2E</span></div></div></header>
+
+<section id="roadmap"><h2>Master Roadmap · M0~M16</h2><p class="lead">기능을 먼저 끝까지 검증하고(M0~M10), 그 이후에 검증된 Stage 계약을 자동·증분·복구 가능하게 운영합니다(M11~M16). 완료된 단계의 유효한 문서와 실행 기록은 삭제하지 않고 다음 단계의 입력 근거로 남깁니다.</p><div class="grid4"><div class="card"><div class="label">전체</div><div class="metric">17</div><div class="note">M0~M16</div></div><div class="card"><div class="label">완료</div><div class="metric">5</div><div class="note">M0~M4 Gate 완료</div></div><div class="card"><div class="label">현재</div><div class="metric">M5</div><div class="note">Knowledge / Review Profiling</div></div><div class="card"><div class="label">최종 운영 Gate</div><div class="metric">M16</div><div class="note">Unattended Operation</div></div></div>
+<h3>Phase 1 · Functional MVP</h3><div class="track-wrap"><div class="track"><div class="ms done"><span class="ms-code">M0 DONE</span><b>수집·정규화</b><span>Jira → RAW / ANALYSIS</span></div><div class="ms done"><span class="ms-code">M1 DONE</span><b>Knowledge Input</b><span>Issue별 사실 패키지</span></div><div class="ms done"><span class="ms-code">M2 DONE</span><b>Schema · Skill</b><span>Schema v0.1 · Skill v0.9</span></div><div class="ms done"><span class="ms-code">M3 DONE</span><b>Quality Loop</b><span>Worker · Validator · Reviewer</span></div><div class="ms done"><span class="ms-code">M4 DONE</span><b>실제 Jira Pilot</b><span>30건 + Human Validation 5/5</span></div><div class="ms current"><span class="ms-code">M5 CURRENT</span><b>Profiling</b><span>실제 분포·결함</span></div><div class="ms"><span class="ms-code">M6 PLAN</span><b>DB Schema</b><span>논리 모델·Evidence</span></div><div class="ms"><span class="ms-code">M7 PLAN</span><b>SQLite</b><span>적재·조회 기반</span></div><div class="ms"><span class="ms-code">M8 PLAN</span><b>Chunk · Embed</b><span>BGE-M3</span></div><div class="ms"><span class="ms-code">M9 PLAN</span><b>FAISS · Retrieval</b><span>Top-k 품질</span></div><div class="ms"><span class="ms-code">M10 GATE</span><b>Evidence · MCP</b><span>Functional MVP 완료</span></div></div></div>
+<h3>Phase 2 · Operational System</h3><div class="track-wrap"><div class="track ops"><div class="ms"><span class="ms-code">M11 PLAN</span><b>Incremental Jira Sync</b><span>변경분 탐지 · RAW 갱신</span></div><div class="ms"><span class="ms-code">M12 PLAN</span><b>Pipeline Orchestration</b><span>자동 Stage 실행</span></div><div class="ms"><span class="ms-code">M13 PLAN</span><b>Incremental Rebuild</b><span>Hash · Dependency · Cache</span></div><div class="ms"><span class="ms-code">M14 PLAN</span><b>Recovery · Publish</b><span>Retry · Resume · Rollback</span></div><div class="ms"><span class="ms-code">M15 PLAN</span><b>Observability</b><span>Metrics · Alert · Data Quality</span></div><div class="ms"><span class="ms-code">M16 GATE</span><b>Production Lifecycle</b><span>배포 · Backup · Runbook</span></div></div></div>
+<div class="checkpoint"><h3>M4 완료 체크포인트<br/><small>실제 Jira Knowledge Pilot</small></h3><div class="cp-grid"><div><b>기준 Run</b><span>20260804T043628Z</span></div><div><b>입력</b><span>[KNOWLEDGE INPUT] 실제 30건 · warning 0</span></div><div><b>Knowledge 생성</b><span>30건 전체 완료 · Issue별 순차 실행</span></div><div><b>자동 Review</b><span>최종 30/30 PASS · REVIEW_REQUIRED/INPUT_ERROR/INCOMPLETE 0</span></div><div><b>Deterministic 집계</b><span>1차 24 · 2차 5 · 3차 1 · 재생성 6</span></div><div><b>Human Validation</b><span>5/5 완료 · 검색 의미를 해치는 품질 문제 없음</span></div></div></div>
+<div class="callout good"><strong>M4 Gate PASS</strong>실제 Jira 30건에서 생성·검토·재생성·집계·사람 검증까지 완료했습니다. 완료 시점 기록은 <code>docs/status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.md</code>에 고정 보존합니다.</div>
+</section>
+
+<section id="verified"><h2>현재 검증 상태</h2><div class="grid3"><div class="card"><span class="badge done">완료</span><h3>Jira 수집 / Parser</h3><ul><li>Issue 30</li><li>Comment 278</li><li>Attachment metadata 79</li><li>Relationship 6</li><li>Custom Field Catalog 220 / Values 447</li><li>실패/경고 0</li></ul></div><div class="card"><span class="badge done">완료</span><h3>Knowledge Input</h3><ul><li>Issue package 30개</li><li>manifest completed</li><li>package warning 0</li><li>semantic source_hash</li></ul></div><div class="card"><span class="badge done">M4 완료</span><h3>실제 Extraction</h3><ul><li>실제 30건 Knowledge 생성</li><li>Worker → Validator → Reviewer</li><li>최종 30/30 PASS</li><li>Human Validation 5/5 완료</li></ul></div></div>
+<div class="grid2" style="margin-top:12px"><div class="card"><h3>Run Reporting 보강</h3><p>초기 LLM 최종 보고에서 Attempt/PASS/Critical/Major 집계가 서로 맞지 않았습니다. Knowledge 생성 문제가 아니라 단순 집계 책임 문제로 판단해 <code>summarize_knowledge_run.py</code>를 추가하고 Orchestrator는 그 결과만 사용하도록 변경했습니다.</p></div><div class="card"><h3>Human Validation 결론</h3><p>대표 5건 전체를 직접 확인했고 검색 의미를 해치는 품질 문제는 발견되지 않았습니다. 선택 배열이 비어 있어도 <code>issue_summary</code>와 다른 Knowledge 항목에 핵심 의미가 충분히 보존되면 정상으로 판단합니다. <b>필드 채움률보다 검색 의미 보존</b>이 기준입니다.</p></div></div>
+<div class="callout warn"><strong>Reviewer PASS ≠ 사실 100% 보증</strong>Reviewer는 결함 감소 필터입니다. [KNOWLEDGE]는 검색용 의미 압축이며 최종 사실 확인은 Evidence reference를 통해 [KNOWLEDGE INPUT] → [ANALYSIS] → [RAW]로 돌아갑니다.</div></section>
+
+<section id="architecture"><h2>핵심 아키텍처 원칙</h2><div class="grid3"><div class="card"><h3>Source of Truth</h3><p>[RAW]는 재처리와 감사의 최종 기준입니다. [ANALYSIS]는 생성형 LLM 없이 결정적으로 정규화합니다.</p></div><div class="card"><h3>Semantic Compression</h3><p>[KNOWLEDGE]는 사실 원장이 아니라 검색을 위한 의미 압축입니다. 모든 statement는 evidence_refs로 원문 위치를 추적합니다.</p></div><div class="card"><h3>Context Isolation</h3><p>Orchestrator는 경로만 관리하고 Worker/Reviewer는 Issue 한 건씩 새 Context에서 처리합니다. 30개 본문을 한 Context에 넣지 않습니다.</p></div><div class="card"><h3>Local-only M4</h3><p>M4에서 Jira Web/API/MCP/Connector에 다시 접근하지 않습니다. 지정된 로컬 Knowledge Input만 사실 입력입니다.</p></div><div class="card"><h3>Deterministic Control</h3><p>Validator와 Run 집계처럼 규칙적인 작업은 Python이 담당합니다. LLM은 의미 추출/검토처럼 지능이 필요한 구간에만 둡니다.</p></div><div class="card"><h3>MCP Boundary</h3><p>MCP 내부에는 생성형 LLM을 두지 않고 retrieval과 Evidence 복원만 결정적으로 수행합니다.</p></div></div>
+<div class="code">Jira REST API
+↓ M0 collection
+[RAW]
+↓ deterministic parser
+[ANALYSIS]
+↓ IssueKnowledgeInputBuilder
+[KNOWLEDGE INPUT]
+↓ Pro Worker + Skill v0.9
+[KNOWLEDGE]
+↓ Validator + Defect Reviewer
+[REVIEW]
+↓ Human Validation / Profiling
+[DB] SQLite + Evidence locator
+↓
+Chunk → BGE-M3 → [VECTOR] FAISS
+↓
+Retriever → Evidence Builder → MCP → Agent</div></section>
+
+<section id="m4"><h2>M4 완료 기록 · Prompt Runbook</h2><p class="lead">M4는 완료됐지만 재현 가능한 단계 산출물로 계속 보존합니다. M4는 로컬에 고정된 Knowledge Input 30건에서 Knowledge를 재현 가능하게 생성하는 단계였으며, Stable Rule은 Agent/Skill에 두고 Prompt에는 Run ID와 경로 같은 실행 변수만 전달했습니다.</p>
+<h3>1. 입력 파일 탐색 문제와 해결</h3><p>1건 Smoke Test는 정확한 파일 경로를 직접 <code>read</code>해 성공했지만 다건 실행에서 Orchestrator의 Glob이 0건을 반환했습니다. 원인은 Windows 경로가 아니라 <code>.gitignore</code>의 <code>data/</code> 규칙을 탐색 도구도 따르는 것이었습니다.</p><div class="code"># .gitignore — 실제 Jira 데이터는 계속 Git 제외
+data/
+
+# .ignore — OpenCode/ripgrep에서 M4 입력/출력만 다시 노출
+!data/
+data/*
+
+!data/knowledge_input/
+!data/knowledge_input/**
+
+!data/knowledge/
+!data/knowledge/**</div><div class="callout"><strong>Troubleshooting</strong>정확한 경로의 read는 성공하는데 Glob이 0건이면 파일 부재를 단정하지 말고 프로젝트 CWD와 .gitignore/.ignore를 먼저 확인합니다.</div>
+<h3>2. 1건 Smoke Test 프롬프트 패턴</h3><div class="code">jira-knowledge-orchestrator v0.9로 M4 실제 Jira Knowledge Extraction 1건을 수행해줘.
+
+[KNOWLEDGE INPUT]
+data/knowledge_input/runs/20260804T043628Z/issues/&lt;ISSUE_KEY&gt;.json
+
+[KNOWLEDGE OUTPUT]
+data/knowledge/runs/20260804T043628Z/issues/&lt;ISSUE_KEY&gt;.json
+
+[KNOWLEDGE REVIEW]
+data/knowledge/runs/20260804T043628Z/reviews
+
+지정한 로컬 INPUT FILE만 사용해 기존 Agent 규칙대로 처리하고 최종 상태만 요약해줘.</div>
+<h3>3. 2026-08-24 실제 30건 실행에 입력한 프롬프트</h3><div class="code">jira-knowledge-orchestrator v0.9로 M4 실제 Jira Knowledge Extraction 전체 30건을 수행해줘.
+
+[KNOWLEDGE INPUT]
+data/knowledge_input/runs/20260804T043628Z/issues
+
+[KNOWLEDGE OUTPUT]
+data/knowledge/runs/20260804T043628Z/issues
+
+[KNOWLEDGE REVIEW]
+data/knowledge/runs/20260804T043628Z/reviews
+
+INPUT 폴더의 Issue JSON 30건 전체를 순차 처리해줘.
+
+처리 시작 전에 입력 JSON이 정확히 30건인지 확인하고,
+30건이 아니면 실행하지 말고 INPUT_ERROR로 알려줘.
+
+모든 처리가 끝나면 다음만 요약해줘.
+- 전체 Issue 수
+- PASS 수
+- 재생성 발생 Issue 수
+- REVIEW_REQUIRED 수
+- 실패/INPUT_ERROR 수
+- Issue별 최종 상태와 generation attempt 수</div>
+<div class="callout warn"><strong>실행 이력 보존용 Prompt</strong>이 프롬프트로 30건 생성 자체는 완료됐지만 마지막 집계를 LLM이 직접 계산하면서 숫자 불일치가 발생했습니다. 문제 해결 후에도 이 Prompt는 M4 당시 실행 이력으로 삭제하지 않습니다.</div>
+<h3>4. 현재 권장 30건 재실행 프롬프트</h3><div class="code">jira-knowledge-orchestrator v0.9로 M4 실제 Jira Knowledge Extraction 전체 30건을 수행해줘.
+
+RUN_ID: 20260804T043628Z
+
+[KNOWLEDGE INPUT]
+data/knowledge_input/runs/20260804T043628Z/issues
+
+[KNOWLEDGE OUTPUT]
+data/knowledge/runs/20260804T043628Z/issues
+
+[KNOWLEDGE REVIEW]
+data/knowledge/runs/20260804T043628Z/reviews
+
+INPUT의 30건 전체를 기존 Agent 규칙대로 순차 처리해줘.
+최종 보고는 LLM이 직접 집계하지 말고 deterministic run summarizer 결과만 사용해줘.</div>
+<h3>5. 기존 산출물의 집계만 다시 실행</h3><div class="code">python tools/jira_knowledge/summarize_knowledge_run.py \
+data/knowledge_input/runs/20260804T043628Z/issues \
+data/knowledge/runs/20260804T043628Z/issues \
+data/knowledge/runs/20260804T043628Z/reviews</div><p class="note">재생성 발생 = 최종 attempt ≥ 2. Critical/Major 발생 = 어느 attempt에서든 해당 결함이 Review JSON에 기록됨. 정합성이 깨지면 추정하지 않고 REPORT_ERROR.</p>
+<h3>6. 실제 Deterministic 집계</h3><div class="code">target_issue_count      = 30
+input_error_count       = 0
+first_pass_count        = 24
+second_pass_count       = 5
+third_pass_count        = 1
+review_required_count   = 0
+incomplete_count        = 0
+regenerated_issue_count = 6
+
+24 + 5 + 1 = 30
+2차 PASS 5 + 3차 PASS 1 = 재생성 Issue 6</div>
+<h3>7. Human Validation</h3><div class="code">- 사실 왜곡: 없음 / 있음
+- 과도한 인과 확정: 없음 / 있음
+- 중요한 정보 누락: 없음 / 있음
+- 분류 오류: 없음 / 있음
+- evidence 추적 가능: 예 / 아니오
+- 검색용 Knowledge로 사용 가능: 예 / 아니오
+- 비고</div><p>대표 5건을 직접 대조했고 5/5에서 검색 의미를 해치는 품질 문제를 발견하지 않았습니다. 선택 필드가 비어 있어도 전체 Knowledge에 핵심 의미가 충분히 보존되면 정상입니다.</p>
+<div class="callout good"><strong>M4 Completion Record</strong><code>docs/status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.md</code>에 M4 목적, 입력, 실제 프롬프트, 문제 해결, deterministic 집계, Human Validation, Gate 판정, M5 Handoff를 별도 산출물로 고정했습니다.</div></section>
+
+<section id="phase1"><h2>Phase 1 · Functional MVP 상세 · M0~M10</h2><div class="table-wrap"><table class="wide"><thead><tr><th>Milestone</th><th>기준 목표</th><th>입력</th><th>반드시</th><th>금지</th><th>산출물</th><th>Gate</th></tr></thead><tbody>
+<tr><td><b>M0</b> <span class="status done">완료</span></td><td>Jira 수집·정규화</td><td>Jira REST API</td><td>Issue/Comment/Attachment/Relationship/Custom Field 수집, RAW 보존, deterministic parser</td><td>생성형 LLM로 원본 보정</td><td>[RAW], [ANALYSIS], run report</td><td>30건 파일럿 무오류 → M1</td></tr>
+<tr><td><b>M1</b> <span class="status done">완료</span></td><td>Issue 단위 Knowledge Input</td><td>[ANALYSIS]</td><td>facts를 한 JSON에 조립, source_hash, counts, privacy-safe normalization</td><td>LLM 의미 추론을 Builder에 넣기</td><td>[KNOWLEDGE INPUT] 30건</td><td>30/30 parse · warning 0 → M2</td></tr>
+<tr><td><b>M2</b> <span class="status done">완료</span></td><td>Light Schema · Skill</td><td>Knowledge Input + 합성 test</td><td>Schema v0.1, Evidence contract, certainty 보존, Skill v0.9</td><td>과도한 ontology, 모든 필드 강제 채움</td><td>Skill / schema / examples</td><td>실제 적용 가능한 의미 계약 → M3</td></tr>
+<tr><td><b>M3</b> <span class="status done">완료</span></td><td>Context-safe Quality Loop</td><td>Input 1건 + Skill + rubric</td><td>Orchestrator/Worker/Validator/Reviewer 분리, 최대 3 Attempt</td><td>30개 본문 한 Context, Reviewer score를 사실 인증으로 사용</td><td>Agents, Validator, Review JSON</td><td>실제 Jira 적용 가능 → M4</td></tr>
+<tr><td><b>M4</b> <span class="status done">완료</span></td><td>실제 Jira Knowledge Pilot</td><td>실제 Knowledge Input 30건</td><td>30건 순차 생성, Review Loop, deterministic 집계, 대표 5건 Human Validation</td><td>외부 Jira 재조회, LLM 수동 통계, 점수만 보고 품질 확정</td><td>Knowledge 30건, attempt별 Review, Run Summary, Human Validation, Completion Record</td><td><b>Gate PASS</b> · 30/30 PASS · Human Validation 5/5 → M5</td></tr>
+<tr><td><b>M5</b> <span class="status current">현재</span></td><td>Knowledge / Review Profiling</td><td>실제 Knowledge + Review</td><td>item 수, statement p50/p95/max, evidence, empty, attempt/Critical/Major 분포</td><td>평균만 보고 설계, 감으로 Chunk/DB 결정</td><td>Profiling report</td><td>실제 분포로 DB 설계 가능 → M6</td></tr>
+<tr><td><b>M6</b> <span class="status plan">계획</span></td><td>DB Logical Schema</td><td>ANALYSIS + KNOWLEDGE + profiling</td><td>Issue/Comment/Relationship/Knowledge/Evidence/Review entity, stable ID, join/version 규칙</td><td>Custom Field마다 컬럼, Vector ID를 유일 식별자로 사용</td><td>ER / logical schema</td><td>Evidence round-trip 모델 가능 → M7</td></tr>
+<tr><td><b>M7</b> <span class="status plan">계획</span></td><td>SQLite Materialization</td><td>Logical Schema + 실제 데이터</td><td>DDL/migration, loader/upsert, index, FK/unique, idempotent rerun</td><td>수동 SQL 데이터 생성, 중복 row 허용</td><td>[DB] SQLite + tests</td><td>count/integrity/Evidence query 통과 → M8</td></tr>
+<tr><td><b>M8</b> <span class="status plan">계획</span></td><td>Chunk + BGE-M3</td><td>Knowledge + DB</td><td>실제 분포 기반 Chunk 후보 비교, embedding cache/resume, batch/rate-limit</td><td>Chunk 크기 사전 고정, API 제한 무시</td><td>Chunk table, embeddings, manifest</td><td>재현 가능한 embedding corpus → M9</td></tr>
+<tr><td><b>M9</b> <span class="status plan">계획</span></td><td>FAISS + Retrieval</td><td>Chunk + vectors</td><td>stable mapping, Top-k 평가, 관련 Issue/Evidence 연결</td><td>FAISS만 사실 저장소로 사용</td><td>FAISS index + retriever</td><td>질문에서 관련 원문 후보 복원 → M10</td></tr>
+<tr><td><b>M10</b> <span class="status plan">GATE</span></td><td>Evidence Builder + MCP E2E</td><td>DB + Retriever + RAW/ANALYSIS</td><td>질문→검색→Evidence→MCP→상위 Agent 답변 연결</td><td>MCP 내부 생성형 LLM, 자동 운영까지 완료로 오해</td><td>MCP tools + E2E tests</td><td><b>Functional MVP 완료</b></td></tr>
+</tbody></table></div></section>
+
+<section id="phase2"><h2>Phase 2 · Operational System 상세 · M11~M16</h2><div class="table-wrap"><table class="wide"><thead><tr><th>Milestone</th><th>목표</th><th>입력</th><th>반드시</th><th>금지</th><th>산출물</th><th>Gate</th></tr></thead><tbody>
+<tr><td><b>M11</b></td><td>Incremental Jira Sync</td><td>마지막 성공 sync + Jira</td><td>신규/수정/댓글 변경 탐지, watermark, 삭제/권한 변화 정책</td><td>매번 전체 재수집만 운영 방식으로 사용</td><td>delta manifest / sync state</td><td>변경분만 안전하게 RAW 반영 → M12</td></tr>
+<tr><td><b>M12</b></td><td>Automated Pipeline Orchestration</td><td>M11 delta</td><td>Stage 의존성, scheduler, 상태 머신, 자동 Parse/Knowledge 실행</td><td>LLM이 전체 운영 제어 흐름 담당</td><td>pipeline runner / run state</td><td>무인 Stage 연결 → M13</td></tr>
+<tr><td><b>M13</b></td><td>Incremental Rebuild</td><td>source_hash / dependency</td><td>변경 Issue만 Knowledge/Chunk/Embedding/Vector 무효화·재생성</td><td>변경 1건 때문에 전체 index 재빌드</td><td>dependency map / cache policy</td><td>영향 범위 최소화 → M14</td></tr>
+<tr><td><b>M14</b></td><td>Retry / Resume / Atomic Publish</td><td>실패 run + staging</td><td>idempotent retry, resume, staging 검증, atomic publish, last-good rollback</td><td>부분 생성 DB/Index를 즉시 서비스</td><td>recovery/publish protocol</td><td>중간 실패에도 서비스 연속성 → M15</td></tr>
+<tr><td><b>M15</b></td><td>Observability / Data Quality Ops</td><td>run metrics / manifests</td><td>sync lag, failure rate, count drift, schema drift, index version, alert</td><td>로그만 남기고 상태를 관측 못함</td><td>dashboard / alert / quality checks</td><td>운영자가 상태·이상 탐지 가능 → M16</td></tr>
+<tr><td><b>M16</b></td><td>Production Deployment / Lifecycle</td><td>검증된 전체 시스템</td><td>secret/config, backup/restore, retention, runbook, restart/fault/restore drill</td><td>백업·복구 검증 없이 배포 완료 선언</td><td>production package + runbook</td><td><b>5회 이상 무인 sync + 장애/복원 drill + MCP continuity → Operational System 완료</b></td></tr>
+</tbody></table></div></section>
+
+<section id="data"><h2>데이터 · Skill · Model 기준</h2><div class="grid3"><div class="card"><h3>Knowledge Schema v0.1</h3><div class="code">knowledge_schema_version
+issue_key
+issue_summary
+problem_or_goal[]
+key_findings[]
+actions_and_decisions[]
+outcomes[]
+open_items[]
+
+item = { statement, evidence_refs[] }</div></div><div class="card"><h3>Knowledge 역할</h3><p>검색용 의미 압축. 빈 배열 허용. 확실성 보존. 중요한 비교·반증·Decision·trade-off를 우선하고 일정/파일전달/잡담을 낮은 가치로 봅니다.</p></div><div class="card"><h3>Review Gate</h3><div class="code">score >= 8.5
+AND critical_error == false
+AND major_issue_count == 0
+
+Critical >=1 → score <=7.9
+Major >=1 → score <=8.4</div></div></div>
+<h3>BGE-M3 고정 조건</h3><div class="grid4"><div class="card"><b>Model</b><p>BAAI/bge-m3 · TEI · OpenAI-compatible embeddings</p></div><div class="card"><b>Dense dim</b><p>1024</p></div><div class="card"><b>HTTP batch</b><p>최대 64</p></div><div class="card"><b>Rate</b><p>200 requests/min · 입력 약 8192 tokens</p></div></div><div class="callout warn"><strong>Chunk는 아직 미확정</strong>실제 M5 Profiling과 Retrieval 평가 후 Knowledge Item 단위 vs Issue 묶음을 비교해 결정합니다. 초기에는 reranker 없이 Top-k를 downstream Agent에 제공합니다.</div></section>
+
+<section id="next"><h2>현재부터의 실행 순서</h2><div class="grid2"><div class="card"><span class="badge current">현재 · M5</span><h3>Knowledge / Review Profiling</h3><ol><li>Issue당 전체 Knowledge item 수 측정</li><li>category별 item 수와 empty array 비율 측정</li><li>statement 길이 p50/p95/max 측정</li><li>Evidence reference 수 측정</li><li>Attempt/Critical/Major 이력 분포와 이상치 확인</li></ol></div><div class="card"><span class="badge plan">다음 · M6</span><h3>DB Logical Schema</h3><ol><li>M5 분포를 근거로 entity/relationship 결정</li><li>Issue/Knowledge/Evidence/Review stable ID 설계</li><li>Evidence round-trip join 규칙 설계</li><li>SQLite 물리화 전에 논리 모델 Gate 통과</li></ol></div></div><div class="callout good"><strong>순서 원칙</strong>실제 데이터의 분포를 측정한 뒤 DB Schema와 Chunk를 결정합니다. 감으로 먼저 고정하지 않습니다.</div></section>
+
+<section id="decisions"><h2>현재 고정 결정사항</h2><div class="grid2"><div class="card"><div class="decision"><b>Jira 인증 / 범위</b><span>ID/Password 읽기 API · 계정이 접근 가능한 프로젝트 · 파일럿 30건</span></div><div class="decision"><b>Knowledge 모델</b><span>사내 Pro. MAX는 10배 이상 느려 제외</span></div><div class="decision"><b>Knowledge Schema</b><span>Light Structured v0.1</span></div><div class="decision"><b>Extraction Skill</b><span>v0.9 · 합성 추가 튜닝 종료</span></div></div><div class="card"><div class="decision"><b>Review Gate</b><span>score≥8.5 · Critical=0 · Major=0 · 최대 3 Attempt. score는 참고 지표.</span></div><div class="decision"><b>Run Reporting</b><span>LLM 수동 집계 금지 · summarize_knowledge_run.py 결과만 사용</span></div><div class="decision"><b>Knowledge 역할</b><span>검색용 의미 압축 · 사실 원장 아님</span></div><div class="decision"><b>문서 보존</b><span>기존 내용이 틀린 것이 아니면 삭제하지 않고 Milestone별 실행 산출물로 누적 보존</span></div></div></div><div class="callout"><strong>아직 결정하지 않는 것</strong>DB Logical Schema, Chunk 단위, 운영 저장 위치/권한 세부는 M5 실제 Profiling 후 확정합니다.</div></section>
+
+<section id="done"><h2>Definition of Done · 두 개의 완료선</h2><div class="grid2"><div class="card"><span class="badge current">Functional MVP · M10</span><h3>기능적으로 끝까지 된다</h3><ul><li>RAW/ANALYSIS/KNOWLEDGE INPUT 재현 가능</li><li>실제 Jira Knowledge M4 품질 Gate 통과</li><li>SQLite에서 Knowledge→Evidence→원문 round-trip</li><li>BGE-M3/FAISS로 관련 Issue Top-k 검색</li><li>MCP가 검색/원문 Evidence를 결정적으로 반환</li><li>상위 Agent가 근거 포함 답변 가능</li></ul><p><b>아직 포함하지 않음:</b> 자동 sync, 스케줄링, 장애복구 자동화, 운영 모니터링, 배포 lifecycle.</p></div><div class="card"><span class="badge plan">Operational System · M16</span><h3>사람 개입 없이 안전하게 유지된다</h3><ul><li>Jira 신규/수정 변경 증분 탐지</li><li>변경 Issue만 Parse→Knowledge→Embed→Index 갱신</li><li>resume / idempotent retry</li><li>staging 검증 후 atomic publish</li><li>last-good rollback / restore</li><li>sync lag / failure / version / schema drift 관측·알림</li><li>secret/config/backup/retention/runbook 포함</li><li>5회 이상 무인 실행 + 장애/복원 drill</li></ul></div></div><div class="callout warn"><strong>최종 원칙</strong>자동화는 기능 정확성을 대신하지 않습니다. Phase 1 Gate를 통과하지 않은 기능을 Phase 2에서 자동화하지 않습니다.</div></section>
+
+<footer class="footer">Jira Knowledge DB · Master Source of Truth · v16 · 2026-08-24 · M4 DONE / Current: M5 Knowledge & Review Profiling · Operational Completion: M16</footer>
+</div></main></div></body></html>
