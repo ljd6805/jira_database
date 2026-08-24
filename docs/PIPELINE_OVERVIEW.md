@@ -1,91 +1,188 @@
 # Jira Knowledge Pipeline 전체 아키텍처
 
+기준일: 2026-08-24  
+현재 단계: **M6 · DB Logical Schema**
+
 ## 1. 문서 목적
 
-이 문서는 Jira 데이터를 수집한 뒤 최종적으로 Agent가 검색·분석할 수 있는 지식 시스템으로 발전시키기 위한 전체 파이프라인을 한 문서에서 설명합니다.
+이 문서는 Jira 원본에서 시작해 검색 가능한 업무지식 시스템과 MCP까지 이어지는 **전체 데이터 계층과 책임 경계**를 설명합니다.
 
-현재 구현은 **RAW 수집 → ANALYSIS 정규화 → KNOWLEDGE INPUT 조립**까지 완료되었습니다.
+현재 진행 상태:
+
+```text
+M0  Jira 수집 · ANALYSIS 정규화          DONE
+M1  Issue Knowledge Input              DONE
+M2  Knowledge Schema · Skill           DONE
+M3  Quality Loop                       DONE
+M4  실제 Jira Knowledge Pilot          DONE
+M5  Knowledge / Review Profiling       DONE
+M6  DB Logical Schema                  CURRENT
+M7  SQLite Materialization             NEXT
+M8  Chunk · BGE-M3
+M9  FAISS · Retrieval
+M10 Evidence Builder · MCP             Functional MVP Gate
+```
+
+현재 전체 흐름:
 
 ```text
 Jira REST API
     ↓
-[RAW]
-Jira 원본 JSON
-    ↓
-Parser / Exporter
-    ↓
-[ANALYSIS]
-정규화된 사실 데이터
-    ↓
-IssueKnowledgeInputBuilder
-    ↓
-[KNOWLEDGE INPUT]
-이슈별 최종 분석 입력 패키지
-    ↓
-OpenCode Agent                    # 다음 단계
-    ↓
-[KNOWLEDGE]                       # 다음 단계
-원인·계획·결정·결과·결론 등 파생 지식
-    ↓
-SQLite / Chunk / BGE-M3 / FAISS  # 이후 단계
-    ↓
-Retriever / MCP
+[RAW]                                  M0
+    ↓ deterministic parser/exporter
+[ANALYSIS]                             M0
+    ↓ deterministic issue join
+[KNOWLEDGE INPUT]                      M1
+    ↓ Skill v0.9 + Worker
+[KNOWLEDGE]                            M2~M4
+    ├─ Python Validator
+    └─ [REVIEW] Attempt history        M3~M4
+            ↓
+Knowledge / Review Profiling           M5
+            ↓
+DB Logical Schema                      M6
+            ↓
+SQLite                                 M7
+            ↓
+Chunk + BGE-M3                         M8
+            ↓
+FAISS + Retrieval                      M9
+            ↓
+Evidence Builder + MCP                 M10
 ```
 
-이 계층 분리의 핵심 목적은 **사실의 보존과 LLM 해석을 분리**하는 것입니다.
+핵심 목적은 **사실 보존, LLM 해석, 검색 인프라의 책임을 서로 분리**하는 것입니다.
 
 ---
 
-## 2. 데이터 계층 정의
+## 2. 핵심 불변 원칙
 
-### 2.1 RAW
+### 2.1 RAW가 Source of Truth
 
 ```text
 [RAW]
+→ ANALYSIS
+→ KNOWLEDGE INPUT
+→ KNOWLEDGE
+→ DB
+→ VECTOR
+```
+
+뒤 계층은 모두 RAW에서 다시 만들 수 있는 파생물이어야 합니다.
+
+### 2.2 결정적 처리와 LLM 의미 해석 분리
+
+LLM이 개입하지 않는 경계:
+
+```text
+Jira → RAW → ANALYSIS → KNOWLEDGE INPUT
+```
+
+LLM이 의미를 해석하는 경계:
+
+```text
+KNOWLEDGE INPUT → KNOWLEDGE
+```
+
+구조 검증·집계·Profiling은 다시 deterministic Python으로 처리합니다.
+
+### 2.3 Knowledge는 사실 원장이 아니다
+
+Knowledge는 검색을 위한 **Light Structured semantic representation**입니다.
+
+최종 사실 확인 경로:
+
+```text
+Knowledge Item
+    ↓ evidence_ref
+Knowledge Input
+    ↓
+ANALYSIS source entity
+    ↓ source_path
+RAW
+```
+
+### 2.4 Issue가 지식화 중심 Hub
+
+```text
+Issue
+├─ Core / Snapshot
+├─ Comments
+├─ Attachments
+├─ Relationships
+├─ Custom Fields
+├─ Knowledge Generation
+├─ Knowledge Items
+└─ Reviews
+```
+
+### 2.5 Evidence round-trip은 M6 핵심 계약
+
+현재 Evidence type:
+
+```text
+summary
+description
+comment:<id>
+attachment:<id>
+relationship:<id>
+custom_field:<id>
+```
+
+M6/M7에서는 이 exact reference를 잃지 않고 실제 source entity까지 다시 찾아갈 수 있어야 합니다.
+
+---
+
+## 3. [RAW] 계층
+
+경로:
+
+```text
 data/raw/runs/<run_id>/...
 ```
 
 역할:
 
-- Jira API가 반환한 원본의 사실 기준
-- 재파싱·재검증·재가공의 출발점
-- Parser가 수정하지 않는 read-only 계층
+- Jira API 응답 보존
+- 재파싱/재검증 기준
+- Parser가 수정하지 않는 read-only 사실 계층
+- SHA-256 무결성 확인
+- Run별 snapshot 분리
 
-대표 파일:
-
-```text
-issue.json
-comments/page_*.json
-```
-
-RAW에는 ANALYSIS에서 의도적으로 제외한 정보도 존재할 수 있습니다.
-
-예:
+대표 구조:
 
 ```text
-원본 HTML
-emailAddress
-avatarUrls
-Jira self URL
-plugin 전용 복합 객체
+data/raw/runs/<run_id>/
+└─ projects/<project_key>/
+   └─ issues/<issue_key>/
+      ├─ issue.json
+      └─ comments/
+         ├─ page_0001.json
+         └─ ...
 ```
+
+M0에서 중요한 구현 결정:
+
+- 접근 가능한 프로젝트 전체 발견
+- 프로젝트별 최근 수정 이슈 최대 30개
+- Jira API 요청 최대 20회/분
+- 동시 요청 1개
+- Atomic file replace
+- SQLite checkpoint / resume
+- 프로젝트 단위 실패 격리
+- 댓글은 Issue 응답의 embedded comment를 신뢰하지 않고 전용 Comment API를 `startAt=0`부터 전체 수집
 
 ---
 
-### 2.2 ANALYSIS
+## 4. [ANALYSIS] 계층
+
+경로:
 
 ```text
-[ANALYSIS]
 data/analysis/<run_id>/
 ```
 
-역할:
-
-- RAW를 결정적으로 정규화한 데이터
-- HTML 정제, 타입 검증, 관계 canonicalization 수행
-- 다음 계층이 Jira API 원본 구조에 직접 의존하지 않도록 하는 안정된 계약
-
-현재 출력:
+출력:
 
 ```text
 issues.jsonl
@@ -98,361 +195,435 @@ parse_warnings.jsonl
 summary.json
 ```
 
-ANALYSIS는 LLM을 사용하지 않습니다.
+역할:
 
-같은 RAW 입력과 같은 Parser 버전이면 같은 의미의 ANALYSIS 결과가 나와야 합니다.
+- HTML 정제
+- 타입 검증
+- Comment sequence 정규화
+- Relationship canonicalization
+- Attachment metadata 정규화
+- Custom Field Catalog / Values 분리
+- 개인정보 불필요 복제 최소화
+- RAW `source_path` 보존
+
+실환경 M0 결과:
+
+```text
+Issue                         30
+Comment                      278
+Attachment                    79
+Canonical Relationship         6
+Custom Field Catalog         220
+Custom Field Value           447
+경고/실패                       0
+```
 
 ---
 
-### 2.3 KNOWLEDGE INPUT
+## 5. [KNOWLEDGE INPUT] 계층
+
+경로:
 
 ```text
-[KNOWLEDGE INPUT]
 data/knowledge_input/runs/<run_id>/
+├─ issues/<ISSUE_KEY>.json
+├─ package_warnings.jsonl
+└─ manifest.json
 ```
 
 역할:
 
-- 여러 ANALYSIS JSONL을 `issue_key` 기준으로 조립
-- OpenCode Agent가 한 이슈를 분석할 때 필요한 최종 사실 입력 제공
-- 아직 원인·계획·결론을 추론하지 않음
+- ANALYSIS 여러 JSONL을 `issue_key`로 JOIN
+- Worker가 한 파일만 읽어도 해당 Issue의 사실 맥락을 모두 알 수 있게 함
+- RAW를 다시 읽지 않음
+- LLM 추론을 수행하지 않음
 
-출력:
+한 패키지:
 
 ```text
-issues/<ISSUE_KEY>.json
-package_warnings.jsonl
-manifest.json
+Issue Package
+├─ issue
+├─ comments[]
+├─ attachments[]
+├─ relationships[]
+├─ custom_fields[]
+├─ counts
+└─ source_hash
 ```
 
-한 이슈 패키지는 다음 구조를 가집니다.
+M1 핵심 계약:
+
+- ANALYSIS 5개 영역이 모두 completed여야 시작
+- Relationship canonical edge는 유지하고 현재 Issue 관점만 추가
+- 파일럿 외부 endpoint도 `other_package_available=false`로 관계를 보존
+- Attachment는 `content_available=false`
+- `source_hash`는 의미 데이터만 반영
+- 빌드 시작 시 기존 manifest 제거
+- 모든 package/warning 저장 후 마지막에 manifest를 원자 기록
+
+실환경 M1:
 
 ```text
-Issue
-├─ 핵심 정보 + Description
-├─ Comments
-├─ Attachment metadata
-├─ Relationships
-└─ Custom Fields
-```
-
----
-
-### 2.4 KNOWLEDGE — 향후
-
-```text
-[KNOWLEDGE]
-data/knowledge/...
-```
-
-OpenCode Agent가 KNOWLEDGE INPUT을 읽고 의미를 재가공하는 계층입니다.
-
-후보 지식 항목:
-
-```text
-problem_or_goal
-context
-observations
-hypotheses
-confirmed_causes
-actions_taken
-plans
-decisions
-results
-conclusion
-open_questions
-blockers
-evidence_refs
-```
-
-이 값은 Jira 원문 자체가 아니라 **LLM이 원문을 근거로 해석한 파생 데이터**입니다.
-
-따라서 반드시 KNOWLEDGE INPUT 및 RAW까지 역추적할 수 있어야 합니다.
-
----
-
-### 2.5 DB / VECTOR — 향후
-
-관계와 검색을 위한 파생 저장 계층입니다.
-
-```text
-SQLite
-├─ Issue / Comment / Attachment
-├─ Relationship
-├─ Custom Field
-├─ Knowledge Item
-└─ Evidence
-
-FAISS
-└─ embedding_id + vector
-```
-
-FAISS는 원문 저장소가 아닙니다.
-원문과 관계는 DB와 파일 계층에서 관리합니다.
-
----
-
-## 3. 현재 구현 완료 범위
-
-### 3.1 Collector
-
-완료:
-
-- ID/Password 기반 Jira 읽기
-- 접근 가능한 프로젝트 발견
-- 프로젝트별 최근 수정 이슈 최대 30개 파일럿
-- 이슈 상세 원본 저장
-- 댓글 전용 API 전체 페이지 저장
-- SHA-256 무결성 검증
-- SQLite checkpoint 및 resume
-- 원자 파일 저장
-
-### 3.2 Issue Parser / Exporter
-
-완료:
-
-```text
-issue.json
-→ IssueParser
-→ issues.jsonl
-```
-
-실환경 검증:
-
-```text
-이슈 30건
-저장 30건
-실패 0
-경고 0
-```
-
-### 3.3 Comment Parser / Exporter
-
-완료:
-
-```text
-comments/page_*.json
-→ CommentParser
-→ comments.jsonl
-```
-
-실환경 검증:
-
-```text
-대상 이슈 30
-댓글 278
-저장 278
-중복 0
-실패 0
-경고 0
-```
-
-### 3.4 Structure Parser / Exporter
-
-완료:
-
-```text
-issue.json 1회 읽기
-→ Attachment
-→ Relationship
-→ Custom Field Catalog / Values
-```
-
-실환경 검증:
-
-```text
-Attachment               79 / 실패 0
-Canonical Relationship    6 / 실패 0
-  ├─ issue_link            2
-  └─ hierarchy             4
-Custom Field Catalog     220
-실제 사용 Field           16
-Custom Field Values      447 / 실패 0
-정의 불일치                0
-경고                       0
-```
-
-### 3.5 Knowledge Input Builder
-
-완료:
-
-```text
-ANALYSIS 6개 JSONL
-→ issue_key JOIN
-→ 이슈별 JSON
-```
-
-실환경 검증:
-
-```text
-대상 이슈              30
-생성 패키지            30
-포함 댓글             278
-포함 첨부              79
-canonical 관계          6
-Custom Field 값       447
-패키지 경고             0
-manifest status completed
-pytest 100% pass
+Issue package              30 / 30
+Comment                   278
+Attachment                 79
+Canonical Relationship      6
+Custom Field Value        447
+Package warning             0
+manifest.status      completed
 ```
 
 ---
 
-## 4. 현재의 안정 경계
+## 6. [KNOWLEDGE] 계층
 
-현재까지의 처리는 모두 **결정적 처리**입니다.
+경로:
 
 ```text
-RAW
-→ ANALYSIS
-→ KNOWLEDGE INPUT
+data/knowledge/runs/<run_id>/issues/<ISSUE_KEY>.json
 ```
 
-여기까지는 LLM 추론이 없습니다.
-
-따라서 문제를 다음처럼 분리할 수 있습니다.
+M2에서 고정한 Knowledge Schema v0.1:
 
 ```text
-KNOWLEDGE INPUT이 틀림
-→ Collector / Parser / Join 문제
-
-KNOWLEDGE INPUT은 맞고 KNOWLEDGE가 틀림
-→ OpenCode Agent / Prompt / Extraction 문제
-```
-
-이 경계가 이후 품질 검증의 기준이 됩니다.
-
----
-
-## 5. 원본 추적 체계
-
-각 계층은 다음 식별자를 가능한 한 유지합니다.
-
-```text
+knowledge_schema_version
 issue_key
-comment_id
-attachment_id
-relationship_id
-field_id
-source_path
+issue_summary
+problem_or_goal[]
+key_findings[]
+actions_and_decisions[]
+outcomes[]
+open_items[]
 ```
 
-향후 예:
+각 item:
 
 ```text
-Knowledge Item
-→ evidence comment_id=5001
-→ KNOWLEDGE INPUT comment 5001
-→ ANALYSIS comments.jsonl
-→ RAW comments/page_0001.json
+{
+  "statement": "...",
+  "evidence_refs": ["comment:...", "description", ...]
+}
 ```
 
-지식 추출 결과가 원문 근거로 돌아갈 수 있어야 합니다.
+핵심 Skill 규칙:
+
+- 입력에 없는 사실 생성 금지
+- Evidence 없는 Knowledge 생성 금지
+- 빈 배열 허용
+- 원문 certainty를 높이지 않음
+- 댓글 sequence를 시간 흐름으로 읽음
+- 후속 결과가 초기 가설을 뒤집으면 반영
+- Finding / Decision / Outcome / Open Item을 구분
+- 선택 이유를 이해하는 데 필요한 trade-off 보존
+- 첨부 본문이 없으면 상상하지 않음
+
+모델 결정:
+
+```text
+Pro Worker + Pro Reviewer
+```
+
+MAX는 일부 복잡한 사례에서 더 섬세했지만 처리 시간이 10배 이상 느려 검색용 의미 압축 목적에서는 제외했습니다.
 
 ---
 
-## 6. source_hash의 역할
+## 7. [REVIEW] 계층과 Quality Loop
 
-각 KNOWLEDGE INPUT 패키지는 의미 데이터 기반 SHA-256을 가집니다.
+Review 경로:
 
 ```text
-source_hash = SHA256(
-    issue
-  + comments
-  + attachments
-  + relationships
-  + custom_fields
-)
+data/knowledge/runs/<run_id>/reviews/
+<ISSUE_KEY>.review.attempt<N>.json
 ```
 
-다음 값은 hash에서 제외합니다.
+실행 구조:
 
 ```text
-generated_at
-source_path
-source_page
-PC 설치 경로
+Orchestrator
+    ↓
+Fresh Worker · Issue 1건
+    ↓
+Knowledge JSON
+    ↓
+Python Validator
+    ↓
+Fresh Defect Reviewer
+    ↓
+PASS / REGENERATE
+    ↓
+최대 3 Attempt
 ```
 
-향후 증분 처리:
+PASS:
 
 ```text
-기존 hash == 신규 hash
-→ OpenCode 재분석 불필요
+score >= 8.5
+AND critical_error == false
+AND major_issue_count == 0
+```
 
-기존 hash != 신규 hash
-→ Knowledge 재추출 필요
+Reviewer Audit:
+
+```text
+Fact Audit
+Causal Claim Audit
+Evidence Audit
+Classification Audit
+Missing Knowledge Audit
+Duplication / Low-value Audit
+```
+
+M3의 핵심은 **Context 격리**입니다.
+
+- Orchestrator는 본문을 읽지 않고 경로/상태만 관리
+- Worker/Reviewer는 Issue 한 건만 읽음
+- REGENERATE는 새 Worker Context에서 원본 + 이전 Review를 읽고 전체 Knowledge 재생성
+- 다음 Issue로 넘어가기 전에 현재 Issue를 종료
+- 구조 검증은 Python Validator
+- 다건 집계는 deterministic summarizer
+
+M4 실제 결과:
+
+```text
+30/30 final PASS
+1차 24
+2차 5
+3차 1
+재생성 6
+INPUT_ERROR 0
+REVIEW_REQUIRED 0
+Human Validation 5/5
 ```
 
 ---
 
-## 7. 개인정보 최소화 원칙
+## 8. M5 Profiling이 M6에 준 근거
 
-RAW에는 Jira가 반환한 사용자 객체 전체가 존재할 수 있습니다.
+M5는 Knowledge를 다시 생성하지 않고 실제 30건 산출물의 분포를 deterministic하게 측정했습니다.
 
-ANALYSIS부터는 검색·관계 연결에 필요한 값만 최소한으로 유지합니다.
+```text
+Knowledge Item               285
+Issue당 item mean            9.5
+Issue당 item p95            16.1
+Issue당 item max              19
+
+Statement p50                104 chars
+Statement p95              206.4 chars
+Statement max                447 chars
+
+Evidence Ref                 503
+Evidence / item mean        1.76
+Evidence / item max           13
+Comment Evidence           79.92%
+
+Review JSON                   37
+Final PASS                 30/30
+```
+
+M6 설계에 반영한 제약:
+
+1. Issue → Knowledge Item은 1:N
+2. Knowledge Item → Evidence는 1:N
+3. Comment round-trip이 가장 중요한 source path
+4. 6개 category를 별도 테이블로 남발하지 않음
+5. Empty category는 정상
+6. `issue_summary`와 fine-grained item 역할 차이를 보존
+7. 현재 p95/max를 DB hard limit로 사용하지 않음
+8. 모든 Review Attempt와 historical defect를 보존
+
+---
+
+## 9. M6 DB Logical Schema
+
+M6는 SQLite DDL 단계가 아닙니다.
+
+현재 논리 구조:
+
+```text
+Pipeline Run
+   │
+   ├── Issue Snapshot
+   │      ├── Comment
+   │      ├── Attachment
+   │      ├── Custom Field Value
+   │      └── Relationship
+   │
+   └── Knowledge Generation
+          ├── Knowledge Item
+          │      └── Knowledge Evidence
+          └── Knowledge Review
+                 └── Review Finding
+```
+
+주요 Entity:
+
+```text
+pipeline_run
+issue
+issue_snapshot
+comment
+attachment
+relationship
+custom_field_catalog
+custom_field_value
+
+knowledge_generation
+knowledge_item
+knowledge_evidence
+
+knowledge_review
+review_finding
+```
+
+핵심 Cardinality:
+
+```text
+pipeline_run          1 ── N issue_snapshot
+issue                 1 ── N issue_snapshot
+issue                 1 ── N knowledge_generation
+knowledge_generation  1 ── N knowledge_item
+knowledge_item        1 ── N knowledge_evidence
+knowledge_generation  1 ── N knowledge_review
+knowledge_review      1 ── N review_finding
+```
+
+ID 원칙:
+
+- Jira/source가 이미 제공하는 ID는 authoritative source identity로 유지
+- DB surrogate key는 내부 저장 최적화용
+- Knowledge Generation/Item은 deterministic logical ID 사용
+- FAISS vector position은 Knowledge identity가 아님
+
+상세 문서:
+
+```text
+docs/DB_LOGICAL_SCHEMA.md
+```
+
+---
+
+## 10. Evidence round-trip 계약
 
 예:
 
 ```text
-유지 가능:
-displayName
-name / key
-
-기본 제외:
-emailAddress
-avatarUrls
-self
-timeZone
-전체 user object
+Knowledge Item
+    ↓
+evidence_ref = comment:5001
+    ↓
+knowledge_evidence
+    ↓
+type = comment
+source_run_id + source_issue_key + source_entity_key
+    ↓
+comment(run_id, issue_key, comment_id)
+    ↓
+source_path
+    ↓
+RAW comments/page_*.json
 ```
 
-KNOWLEDGE INPUT은 RAW를 다시 읽지 않기 때문에 ANALYSIS에서 제거한 개인정보가 다시 복원되지 않습니다.
+Type별 resolver:
+
+```text
+summary
+→ issue_snapshot.summary
+
+description
+→ issue_snapshot.description
+
+comment:<id>
+→ comment
+
+attachment:<id>
+→ attachment
+
+relationship:<id>
+→ relationship
+
+custom_field:<id>
+→ custom_field_value
+```
+
+M6 Gate에서는 이 6개 경로를 모두 표현할 수 있어야 합니다.
 
 ---
 
-## 8. 오류와 완료 표식
-
-### ANALYSIS
+## 11. 현재 안정 경계
 
 ```text
-summary.json
-parse_warnings.jsonl
+RAW
+ ↓
+ANALYSIS
+ ↓
+KNOWLEDGE INPUT
+ ─────────────── deterministic source boundary
+ ↓
+KNOWLEDGE
+ ↓
+Validator / Review / Profiling
+ ↓
+M6 Logical DB
 ```
 
-### KNOWLEDGE INPUT
+오류 분리:
 
 ```text
-manifest.json
-package_warnings.jsonl
+RAW/ANALYSIS/KNOWLEDGE INPUT 오류
+→ Collector / Parser / Join 문제
+
+KNOWLEDGE 의미 오류
+→ Skill / Worker / Reviewer 문제
+
+Evidence Resolver / DB round-trip 오류
+→ Logical ID / Join / Materialization 문제
 ```
-
-`manifest.json`은 마지막에 작성합니다.
-
-빌드가 중간에 끊기면 manifest가 없으므로 완료된 run으로 오해하지 않습니다.
 
 ---
 
-## 9. 다음 개발 단계
+## 12. 보안과 개인정보
 
-다음 단계는 **OpenCode Agent Knowledge Extraction**입니다.
+- Jira는 읽기 전용
+- 실제 Raw/Analysis/Knowledge 데이터를 Git에 저장하지 않음
+- Password/API Key 하드코딩 금지
+- 로그에 Authorization/Cookie/전체 원문을 남기지 않음
+- ANALYSIS부터 개인정보 불필요 복제 최소화
+- M4 Knowledge Agent는 로컬 Knowledge Input만 사실 입력으로 사용
+- 외부 MCP 응답에 로컬 `source_path`를 직접 노출하지 않음
 
-권장 순서:
+---
+
+## 13. 현재와 다음 단계
+
+현재:
 
 ```text
-1. Knowledge Extraction 출력 스키마 정의
-2. Agent Prompt / Skill 계약 정의
-3. 대표 이슈 5건 파일럿
-4. 원문 대비 사람 검증
-5. Prompt / Schema 수정
-6. 30개 전체 재가공
-7. source_hash 기반 증분 재분석
-8. Knowledge JSONL 저장
-9. Data Profiling / Excel
-10. DB 스키마
-11. Chunk / Embedding / FAISS
-12. Retriever
-13. MCP
+M6 DB Logical Schema
 ```
 
-OpenCode Agent 단계에서 가장 중요한 원칙은 **추측과 확정 사실을 구분하고, 모든 지식 항목에 evidence를 연결하는 것**입니다.
+M6 Gate:
+
+```text
+Entity / Cardinality
+Source ID / Knowledge ID
+Evidence round-trip
+Review Attempt / Finding 보존
+Run / source_hash / version
+M7 구현 가능한 field contract
+```
+
+다음:
+
+```text
+M7 SQLite Materialization
+→ DDL
+→ Loader / Upsert
+→ Index / FK / UNIQUE
+→ Integrity / Evidence round-trip tests
+
+M8 Chunk + BGE-M3
+M9 FAISS + Retrieval
+M10 Evidence Builder + MCP
+```
+
+M10이 Functional MVP 완료선입니다.
