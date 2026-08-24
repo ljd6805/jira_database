@@ -1,11 +1,11 @@
 # M6 DB Logical Schema
 
-기준일: 2026-08-24  
-상태: **M6 CURRENT / Logical Design Draft v0.1**
+기준일: 2026-08-25  
+상태: **M6 CURRENT / Logical Design Draft v0.2**
 
 이 문서는 M5 실제 Profiling 결과를 바탕으로 Jira Knowledge DB의 논리 Entity, 관계, 식별자, 버전, Evidence round-trip 계약을 정의한다.
 
-> 문서 보존 원칙: M0~M5의 기존 입력·프롬프트·문제·해결·완료 기록은 삭제하지 않는다. M6는 기존 데이터 계약을 바꾸기보다 그 위에 DB 논리 모델을 얹는다.
+> 문서 보존 원칙: M0~M5의 기존 입력·프롬프트·문제·해결·완료 기록은 삭제하지 않는다. M6는 기존 데이터 계약을 바꾸기보다 그 위에 DB 논리 모델을 얹는다. M6 내부에서 초안이 변경된 경우에는 변경 전 아이디어와 변경 이유를 `docs/M6_DECISION_LOG.md`에 보존한다.
 
 ---
 
@@ -20,6 +20,7 @@ M7에서 물리 DB를 만들기 전에 다음 질문에 답한다.
 Knowledge가 어느 Issue/원문 Evidence에서 왔는가?
 Review Attempt를 어떻게 감사할 것인가?
 Run이 바뀌어도 재현성과 추적성을 어떻게 유지할 것인가?
+현재 Knowledge와 Historical Knowledge를 어떻게 분리할 것인가?
 ```
 
 M6 Gate가 통과한 뒤 M7에서 SQLite DDL, loader, index, FK/unique constraint를 구현한다.
@@ -57,6 +58,7 @@ M6 설계 제약:
 6. `issue_summary`는 Issue-level representation 성격을 가진다.
 7. statement 길이/개수의 현재 max를 DB 하드 상한으로 사용하지 않는다.
 8. Review Attempt와 historical defect 이력을 보존해야 한다.
+9. Historical Knowledge는 감사/재현 가치가 있지만 기본 Retrieval에 섞으면 노이즈가 될 수 있다.
 
 ---
 
@@ -116,38 +118,59 @@ DB는 이 산출물을 질의 가능한 형태로 materialize한다.
 
 ## 4. 전체 논리 구조
 
+M6-01에서 `Run마다 모든 Issue snapshot을 추가`하는 초안을 폐기하고, **의미가 변경될 때만 `issue_version`을 추가**하는 구조로 바꿨다.
+
 ```text
 Pipeline Run
    │
-   ├── Issue Snapshot
-   │      ├── Comment
-   │      ├── Attachment
-   │      ├── Custom Field Value
-   │      └── Relationship ────────┐
-   │                               │
-   └── Knowledge Generation       │
-          │                        │
-          ├── Knowledge Item       │
-          │      │                 │
-          │      └── Evidence ─────┘
-          │             ├── Issue.summary
-          │             ├── Issue.description
-          │             ├── Comment
-          │             ├── Attachment
-          │             ├── Relationship
-          │             └── Custom Field Value
+   └── Issue Version Observation ──────────────┐
+                                               │
+Issue                                          │
+   │                                           │
+   └── Issue Version ◀─────────────────────────┘
           │
-          └── Knowledge Review Attempt
-                  └── Review Finding
+          ├── source_run_id
+          ├── source_hash
+          │
+          └── Knowledge Generation
+                 │
+                 ├── Knowledge Item
+                 │      │
+                 │      └── Evidence
+                 │             ├── Issue.summary
+                 │             ├── Issue.description
+                 │             ├── Comment
+                 │             ├── Attachment
+                 │             ├── Relationship
+                 │             └── Custom Field Value
+                 │
+                 └── Knowledge Review Attempt
+                        └── Review Finding
 ```
 
-핵심은:
+원본 Entity는 여전히 ANALYSIS Run에서 추적한다.
+
+```text
+source_run_id
+├── Comment
+├── Attachment
+├── Relationship
+└── Custom Field Value
+```
+
+핵심은 두 가지다.
 
 ```text
 Knowledge → Evidence → ANALYSIS/RAW
 ```
 
-round-trip을 잃지 않는 것이다.
+round-trip을 잃지 않는 것과:
+
+```text
+History Storage ≠ Active Retrieval Corpus
+```
+
+를 명확히 분리하는 것이다.
 
 ---
 
@@ -155,7 +178,7 @@ round-trip을 잃지 않는 것이다.
 
 ### 5.1 `pipeline_run`
 
-한 번의 수집/분석 snapshot 범위를 나타낸다.
+한 번의 수집/분석 관찰 범위를 나타낸다.
 
 핵심 속성:
 
@@ -167,7 +190,15 @@ analysis_schema_version
 knowledge_input_schema_version
 ```
 
-M7에서 모든 source Entity는 가능한 경우 `run_id`로 scope한다.
+중요:
+
+```text
+Pipeline Run 생성
+≠
+모든 Issue Version 생성
+```
+
+Run은 관찰 시점이고 Version은 의미 변경 단위다.
 
 ### 5.2 `issue`
 
@@ -181,15 +212,17 @@ project_key
 
 `issue_key`는 현재 시스템의 주요 cross-layer key다.
 
-Issue의 시점별 내용은 `issue_snapshot`으로 분리하는 것을 기본안으로 한다.
+Issue의 의미 변경 이력은 `issue_version`으로 분리한다.
 
-### 5.3 `issue_snapshot`
+### 5.3 `issue_version`
 
-특정 Run에서 관찰된 Issue 사실 값.
+**Knowledge Input의 의미 내용이 변경될 때만 생성되는 불변 Version**이다.
 
 ```text
-run_id                  FK → pipeline_run
+issue_version_id        logical stable ID
 issue_key               FK → issue
+source_hash              Knowledge Input semantic hash
+source_run_id            이 Version의 canonical source Run
 summary
 description
 description_format
@@ -200,18 +233,80 @@ created_at
 updated_at
 source_path
 
+UNIQUE(issue_key, source_hash)
+```
+
+Version 생성 규칙:
+
+```text
+latest source_hash == new source_hash
+→ 의미 변경 없음
+→ 새 issue_version 생성하지 않음
+→ 기존 Version 재사용
+
+latest source_hash != new source_hash
+→ 의미 변경
+→ 새 issue_version 생성
+```
+
+`source_hash`는 Knowledge Input의 다음 의미 데이터에 기반한다.
+
+```text
+issue
+comments
+attachments
+relationships
+custom_fields
+```
+
+따라서 Jira Issue core가 그대로라도 Comment/Relationship/Custom Field 등 OpenCode 입력 의미가 바뀌면 새 Issue Version으로 간주할 수 있다.
+
+왜 Version을 보존하는가:
+
+- 과거 Knowledge가 실제로 어떤 입력을 보고 생성됐는지 재현
+- 현재 Jira 내용으로 과거 Knowledge를 잘못 검증하는 문제 방지
+- source_hash 기반 증분 Knowledge Extraction
+- Skill/Schema/Model 변경 전후 비교
+- 감사와 temporal/history 분석
+
+#### v0.1 초안과의 차이
+
+v0.1에서는 `issue_snapshot(run_id, issue_key)`를 기본안으로 검토했다.
+M6-01 논의에서 변경 없는 Issue까지 Run마다 중복 복제하는 문제를 확인해 이 개념을 `issue_version`으로 대체했다.
+
+변경 이유와 당시 논의는 다음 문서에 보존한다.
+
+```text
+docs/M6_DECISION_LOG.md
+```
+
+### 5.4 `issue_version_observation`
+
+같은 Version을 여러 Run에서 관찰했음을 기록할 필요가 있을 때 사용하는 mapping이다.
+
+```text
+run_id                  FK → pipeline_run
+issue_key               FK → issue
+issue_version_id        FK → issue_version
+
 UNIQUE(run_id, issue_key)
 ```
 
-왜 `issue`와 분리하는가:
+예:
 
-- 향후 Incremental Sync에서 Issue 내용이 바뀔 수 있음
-- Evidence가 어느 Run의 원문을 가리켰는지 재현 가능해야 함
-- 현재 M7에서는 한 Run만 적재해도 구조를 바꿀 필요 없음
+```text
+Run A → ISSUE-100 → V1
+Run B → ISSUE-100 → V1   # 변경 없음, Version 재사용
+Run C → ISSUE-100 → V2   # 의미 변경
+```
 
-### 5.4 `comment`
+이 mapping은 Version 본문을 복제하지 않으면서 Run 추적성을 유지한다.
 
-특정 Run에서의 Jira Comment snapshot.
+M7은 단일 Run materialization부터 시작하므로 물리 테이블로 반드시 구현할지는 M7 DDL에서 판단한다. **논리적으로는 Run과 Version이 서로 다른 개념임을 고정한다.**
+
+### 5.5 `comment`
+
+특정 source Run에서 관찰된 Jira Comment다.
 
 ```text
 run_id
@@ -233,7 +328,10 @@ UNIQUE(run_id, issue_key, sequence)
 
 M5에서 Evidence의 79.92%가 Comment였으므로 핵심 원본 Entity다.
 
-### 5.5 `attachment`
+M7에서는 한 Run만 materialize하므로 현재 계약을 그대로 사용할 수 있다.
+향후 Comment 자체의 중복 저장 최적화/Versioning은 M11~M13 운영 단계에서 실제 필요가 확인될 때 검토한다.
+
+### 5.6 `attachment`
 
 현재는 metadata만 저장한다.
 
@@ -255,7 +353,7 @@ UNIQUE(run_id, attachment_id)
 
 Attachment binary/content를 현재 DB에 있다고 가정하지 않는다.
 
-### 5.6 `relationship`
+### 5.7 `relationship`
 
 canonical graph edge를 보존한다.
 
@@ -276,7 +374,7 @@ UNIQUE(run_id, relationship_id)
 방향은 기존 ANALYSIS 계약처럼 canonical source → target을 유지한다.
 `incoming/outgoing`은 질의 시 endpoint 기준으로 계산할 수 있다.
 
-### 5.7 `custom_field_catalog`
+### 5.8 `custom_field_catalog`
 
 Run에서 관찰한 Custom Field 정의.
 
@@ -292,7 +390,7 @@ schema_custom_id
 UNIQUE(run_id, field_id)
 ```
 
-### 5.8 `custom_field_value`
+### 5.9 `custom_field_value`
 
 Issue에 실제 값이 존재하는 Custom Field만 저장한다.
 
@@ -321,12 +419,13 @@ Custom Field마다 DB 컬럼을 추가하지 않는다.
 
 ### 6.1 `knowledge_generation`
 
-한 Issue의 Knowledge 최종 생성본에 대한 metadata다.
+한 Issue Version에 대해 생성된 Knowledge 결과 한 세대를 나타낸다.
 
 ```text
 knowledge_generation_id     logical stable ID
-run_id                      source snapshot Run
-issue_key
+issue_version_id            FK → issue_version
+issue_key                   query 편의를 위한 key
+source_run_id               Evidence를 복원할 canonical source Run
 source_hash                  Knowledge Input semantic hash
 knowledge_schema_version
 skill_version
@@ -335,21 +434,61 @@ final_attempt
 final_score
 final_verdict
 created_at
-
-UNIQUE(run_id, issue_key, source_hash, knowledge_schema_version, skill_version)
+active_state                 logical state; 물리 표현은 M7에서 결정
 ```
 
-`source_hash`는 Knowledge Input의 의미 데이터 hash를 재사용한다.
+기존 v0.1의 `run_id + issue_key` 중심 Generation보다 `issue_version_id` 중심으로 바꾼다.
 
-향후:
+원문 변경:
 
 ```text
-same source_hash + same extraction contract
-→ 기존 Knowledge 재사용 후보
-
-different source_hash
-→ 재생성 대상
+source_hash changed
+→ 새 issue_version
+→ 새 knowledge_generation
 ```
+
+원문은 같지만 extraction contract 변경:
+
+```text
+same issue_version
++ Skill / Knowledge Schema / Model Profile 변경
+→ 같은 Version에 새 knowledge_generation 가능
+```
+
+따라서:
+
+```text
+issue_version 1 ── N knowledge_generation
+```
+
+이다.
+
+#### Active / Historical
+
+DB에는 과거 Generation을 삭제하지 않는다.
+하지만 일반 RAG/FAISS 검색에는 승인된 현재 Generation만 노출한다.
+
+개념 상태:
+
+```text
+candidate
+active
+historical
+```
+
+새 Generation publish 흐름:
+
+```text
+새 Generation 생성
+→ Validator
+→ Reviewer
+→ PASS
+→ active로 전환
+→ 이전 active는 historical
+```
+
+M6에서는 `active_state`를 boolean, status column, 별도 pointer 중 어떤 물리 구조로 만들지는 아직 확정하지 않는다.
+M7에서 무결성을 가장 단순하게 보장할 수 있는 표현을 선택한다.
 
 ### 6.2 `knowledge_item`
 
@@ -429,24 +568,32 @@ custom_field:customfield_12345
 
 ### 7.2 Evidence type별 round-trip
 
+`summary`와 `description`은 Knowledge Generation이 연결된 `issue_version` 자체로 복원한다.
+
 ```text
 summary
-→ issue_snapshot(run_id, issue_key).summary
+→ knowledge_generation.issue_version_id
+→ issue_version.summary
 
 description
-→ issue_snapshot(run_id, issue_key).description
+→ knowledge_generation.issue_version_id
+→ issue_version.description
+```
 
+Run-scoped source Entity는 Generation의 `source_run_id`를 사용한다.
+
+```text
 comment:<comment_id>
-→ comment(run_id, issue_key, comment_id)
+→ comment(source_run_id, issue_key, comment_id)
 
 attachment:<attachment_id>
-→ attachment(run_id, attachment_id)
+→ attachment(source_run_id, attachment_id)
 
 relationship:<relationship_id>
-→ relationship(run_id, relationship_id)
+→ relationship(source_run_id, relationship_id)
 
 custom_field:<field_id>
-→ custom_field_value(run_id, issue_key, field_id)
+→ custom_field_value(source_run_id, issue_key, field_id)
 ```
 
 M6 Gate에서 최소한 이 6가지 경로가 모두 논리적으로 표현 가능해야 한다.
@@ -572,19 +719,23 @@ field_id
 SQLite에서 `INTEGER PRIMARY KEY`를 사용하더라도 그것은 storage optimization용이다.
 외부 API/MCP/Evidence/Vector mapping의 authoritative ID로 사용하지 않는다.
 
-### 9.3 Knowledge stable ID
+### 9.3 Version / Knowledge stable ID
 
-Knowledge에는 Jira가 제공하는 item ID가 없으므로 deterministic logical ID가 필요하다.
+Jira가 제공하지 않는 파생 Entity에는 deterministic logical ID가 필요하다.
 
-M6 기본 원칙:
+M6-01 이후 기본 개념:
 
 ```text
-knowledge_generation_id
+issue_version_id
 = deterministic hash/logical key(
     issue_key,
-    source_hash,
-    knowledge_schema_version,
-    skill_version
+    source_hash
+  )
+
+knowledge_generation_id
+= deterministic hash/logical key(
+    issue_version_id,
+    extraction contract
   )
 
 knowledge_item_id
@@ -596,7 +747,7 @@ knowledge_item_id
   )
 ```
 
-정확한 hash serialization/encoding은 M7 구현 전에 테스트로 고정한다.
+`extraction contract`의 정확한 canonical serialization은 **M6-02**에서 확정한다.
 
 ### 9.4 Vector ID 금지
 
@@ -621,33 +772,109 @@ package_schema_version
 knowledge_schema_version
 skill_version
 review schema version
+model profile / extraction contract
 ```
 
-향후 M11~M13에서 중요한 판단:
+M6-01의 핵심 판단:
 
 ```text
 source_hash unchanged
-→ Knowledge/Chunk/Embedding 재사용 가능 후보
+→ 새 issue_version 없음
+→ 기존 active Knowledge 재사용
+→ Knowledge/Chunk/Embedding/Vector 재생성 생략 후보
 
 source_hash changed
-→ Knowledge 이후 downstream invalidation
+→ 새 issue_version
+→ 새 Knowledge Generation
+→ downstream invalidation
+```
+
+원문은 같아도 extraction contract가 바뀌면:
+
+```text
+same issue_version
+→ new knowledge_generation 가능
 ```
 
 M6에서는 lifecycle 알고리즘을 구현하지 않지만 DB가 이 판단에 필요한 정보를 잃지 않게 한다.
 
 ---
 
-## 11. 삭제/재실행/현재값 원칙
+## 11. History / Active / 재실행 원칙
+
+### 11.1 History는 삭제하지 않는다
+
+과거 `issue_version`, `knowledge_generation`, Review 이력은 감사와 재현을 위해 보존한다.
+
+```text
+Issue
+├── V1 → G1 historical
+├── V2 → G2 historical
+└── V3 → G3 active
+```
+
+과거 Version을 보존하는 이유:
+
+- 당시 Knowledge와 Evidence 재현
+- 원인/판단 변화 과정 분석
+- Skill/Schema/Model 변경 전후 비교
+- LLM 품질 디버깅
+- temporal/history query
+
+### 11.2 기본 Retrieval은 Active만 사용한다
+
+Historical Knowledge를 기본 Vector corpus에 함께 넣지 않는다.
+
+```text
+[DB]
+Current + Historical 모두 보존
+
+[기본 RAG / FAISS]
+active Knowledge만 포함
+
+[History Retrieval]
+명시적인 감사/변화 분석/temporal query에서만 historical 포함
+```
+
+이 원칙은 M8/M9에 넘기는 설계 제약이다.
+
+개념적 Retriever:
+
+```text
+search_current(...)
+→ active Knowledge만
+
+search_history(...)
+→ historical Version/Knowledge 포함 가능
+```
+
+### 11.3 새 Knowledge publish
+
+새 Generation이 생성됐다는 이유만으로 즉시 current를 교체하지 않는다.
+
+```text
+candidate 생성
+→ Validator / Reviewer
+→ PASS
+→ active publish
+→ previous active → historical
+```
+
+이후 M14 atomic publish / rollback 설계와 연결된다.
+
+### 11.4 M7 범위
 
 M7 Functional MVP에서는 지정 Run 하나를 DB로 materialize한다.
 
 그러나 Logical Schema는 다음을 막지 않아야 한다.
 
-- 같은 Issue의 새로운 Run snapshot 추가
+- 같은 Issue의 새로운 Version 추가
+- 변경 없는 Run에서 기존 Version 재사용
 - Comment 수정본/새 댓글 반영
 - Knowledge source_hash 변경
-- 새로운 Knowledge generation
-- 이전 generation의 Review audit 보존
+- 같은 Version에 새로운 Knowledge Generation 추가
+- 이전 Generation의 Review audit 보존
+- active/historical 전환
 
 초기 구현 편의를 이유로 `issue_key` 하나에 과거/현재 데이터를 덮어써서 감사 정보를 잃지 않는다.
 
@@ -656,21 +883,25 @@ M7 Functional MVP에서는 지정 Run 하나를 DB로 materialize한다.
 ## 12. 주요 Cardinality
 
 ```text
-pipeline_run       1 ── N issue_snapshot
-issue              1 ── N issue_snapshot
-issue_snapshot     1 ── N comment
-issue_snapshot     1 ── N attachment
-issue_snapshot     1 ── N custom_field_value
-pipeline_run       1 ── N relationship
+pipeline_run             1 ── N issue_version_observation
+issue                    1 ── N issue_version
+issue_version            1 ── N issue_version_observation
+issue_version            1 ── N knowledge_generation
 
-issue              1 ── N knowledge_generation
-knowledge_generation 1 ── N knowledge_item
-knowledge_item     1 ── N knowledge_evidence
-knowledge_generation 1 ── N knowledge_review
-knowledge_review   1 ── N review_finding
+pipeline_run             1 ── N comment
+pipeline_run             1 ── N attachment
+pipeline_run             1 ── N custom_field_value
+pipeline_run             1 ── N relationship
+
+knowledge_generation     1 ── N knowledge_item
+knowledge_item           1 ── N knowledge_evidence
+knowledge_generation     1 ── N knowledge_review
+knowledge_review         1 ── N review_finding
 ```
 
 `relationship`은 source/target 양쪽 `issue_key`를 가진 graph edge다.
+
+`issue_version_observation`은 Run과 Version의 관찰 관계를 표현하지만 M7에서 별도 물리 테이블로 구현할지는 아직 미정이다.
 
 ---
 
@@ -683,9 +914,11 @@ knowledge_review   1 ── N review_finding
 - Embedding table 확정
 - FAISS index 설계
 - 검색 ranking 정책 확정
+- Historical Knowledge를 기본 검색에 섞기
 - current 30건의 max 길이를 컬럼 hard limit로 사용
 - Custom Field마다 컬럼 추가
 - Evidence를 JSON 문자열 하나로 묻고 round-trip을 포기
+- 변경 없는 Issue의 Version을 Run마다 강제로 복제
 
 ---
 
@@ -693,11 +926,11 @@ knowledge_review   1 ── N review_finding
 
 Logical Schema는 최소 다음 질의를 표현할 수 있어야 한다.
 
-### A. Issue → Knowledge
+### A. Issue → Current Knowledge
 
 ```text
 Issue Key
-→ 최종 Knowledge Generation
+→ active Knowledge Generation
 → issue_summary + fine-grained items
 ```
 
@@ -706,6 +939,7 @@ Issue Key
 ```text
 Knowledge Item
 → evidence_ref=comment:<id>
+→ knowledge_generation.source_run_id
 → Comment body/author/sequence
 → RAW source_path
 ```
@@ -714,9 +948,10 @@ Knowledge Item
 
 ```text
 Knowledge Item
-→ evidence_ref=description
-→ Issue Snapshot description
-→ RAW source_path
+→ Knowledge Generation
+→ Issue Version
+→ description
+→ source_run_id / RAW source_path
 ```
 
 ### D. Relationship Evidence
@@ -724,6 +959,7 @@ Knowledge Item
 ```text
 Knowledge Item
 → relationship:<id>
+→ source_run_id
 → canonical source/target edge
 ```
 
@@ -731,6 +967,7 @@ Knowledge Item
 
 ```text
 Issue
+→ Issue Version
 → Knowledge Generation
 → Attempt 1..N
 → Critical/Major/Audit findings
@@ -740,19 +977,59 @@ Issue
 ### F. 변경 판단
 
 ```text
-Issue A old source_hash
+Issue A latest source_hash
 vs
 Issue A new source_hash
-→ same / changed
+
+same
+→ Version 재사용
+
+different
+→ 새 Version
+```
+
+### G. 같은 Version 재분석
+
+```text
+Issue Version V1
+├── Generation G1 · old extraction contract
+└── Generation G2 · new extraction contract
+```
+
+### H. Current vs History Retrieval
+
+```text
+일반 질문
+→ active Generation only
+
+"판단이 어떻게 변했나?"
+→ historical Generation 포함
 ```
 
 ---
 
 ## 15. 현재 결정과 열린 항목
 
-### 현재 기본안
+### M6-01 · 확정
 
-- Issue identity와 Run snapshot 분리
+- `issue`는 Jira Issue의 안정적인 identity다.
+- Run마다 모든 Issue snapshot을 복제하지 않는다.
+- `source_hash`가 바뀔 때만 새 `issue_version`을 만든다.
+- 변경 없는 Issue는 기존 Version과 active Knowledge를 재사용한다.
+- 같은 `issue_version`에 여러 `knowledge_generation`이 존재할 수 있다.
+- Historical Version/Knowledge는 DB에 보존한다.
+- 기본 RAG/FAISS corpus에는 active Current Knowledge만 포함한다.
+- History는 감사/재현/변화 분석/temporal query 용도로 분리한다.
+- 새 Knowledge는 PASS 후 active로 publish하고 이전 Generation은 historical로 보존한다.
+
+상세 의사결정 이력:
+
+```text
+docs/M6_DECISION_LOG.md
+```
+
+### 기존 기본안 중 유지
+
 - Knowledge 6 category는 generic `knowledge_item` 한 table
 - `issue_summary`도 category=`issue_summary`로 같은 table에 저장
 - Evidence는 별도 1:N Entity
@@ -763,12 +1040,12 @@ Issue A new source_hash
 
 ### M6에서 추가 검토할 항목
 
-1. `issue` + `issue_snapshot` 분리의 M7 구현 비용이 현재 MVP에 적절한가
-2. `knowledge_generation_id` deterministic hash의 canonical serialization
-3. `custom_field_value`의 array 값을 JSON text로 둘지 child table로 더 normalize할지
-4. Review category score를 column으로 둘지 child key/value table로 둘지
-5. Evidence integrity를 SQLite FK 대신 validator로 어디까지 보장할지
-6. DB가 여러 Run을 동시에 저장할지, M7은 단일 Run materialization으로 시작할지
+1. **M6-02** `issue_version_id` / `knowledge_generation_id` deterministic hash의 canonical serialization
+2. `custom_field_value`의 array 값을 JSON text로 둘지 child table로 더 normalize할지
+3. Review category score를 column으로 둘지 child key/value table로 둘지
+4. Evidence integrity를 SQLite FK 대신 validator로 어디까지 보장할지
+5. M7은 단일 Run materialization으로 시작하되 `issue_version_observation`을 물리화할지
+6. active Knowledge 표현을 status/boolean/pointer 중 무엇으로 구현할지
 
 ---
 
@@ -781,7 +1058,8 @@ M6 완료 조건:
 - [ ] 6개 Evidence type round-trip 표현 가능
 - [ ] Issue → Knowledge → Evidence → source query path 명확
 - [ ] Review Attempt/Defect audit 보존 방식 합의
-- [ ] Run/source_hash/version 추적 방식 합의
+- [x] Issue identity / Version 생성 원칙 합의 · **M6-01**
+- [x] History 보존 / Active Retrieval 분리 원칙 합의 · **M6-01**
 - [ ] M7에서 구현 가능한 수준으로 logical field contract 확정
 - [ ] 과도한 정규화/미래 기능 과설계를 제거
 
