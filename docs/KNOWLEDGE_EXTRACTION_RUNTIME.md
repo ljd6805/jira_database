@@ -24,7 +24,8 @@
 
 tools/
 └─ jira_knowledge/
-   └─ validate_knowledge.py
+   ├─ validate_knowledge.py
+   └─ summarize_knowledge_run.py
 ```
 
 ## 2. 데이터 계층
@@ -98,6 +99,7 @@ Orchestrator
   → glob/list
   → jira-knowledge-worker task
   → jira-knowledge-reviewer task
+  → summarize_knowledge_run.py 실행만 bash 허용
 
 Worker
   default deny
@@ -152,6 +154,7 @@ Jira Knowledge Orchestrator
 - Gold/expected/test metadata를 사용하지 않는다.
 - Jira 웹/API/MCP/Connector에 접근하지 않는다.
 - Input 파일이 없으면 외부 재수집 없이 `INPUT_ERROR`로 종료한다.
+- 최종 통계를 직접 세지 않고 `summarize_knowledge_run.py` 결과만 보고한다.
 
 ### Worker
 
@@ -209,7 +212,49 @@ Critical >= 1 → score <= 7.9
 Major >= 1    → score <= 8.4
 ```
 
-## 8. M4 실행 전 확인
+## 8. 결정론적 Run 집계
+
+30건처럼 여러 Issue를 처리한 뒤에는 LLM이 대화 이력을 보고 통계를 직접 계산하지 않는다.
+모든 Issue 처리가 끝난 뒤 Orchestrator가 다음 로컬 도구를 실행한다.
+
+```bash
+python tools/jira_knowledge/summarize_knowledge_run.py \
+  <KNOWLEDGE_INPUT_DIR> \
+  <KNOWLEDGE_OUTPUT_DIR> \
+  <KNOWLEDGE_REVIEW_DIR>
+```
+
+집계 기준:
+
+```text
+1차/2차/3차 PASS
+= 최종 PASS가 된 attempt 번호
+
+재생성 발생 Issue
+= 최종 attempt >= 2
+
+Critical 발생 Issue
+= 어느 attempt에서든 critical_error=true 또는 critical_issues가 존재
+
+Major 발생 Issue
+= 어느 attempt에서든 major_issue_count>0 또는 major_issues가 존재
+```
+
+Critical/Major는 최종 상태가 아니라 해당 Run의 결함 이력이다.
+초기 Attempt에서 결함이 발생했지만 재생성으로 수정되어 최종 PASS한 경우에도 발생 Issue에 포함한다.
+
+집계 도구는 다음도 함께 확인한다.
+
+- 입력 Issue 수
+- 최종 Knowledge 파일 존재 여부
+- Review JSON 파싱 오류
+- 중복 issue_key
+- 미완료 Issue
+- `1차 PASS + 2차 PASS + 3차 PASS + REVIEW_REQUIRED + INCOMPLETE == 처리 대상` 정합성
+
+`accounting_consistent=false`, 중복 키, Review 파싱 오류 또는 미완료가 있으면 Orchestrator는 숫자를 추정하지 않고 `REPORT_ERROR`로 보고한다.
+
+## 9. M4 실행 전 확인
 
 - [ ] 실제 Jira Knowledge Input run을 확인한다.
 - [ ] `manifest.status == completed`인지 확인한다.
@@ -219,9 +264,9 @@ Major >= 1    → score <= 8.4
 - [ ] Agent가 `"*": deny` 기본 정책과 local-only 경계를 적용하고 있다.
 - [ ] 실제 출력 경로를 합성 테스트 결과와 분리한다.
 - [ ] 실제 Jira 1건으로 Worker → Validator → Reviewer E2E를 먼저 확인한다.
-- [ ] 1건 통과 후 5건, 그 다음 30건으로 확장한다.
+- [ ] 실제 Run 최종 보고는 deterministic summarizer 결과를 사용한다.
 
-## 9. 금지사항
+## 10. 금지사항
 
 - Orchestrator가 Jira/Knowledge 본문을 직접 읽지 않는다.
 - 한 Context에 30개 Issue 본문을 모두 적재하지 않는다.
@@ -231,3 +276,4 @@ Major >= 1    → score <= 8.4
 - 실제 Jira와 합성 테스트 출력 경로를 섞지 않는다.
 - Jira 웹/API/MCP/Connector를 Knowledge Extraction 단계에서 다시 사용하지 않는다.
 - 입력이 없다고 외부 Jira에서 재수집하지 않는다.
+- 최종 Run 통계를 LLM이 직접 다시 세거나 추정하지 않는다.
