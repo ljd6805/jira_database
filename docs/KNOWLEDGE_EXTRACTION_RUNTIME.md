@@ -4,6 +4,8 @@
 
 M4의 목적은 이미 로컬에 고정된 `[KNOWLEDGE INPUT]`에서 검색용 `[KNOWLEDGE]`를 생성하고, Validator / Defect Reviewer / Human Validation으로 품질을 확인하는 것이다. **M4는 Jira 수집 단계가 아니다.**
 
+> 문서 보존 원칙: 단계가 진행되더라도 기존 내용이 틀린 것이 아니라면 삭제하지 않는다. 당시의 입력, 프롬프트, 문제, 해결 방법, 판단 기준은 해당 Milestone의 산출물로 남긴다. 현재 상태만 갱신하고, 완료 시점의 기록은 별도 Completion Record로 누적한다.
+
 ## 1. 현재 상태
 
 기준 Run:
@@ -20,14 +22,25 @@ M4의 목적은 이미 로컬에 고정된 `[KNOWLEDGE INPUT]`에서 검색용 `
 - 실제 30건 Knowledge 생성 완료
 - Issue별 Worker → Validator → Defect Reviewer 순차 Loop 실행 완료
 - 최종 Issue 상태 30/30 PASS
-- REVIEW_REQUIRED / INPUT_ERROR 없음
+- deterministic summarizer 기준 `first_pass=24`, `second_pass=5`, `third_pass=1`
+- deterministic summarizer 기준 재생성 Issue 6건
+- `INPUT_ERROR = 0`
+- `REVIEW_REQUIRED = 0`
+- `INCOMPLETE = 0`
 - 초기 LLM 최종 보고에서 재생성/Critical/Major 집계 불일치 발견
 - 집계를 `summarize_knowledge_run.py`의 deterministic 계산으로 교체
-- Human Validation 진행 중
-- 대표 1건 수동 확인에서 검색 의미를 해치는 품질 문제는 발견되지 않음
-- M4 Gate는 Human Validation 총 5건 확인 후 판정
+- Human Validation 5/5 완료
+- Human Validation 5건에서 검색 의미를 해치는 품질 문제 발견되지 않음
+- **M4 Gate PASS / DONE**
+- 현재 단계: **M5 · Knowledge / Review Profiling**
 
-초기 LLM 보고의 세부 집계 수치는 내부 정합성 문제가 있었으므로 **정식 통계로 사용하지 않는다.** 기존 Knowledge/Review 산출물은 다시 생성할 필요가 없으며 deterministic summarizer로 다시 계산한다.
+초기 LLM 보고의 세부 집계 수치는 내부 정합성 문제가 있었으므로 **정식 통계로 사용하지 않는다.** 기존 Knowledge/Review 산출물은 다시 생성할 필요가 없으며 deterministic summarizer 결과를 정식 집계로 사용한다.
+
+M4 완료 시점의 고정 기록은 다음 문서를 참조한다.
+
+```text
+docs/status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.md
+```
 
 ## 2. 설치 위치
 
@@ -277,6 +290,24 @@ Critical/Major는 최종 상태가 아니라 Run의 결함 이력이다. 초기 
 
 따라서 의미 판단은 LLM에 남기고 단순 집계는 deterministic code로 이동했다.
 
+### 실제 M4 최종 집계
+
+```text
+target_issue_count      = 30
+input_error_count       = 0
+first_pass_count        = 24
+second_pass_count       = 5
+third_pass_count        = 1
+review_required_count   = 0
+incomplete_count        = 0
+regenerated_issue_count = 6
+```
+
+```text
+24 + 5 + 1 = 30
+2차 PASS 5 + 3차 PASS 1 = 재생성 Issue 6
+```
+
 ## 9. `.gitignore`와 OpenCode 파일 탐색
 
 실제 Jira 데이터는 Git에 올리지 않기 위해 `.gitignore`에서 `data/` 전체를 제외한다.
@@ -424,24 +455,42 @@ python tools/jira_knowledge/summarize_knowledge_run.py `
 
 모든 배열을 강제로 채우면 중복이나 hallucination을 유발할 수 있으므로 **필드 채움률 자체를 품질 목표로 사용하지 않는다.**
 
+### 실제 M4 Human Validation 결과
+
+```text
+검토 대상: 5건
+완료: 5/5
+검색 의미를 해치는 품질 문제: 발견되지 않음
+```
+
 ## 12. M4 Gate
 
 M4 완료 조건:
 
-- 실제 Jira 30건 Knowledge 생성 완료
-- Review Loop 완료
-- deterministic Run 집계 정합성 확인
-- 대표 5건 Human Validation 완료
-- 반복적 사실 반전 또는 검색 의미를 바꾸는 심각한 인과 왜곡 없음
-- 중요한 지식 누락이 반복적으로 나타나지 않음
-- evidence_refs로 원문 위치 추적 가능
-- Knowledge가 검색용 의미 압축으로 충분함
+- [x] 실제 Jira 30건 Knowledge 생성 완료
+- [x] Review Loop 완료
+- [x] deterministic Run 집계 정합성 확인
+- [x] 대표 5건 Human Validation 완료
+- [x] 반복적 사실 반전 또는 검색 의미를 바꾸는 심각한 인과 왜곡 없음
+- [x] 중요한 지식 누락이 반복적으로 나타나지 않음
+- [x] evidence_refs로 원문 위치 추적 가능
+- [x] Knowledge가 검색용 의미 압축으로 충분함
 
-M4 Gate 통과 후 M5 Knowledge/Review Profiling으로 이동한다.
+## **M4 Gate: PASS / DONE**
+
+M4 완료 산출물:
+
+```text
+docs/status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.md
+```
+
+M4 완료 후 **M5 Knowledge / Review Profiling**으로 이동한다.
 
 M5에서는 실제 결과를 대상으로 Issue당 item 수, category별 item 수, statement 길이 p50/p95/max, evidence 수, empty array 비율, Review attempt/Critical/Major 분포와 이상치를 측정한다. DB Schema와 Chunk 정책은 이 실제 분포를 본 뒤 결정한다.
 
 ## 13. M4 실행 전 체크리스트
+
+이 체크리스트는 M4 재현/재실행을 위한 기록으로 유지한다.
 
 - [ ] 프로젝트 루트에서 OpenCode를 시작한다.
 - [ ] Knowledge Input Run ID를 확인한다.
