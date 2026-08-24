@@ -14,7 +14,7 @@ M4의 목적은 이미 로컬에 고정된 `[KNOWLEDGE INPUT]`에서 검색용 `
 20260804T043628Z
 ```
 
-현재까지 확인된 상태:
+M4 완료 시점에 확인된 상태:
 
 - `[KNOWLEDGE INPUT]` 실제 Jira Issue package 30건 준비 완료
 - `manifest.status == completed`
@@ -32,7 +32,13 @@ M4의 목적은 이미 로컬에 고정된 `[KNOWLEDGE INPUT]`에서 검색용 `
 - Human Validation 5/5 완료
 - Human Validation 5건에서 검색 의미를 해치는 품질 문제 발견되지 않음
 - **M4 Gate PASS / DONE**
-- 현재 단계: **M5 · Knowledge / Review Profiling**
+
+프로젝트 최신 위치:
+
+- **M5 · Knowledge / Review Profiling: PASS / DONE**
+- **현재 단계: M6 · DB Logical Schema**
+
+M5 완료 결과는 `docs/status/M5_KNOWLEDGE_PROFILING_COMPLETION.md`, 현재 DB 논리 설계는 `docs/DB_LOGICAL_SCHEMA.md`를 기준으로 한다.
 
 초기 LLM 보고의 세부 집계 수치는 내부 정합성 문제가 있었으므로 **정식 통계로 사용하지 않는다.** 기존 Knowledge/Review 산출물은 다시 생성할 필요가 없으며 deterministic summarizer 결과를 정식 집계로 사용한다.
 
@@ -484,9 +490,9 @@ M4 완료 산출물:
 docs/status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.md
 ```
 
-M4 완료 후 **M5 Knowledge / Review Profiling**으로 이동한다.
+M4 완료 후 **M5 Knowledge / Review Profiling**으로 이동했다. M5는 이후 완료되었으며, 실제 결과 분포는 `docs/status/M5_KNOWLEDGE_PROFILING_COMPLETION.md`에 보존한다.
 
-M5에서는 실제 결과를 대상으로 Issue당 item 수, category별 item 수, statement 길이 p50/p95/max, evidence 수, empty array 비율, Review attempt/Critical/Major 분포와 이상치를 측정한다. DB Schema와 Chunk 정책은 이 실제 분포를 본 뒤 결정한다.
+M5에서는 실제 결과를 대상으로 Issue당 item 수, category별 item 수, statement 길이 p50/p95/max, evidence 수, empty array 비율, Review attempt/Critical/Major 분포와 이상치를 측정했다. 이 결과를 근거로 현재 M6 DB Logical Schema를 설계한다.
 
 ## 13. M4 실행 전 체크리스트
 
