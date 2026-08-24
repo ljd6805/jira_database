@@ -10,7 +10,7 @@
 <section class="hero"><h1>Jira Knowledge Pipeline</h1><p>프로젝트의 문서 진입점입니다. 현재 상태, 데이터 구조, Milestone별 결정·구현·검증 산출물과 현재 단계의 실행 계약을 누적 관리합니다.</p></section>
 <section class="cards">
 <article class="card"><span class="tag">STATUS / ROADMAP</span><h2>현재 상태와 향후 계획</h2><p>현재 구현 범위, 실환경 검증 결과, 데이터 계층, Knowledge/RAG/MCP 로드맵을 종합합니다. M5 Profiling을 완료했고 현재 단계는 M6 DB Logical Schema입니다.</p><a href="status/jira_knowledge_db_current_status.html">문서 열기 →</a></article>
-<article class="card"><span class="tag">ARCHITECTURE MAP</span><h2>Jira 데이터 관계 맵</h2><p>Issue, Comment, Attachment, Relationship, Hierarchy, Custom Field, Knowledge Input의 연결 구조를 시각화합니다.</p><a href="architecture/jira_data_relationship_map.html">맵 열기 →</a></article>
+<article class="card"><span class="tag">ARCHITECTURE MAP · M6</span><h2>Jira Knowledge 관계 맵</h2><p>Source Entity부터 Knowledge, Evidence, Review, Evidence round-trip, M0~M10 진행 흐름과 현재 M6 DB Logical Schema까지 최신 구조를 시각화합니다.</p><a href="architecture/jira_data_relationship_map.html">맵 열기 →</a></article>
 <article class="card"><span class="tag">M0 COMPLETION</span><h2>M0 Jira Collection / Analysis 완료 기록</h2><p>초기 commit부터 Collector, 20 req/min, Atomic Raw, SQLite checkpoint, 전체 Comment 수집, Parser/Structure Export와 실제 파일럿 검증까지 as-built 결정과 구현을 복원합니다.</p><a href="status/M0_JIRA_COLLECTION_ANALYSIS_COMPLETION.md">M0 완료 기록 →</a></article>
 <article class="card"><span class="tag">M1 COMPLETION</span><h2>M1 Knowledge Input 완료 기록</h2><p>ANALYSIS completion gate, Issue 단위 package, canonical Relationship view, portable source path, semantic source_hash, manifest 완료 표식과 30건 검증을 보존합니다.</p><a href="status/M1_KNOWLEDGE_INPUT_COMPLETION.md">M1 완료 기록 →</a></article>
 <article class="card"><span class="tag">M2 COMPLETION</span><h2>M2 Knowledge Schema / Skill 완료 기록</h2><p>Light Structured Schema v0.1, Evidence 계약, certainty preservation, trade-off 보존, Pro/MAX 비교와 Skill v0.9 결정 및 저장소 history gap을 명시합니다.</p><a href="status/M2_KNOWLEDGE_SCHEMA_SKILL_COMPLETION.md">M2 완료 기록 →</a></article>
@@ -20,6 +20,6 @@
 <article class="card"><span class="tag">M5 SPEC</span><h2>M5 Profiling Metric Contract</h2><p>item, statement 길이, empty array, Evidence, Review 이력, Outlier를 deterministic하게 측정한 기준과 실행법입니다.</p><a href="KNOWLEDGE_PROFILING_SPEC.md">M5 Spec →</a></article>
 <article class="card"><span class="tag">M6 CURRENT</span><h2>M6 DB Logical Schema</h2><p>M5 실제 분포를 근거로 Issue/Snapshot/Knowledge Item/Evidence/Review의 논리 Entity, ID, 버전, round-trip 계약을 설계합니다.</p><a href="DB_LOGICAL_SCHEMA.md">M6 설계 문서 →</a></article>
 </section>
-<div class="note"><b>문서 보존 원칙:</b> 문제를 해결하거나 다음 단계로 이동해도 기존 내용이 틀린 것이 아니라면 삭제하지 않습니다. 당시의 입력·프롬프트·문제·해결·판단·결과는 Milestone별 산출물로 누적 보존하고, 현재 상태 문서는 최신 진행 위치만 갱신합니다. M0~M3 완료 기록은 구현 후 복원 문서이므로 Git commit과 기존 명세가 직접 지지하는 내용만 확정 사실로 기록합니다.</div>
+<div class="note"><b>문서 보존 원칙:</b> 문제를 해결하거나 다음 단계로 이동해도 기존 내용이 틀린 것이 아니라면 삭제하지 않습니다. 당시의 입력·프롬프트·문제·해결·판단·결과는 Milestone별 산출물로 누적 보존하고, README·Pipeline Overview·현재 상태·관계 맵처럼 전역 관점 문서는 최신 진행 위치를 유지합니다. M0~M3 완료 기록은 구현 후 복원 문서이므로 Git commit과 기존 명세가 직접 지지하는 내용만 확정 사실로 기록합니다.</div>
 <div class="footer">docs/index.html · local documentation index · Current: M6 DB Logical Schema</div>
 </main></body></html>
