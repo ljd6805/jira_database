@@ -1,6 +1,6 @@
 # Jira Knowledge Pipeline 전체 아키텍처
 
-기준일: 2026-08-24  
+기준일: 2026-08-25  
 현재 단계: **M6 · DB Logical Schema**
 
 ## 1. 문서 목적
@@ -16,10 +16,10 @@ M2  Knowledge Schema · Skill           DONE
 M3  Quality Loop                       DONE
 M4  실제 Jira Knowledge Pilot          DONE
 M5  Knowledge / Review Profiling       DONE
-M6  DB Logical Schema                  CURRENT
+M6  DB Logical Schema                  CURRENT · M6-01 DECIDED
 M7  SQLite Materialization             NEXT
 M8  Chunk · BGE-M3
-M9  FAISS · Retrieval
+M9  FAISS · Active Retrieval
 M10 Evidence Builder · MCP             Functional MVP Gate
 ```
 
@@ -41,12 +41,15 @@ Jira REST API
 Knowledge / Review Profiling           M5
             ↓
 DB Logical Schema                      M6
+  ├─ Issue Version
+  ├─ History / Active 분리
+  └─ Evidence round-trip
             ↓
 SQLite                                 M7
             ↓
 Chunk + BGE-M3                         M8
             ↓
-FAISS + Retrieval                      M9
+FAISS + Active Retrieval               M9
             ↓
 Evidence Builder + MCP                 M10
 ```
@@ -104,16 +107,30 @@ RAW
 
 ### 2.4 Issue가 지식화 중심 Hub
 
+M6-01 이후 Issue는 Identity와 Version을 분리합니다.
+
 ```text
 Issue
-├─ Core / Snapshot
+├─ Issue Versions
+│    ├─ source_hash
+│    └─ canonical source_run
 ├─ Comments
 ├─ Attachments
 ├─ Relationships
 ├─ Custom Fields
-├─ Knowledge Generation
+├─ Knowledge Generations
 ├─ Knowledge Items
 └─ Reviews
+```
+
+Run이 새로 생겼다는 이유만으로 모든 Issue Version을 복제하지 않습니다.
+
+```text
+source_hash unchanged
+→ 기존 Version 재사용
+
+source_hash changed
+→ 새 Version 생성
 ```
 
 ### 2.5 Evidence round-trip은 M6 핵심 계약
@@ -131,6 +148,22 @@ custom_field:<id>
 
 M6/M7에서는 이 exact reference를 잃지 않고 실제 source entity까지 다시 찾아갈 수 있어야 합니다.
 
+### 2.6 History Storage와 Active Retrieval 분리
+
+Historical Version/Knowledge는 감사와 재현을 위해 DB에 보존합니다.
+하지만 기본 Vector Retrieval에 현재/과거 Knowledge를 모두 섞지 않습니다.
+
+```text
+[DB]
+Current + Historical 모두 보존
+
+[기본 RAG / FAISS]
+active Current Knowledge only
+
+[History Retrieval]
+감사 · 재현 · 변화 분석 · temporal query
+```
+
 ---
 
 ## 3. [RAW] 계층
@@ -147,7 +180,7 @@ data/raw/runs/<run_id>/...
 - 재파싱/재검증 기준
 - Parser가 수정하지 않는 read-only 사실 계층
 - SHA-256 무결성 확인
-- Run별 snapshot 분리
+- Run별 source snapshot 분리
 
 대표 구조:
 
@@ -260,6 +293,17 @@ M1 핵심 계약:
 - `source_hash`는 의미 데이터만 반영
 - 빌드 시작 시 기존 manifest 제거
 - 모든 package/warning 저장 후 마지막에 manifest를 원자 기록
+
+M6-01에서 `source_hash`는 Issue Version 생성 판단의 핵심 값이 됩니다.
+
+```text
+old source_hash == new source_hash
+→ 기존 Issue Version / active Knowledge 재사용 후보
+
+old source_hash != new source_hash
+→ 새 Issue Version
+→ Knowledge 재생성 대상
+```
 
 실환경 M1:
 
@@ -395,6 +439,8 @@ REVIEW_REQUIRED 0
 Human Validation 5/5
 ```
 
+향후 증분 운영에서는 변경된 Issue만 동일 Quality Loop를 다시 수행하는 방향으로 연결합니다.
+
 ---
 
 ## 8. M5 Profiling이 M6에 준 근거
@@ -430,6 +476,7 @@ M6 설계에 반영한 제약:
 6. `issue_summary`와 fine-grained item 역할 차이를 보존
 7. 현재 p95/max를 DB hard limit로 사용하지 않음
 8. 모든 Review Attempt와 historical defect를 보존
+9. Historical Knowledge는 보존하되 기본 Retrieval에는 섞지 않음
 
 ---
 
@@ -437,22 +484,22 @@ M6 설계에 반영한 제약:
 
 M6는 SQLite DDL 단계가 아닙니다.
 
-현재 논리 구조:
+M6-01 확정 구조:
 
 ```text
 Pipeline Run
    │
-   ├── Issue Snapshot
-   │      ├── Comment
-   │      ├── Attachment
-   │      ├── Custom Field Value
-   │      └── Relationship
-   │
-   └── Knowledge Generation
-          ├── Knowledge Item
-          │      └── Knowledge Evidence
-          └── Knowledge Review
-                 └── Review Finding
+   └── Issue Version Observation
+              │
+Issue ── 1:N Issue Version
+                │
+                └── 1:N Knowledge Generation
+                         ├── active
+                         ├── historical
+                         ├── Knowledge Item
+                         │      └── Knowledge Evidence
+                         └── Knowledge Review
+                                └── Review Finding
 ```
 
 주요 Entity:
@@ -460,7 +507,8 @@ Pipeline Run
 ```text
 pipeline_run
 issue
-issue_snapshot
+issue_version
+issue_version_observation   # logical mapping
 comment
 attachment
 relationship
@@ -478,9 +526,8 @@ review_finding
 핵심 Cardinality:
 
 ```text
-pipeline_run          1 ── N issue_snapshot
-issue                 1 ── N issue_snapshot
-issue                 1 ── N knowledge_generation
+issue                 1 ── N issue_version
+issue_version         1 ── N knowledge_generation
 knowledge_generation  1 ── N knowledge_item
 knowledge_item        1 ── N knowledge_evidence
 knowledge_generation  1 ── N knowledge_review
@@ -491,13 +538,28 @@ ID 원칙:
 
 - Jira/source가 이미 제공하는 ID는 authoritative source identity로 유지
 - DB surrogate key는 내부 저장 최적화용
-- Knowledge Generation/Item은 deterministic logical ID 사용
+- Issue Version / Knowledge Generation / Item은 deterministic logical ID 사용
 - FAISS vector position은 Knowledge identity가 아님
+
+M6-01 Version 원칙:
+
+```text
+source_hash unchanged
+→ Version 재사용
+→ active Knowledge 재사용
+
+source_hash changed
+→ 새 Version
+→ 새 Knowledge Generation
+```
+
+원문은 같아도 extraction contract가 바뀌면 같은 Version에 새로운 Knowledge Generation을 만들 수 있습니다.
 
 상세 문서:
 
 ```text
 docs/DB_LOGICAL_SCHEMA.md
+docs/M6_DECISION_LOG.md
 ```
 
 ---
@@ -527,22 +589,24 @@ Type별 resolver:
 
 ```text
 summary
-→ issue_snapshot.summary
+→ knowledge_generation.issue_version_id
+→ issue_version.summary
 
 description
-→ issue_snapshot.description
+→ knowledge_generation.issue_version_id
+→ issue_version.description
 
 comment:<id>
-→ comment
+→ comment(source_run_id, issue_key, comment_id)
 
 attachment:<id>
-→ attachment
+→ attachment(source_run_id, attachment_id)
 
 relationship:<id>
-→ relationship
+→ relationship(source_run_id, relationship_id)
 
 custom_field:<id>
-→ custom_field_value
+→ custom_field_value(source_run_id, issue_key, field_id)
 ```
 
 M6 Gate에서는 이 6개 경로를 모두 표현할 수 있어야 합니다.
@@ -564,6 +628,8 @@ KNOWLEDGE
 Validator / Review / Profiling
  ↓
 M6 Logical DB
+ ↓
+Issue Version / Active Knowledge / Evidence round-trip
 ```
 
 오류 분리:
@@ -576,7 +642,7 @@ KNOWLEDGE 의미 오류
 → Skill / Worker / Reviewer 문제
 
 Evidence Resolver / DB round-trip 오류
-→ Logical ID / Join / Materialization 문제
+→ Logical ID / Version / Join / Materialization 문제
 ```
 
 ---
@@ -599,9 +665,26 @@ Evidence Resolver / DB round-trip 오류
 
 ```text
 M6 DB Logical Schema
+M6-01 DECIDED
 ```
 
-M6 Gate:
+M6-01:
+
+```text
+Issue identity / issue_version 분리
+source_hash 변경 시에만 새 Version
+Historical Version/Knowledge DB 보존
+기본 RAG/FAISS는 active Current Knowledge만 사용
+같은 Version에 여러 Knowledge Generation 허용
+```
+
+다음 결정:
+
+```text
+M6-02 Deterministic ID
+```
+
+남은 M6 Gate:
 
 ```text
 Entity / Cardinality
@@ -622,7 +705,7 @@ M7 SQLite Materialization
 → Integrity / Evidence round-trip tests
 
 M8 Chunk + BGE-M3
-M9 FAISS + Retrieval
+M9 FAISS + Active Retrieval
 M10 Evidence Builder + MCP
 ```
 
