@@ -2,7 +2,7 @@
 
 Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 보존 → 결정적 정규화 → Issue 단위 사실 패키지 → Knowledge 추출/검토 → Profiling → DB 논리 모델 → Vector Retrieval → MCP**로 발전시키는 프로젝트입니다.
 
-현재 기준은 **M0~M5 완료, M6 DB Logical Schema 진행 중**입니다.
+현재 기준은 **M0~M5 완료, M6 DB Logical Schema 진행 중**입니다. M6-01에서 `source_hash`가 변경될 때만 새 `issue_version`을 만들고, Historical Knowledge는 DB에 보존하되 기본 RAG/FAISS에는 Active Current Knowledge만 포함하는 원칙을 확정했습니다.
 
 ```text
 Jira REST API
@@ -19,22 +19,23 @@ M4  [KNOWLEDGE] + [REVIEW] 실제 Jira Pilot  DONE
     ↓
 M5  Knowledge / Review Profiling             DONE
     ↓
-M6  DB Logical Schema                        CURRENT
+M6  DB Logical Schema                        CURRENT · M6-01 DECIDED
     ↓
 M7  SQLite Materialization                   NEXT
     ↓
 M8  Chunk + BGE-M3
     ↓
-M9  FAISS + Retrieval
+M9  FAISS + Active Retrieval
     ↓
 M10 Evidence Builder + MCP                   Functional MVP Gate
 ```
 
-핵심 원칙은 세 가지입니다.
+핵심 원칙은 네 가지입니다.
 
 1. **RAW가 사실의 최종 기준**입니다.
 2. **결정적 처리와 LLM 해석을 분리**합니다.
 3. **Knowledge는 검색용 의미 압축이며 Evidence로 원문까지 round-trip**할 수 있어야 합니다.
+4. **History Storage와 Active Retrieval을 분리**합니다. 과거 Version/Knowledge는 보존하지만 기본 검색에는 현재 승인된 Knowledge만 사용합니다.
 
 ---
 
@@ -48,7 +49,7 @@ M10 Evidence Builder + MCP                   Functional MVP Gate
 | M3 | DONE | Orchestrator → Fresh Worker → Validator → Fresh Reviewer |
 | M4 | DONE | 실제 Jira 30/30 최종 PASS, Human Validation 5/5 |
 | M5 | DONE | Knowledge 285 items, Evidence 503 refs, Review 37 files |
-| M6 | **CURRENT** | Entity, ID, Version, Evidence round-trip Logical Schema |
+| M6 | **CURRENT** | Issue Version, Active/History, ID, Evidence round-trip Logical Schema |
 | M7 | NEXT | SQLite DDL, Loader, Integrity Test |
 
 전체 M0~M16 로드맵과 완료 Gate는 [현재 상태와 향후 계획](docs/status/jira_knowledge_db_current_status.html)을 기준으로 합니다.
@@ -194,6 +195,16 @@ Issue Package
 
 `source_hash`는 의미 데이터만 해시하며 생성시각·PC 절대경로는 제외합니다.
 
+M6-01에서는 이 `source_hash`를 Issue 의미 Version 변경 판단 기준으로 사용합니다.
+
+```text
+source_hash unchanged
+→ 기존 issue_version 재사용
+
+source_hash changed
+→ 새 issue_version 생성
+```
+
 ### [KNOWLEDGE]
 
 ```text
@@ -256,7 +267,8 @@ RAW
 ```text
 pipeline_run
 issue
-issue_snapshot
+issue_version
+issue_version_observation   # 논리 관계, M7 물리화 여부는 미정
 comment
 attachment
 relationship
@@ -274,15 +286,30 @@ review_finding
 핵심 Cardinality:
 
 ```text
-issue                  1 ── N issue_snapshot
-issue                  1 ── N knowledge_generation
+issue                  1 ── N issue_version
+issue_version          1 ── N knowledge_generation
 knowledge_generation   1 ── N knowledge_item
 knowledge_item         1 ── N knowledge_evidence
 knowledge_generation   1 ── N knowledge_review
 knowledge_review       1 ── N review_finding
 ```
 
-상세 기준은 [M6 DB Logical Schema](docs/DB_LOGICAL_SCHEMA.md)를 참조합니다.
+M6-01 핵심 정책:
+
+```text
+[DB]
+Current + Historical Version/Knowledge 모두 보존
+
+[기본 RAG / FAISS]
+active Current Knowledge만 포함
+
+[History Retrieval]
+감사 · 재현 · 변화 분석 · temporal query에서만 사용
+```
+
+원문이 같더라도 Skill/Schema/Model extraction contract가 바뀌면 같은 `issue_version`에 새로운 `knowledge_generation`을 만들 수 있습니다.
+
+상세 기준은 [M6 DB Logical Schema](docs/DB_LOGICAL_SCHEMA.md)와 [M6 Decision Log](docs/M6_DECISION_LOG.md)를 참조합니다.
 
 ---
 
@@ -327,6 +354,20 @@ Duplication / Low-value
 
 의미 판단은 LLM에 맡기되, JSON 구조 검증과 Run 통계 집계는 deterministic Python으로 분리합니다.
 
+향후 증분 운영에서는:
+
+```text
+source_hash unchanged
+→ OpenCode 재분석 생략 후보
+
+source_hash changed
+→ 새 Issue Version
+→ Fresh Worker / Reviewer Loop
+→ PASS 후 active publish
+```
+
+방향으로 연결합니다.
+
 ---
 
 ## 5. HTML 문서
@@ -337,12 +378,15 @@ Duplication / Low-value
    - M0~M16 Master Roadmap
    - 현재 M6 위치
    - M5 실제 Profiling 근거
-   - M6 설계 및 다음 Gate
+   - M6-01 Issue Version / Active Retrieval 결정
+   - 다음 M6 Gate
 
 2. **[Jira Knowledge Relationship Map](docs/architecture/jira_data_relationship_map.html)**
    - Source Entity
+   - Issue Version
    - Knowledge / Evidence / Review
    - M0~M10 Pipeline
+   - Active / Historical Knowledge
    - Evidence round-trip
    - M6 Logical DB 관계
 
@@ -364,6 +408,7 @@ Duplication / Low-value
 현재 설계 문서:
 
 - [M6 DB Logical Schema](docs/DB_LOGICAL_SCHEMA.md)
+- [M6 Decision Log](docs/M6_DECISION_LOG.md)
 
 ---
 
@@ -389,6 +434,7 @@ Knowledge pipeline:
 13. [Knowledge Extraction Runtime](docs/KNOWLEDGE_EXTRACTION_RUNTIME.md)
 14. [M5 Profiling Metric Contract](docs/KNOWLEDGE_PROFILING_SPEC.md)
 15. [M6 DB Logical Schema](docs/DB_LOGICAL_SCHEMA.md)
+16. [M6 Decision Log](docs/M6_DECISION_LOG.md)
 
 코드 또는 데이터 계약을 변경할 때는 관련 상세 명세와 현재 상태/관계 맵을 같은 변경 단위에서 갱신합니다.
 
@@ -542,6 +588,8 @@ KNOWLEDGE INPUT
 KNOWLEDGE
  ↓ deterministic validation / review history / profiling
 M6 Logical DB
+ ↓
+Issue Version / Active Knowledge / Evidence round-trip
 ```
 
 따라서 오류를 다음처럼 분리할 수 있습니다.
@@ -554,7 +602,7 @@ KNOWLEDGE INPUT은 맞고 KNOWLEDGE가 틀림
 → Skill / Worker / Reviewer 해석 문제
 
 Knowledge/Evidence는 맞고 DB round-trip이 틀림
-→ M6/M7 ID · Join · Resolver 문제
+→ M6/M7 ID · Version · Join · Resolver 문제
 ```
 
 ---
@@ -563,7 +611,19 @@ Knowledge/Evidence는 맞고 DB round-trip이 틀림
 
 현재는 **M6 DB Logical Schema**입니다.
 
-M6 Gate:
+M6-01 완료:
+
+```text
+Issue identity / issue_version 분리
+source_hash 변경 시에만 새 Version
+Historical Version/Knowledge DB 보존
+기본 RAG/FAISS는 active Current Knowledge만 사용
+같은 Version에 여러 Knowledge Generation 허용
+```
+
+다음은 **M6-02 · deterministic ID**입니다.
+
+남은 M6 Gate:
 
 ```text
 주요 Entity / Cardinality 합의
@@ -579,7 +639,7 @@ Gate 통과 후:
 ```text
 M7 SQLite Materialization
 → M8 Chunk + BGE-M3
-→ M9 FAISS + Retrieval
+→ M9 FAISS + Active Retrieval
 → M10 Evidence Builder + MCP
 ```
 
