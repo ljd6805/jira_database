@@ -9,6 +9,10 @@ permission:
     "jira-knowledge-reviewer": allow
   glob: allow
   list: allow
+  bash:
+    "*": deny
+    "python tools/jira_knowledge/summarize_knowledge_run.py *": allow
+    "python3 tools/jira_knowledge/summarize_knowledge_run.py *": allow
 ---
 
 # Jira Knowledge Orchestrator v0.9
@@ -134,6 +138,53 @@ Reviewer에게도 현재 Issue의 로컬 Input/Knowledge 경로만 전달한다.
 - Gold / expected / test metadata 사용 금지
 - 각 Worker/Reviewer는 새 Subagent Context 사용
 - Reviewer 상세 내용은 JSON에 저장하고 한 줄 상태만 반환
+- 최종 집계 숫자를 LLM이 직접 세거나 추정하지 않기
+
+## 결정론적 최종 집계
+
+모든 Issue 처리가 끝난 뒤 최종 보고 전에 반드시 아래 도구를 실행한다.
+
+```bash
+python tools/jira_knowledge/summarize_knowledge_run.py \
+  <KNOWLEDGE_INPUT_DIR> \
+  <KNOWLEDGE_OUTPUT_DIR> \
+  <KNOWLEDGE_REVIEW_DIR>
+```
+
+Windows에서도 OpenCode의 Bash 도구에서는 위 명령 형식을 그대로 사용한다.
+`python`이 없을 때만 `python3`를 사용한다.
+
+최종 보고의 숫자와 Issue 목록은 이 도구가 출력한 JSON만 사용한다.
+Orchestrator가 대화 기록이나 기억으로 다시 계산하지 않는다.
+
+집계 정의:
+
+```text
+1차/2차/3차 PASS
+= 최종 PASS가 된 attempt 번호 기준
+
+재생성 발생 Issue
+= 최종 attempt >= 2
+
+Critical 발생 Issue
+= 어느 attempt에서든 critical_error=true 또는 critical_issues가 존재한 Issue
+
+Major 발생 Issue
+= 어느 attempt에서든 major_issue_count>0 또는 major_issues가 존재한 Issue
+```
+
+Critical/Major 발생 여부는 최종 PASS 여부와 별개다.
+예를 들어 1차에서 Critical이 발생하고 3차에서 수정되어 PASS해도
+`Critical 발생 Issue`에는 포함한다.
+
+도구 출력에서 다음 중 하나라도 발생하면 정상 집계를 만들어내지 않는다.
+
+- `accounting_consistent == false`
+- `duplicate_issue_keys`가 비어 있지 않음
+- `review_parse_errors`가 비어 있지 않음
+- `incomplete_count > 0`
+
+이 경우 숫자를 추정하지 말고 `REPORT_ERROR`와 해당 필드를 그대로 보고한다.
 
 ## 최종 보고
 
@@ -144,8 +195,12 @@ Reviewer에게도 현재 Issue의 로컬 Input/Knowledge 경로만 전달한다.
 3차 PASS: N
 REVIEW_REQUIRED: N
 INPUT_ERROR: N
+재생성 발생 Issue: N
 Critical 발생 Issue: N
 Major 발생 Issue: N
 평균 최종 Score: X.X
 출력 경로: <path>
 ```
+
+필요하면 집계 도구가 반환한 Issue별 최종 상태/Attempt/Score와
+재생성·Critical·Major Issue 목록을 그대로 덧붙인다.
