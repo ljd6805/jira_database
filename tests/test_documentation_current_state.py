@@ -13,6 +13,17 @@ CURRENT_DOCS = (
     Path("docs/architecture/jira_data_relationship_map.data_b.js"),
 )
 
+MILESTONE_HTML_DOCS = (
+    Path("docs/status/M0_JIRA_COLLECTION_ANALYSIS_COMPLETION.html"),
+    Path("docs/status/M1_KNOWLEDGE_INPUT_COMPLETION.html"),
+    Path("docs/status/M2_KNOWLEDGE_SCHEMA_SKILL_COMPLETION.html"),
+    Path("docs/status/M3_KNOWLEDGE_QUALITY_LOOP_COMPLETION.html"),
+    Path("docs/status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.html"),
+    Path("docs/status/M5_KNOWLEDGE_PROFILING_COMPLETION.html"),
+    Path("docs/status/M6_DB_LOGICAL_SCHEMA_COMPLETION.html"),
+    Path("docs/status/M7_SQLITE_MATERIALIZATION.html"),
+)
+
 STALE_STATUS_MARKERS = (
     "M6 CURRENT",
     "M7 NEXT",
@@ -72,11 +83,11 @@ def test_architecture_map_uses_attempt_as_item_and_review_parent() -> None:
 
     for text in (entity_map, schema_map):
         compact = text.replace(" ", "").replace("\n", "")
-        assert '"from":"generation","to":"attempt"' in compact
-        assert '"from":"attempt","to":"item"' in compact
-        assert '"from":"attempt","to":"review"' in compact
-        assert '"from":"generation","to":"item"' not in compact
-        assert '"from":"generation","to":"review"' not in compact
+        assert '\"from\":\"generation\",\"to\":\"attempt\"' in compact
+        assert '\"from\":\"attempt\",\"to\":\"item\"' in compact
+        assert '\"from\":\"attempt\",\"to\":\"review\"' in compact
+        assert '\"from\":\"generation\",\"to\":\"item\"' not in compact
+        assert '\"from\":\"generation\",\"to\":\"review\"' not in compact
 
 
 def test_m7_execution_doc_uses_profile_backed_one_command_gate() -> None:
@@ -90,3 +101,24 @@ def test_m7_execution_doc_uses_profile_backed_one_command_gate() -> None:
     assert ".gate.json" in text
     assert "foreign_key_check" in text
     assert "integrity_check" in text
+
+
+def test_m0_to_m7_visual_docs_exist_and_are_static() -> None:
+    """Milestone HTML이 삭제되거나 압축 fragment loader로 되돌아가지 않게 합니다."""
+
+    for path in MILESTONE_HTML_DOCS:
+        assert path.is_file(), f"missing milestone HTML: {path}"
+        text = _read(path)
+        lower = text.lower()
+        assert "<!doctype html>" in lower
+        assert "<main" in lower
+        assert "fetch(" not in text
+        assert "DecompressionStream" not in text
+
+
+def test_documentation_hub_links_all_milestone_visual_docs() -> None:
+    """docs/index.html에서 M0~M7 시각 문서가 모두 발견되게 합니다."""
+
+    index = _read(Path("docs/index.html"))
+    for path in MILESTONE_HTML_DOCS:
+        assert path.name in index, f"docs/index.html does not link {path.name}"

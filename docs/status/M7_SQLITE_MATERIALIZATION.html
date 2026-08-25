@@ -1,0 +1,30 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M7 · SQLite Materialization</title><style>body{font-family:system-ui,sans-serif;max-width:1120px;margin:auto}</style><link rel="stylesheet" href="milestone.css"></head><body><main class="wrap"><nav class="top"><a href="M6_DB_LOGICAL_SCHEMA_COMPLETION.html">← M6</a><a href="../index.html">문서 허브</a><a href="../M7_SQLITE_MATERIALIZATION.md">상세 Markdown</a><a href="jira_knowledge_db_current_status.html">현재 상태</a></nav><header class="hero"><span class="eyebrow">M7 · CURRENT</span><h1>Logical Schema를 실제 SQLite로</h1><p>M6 계약을 SQLite Schema v1, deterministic IDs, materializer, Evidence resolver, idempotency와 one-command real-run Gate로 구현했습니다.</p><span class="state">IMPLEMENTED / REAL-RUN VALIDATION PENDING · 2026-08-25</span></header><div class="kpis"><div class="kpi"><b>15</b><span>SQLite table</span></div><div class="kpi"><b>2×</b><span>same-run materialize 검증</span></div><div class="kpi"><b>6</b><span>Evidence resolver type</span></div><div class="kpi"><b>1 cmd</b><span>실데이터 Gate</span></div></div><section><h2>1. 구현 범위</h2><div class="grid2"><div class="flow">src/jira_collector/knowledge_db/
+├─ ids.py
+├─ schema.py
+├─ loader.py
+├─ evidence.py
+├─ validation.py
+└─ models.py</div><div class="flow">tools/jira_knowledge/
+├─ materialize_knowledge_db.py
+└─ validate_m7_real_run.py
+
+tests/knowledge_db/
+├─ test_ids.py
+├─ test_schema.py
+├─ test_materializer.py
+└─ test_validation.py</div></div><p>M7은 지정 Run 하나를 정확히 materialize하고 검증하는 Functional MVP입니다. 여러 Run chronology, incremental orchestration, Chunk/Embedding/FAISS, M14 atomic publish는 아직 포함하지 않습니다.</p></section><section><h2>2. SQLite Schema v1 핵심 제약</h2><table><thead><tr><th>Entity</th><th>Integrity</th></tr></thead><tbody><tr><td>issue</td><td><code>jira_id</code> authoritative identity</td></tr><tr><td>issue_version</td><td>UNIQUE(jira_id, source_hash)</td></tr><tr><td>issue_version_observation</td><td>PRIMARY KEY(run_id, jira_id)</td></tr><tr><td>knowledge_attempt</td><td>UNIQUE(knowledge_generation_id, attempt_no)</td></tr><tr><td>knowledge_item</td><td>UNIQUE(knowledge_attempt_id, category, ordinal)</td></tr><tr><td>knowledge_evidence</td><td>item+ordinal 및 item+exact evidence_ref UNIQUE</td></tr><tr><td>knowledge_review</td><td>UNIQUE(knowledge_attempt_id)</td></tr><tr><td>active Generation</td><td>partial UNIQUE index로 Jira Issue당 최대 1개</td></tr></tbody></table></section><section><h2>3. Legacy M4 Attempt를 거짓 복원하지 않는다</h2><div class="flow">Attempt 1 FAIL
+→ Attempt row + Review / Finding
+→ content_available = false
+
+Accepted Attempt N PASS
+→ Attempt row + Review / Finding
+→ Knowledge Item / Evidence
+→ content_available = true
+→ accepted_attempt_id
+→ Generation active</div><div class="callout">M4에는 failed Attempt 당시 Knowledge body가 남지 않았습니다. M7은 존재하지 않는 본문을 추정해 채우지 않고 “콘텐츠 없음” 자체를 정확히 저장합니다.</div></section><section><h2>4. M5 profile → M7 Gate</h2><p>Expected count를 코드나 문서에 다시 하드코딩하지 않고 <code>data/knowledge/runs/&lt;run_id&gt;/profile.json</code>을 machine-readable baseline으로 읽습니다.</p><table><thead><tr><th>M7 row</th><th>M5 baseline</th><th>Pilot 결과</th></tr></thead><tbody><tr><td>Issue</td><td>knowledge.issue_count</td><td>30</td></tr><tr><td>Generation</td><td>knowledge.issue_count</td><td>30</td></tr><tr><td>Attempt</td><td>review.review_file_count</td><td>37</td></tr><tr><td>Knowledge Item</td><td>knowledge.total_statement_item_count</td><td>285</td></tr><tr><td>Evidence</td><td>knowledge.evidence.total_evidence_ref_count</td><td>503</td></tr><tr><td>Review</td><td>review.review_file_count</td><td>37</td></tr></tbody></table></section><section><h2>5. 자동 검증 계약</h2><div class="checks"><div class="check">✓ same-run 2회 적재 row 증가 없음</div><div class="check">✓ logical ID drift 없음</div><div class="check">✓ failed/accepted Attempt content_available 구분</div><div class="check">✓ Evidence 6종 round-trip</div><div class="check">✓ broken Evidence → transaction rollback</div><div class="check">✓ active Generation 중복 → SQLite IntegrityError</div><div class="check">✓ foreign_key_check / integrity_check</div><div class="check pending">○ 실제 30건 local real-run Gate 대기</div></div><div class="flow">python tools/jira_knowledge/validate_m7_real_run.py \
+  --run-id 20260804T043628Z \
+  --data-root data \
+  --skill-version 0.9 \
+  --runtime-version 0.9 \
+  --model-profile &lt;실제-M4-모델-프로필&gt; \
+  --reset</div></section><section><h2>6. 최신 Commit 이력</h2><div class="timeline"><div class="commit"><code>39edb3f</code><span>deterministic knowledge DB IDs</span></div><div class="commit"><code>dcfab38</code><span>M7 SQLite schema</span></div><div class="commit"><code>502a519</code><span>Evidence round-trip validator</span></div><div class="commit"><code>6c9f4b1</code><span>SQLite knowledge materializer</span></div><div class="commit"><code>91222de</code><span>materialization integration coverage</span></div><div class="commit"><code>c72aac0</code><span>M7 materialization CLI</span></div><div class="commit"><code>fee90ef</code><span>active generation uniqueness test</span></div><div class="commit"><code>d7601aa</code><span>real-run Gate validation helpers</span></div><div class="commit"><code>a710042</code><span>one-command real-run Gate validator</span></div><div class="commit"><code>6dc656b</code><span>profile-backed one-command Gate 문서화</span></div><div class="commit"><code>1d9252e</code><span>문서 허브가 one-command real-run Gate를 가리키도록 동기화</span></div></div><div class="callout warn"><b>M7은 아직 DONE이 아닙니다.</b> 구현과 synthetic integration은 완료했지만 실제 Jira 30건 데이터가 Git에 없으므로 local real-run Gate가 남아 있습니다. M8은 이 Gate 전까지 BLOCKED입니다.</div><p class="source">상세 기준: <a href="../M7_SQLITE_MATERIALIZATION.md">M7 SQLite Materialization</a>. 이 시각본은 2026-08-25 최신 구현 commit까지 반영했습니다.</p></section><footer>M7 · SQLite Materialization · IMPLEMENTED / REAL-RUN VALIDATION PENDING</footer></main></body></html>

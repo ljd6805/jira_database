@@ -1,0 +1,46 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M6 · DB Logical Schema</title><style>body{font-family:system-ui,sans-serif;max-width:1120px;margin:auto}</style><link rel="stylesheet" href="milestone.css"></head><body><main class="wrap"><nav class="top"><a href="M5_KNOWLEDGE_PROFILING_COMPLETION.html">← M5</a><a href="../index.html">문서 허브</a><a href="M6_DB_LOGICAL_SCHEMA_COMPLETION.md">상세 Markdown</a><a href="M7_SQLITE_MATERIALIZATION.html">M7 →</a></nav><header class="hero"><span class="eyebrow">M6 · LOGICAL SCHEMA</span><h1>Version · Attempt · Evidence · Active/History</h1><p>M5의 실제 분포를 근거로 SQLite DDL 전에 업무지식 DB의 identity, history, evidence round-trip과 active publish 경계를 논리적으로 확정했습니다.</p><span class="state">PASS / DONE · Logical Schema v0.3 · 2026-08-25</span></header><div class="kpis"><div class="kpi"><b>15</b><span>최종 Entity</span></div><div class="kpi"><b>6</b><span>Evidence type</span></div><div class="kpi"><b>SHA-256</b><span>Deterministic ID</span></div><div class="kpi"><b>1</b><span>Active Generation / Issue</span></div></div><section><h2>1. M6의 핵심 구분</h2><div class="grid2"><div class="mini"><b>Pipeline Run ≠ Issue Version</b><p>Run마다 동일 Issue snapshot을 복제하지 않습니다. <code>source_hash</code>가 바뀔 때만 새 의미 Version을 만듭니다.</p></div><div class="mini"><b>History Storage ≠ Active Retrieval</b><p>Historical Version/Knowledge는 DB에 보존하되 기본 RAG/FAISS에는 승인된 active Knowledge만 포함합니다.</p></div></div><div class="flow">same source_hash      → existing issue_version 재사용
+different source_hash → new issue_version
+
+DB       → current + historical 보존
+Retrieval→ active accepted knowledge만 기본 포함</div></section><section><h2>2. Deterministic ID ladder</h2><div class="flow">jira_id  authoritative identity
+  ↓
+iv_  issue_version
+  ↓
+kc_  knowledge_contract
+  ↓
+kg_  knowledge_generation
+  ↓
+ka_  knowledge_attempt + attempt_no
+  ↓
+ki_  knowledge_item
+  ↓
+ke_  knowledge_evidence</div><p>versioned canonical JSON → UTF-8 → sorted keys → insignificant whitespace 제거 → SHA-256 full lowercase 64 hex를 공통 규칙으로 사용합니다. Timestamp는 identity material이 아닙니다.</p></section><section><h2>3. Generation과 Attempt 분리</h2><div class="flow">Issue Version
+└─ Knowledge Generation
+   ├─ Attempt 1
+   │  ├─ Knowledge Item
+   │  └─ Review
+   ├─ Attempt 2
+   │  ├─ Knowledge Item
+   │  └─ Review
+   └─ Attempt N</div><p><code>knowledge_generation</code>은 같은 Issue Version + Knowledge Contract의 retry lineage, <code>knowledge_attempt</code>는 immutable 실제 생성 시도입니다. M4 legacy failed Attempt는 Review는 남지만 당시 Knowledge 본문이 없으므로 존재하지 않는 내용을 추정 복원하지 않습니다.</p></section><section><h2>4. 최종 Entity / Cardinality</h2><div class="grid2"><div class="flow">pipeline_run
+issue
+issue_version
+issue_version_observation
+comment
+attachment
+relationship
+custom_field_catalog
+custom_field_value</div><div class="flow">knowledge_generation
+knowledge_attempt
+knowledge_item
+knowledge_evidence
+knowledge_review
+review_finding</div></div><div class="flow">issue_version          1 ─ N knowledge_generation
+knowledge_generation   1 ─ N knowledge_attempt
+knowledge_attempt      1 ─ N knowledge_item
+knowledge_item         1 ─ N knowledge_evidence
+knowledge_attempt      1 ─ 0..1 knowledge_review
+knowledge_review       1 ─ N review_finding</div></section><section><h2>5. Evidence round-trip</h2><table><thead><tr><th>Evidence ref</th><th>Resolver 대상</th></tr></thead><tbody><tr><td>summary</td><td>issue_version.summary</td></tr><tr><td>description</td><td>issue_version.description</td></tr><tr><td>comment:&lt;id&gt;</td><td>comment(source_run_id, source_issue_key, comment_id)</td></tr><tr><td>attachment:&lt;id&gt;</td><td>attachment(source_run_id, attachment_id)</td></tr><tr><td>relationship:&lt;id&gt;</td><td>relationship(source_run_id, relationship_id)</td></tr><tr><td>custom_field:&lt;field_id&gt;</td><td>custom_field_value(source_run_id, source_issue_key, field_id)</td></tr></tbody></table><div class="callout warn">Accepted Attempt에서 하나라도 resolver가 실패하면 integrity failure입니다. Polymorphic source를 억지 FK로 만들지 않고 exact ref + type-specific validator를 선택했습니다.</div></section><section><h2>6. Active publish 계약</h2><div class="flow">G1 active + 새 Version/G2 candidate
+
+G2 Reviewer PASS 전 → G1 active 유지
+G2 PASS            → 같은 transaction에서 G1 historical / G2 active</div><p>따라서 “latest observed Issue Version”과 “approved active Knowledge Generation”은 다른 개념입니다. SQLite partial UNIQUE index로 Jira Issue당 active Generation 최대 1개를 DB 수준에서 강제합니다.</p></section><section><h2>7. Commit으로 보강한 결정 이력</h2><div class="timeline"><div class="commit"><code>2c1705e</code><span>M6-01 issue version + active retrieval 경계</span></div><div class="commit"><code>9b57dcf</code><span>M6-02 deterministic IDs + Generation/Attempt model</span></div><div class="commit"><code>8a38a57</code><span>M6-03 simplification / integrity 결정</span></div><div class="commit"><code>6f672e5</code><span>Logical Schema v0.3 통합</span></div><div class="commit"><code>0bb6651</code><span>M6 Completion Record 추가</span></div><div class="commit"><code>bdab3de</code><span>M6 결정 동결, superseded 구조 표시</span></div></div><div class="callout good"><b>M6 Gate PASS / DONE.</b> DDL·Chunk·Embedding·FAISS는 의도적으로 하지 않고 M7 SQLite materialization에 구현 계약을 넘겼습니다.</div><p class="source">상세 기준: <a href="M6_DB_LOGICAL_SCHEMA_COMPLETION.md">M6 Completion Record</a> · <a href="../DB_LOGICAL_SCHEMA.md">DB Logical Schema</a> · <a href="../M6_DECISION_LOG.md">Decision Log</a>.</p></section><footer>M6 · DB Logical Schema · Visual companion restored 2026-08-25</footer></main></body></html>
