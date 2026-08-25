@@ -77,3 +77,16 @@ def test_architecture_map_uses_attempt_as_item_and_review_parent() -> None:
         assert '"from":"attempt","to":"review"' in compact
         assert '"from":"generation","to":"item"' not in compact
         assert '"from":"generation","to":"review"' not in compact
+
+
+def test_m7_execution_doc_uses_profile_backed_one_command_gate() -> None:
+    """M7 완료 절차가 수동 숫자 비교로 되돌아가지 않게 합니다."""
+
+    text = _read(Path("docs/M7_SQLITE_MATERIALIZATION.md"))
+
+    assert "validate_m7_real_run.py" in text
+    assert "profile.json" in text
+    assert "same-run" in text
+    assert ".gate.json" in text
+    assert "foreign_key_check" in text
+    assert "integrity_check" in text
