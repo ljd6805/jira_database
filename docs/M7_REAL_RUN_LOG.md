@@ -38,7 +38,7 @@ python tools/jira_knowledge/validate_m7_real_run.py ...
 
 두 tool이 repository `src` 경로를 스스로 bootstrap하도록 수정했다.
 
-## 3. 실행 문제 2 — M4 legacy `critical_issues` 형식
+## 3. 실행 문제 2 — M4 Review Schema v0.3 위반 artifact
 
 두 번째 Gate 실행에서:
 
@@ -46,7 +46,7 @@ python tools/jira_knowledge/validate_m7_real_run.py ...
 오류: 필수 문자열이 없습니다: finding.message
 ```
 
-실데이터 37개 Review를 진단한 결과 다음 legacy artifact를 확인했다.
+실데이터 37개 Review를 진단한 결과 다음 artifact를 확인했다.
 
 ```text
 ISSUE-1137.review.attempt1.json
@@ -69,19 +69,28 @@ critical_issues[1] = {
 }
 ```
 
-현재 Review Schema v0.3은 `critical_issues`를 string array로 정의하지만 M4 실제 historical artifact에는 `{type, location, message}` object가 존재한다.
+Git history의 M4 Skill v0.9 최초 등록 commit까지 확인한 결과 당시 Review Schema는 이미 **v0.3**이었고 `critical_issues`는 `string[]` 계약이었다.
+
+따라서 이 문제는 "옛 schema version"이 아니라 다음과 같이 해석한다.
+
+```text
+Review Schema v0.3 계약
+→ critical_issues: string[]
+
+M4 실제 Reviewer output 일부
+→ critical_issues: {type, location, message}[]
+
+즉 실제 Reviewer artifact 2개가 schema v0.3 계약을 위반했다.
+```
+
+M4 Runtime에는 Knowledge용 deterministic validator는 있었지만 Review artifact 전체를 JSON Schema로 강제하는 별도 deterministic Gate가 없었기 때문에 해당 출력이 historical artifact로 남았다.
 
 ### 결정
 
-실제 M4 artifact를 현재 schema에 맞춰 수정하지 않는다.
-
-이유:
-
-- M4 artifact는 당시 실행 결과이자 감사 가능한 history다.
-- historical source를 사후 변환하면 provenance를 훼손한다.
-- M7의 역할은 legacy history를 가능한 그대로 materialize하는 것이다.
-
-따라서 M7 loader에 compatibility layer를 둔다.
+1. `review_schema_version`은 당시 계약대로 **0.3**으로 기록한다.
+2. 실제 M4 Review JSON을 현재 schema에 맞춰 사후 수정하지 않는다.
+3. schema 위반 형태도 당시 실행 결과이므로 history/provenance로 보존한다.
+4. M7 loader에 명시적인 compatibility layer를 둔다.
 
 ```text
 critical_issues[] string
@@ -93,7 +102,7 @@ critical_issues[] object
 
 둘 다 `review_finding(finding_group='critical')`로 저장한다.
 
-회귀 방지를 위해 `tests/knowledge_db/test_materializer.py`에 legacy object + current string을 함께 materialize하는 integration test를 추가했다.
+회귀 방지를 위해 `tests/knowledge_db/test_materializer.py`에 legacy/nonconformant object + schema-conformant string을 함께 materialize하는 integration test를 추가했다.
 
 ## 4. 다음 검증 순서
 
