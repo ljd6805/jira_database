@@ -104,11 +104,78 @@ critical_issues[] object
 
 회귀 방지를 위해 `tests/knowledge_db/test_materializer.py`에 legacy/nonconformant object + schema-conformant string을 함께 materialize하는 integration test를 추가했다.
 
-## 4. 다음 검증 순서
+## 4. 실행 문제 3 — Knowledge Evidence 중복 1회
+
+다음 Gate 실행에서:
+
+```text
+오류: Knowledge Item Evidence가 중복됐습니다: <knowledge_item_id>
+```
+
+실제 30개 Knowledge JSON 전체를 검사한 결과:
+
+```text
+Knowledge files          = 30
+M5 profile evidence count= 503
+Raw evidence refs        = 503
+Unique per-item refs     = 502
+Duplicate occurrences    = 1
+Items with duplicates    = 1
+```
+
+유일한 중복:
+
+```text
+AI5-1270.json
+key_findings[2]
+
+[
+  "comment:2717096",
+  "comment:2720803",
+  "comment:2720803"
+]
+```
+
+Knowledge Schema v0.1은 `evidence_refs.uniqueItems = true`이므로 이 artifact는 당시 Schema 계약을 위반한다.
+하지만 M3/M4 `validate_knowledge.py`는 Evidence 형식과 source 존재 여부만 검사했고 **중복 검사를 구현하지 않았기 때문에** Pilot을 통과했다.
+
+### 결정
+
+원본 `AI5-1270.json`은 수정하지 않는다.
+
+```text
+M5 raw profile
+→ Evidence ref 503
+
+M7 canonical SQLite
+→ 동일 Knowledge Item 안의 동일 Evidence는 첫 occurrence만 materialize
+→ Evidence row 502
+```
+
+DB의 다음 M6 제약은 그대로 유지한다.
+
+```text
+UNIQUE(knowledge_item_id, evidence_ref)
+```
+
+M7 loader는 historical duplicate의 **첫 occurrence raw ordinal**을 유지하고 이후 중복만 건너뛴다. 따라서 historical Knowledge 전체 내용은 `knowledge_content_hash`로 계속 추적 가능하며, SQLite에는 의미 없는 중복 row를 만들지 않는다.
+
+M7 Gate는 이제 다음 값을 분리해 출력·검사한다.
+
+```text
+M5 raw Evidence ref count       = 503
+M7 canonical Evidence row count = 502
+Duplicate Evidence occurrences  = 1
+Duplicate Item count             = 1
+```
+
+향후 새 Knowledge에는 같은 문제가 들어오지 않도록 `validate_knowledge.py`에 `evidence_refs` 중복 검사를 추가했다.
+
+## 5. 다음 검증 순서
 
 ```text
 1. 최신 main pull
-2. targeted knowledge_db test 실행
+2. targeted tests 실행
 3. M7 real-run Gate --reset 재실행
 4. PASS/FAIL 결과 분석
 5. PASS 시 M7 Completion/HTML/Current Source of Truth 동기화
