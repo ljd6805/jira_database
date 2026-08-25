@@ -8,6 +8,11 @@ import json
 import sys
 from pathlib import Path
 
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_SRC_ROOT = _PROJECT_ROOT / "src"
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+
 from jira_collector.knowledge_db import KnowledgeDbError, KnowledgeDbMaterializer
 
 
