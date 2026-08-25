@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -16,6 +16,7 @@ if str(_SRC_ROOT) not in sys.path:
 
 from jira_collector.knowledge_db import KnowledgeDbError, KnowledgeDbMaterializer
 from jira_collector.knowledge_db.validation import (
+    evidence_canonicalization_from_knowledge,
     expected_counts_from_profile,
     snapshot_database,
     validate_snapshot,
@@ -47,10 +48,17 @@ def main(argv: list[str] | None = None) -> int:
     database = _database_path(data_root, args.run_id, args.database)
     profile = _profile_path(data_root, args.run_id, args.profile)
     report = _report_path(data_root, args.run_id, args.report)
+    knowledge_root = data_root / "knowledge" / "runs" / args.run_id / "issues"
 
     try:
         _prepare_database(database, args.reset)
-        expected = expected_counts_from_profile(profile)
+        m5_expected = expected_counts_from_profile(profile)
+        evidence_stats = evidence_canonicalization_from_knowledge(knowledge_root)
+        expected = replace(
+            m5_expected,
+            evidence_count=evidence_stats.canonical_evidence_count,
+        )
+        baseline_failures = _baseline_failures(m5_expected.evidence_count, evidence_stats)
         materializer = KnowledgeDbMaterializer(
             data_root,
             database,
@@ -63,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
         first_snapshot = snapshot_database(database)
         second_result = materializer.materialize_run(args.run_id)
         second_snapshot = snapshot_database(database)
-        failures = _gate_failures(
+        failures = baseline_failures + _gate_failures(
             expected,
             first_result,
             second_result,
@@ -80,6 +88,8 @@ def main(argv: list[str] | None = None) -> int:
         "status": "PASS" if not failures else "FAIL",
         "database": str(database),
         "profile": str(profile),
+        "m5_raw_expected": asdict(m5_expected),
+        "evidence_canonicalization": asdict(evidence_stats),
         "expected": asdict(expected),
         "first_snapshot": first_snapshot.to_dict(),
         "second_snapshot": second_snapshot.to_dict(),
@@ -89,6 +99,16 @@ def main(argv: list[str] | None = None) -> int:
     _write_report(report, payload)
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0 if not failures else 1
+
+
+def _baseline_failures(raw_expected_count, evidence_stats):
+    failures = []
+    if evidence_stats.raw_evidence_ref_count != raw_expected_count:
+        failures.append(
+            "M5 raw evidence count mismatch: "
+            f"profile={raw_expected_count}, artifacts={evidence_stats.raw_evidence_ref_count}"
+        )
+    return failures
 
 
 def _gate_failures(expected, first_result, second_result, first_snapshot, second_snapshot):
