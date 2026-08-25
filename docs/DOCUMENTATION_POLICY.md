@@ -47,7 +47,9 @@ docs/M6_DECISION_LOG.md
 결정 과정과 폐기된 초안도 보존한다.
 과거 구조를 삭제하지 않되 현재 결정과 충돌하는 부분은 `Superseded`임을 명시한다.
 
-### D. Milestone Completion Record
+### D. Milestone Completion Record / Visual Companion
+
+상세 사실 기록의 기준본은 Markdown Completion Record다.
 
 ```text
 docs/status/M*_..._COMPLETION.md
@@ -55,6 +57,30 @@ docs/status/M*_..._COMPLETION.md
 
 해당 Milestone을 닫을 때의 입력, 결정, 문제, 해결, 검증 결과를 고정한다.
 완료 후 다음 Milestone이 진행됐다고 과거 내용을 현재형으로 다시 쓰지 않는다.
+
+사람이 Milestone의 목적과 결과를 빠르게 다시 읽을 수 있도록 M0부터 현재 Milestone까지 정적 HTML 시각본을 함께 보존한다.
+
+```text
+docs/status/M0_JIRA_COLLECTION_ANALYSIS_COMPLETION.html
+docs/status/M1_KNOWLEDGE_INPUT_COMPLETION.html
+docs/status/M2_KNOWLEDGE_SCHEMA_SKILL_COMPLETION.html
+docs/status/M3_KNOWLEDGE_QUALITY_LOOP_COMPLETION.html
+docs/status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.html
+docs/status/M5_KNOWLEDGE_PROFILING_COMPLETION.html
+docs/status/M6_DB_LOGICAL_SCHEMA_COMPLETION.html
+docs/status/M7_SQLITE_MATERIALIZATION.html
+```
+
+현재 진행 중인 Milestone은 아직 Completion Record가 아니라도 실행/설계 Markdown을 기준으로 Visual Companion을 둘 수 있다. 현재 M7은 `docs/M7_SQLITE_MATERIALIZATION.md`가 상세 기준이고 `docs/status/M7_SQLITE_MATERIALIZATION.html`이 시각본이다.
+
+HTML 보존 규칙:
+
+1. 본문은 HTML 파일 자체에 정적으로 포함한다.
+2. 외부 CDN이나 원격 문서가 없어도 핵심 내용은 읽을 수 있어야 한다.
+3. `fetch()`로 압축 조각을 가져와 `DecompressionStream`으로 복원하는 loader 방식은 Milestone 문서에 사용하지 않는다.
+4. HTML이 Markdown보다 더 강한 사실을 새로 만들지 않는다. 상세 내용이 충돌하면 Markdown Completion Record / Current Contract가 우선한다.
+5. `docs/index.html`에서 M0부터 현재 Milestone HTML과 기준 Markdown을 모두 찾을 수 있어야 한다.
+6. Milestone HTML 삭제·누락·동적 loader 회귀는 `tests/test_documentation_current_state.py`에서 실패해야 한다.
 
 ### E. Historical / Archive
 
@@ -85,7 +111,9 @@ docs/index.html
 current_status.html
 architecture map
 이전 Milestone Completion Record
+이전 Milestone HTML Visual Companion
 현재 Milestone 실행/설계 문서
+현재 Milestone HTML Visual Companion
 ```
 
 `M6 CURRENT`, `M7 NEXT` 같은 오래된 문자열이 Current Source of Truth에 남아 있으면 작업이 끝난 것이 아니다.
@@ -115,6 +143,8 @@ knowledge_generation
 
 이 경우 Current Source of Truth의 관계도, Cardinality, ID 설명을 모두 갱신한다.
 Decision Log의 old 구조는 삭제하지 않고 `M6-02에서 superseded`라고 표시한다.
+
+Milestone HTML은 당시 완료 시점의 구조를 보존한다. 이후 구조가 바뀌었다면 과거 HTML을 현재 구조처럼 다시 쓰기보다, 필요한 경우 후속 변경 또는 superseded 사실을 명확히 주석으로 남긴다.
 
 ---
 
@@ -169,6 +199,7 @@ VALIDATION
 ```text
 DOCUMENTATION SYNC
 → Current Source of Truth가 실제 상태와 일치
+→ Milestone Completion Record와 HTML Visual Companion이 보존됨
 ```
 
 따라서 **코드만 통과했다고 다음 Milestone으로 이동하지 않는다.**
@@ -187,6 +218,8 @@ M8      BLOCKED UNTIL M7 REAL-RUN GATE
 
 M6-01~03 결정은 `docs/M6_DECISION_LOG.md`에 보존되고, M6 최종 계약은 `docs/DB_LOGICAL_SCHEMA.md`, M7 구현 계약은 `docs/M7_SQLITE_MATERIALIZATION.md`를 기준으로 한다.
 
+M0~M7 HTML Visual Companion은 `docs/status/`에 보존하고 `docs/index.html`에서 연결한다.
+
 ---
 
 ## 7. 작업 종료 전 문서 체크
@@ -199,6 +232,9 @@ M6-01~03 결정은 `docs/M6_DECISION_LOG.md`에 보존되고, M6 최종 계약�
 - [ ] Evidence round-trip 경로가 최신인가?
 - [ ] Decision Log에 변경 이유가 남아 있는가?
 - [ ] 이전 Milestone Completion Record가 존재하는가?
+- [ ] M0부터 현재 Milestone까지 HTML Visual Companion이 존재하는가?
+- [ ] docs/index.html에서 HTML과 기준 Markdown을 모두 찾을 수 있는가?
+- [ ] Milestone HTML이 fetch/압축 fragment loader에 의존하지 않는가?
 - [ ] archive와 current 문서가 명확히 구분되는가?
 
 이 체크가 끝나야 해당 작업 단위를 완료한 것으로 본다.
