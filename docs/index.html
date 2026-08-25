@@ -2,25 +2,39 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Jira Knowledge Pipeline — HTML Docs</title>
+<title>Jira Knowledge Pipeline — Documentation Hub</title>
 <style>
-:root{--bg:#f5f7fb;--text:#172033;--muted:#66748a;--line:#dbe3ee;--blue:#3157d5}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,rgba(49,87,213,.12),transparent 34rem),var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.65}.wrap{max-width:980px;margin:auto;padding:48px 22px 80px}.hero{background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7);color:#fff;border-radius:25px;padding:36px;box-shadow:0 14px 38px rgba(23,32,51,.1)}h1{margin:0 0 9px;font-size:40px;letter-spacing:-.04em}.hero p{margin:0;color:rgba(255,255,255,.83)}.cards{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:22px}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 12px 30px rgba(23,32,51,.07)}.tag{display:inline-block;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900;background:#e8efff;color:#2448b1}.card h2{margin:10px 0 7px;font-size:22px}.card p{color:var(--muted)}.card a{display:inline-block;text-decoration:none;background:var(--blue);color:#fff;border-radius:10px;padding:9px 12px;font-weight:800}.note{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;color:var(--muted);font-size:13px}.footer{margin-top:24px;text-align:center;color:var(--muted);font-size:12px}@media(max-width:720px){.cards{grid-template-columns:1fr}.hero{padding:27px}h1{font-size:31px}}</style>
+:root{--bg:#f5f7fb;--text:#172033;--muted:#66748a;--line:#dbe3ee;--blue:#3157d5;--green:#14845f;--amber:#a86500}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 9% 0%,rgba(49,87,213,.12),transparent 34rem),var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.65}.wrap{max-width:1080px;margin:auto;padding:46px 22px 78px}.hero{padding:36px;border-radius:25px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7);box-shadow:0 14px 38px rgba(23,32,51,.1)}h1{margin:0 0 8px;font-size:42px;letter-spacing:-.04em}.hero p{margin:0;color:rgba(255,255,255,.86)}.status{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.13);font-size:12px;font-weight:800}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:22px}.card{padding:21px;border:1px solid var(--line);border-radius:17px;background:#fff;box-shadow:0 10px 28px rgba(23,32,51,.06)}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900;background:#e8efff;color:#2448b1}.tag.done{background:#e5f7ef;color:#0c6c4a}.tag.current{background:#e9eeff;color:#2548b5}.tag.rule{background:#fff1dc;color:#965900}.card h2{margin:9px 0 7px;font-size:21px}.card p{margin:0 0 13px;color:var(--muted)}a.button{display:inline-block;padding:8px 11px;border-radius:9px;background:var(--blue);color:#fff;text-decoration:none;font-weight:800}.note{margin-top:20px;padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff;color:var(--muted)}.code{white-space:pre-wrap;margin-top:14px;padding:14px;border-radius:12px;background:#101827;color:#dce8ff;font:12px/1.6 "Cascadia Code","D2Coding",Consolas,monospace}.footer{margin-top:27px;text-align:center;color:var(--muted);font-size:12px}@media(max-width:720px){.cards{grid-template-columns:1fr}.hero{padding:27px}h1{font-size:32px}}
+</style>
 </head>
 <body><main class="wrap">
-<section class="hero"><h1>Jira Knowledge Pipeline</h1><p>프로젝트의 문서 진입점입니다. 현재 상태, 데이터 구조, Milestone별 결정·구현·검증 산출물과 현재 단계의 실행 계약을 누적 관리합니다.</p></section>
+<section class="hero"><h1>Jira Knowledge Pipeline</h1><p>사람과 Agent가 같은 방향을 잃지 않도록 현재 상태, 결정 이력, 구현 계약, 완료 기록을 한곳에서 찾는 문서 허브입니다.</p><div class="status"><span class="pill">M0~M6 DONE</span><span class="pill">M7 IMPLEMENTED</span><span class="pill">REAL-RUN VALIDATION PENDING</span><span class="pill">M8 BLOCKED</span></div></section>
+
 <section class="cards">
-<article class="card"><span class="tag">STATUS / ROADMAP</span><h2>현재 상태와 향후 계획</h2><p>현재 구현 범위, 실환경 검증 결과, 데이터 계층, Knowledge/RAG/MCP 로드맵을 종합합니다. M5 Profiling을 완료했고 현재 단계는 M6 DB Logical Schema입니다.</p><a href="status/jira_knowledge_db_current_status.html">문서 열기 →</a></article>
-<article class="card"><span class="tag">ARCHITECTURE MAP · M6</span><h2>Jira Knowledge 관계 맵</h2><p>Source Entity부터 Knowledge, Evidence, Review, Evidence round-trip, M0~M10 진행 흐름과 현재 M6 DB Logical Schema까지 최신 구조를 시각화합니다.</p><a href="architecture/jira_data_relationship_map.html">맵 열기 →</a></article>
-<article class="card"><span class="tag">M0 COMPLETION</span><h2>M0 Jira Collection / Analysis 완료 기록</h2><p>초기 commit부터 Collector, 20 req/min, Atomic Raw, SQLite checkpoint, 전체 Comment 수집, Parser/Structure Export와 실제 파일럿 검증까지 as-built 결정과 구현을 복원합니다.</p><a href="status/M0_JIRA_COLLECTION_ANALYSIS_COMPLETION.md">M0 완료 기록 →</a></article>
-<article class="card"><span class="tag">M1 COMPLETION</span><h2>M1 Knowledge Input 완료 기록</h2><p>ANALYSIS completion gate, Issue 단위 package, canonical Relationship view, portable source path, semantic source_hash, manifest 완료 표식과 30건 검증을 보존합니다.</p><a href="status/M1_KNOWLEDGE_INPUT_COMPLETION.md">M1 완료 기록 →</a></article>
-<article class="card"><span class="tag">M2 COMPLETION</span><h2>M2 Knowledge Schema / Skill 완료 기록</h2><p>Light Structured Schema v0.1, Evidence 계약, certainty preservation, trade-off 보존, Pro/MAX 비교와 Skill v0.9 결정 및 저장소 history gap을 명시합니다.</p><a href="status/M2_KNOWLEDGE_SCHEMA_SKILL_COMPLETION.md">M2 완료 기록 →</a></article>
-<article class="card"><span class="tag">M3 COMPLETION</span><h2>M3 Knowledge Quality Loop 완료 기록</h2><p>Orchestrator·Fresh Worker·Python Validator·Fresh Defect Reviewer 역할 분리, 256K Context 격리, Audit, PASS Gate와 최대 3 Attempt 계약을 복원합니다.</p><a href="status/M3_KNOWLEDGE_QUALITY_LOOP_COMPLETION.md">M3 완료 기록 →</a></article>
-<article class="card"><span class="tag">M4 COMPLETION</span><h2>M4 Knowledge Extraction 완료 기록</h2><p>실제 30건 실행 프롬프트, 입력 탐색 문제와 해결, deterministic 집계, Human Validation 5/5, M4 Gate 판정을 단계 산출물로 고정 보존합니다.</p><a href="status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.md">M4 완료 기록 →</a></article>
-<article class="card"><span class="tag">M5 COMPLETION</span><h2>M5 Knowledge / Review Profiling 완료 기록</h2><p>Knowledge 285 items, Evidence 503 refs, Review 37 files의 분포와 Outlier, M6 설계 제약을 고정 보존합니다.</p><a href="status/M5_KNOWLEDGE_PROFILING_COMPLETION.md">M5 완료 기록 →</a></article>
-<article class="card"><span class="tag">M5 SPEC</span><h2>M5 Profiling Metric Contract</h2><p>item, statement 길이, empty array, Evidence, Review 이력, Outlier를 deterministic하게 측정한 기준과 실행법입니다.</p><a href="KNOWLEDGE_PROFILING_SPEC.md">M5 Spec →</a></article>
-<article class="card"><span class="tag">M6 CURRENT · v0.2</span><h2>M6 DB Logical Schema</h2><p>M5 실제 분포를 근거로 Issue/Issue Version/Knowledge Generation/Evidence/Review의 논리 Entity, ID, 버전, round-trip 계약을 설계합니다. 변경 없는 Issue는 Version을 복제하지 않습니다.</p><a href="DB_LOGICAL_SCHEMA.md">M6 설계 문서 →</a></article>
-<article class="card"><span class="tag">M6 DECISIONS</span><h2>M6 Decision Log</h2><p>M6-01에서 Run별 Snapshot 초안을 Issue Version 방식으로 변경한 이유, source_hash 기반 Version 생성, History 보존과 Active Retrieval 분리 원칙을 누적 기록합니다.</p><a href="M6_DECISION_LOG.md">M6 결정 기록 →</a></article>
+<article class="card"><span class="tag current">CURRENT STATUS</span><h2>현재 상태와 향후 계획</h2><p>현재 Milestone은 M7입니다. SQLite 구현은 완료했고 실제 30건 materialization Gate가 남아 있습니다.</p><a class="button" href="status/jira_knowledge_db_current_status.html">현재 상태 열기 →</a></article>
+
+<article class="card"><span class="tag current">CURRENT ARCHITECTURE</span><h2>Jira Knowledge 관계 맵</h2><p>Issue Version → Generation → Attempt → Item/Evidence/Review 구조와 M7 SQLite 구현을 시각적으로 확인합니다.</p><a class="button" href="architecture/jira_data_relationship_map.html">관계 맵 열기 →</a></article>
+
+<article class="card"><span class="tag current">CURRENT OVERVIEW</span><h2>Pipeline 전체 아키텍처</h2><p>RAW부터 MCP까지 데이터 계층, responsibility boundary, deterministic ID와 현재 Gate를 설명합니다.</p><a class="button" href="PIPELINE_OVERVIEW.md">Overview →</a></article>
+
+<article class="card"><span class="tag rule">PROJECT RULE</span><h2>Documentation Policy</h2><p>코드·설계·Milestone 상태 변경 시 Current Source of Truth를 같은 작업 단위에서 갱신하는 규칙입니다.</p><a class="button" href="DOCUMENTATION_POLICY.md">문서 규칙 →</a></article>
+
+<article class="card"><span class="tag done">M6 DONE</span><h2>M6 DB Logical Schema</h2><p>M6-01~03을 통합한 v0.3 최종 계약. jira_id, issue_version, Generation/Attempt, Evidence, Active/History를 고정합니다.</p><a class="button" href="DB_LOGICAL_SCHEMA.md">M6 최종 설계 →</a></article>
+
+<article class="card"><span class="tag done">M6 DECISIONS</span><h2>M6 Decision Log</h2><p>Snapshot 초안 폐기, source_hash Versioning, deterministic ID, Generation/Attempt 분리 등 왜 그렇게 결정했는지 보존합니다.</p><a class="button" href="M6_DECISION_LOG.md">결정 기록 →</a></article>
+
+<article class="card"><span class="tag done">M6 COMPLETION</span><h2>M6 완료 기록</h2><p>M6 Gate를 닫은 시점의 최종 Entity/Cardinality/ID/Evidence 계약과 M7 인계 조건입니다.</p><a class="button" href="status/M6_DB_LOGICAL_SCHEMA_COMPLETION.md">완료 기록 →</a></article>
+
+<article class="card"><span class="tag current">M7 CURRENT</span><h2>M7 SQLite Materialization</h2><p>Schema v1, deterministic ID utility, loader, Evidence resolver, idempotency/integrity test와 실제 Run 검증 절차입니다.</p><a class="button" href="M7_SQLITE_MATERIALIZATION.md">M7 실행 계약 →</a></article>
+
+<article class="card"><span class="tag done">M5 COMPLETION</span><h2>M5 Profiling 완료 기록</h2><p>30 Issue, 285 Knowledge Item, 503 Evidence, 37 Review Attempt 등 M6/M7의 실제 설계 근거입니다.</p><a class="button" href="status/M5_KNOWLEDGE_PROFILING_COMPLETION.md">M5 결과 →</a></article>
+
+<article class="card"><span class="tag done">M4 RUNTIME</span><h2>Knowledge Extraction Runtime v0.9</h2><p>Worker/Validator/Reviewer loop, 최대 3 Attempt, deterministic summarizer와 실제 30건 실행 계약을 보존합니다.</p><a class="button" href="KNOWLEDGE_EXTRACTION_RUNTIME.md">M4 Runtime →</a></article>
 </section>
-<div class="note"><b>문서 보존 원칙:</b> 문제를 해결하거나 다음 단계로 이동해도 기존 내용이 틀린 것이 아니라면 삭제하지 않습니다. 당시의 입력·프롬프트·문제·해결·판단·결과는 Milestone별 산출물로 누적 보존하고, README·Pipeline Overview·현재 상태·관계 맵처럼 전역 관점 문서는 최신 진행 위치를 유지합니다. M6 내부에서 초안이 바뀌면 이전 아이디어를 Decision Log에 `Superseded` 맥락으로 남깁니다.</div>
-<div class="footer">docs/index.html · local documentation index · Current: M6 DB Logical Schema · M6-01 DECIDED</div>
+
+<div class="note"><b>문서 구분:</b> README·Pipeline Overview·현재 상태 HTML·관계 맵·이 Index는 항상 최신이어야 합니다. Decision Log와 Completion Record는 당시의 결정과 과정을 보존하며, <code>status/archive/</code>는 과거 화면 스냅샷이므로 현재 상태 판단에 사용하지 않습니다.
+<div class="code">Authoritative ID ladder
+jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_</div></div>
+
+<div class="footer">docs/index.html · Current: M7 SQLite Materialization · Implemented / Real-run Validation Pending</div>
 </main></body></html>
