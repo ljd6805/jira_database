@@ -610,8 +610,7 @@ class KnowledgeDbMaterializer:
                     connection, review_id, "audit", "audit", category, ordinal,
                     "", finding.get("location"), finding.get("message"),
                 )
-        for ordinal, message in enumerate(_required_list(review.get("critical_issues"), "critical_issues")):
-            _insert_finding(connection, review_id, "critical", "critical", "", ordinal, "", "", message)
+        _insert_critical_findings(connection, review_id, review.get("critical_issues"))
         _insert_object_findings(connection, review_id, "major", review.get("major_issues"))
         _insert_object_findings(connection, review_id, "improvement", review.get("improvement_points"))
 
@@ -801,6 +800,34 @@ def _insert_finding(
         values,
         ("knowledge_review_id", "finding_group", "audit_category", "ordinal"),
     )
+
+
+def _insert_critical_findings(
+    connection: sqlite3.Connection,
+    review_id: int,
+    raw_items: Any,
+) -> None:
+    """Current 문자열과 legacy M4 object 형식의 Critical Finding을 모두 보존합니다."""
+
+    for ordinal, raw in enumerate(_required_list(raw_items, "critical_issues")):
+        if isinstance(raw, str):
+            _insert_finding(
+                connection, review_id, "critical", "critical", "", ordinal,
+                "", "", raw,
+            )
+            continue
+        item = _required_dict(raw, "critical_issues")
+        _insert_finding(
+            connection,
+            review_id,
+            "critical",
+            "critical",
+            "",
+            ordinal,
+            item.get("type"),
+            item.get("location"),
+            item.get("message"),
+        )
 
 
 def _insert_object_findings(
