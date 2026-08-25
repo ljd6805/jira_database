@@ -25,7 +25,7 @@
 
 <article class="card"><span class="tag done">M6 COMPLETION</span><h2>M6 완료 기록</h2><p>M6 Gate를 닫은 시점의 최종 Entity/Cardinality/ID/Evidence 계약과 M7 인계 조건입니다.</p><a class="button" href="status/M6_DB_LOGICAL_SCHEMA_COMPLETION.md">완료 기록 →</a></article>
 
-<article class="card"><span class="tag current">M7 CURRENT</span><h2>M7 SQLite Materialization</h2><p>Schema v1, deterministic ID utility, loader, Evidence resolver, idempotency/integrity test와 실제 Run 검증 절차입니다.</p><a class="button" href="M7_SQLITE_MATERIALIZATION.md">M7 실행 계약 →</a></article>
+<article class="card"><span class="tag current">M7 CURRENT</span><h2>M7 SQLite Materialization</h2><p>Schema v1과 loader는 구현 완료했습니다. M5 profile을 baseline으로 읽어 materialize 2회, idempotency, Evidence/FK/SQLite integrity를 한 명령으로 판정합니다.</p><a class="button" href="M7_SQLITE_MATERIALIZATION.md">M7 Gate 실행 계약 →</a></article>
 
 <article class="card"><span class="tag done">M5 COMPLETION</span><h2>M5 Profiling 완료 기록</h2><p>30 Issue, 285 Knowledge Item, 503 Evidence, 37 Review Attempt 등 M6/M7의 실제 설계 근거입니다.</p><a class="button" href="status/M5_KNOWLEDGE_PROFILING_COMPLETION.md">M5 결과 →</a></article>
 
@@ -34,7 +34,10 @@
 
 <div class="note"><b>문서 구분:</b> README·Pipeline Overview·현재 상태 HTML·관계 맵·이 Index는 항상 최신이어야 합니다. Decision Log와 Completion Record는 당시의 결정과 과정을 보존하며, <code>status/archive/</code>는 과거 화면 스냅샷이므로 현재 상태 판단에 사용하지 않습니다.
 <div class="code">Authoritative ID ladder
-jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_</div></div>
+jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
+
+Current M7 action
+validate_m7_real_run.py → M5 profile baseline → 2x materialize → .gate.json</div></div>
 
 <div class="footer">docs/index.html · Current: M7 SQLite Materialization · Implemented / Real-run Validation Pending</div>
 </main></body></html>
