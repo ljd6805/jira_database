@@ -507,14 +507,213 @@ DECISION M6-02
 
 ---
 
+## M6-03 · Logical Schema Simplification / Integrity
+
+상태: **DECIDED**
+
+M6-03은 M7 SQLite 구현 직전에 남아 있던 정규화 수준과 무결성 표현을 결정한다. 원칙은 **현재 질의에 필요한 구조는 명시적으로 만들되, 아직 필요하지 않은 일반화는 하지 않는다**이다.
+
+### 1. Custom Field array는 JSON text로 유지
+
+현재 `custom_field_value`의 multi-value 속성은 다음처럼 유지한다.
+
+```text
+display_value
+display_values_json
+value_id
+value_ids_json
+user_keys_json
+value_shape_json
+```
+
+M7에서는 `display_values`, `value_ids`, `user_keys`를 child table로 추가 normalize하지 않는다.
+
+이유:
+
+- 현재 주요 목적은 Knowledge Evidence round-trip과 Issue 단위 원문 복원이다.
+- Custom Field 개별 array element를 SQL aggregation/filter 대상으로 삼아야 한다는 요구가 아직 없다.
+- 이미 ANALYSIS 단계에서 타입/형태가 정규화되어 있다.
+- EAV/child table을 미리 늘리면 loader와 migration만 복잡해진다.
+
+향후 실제 질의에서 "특정 multi-user 값이 포함된 Issue" 같은 element-level filter가 필요해질 때만 분리한다.
+
+### 2. Review category score는 고정 column 사용
+
+현재 Review Schema의 점수는 의미가 고정된 소수 항목이므로 `knowledge_review`에 명시적 column으로 둔다.
+
+```text
+score
+factual_fidelity_score
+evidence_coverage_score
+certainty_preservation_score
+classification_score
+retrieval_value_score
+language_quality_score
+critical_error
+major_issue_count
+verdict
+```
+
+Key/value child table로 만들지 않는다.
+
+이유:
+
+- 현재 category가 명확하고 개수가 작다.
+- SQL에서 직접 비교/집계하기 쉽다.
+- 타입과 nullability를 명확히 표현할 수 있다.
+- 스키마가 실제로 바뀔 때 migration하는 편이 generic EAV를 미리 도입하는 것보다 단순하다.
+
+### 3. Evidence integrity는 DB FK + resolver validator 혼합
+
+`knowledge_evidence → knowledge_item` 관계는 일반 FK로 강제한다.
+
+하지만 하나의 `source_entity_key`가 Comment/Attachment/Relationship/Custom Field/Issue Version 등 서로 다른 table을 가리키는 polymorphic FK는 만들지 않는다.
+
+대신 M7은 다음 계약을 사용한다.
+
+```text
+DB constraint
+- knowledge_evidence.knowledge_item_id FK
+- evidence_type CHECK
+- ordinal / uniqueness constraint
+
+Resolver validator
+- exact evidence_ref parse
+- evidence_type과 reference 형식 일치 확인
+- type별 source entity 존재 확인
+- source_run_id / source_issue_key 조합 확인
+- accepted Attempt의 모든 Evidence가 실제 source로 round-trip 되는지 확인
+```
+
+예:
+
+```text
+comment:5001
+→ comment(source_run_id, source_issue_key, 5001)
+
+custom_field:customfield_12345
+→ custom_field_value(source_run_id, source_issue_key, field_id)
+
+description
+→ knowledge_generation.issue_version_id
+→ issue_version.description
+```
+
+Accepted Knowledge에서 resolver가 하나라도 실패하면 M7 materialization/integrity test 실패로 처리한다.
+
+### 4. `issue_version_observation`은 M7에서 실제 table로 구현
+
+M6-01에서는 논리 Entity만 고정하고 M7 물리 구현 여부를 열어두었다. M6-02에서 `issue_version`을 content-addressed immutable state로 확정했으므로 Observation은 실제 temporal/run mapping에 필요하다.
+
+따라서 M7에서 다음 table을 만든다.
+
+```text
+issue_version_observation
+  run_id
+  jira_id
+  observed_issue_key
+  issue_version_id
+
+UNIQUE(run_id, jira_id)
+```
+
+이유:
+
+- 같은 Version을 여러 Run에서 관찰한 사실을 중복 본문 없이 기록
+- `A → B → A`처럼 기존 Version으로 돌아온 chronology 표현
+- issue_key가 바뀌어도 당시 관찰된 key 보존
+- 향후 증분 수집에서 current Version 계산 가능
+- table 자체가 작고 loader 복잡도 증가가 매우 낮음
+
+즉 이 table은 미래 기능을 위한 장식이 아니라 현재 Version 모델의 시간축을 담당한다.
+
+### 5. Active Knowledge는 status column으로 표현
+
+Boolean `is_active`만 두면 candidate/historical/review_required의 의미를 별도 컬럼으로 다시 만들어야 하고, 별도 current pointer table은 M7 MVP에 비해 구조가 늘어난다.
+
+따라서 `knowledge_generation.state`를 사용한다.
+
+허용 상태:
+
+```text
+candidate
+active
+historical
+review_required
+```
+
+의미:
+
+```text
+candidate
+  아직 publish Gate를 통과하지 않은 Generation
+
+active
+  일반 Retrieval에 노출되는 승인된 현재 Generation
+
+historical
+  과거에 active였거나 새 Generation에 의해 supersede된 Generation
+
+review_required
+  최대 Attempt 이후에도 자동 PASS하지 못한 Generation
+```
+
+Generation에는 authoritative Issue identity인 `jira_id`도 보존한다.
+
+M7 SQLite에서는 부분 UNIQUE index로 Issue별 active Generation을 최대 하나로 제한한다.
+
+개념적으로:
+
+```sql
+CREATE UNIQUE INDEX ...
+ON knowledge_generation(jira_id)
+WHERE state = 'active';
+```
+
+새 Version이 들어왔다고 기존 active를 즉시 내리지 않는다.
+
+```text
+기존 active G1
++ 새 Issue Version V2
++ candidate G2
+
+G2 PASS 전
+→ G1 active 유지
+
+G2 PASS
+→ 한 transaction에서 G1 historical
+→ G2 active
+```
+
+따라서 DB의 "최신 source version"과 서비스의 "현재 승인 Knowledge"는 동일 개념이 아니다.
+
+### 6. M6-03 최종 결정
+
+```text
+DECISION M6-03
+
+1. Custom Field multi-value는 M7에서 JSON text로 유지한다.
+2. Review category score는 knowledge_review의 고정 column으로 둔다.
+3. polymorphic Evidence는 억지 FK 대신 exact ref + type-specific resolver validator로 검증한다.
+4. accepted Attempt의 Evidence round-trip 실패는 integrity failure다.
+5. issue_version_observation은 M7에서 실제 table로 구현한다.
+6. Observation은 run_id + jira_id 기준으로 한 Run의 관찰 Version을 기록한다.
+7. active Knowledge는 knowledge_generation.state로 표현한다.
+8. state는 candidate / active / historical / review_required를 사용한다.
+9. SQLite partial UNIQUE index로 Jira Issue당 active Generation 최대 1개를 보장한다.
+10. 새 Version candidate가 생성돼도 PASS 전에는 기존 active Knowledge를 유지한다.
+```
+
+---
+
 ## 다음 결정
 
-다음 검토 대상은 **M6-03 · Logical Schema Simplification / Integrity**다.
+다음 단계는 **M6-04 · Logical Schema Consolidation / Gate Review**다.
 
-확정할 내용:
+해야 할 일:
 
-- `custom_field_value` array를 JSON text로 유지할지 child table로 normalize할지
-- Review category score를 고정 column으로 둘지 key/value child table로 둘지
-- polymorphic Evidence integrity를 어디까지 DB FK로 보장할지
-- `issue_version_observation`을 M7에서 실제 table로 만들지
-- active Knowledge를 status / boolean / pointer 중 어떤 방식으로 표현할지
+- `docs/DB_LOGICAL_SCHEMA.md`를 M6-01~03 결정으로 v0.3에 통합
+- 기존 `knowledge_generation → knowledge_item` 구조를 `generation → attempt → item/review`로 수정
+- `issue_key` 중심 identity 표현을 `jira_id authoritative + issue_key locator`로 정리
+- Entity/Cardinality/round-trip 검증 시나리오 재검토
+- M6 Gate 항목을 실제로 체크하고 M7 인계 계약 확정
