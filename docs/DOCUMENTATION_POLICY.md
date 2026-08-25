@@ -58,7 +58,7 @@ docs/status/M*_..._COMPLETION.md
 해당 Milestone을 닫을 때의 입력, 결정, 문제, 해결, 검증 결과를 고정한다.
 완료 후 다음 Milestone이 진행됐다고 과거 내용을 현재형으로 다시 쓰지 않는다.
 
-사람이 Milestone의 목적과 결과를 빠르게 다시 읽을 수 있도록 M0부터 현재 Milestone까지 정적 HTML 시각본을 함께 보존한다.
+사람이 Milestone의 목적과 결과를 빠르게 다시 읽을 수 있도록 **각 단계별 정적 HTML 시각 문서를 필수 산출물로 함께 보존한다.**
 
 ```text
 docs/status/M0_JIRA_COLLECTION_ANALYSIS_COMPLETION.html
@@ -71,16 +71,31 @@ docs/status/M6_DB_LOGICAL_SCHEMA_COMPLETION.html
 docs/status/M7_SQLITE_MATERIALIZATION.html
 ```
 
-현재 진행 중인 Milestone은 아직 Completion Record가 아니라도 실행/설계 Markdown을 기준으로 Visual Companion을 둘 수 있다. 현재 M7은 `docs/M7_SQLITE_MATERIALIZATION.md`가 상세 기준이고 `docs/status/M7_SQLITE_MATERIALIZATION.html`이 시각본이다.
+현재 진행 중인 Milestone은 아직 Completion Record가 아니라도 실행/설계 Markdown을 기준으로 HTML Visual Companion을 둔다. 현재 M7은 `docs/M7_SQLITE_MATERIALIZATION.md`가 상세 기준이고 `docs/status/M7_SQLITE_MATERIALIZATION.html`이 시각본이다.
 
-HTML 보존 규칙:
+#### HTML 보존 규칙
 
-1. 본문은 HTML 파일 자체에 정적으로 포함한다.
-2. 외부 CDN이나 원격 문서가 없어도 핵심 내용은 읽을 수 있어야 한다.
-3. `fetch()`로 압축 조각을 가져와 `DecompressionStream`으로 복원하는 loader 방식은 Milestone 문서에 사용하지 않는다.
-4. HTML이 Markdown보다 더 강한 사실을 새로 만들지 않는다. 상세 내용이 충돌하면 Markdown Completion Record / Current Contract가 우선한다.
-5. `docs/index.html`에서 M0부터 현재 Milestone HTML과 기준 Markdown을 모두 찾을 수 있어야 한다.
-6. Milestone HTML 삭제·누락·동적 loader 회귀는 `tests/test_documentation_current_state.py`에서 실패해야 한다.
+1. Milestone이 `CURRENT`가 되는 시점부터 해당 `M<N>_*.html`을 작성한다.
+2. Milestone이 `DONE`이 된 이후에도 해당 HTML을 삭제하지 않는다.
+3. Markdown은 상세 기준본으로 함께 유지하지만 **Markdown으로 HTML을 대체하지 않는다.**
+4. 코드/설계/Schema/Gate/검증 결과가 바뀌면 관련 HTML도 같은 작업 단위에서 업데이트한다.
+5. 본문은 HTML 파일 자체에 정적으로 포함한다.
+6. 외부 CDN이나 원격 문서가 없어도 핵심 내용은 읽을 수 있어야 한다.
+7. `fetch()`로 압축 조각을 가져와 `DecompressionStream`으로 복원하는 loader 방식은 Milestone 문서에 사용하지 않는다.
+8. HTML이 Markdown보다 더 강한 사실을 새로 만들지 않는다. 상세 내용이 충돌하면 Markdown Completion Record / Current Contract가 우선한다.
+9. `docs/index.html`에서 M0부터 현재 Milestone HTML과 기준 Markdown을 모두 찾을 수 있어야 한다.
+10. Milestone HTML 삭제·누락·동적 loader 회귀는 `tests/test_documentation_current_state.py`에서 실패해야 한다.
+
+#### HTML 삭제 / 이동 승인 규칙
+
+`docs/status/M*.html`에 대한 삭제, 이름 변경, 다른 형식으로의 대체, archive 이동은 일반적인 정리 작업으로 취급하지 않는다.
+
+> **Milestone HTML의 삭제가 반드시 필요하다면 실제 삭제 전에 사용자에게 이유와 영향 범위를 설명하고 명시적 승인을 받아야 한다.**
+
+현재 작업에서 사용자의 명시적 승인 여부를 확인할 수 없다면 HTML을 보존한다.
+가능하면 삭제 대신 `superseded`, `historical`, `archive reference` 표기를 추가해 이력을 유지한다.
+
+Agent는 사용자의 승인 없이 이 규칙 또는 HTML 보존 regression test를 삭제하거나 약화해서는 안 된다.
 
 ### E. Historical / Archive
 
@@ -115,6 +130,8 @@ architecture map
 현재 Milestone 실행/설계 문서
 현재 Milestone HTML Visual Companion
 ```
+
+새 Milestone이 `CURRENT`가 되었는데 해당 `M<N>_*.html`이 없다면 Milestone 전환 작업은 미완료다.
 
 `M6 CURRENT`, `M7 NEXT` 같은 오래된 문자열이 Current Source of Truth에 남아 있으면 작업이 끝난 것이 아니다.
 
@@ -233,8 +250,11 @@ M0~M7 HTML Visual Companion은 `docs/status/`에 보존하고 `docs/index.html`�
 - [ ] Decision Log에 변경 이유가 남아 있는가?
 - [ ] 이전 Milestone Completion Record가 존재하는가?
 - [ ] M0부터 현재 Milestone까지 HTML Visual Companion이 존재하는가?
+- [ ] 새 CURRENT Milestone의 HTML이 같은 작업 단위에서 작성되었는가?
+- [ ] 관련 구현/설계 수정이 Milestone HTML에도 반영되었는가?
 - [ ] docs/index.html에서 HTML과 기준 Markdown을 모두 찾을 수 있는가?
 - [ ] Milestone HTML이 fetch/압축 fragment loader에 의존하지 않는가?
+- [ ] HTML 삭제/이동이 있다면 사용자의 사전 명시적 승인을 받았는가?
 - [ ] archive와 current 문서가 명확히 구분되는가?
 
 이 체크가 끝나야 해당 작업 단위를 완료한 것으로 본다.

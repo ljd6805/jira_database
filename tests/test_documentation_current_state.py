@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
@@ -33,6 +34,21 @@ STALE_STATUS_MARKERS = (
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def _done_or_current_milestones() -> set[str]:
+    """README 상태표에서 HTML이 반드시 존재해야 하는 Milestone을 찾습니다."""
+
+    milestones: set[str] = set()
+    for line in _read(Path("README.md")).splitlines():
+        match = re.match(r"^\|\s*(M\d+)\s*\|\s*([^|]+)\|", line)
+        if not match:
+            continue
+        milestone = match.group(1)
+        state = match.group(2).replace("*", "").replace("`", "").strip().upper()
+        if "DONE" in state or "CURRENT" in state:
+            milestones.add(milestone)
+    return milestones
 
 
 def test_current_docs_do_not_regress_to_old_milestone_status() -> None:
@@ -83,11 +99,11 @@ def test_architecture_map_uses_attempt_as_item_and_review_parent() -> None:
 
     for text in (entity_map, schema_map):
         compact = text.replace(" ", "").replace("\n", "")
-        assert '\"from\":\"generation\",\"to\":\"attempt\"' in compact
-        assert '\"from\":\"attempt\",\"to\":\"item\"' in compact
-        assert '\"from\":\"attempt\",\"to\":\"review\"' in compact
-        assert '\"from\":\"generation\",\"to\":\"item\"' not in compact
-        assert '\"from\":\"generation\",\"to\":\"review\"' not in compact
+        assert '"from":"generation","to":"attempt"' in compact
+        assert '"from":"attempt","to":"item"' in compact
+        assert '"from":"attempt","to":"review"' in compact
+        assert '"from":"generation","to":"item"' not in compact
+        assert '"from":"generation","to":"review"' not in compact
 
 
 def test_m7_execution_doc_uses_profile_backed_one_command_gate() -> None:
@@ -104,7 +120,7 @@ def test_m7_execution_doc_uses_profile_backed_one_command_gate() -> None:
 
 
 def test_m0_to_m7_visual_docs_exist_and_are_static() -> None:
-    """Milestone HTML이 삭제되거나 압축 fragment loader로 되돌아가지 않게 합니다."""
+    """복구한 M0~M7 HTML이 삭제되거나 fragment loader로 퇴행하지 않게 합니다."""
 
     for path in MILESTONE_HTML_DOCS:
         assert path.is_file(), f"missing milestone HTML: {path}"
@@ -116,9 +132,39 @@ def test_m0_to_m7_visual_docs_exist_and_are_static() -> None:
         assert "DecompressionStream" not in text
 
 
+def test_every_done_or_current_milestone_has_visual_html() -> None:
+    """새 Milestone을 CURRENT/DONE으로 바꾸면서 HTML 작성을 빼먹지 않게 합니다."""
+
+    milestones = _done_or_current_milestones()
+    assert milestones, "README milestone table could not be parsed"
+
+    status_dir = Path("docs/status")
+    for milestone in sorted(milestones):
+        matches = list(status_dir.glob(f"{milestone}_*.html"))
+        assert matches, f"{milestone} is DONE/CURRENT but has no docs/status/{milestone}_*.html"
+
+
 def test_documentation_hub_links_all_milestone_visual_docs() -> None:
-    """docs/index.html에서 M0~M7 시각 문서가 모두 발견되게 합니다."""
+    """docs/index.html에서 복구한 M0~M7 시각 문서가 모두 발견되게 합니다."""
 
     index = _read(Path("docs/index.html"))
     for path in MILESTONE_HTML_DOCS:
         assert path.name in index, f"docs/index.html does not link {path.name}"
+
+
+def test_html_preservation_rules_require_user_approval_for_deletion() -> None:
+    """HTML을 Markdown으로 대체하거나 승인 없이 삭제하는 규칙 회귀를 막습니다."""
+
+    agents = _read(Path("AGENTS.md"))
+    policy = _read(Path("docs/DOCUMENTATION_POLICY.md"))
+
+    for text in (agents, policy):
+        assert "Markdown" in text
+        assert "대체" in text
+        assert "HTML" in text
+        assert "삭제" in text
+        assert "사용자" in text
+        assert "승인" in text
+
+    assert "삭제하기 전에" in agents
+    assert "같은 작업 단위" in agents
