@@ -354,6 +354,44 @@ def test_materializes_legacy_object_and_string_critical_findings(tmp_path: Path)
     ]
 
 
+def test_materializes_legacy_duplicate_evidence_once(tmp_path: Path) -> None:
+    """M4 historical duplicate Evidence는 첫 occurrence의 raw ordinal만 보존합니다."""
+
+    data_root = tmp_path / "data"
+    db_path = tmp_path / "knowledge.sqlite3"
+    _fixture(data_root)
+    knowledge_path = data_root / "knowledge" / "runs" / "run1" / "issues" / "ABC-1.json"
+    knowledge = json.loads(knowledge_path.read_text(encoding="utf-8"))
+    refs = knowledge["key_findings"][0]["evidence_refs"]
+    refs.insert(2, "comment:10")
+    knowledge_path.write_text(
+        json.dumps(knowledge, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    result = _materializer(data_root, db_path).materialize_run("run1")
+
+    assert result.evidence_count == 6
+    with sqlite3.connect(db_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT e.ordinal, e.evidence_ref
+            FROM knowledge_evidence e
+            JOIN knowledge_item i ON i.knowledge_item_id=e.knowledge_item_id
+            WHERE i.category='key_findings' AND i.ordinal=0
+            ORDER BY e.ordinal
+            """
+        ).fetchall()
+
+    assert rows == [
+        (0, "description"),
+        (1, "comment:10"),
+        (3, "attachment:20"),
+        (4, "relationship:30"),
+        (5, "custom_field:customfield_1"),
+    ]
+
+
 def test_missing_evidence_rolls_back_run_materialization(tmp_path: Path) -> None:
     """Accepted Knowledge가 존재하지 않는 source를 참조하면 DB 적재를 성공 처리하지 않습니다."""
 
