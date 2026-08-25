@@ -306,6 +306,54 @@ def test_materializes_idempotently_and_round_trips_all_evidence(tmp_path: Path) 
         ]
 
 
+def test_materializes_legacy_object_and_string_critical_findings(tmp_path: Path) -> None:
+    """M4 legacy object와 current string Critical Finding을 모두 손실 없이 저장합니다."""
+
+    data_root = tmp_path / "data"
+    db_path = tmp_path / "knowledge.sqlite3"
+    _fixture(data_root)
+    review_path = (
+        data_root
+        / "knowledge"
+        / "runs"
+        / "run1"
+        / "reviews"
+        / "ABC-1.review.attempt1.json"
+    )
+    review = json.loads(review_path.read_text(encoding="utf-8"))
+    review["critical_error"] = True
+    review["critical_issues"] = [
+        {
+            "type": "certainty",
+            "location": "issue_summary",
+            "message": "가능성을 확정 사실로 승격했다.",
+        },
+        "문자열 형식 Critical Finding도 보존한다.",
+    ]
+    review_path.write_text(
+        json.dumps(review, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    _materializer(data_root, db_path).materialize_run("run1")
+
+    with sqlite3.connect(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            """
+            SELECT finding_type, location, message
+            FROM review_finding
+            WHERE finding_group='critical'
+            ORDER BY ordinal
+            """
+        ).fetchall()
+
+    assert [tuple(row) for row in rows] == [
+        ("certainty", "issue_summary", "가능성을 확정 사실로 승격했다."),
+        ("", "", "문자열 형식 Critical Finding도 보존한다."),
+    ]
+
+
 def test_missing_evidence_rolls_back_run_materialization(tmp_path: Path) -> None:
     """Accepted Knowledge가 존재하지 않는 source를 참조하면 DB 적재를 성공 처리하지 않습니다."""
 
