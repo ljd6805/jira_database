@@ -62,3 +62,18 @@ def test_authoritative_docs_keep_generation_attempt_identity() -> None:
         assert "knowledge_attempt" in text or "Knowledge Attempt" in text
         assert "ka_" in text
         assert "attempt_no" in text
+
+
+def test_architecture_map_uses_attempt_as_item_and_review_parent() -> None:
+    """시각화가 M6-01의 옛 Generation→Item/Review 구조로 퇴행하지 않게 합니다."""
+
+    entity_map = _read(Path("docs/architecture/jira_data_relationship_map.data_a.js"))
+    schema_map = _read(Path("docs/architecture/jira_data_relationship_map.data_b.js"))
+
+    for text in (entity_map, schema_map):
+        compact = text.replace(" ", "").replace("\n", "")
+        assert '"from":"generation","to":"attempt"' in compact
+        assert '"from":"attempt","to":"item"' in compact
+        assert '"from":"attempt","to":"review"' in compact
+        assert '"from":"generation","to":"item"' not in compact
+        assert '"from":"generation","to":"review"' not in compact
