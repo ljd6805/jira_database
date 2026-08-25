@@ -51,6 +51,8 @@ def check_item(item, loc, valid):
     if not isinstance(refs, list) or not refs:
         errors.append(f"{loc}.evidence_refs: 1개 이상 필요")
         return errors
+    if len(refs) != len(set(refs)):
+        errors.append(f"{loc}.evidence_refs: 중복 Evidence 금지")
     for ref in refs:
         if not isinstance(ref, str) or not EVIDENCE_RE.fullmatch(ref):
             errors.append(f"{loc}: 잘못된 Evidence 형식 {ref!r}")
