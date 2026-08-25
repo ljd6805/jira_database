@@ -5,7 +5,9 @@ from pathlib import Path
 
 from jira_collector.knowledge_db import connect_database, initialize_schema
 from jira_collector.knowledge_db.validation import (
+    EvidenceCanonicalization,
     ExpectedCounts,
+    evidence_canonicalization_from_knowledge,
     expected_counts_from_profile,
     snapshot_database,
     validate_snapshot,
@@ -38,6 +40,43 @@ def test_expected_counts_are_derived_from_m5_profile(tmp_path: Path) -> None:
         knowledge_item_count=285,
         evidence_count=503,
         review_count=37,
+    )
+
+
+def test_evidence_canonicalization_counts_item_local_duplicates(tmp_path: Path) -> None:
+    """M5 raw count와 M7 canonical DB row count를 분리해서 계산합니다."""
+
+    root = tmp_path / "issues"
+    root.mkdir()
+    (root / "ABC-1.json").write_text(
+        json.dumps(
+            {
+                "issue_key": "ABC-1",
+                "issue_summary": {
+                    "statement": "요약",
+                    "evidence_refs": ["summary"],
+                },
+                "problem_or_goal": [],
+                "key_findings": [
+                    {
+                        "statement": "발견",
+                        "evidence_refs": ["comment:1", "comment:2", "comment:2"],
+                    }
+                ],
+                "actions_and_decisions": [],
+                "outcomes": [],
+                "open_items": [],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    assert evidence_canonicalization_from_knowledge(root) == EvidenceCanonicalization(
+        raw_evidence_ref_count=4,
+        canonical_evidence_count=3,
+        duplicate_evidence_ref_count=1,
+        duplicate_item_count=1,
     )
 
 
