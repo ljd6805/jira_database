@@ -526,15 +526,18 @@ class KnowledgeDbMaterializer:
         issue_key: str,
         refs: Any,
     ) -> int:
-        """Exact evidence_ref를 보존하면서 resolver용 type/entity key를 함께 저장합니다."""
+        """Historical duplicate ref는 첫 occurrence만 DB에 materialize하고 raw ordinal은 보존합니다."""
 
         if not isinstance(refs, list) or not refs:
             raise KnowledgeDbError(f"Knowledge Item Evidence가 비어 있습니다: {item_id}")
-        if len(refs) != len(set(refs)):
-            raise KnowledgeDbError(f"Knowledge Item Evidence가 중복됐습니다: {item_id}")
 
+        seen: set[str] = set()
+        materialized_count = 0
         for ordinal, raw_ref in enumerate(refs):
             evidence_ref = _required_text(raw_ref, "evidence_ref")
+            if evidence_ref in seen:
+                continue
+            seen.add(evidence_ref)
             evidence_type, entity_key = parse_evidence_ref(evidence_ref)
             evidence_id = knowledge_evidence_id(item_id, ordinal, evidence_ref)
             _insert_immutable(
@@ -551,7 +554,8 @@ class KnowledgeDbMaterializer:
                 ),
                 ("knowledge_evidence_id",),
             )
-        return len(refs)
+            materialized_count += 1
+        return materialized_count
 
     def _load_review(
         self,
