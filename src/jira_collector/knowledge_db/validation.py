@@ -19,6 +19,13 @@ _COUNT_TABLES = {
     "evidence_count": "knowledge_evidence",
     "review_count": "knowledge_review",
 }
+_KNOWLEDGE_ARRAY_CATEGORIES = (
+    "problem_or_goal",
+    "key_findings",
+    "actions_and_decisions",
+    "outcomes",
+    "open_items",
+)
 
 
 @dataclass(frozen=True)
@@ -29,6 +36,14 @@ class ExpectedCounts:
     knowledge_item_count: int
     evidence_count: int
     review_count: int
+
+
+@dataclass(frozen=True)
+class EvidenceCanonicalization:
+    raw_evidence_ref_count: int
+    canonical_evidence_count: int
+    duplicate_evidence_ref_count: int
+    duplicate_item_count: int
 
 
 @dataclass(frozen=True)
@@ -50,7 +65,7 @@ class DatabaseSnapshot:
 
 
 def expected_counts_from_profile(path: str | Path) -> ExpectedCounts:
-    """M5 profile.json을 M7 materialization의 expected count 계약으로 변환합니다."""
+    """M5 profile.json을 M7 materialization의 raw expected count 계약으로 변환합니다."""
 
     profile = _read_json(Path(path))
     integrity = profile.get("integrity")
@@ -74,6 +89,48 @@ def expected_counts_from_profile(path: str | Path) -> ExpectedCounts:
         knowledge_item_count=_required_count(knowledge, "total_statement_item_count"),
         evidence_count=_required_count(evidence, "total_evidence_ref_count"),
         review_count=review_count,
+    )
+
+
+def evidence_canonicalization_from_knowledge(root: str | Path) -> EvidenceCanonicalization:
+    """Historical Knowledge의 raw Evidence와 item-local 중복 제거 후 DB row 수를 계산합니다."""
+
+    knowledge_root = Path(root)
+    paths = sorted(knowledge_root.glob("*.json"))
+    if not paths:
+        raise KnowledgeDbError(f"Knowledge artifact가 없습니다: {knowledge_root}")
+
+    raw_count = 0
+    canonical_count = 0
+    duplicate_item_count = 0
+    for path in paths:
+        document = _read_json(path)
+        items = [("issue_summary", document.get("issue_summary"))]
+        for category in _KNOWLEDGE_ARRAY_CATEGORIES:
+            values = document.get(category)
+            if not isinstance(values, list):
+                raise KnowledgeDbError(f"Knowledge category가 배열이 아닙니다: {path.name}:{category}")
+            items.extend((category, value) for value in values)
+
+        for category, item in items:
+            if not isinstance(item, dict):
+                raise KnowledgeDbError(f"Knowledge Item이 object가 아닙니다: {path.name}:{category}")
+            refs = item.get("evidence_refs")
+            if not isinstance(refs, list) or not refs:
+                raise KnowledgeDbError(f"Knowledge Evidence가 비어 있습니다: {path.name}:{category}")
+            if any(not isinstance(ref, str) or not ref.strip() for ref in refs):
+                raise KnowledgeDbError(f"Knowledge Evidence 문자열이 잘못됐습니다: {path.name}:{category}")
+            raw_count += len(refs)
+            unique_count = len(dict.fromkeys(refs))
+            canonical_count += unique_count
+            if unique_count != len(refs):
+                duplicate_item_count += 1
+
+    return EvidenceCanonicalization(
+        raw_evidence_ref_count=raw_count,
+        canonical_evidence_count=canonical_count,
+        duplicate_evidence_ref_count=raw_count - canonical_count,
+        duplicate_item_count=duplicate_item_count,
     )
 
 
@@ -105,7 +162,7 @@ def validate_snapshot(
     snapshot: DatabaseSnapshot,
     expected: ExpectedCounts,
 ) -> list[str]:
-    """M5 baseline 및 M6/M7 invariant와 다른 값을 사람이 읽을 수 있게 반환합니다."""
+    """M5/canonical baseline 및 M6/M7 invariant와 다른 값을 사람이 읽을 수 있게 반환합니다."""
 
     failures: list[str] = []
     for field in _COUNT_TABLES:
@@ -138,9 +195,9 @@ def _read_json(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise KnowledgeDbError(f"M5 profile을 읽을 수 없습니다: {path}: {exc}") from exc
+        raise KnowledgeDbError(f"JSON을 읽을 수 없습니다: {path}: {exc}") from exc
     if not isinstance(value, dict):
-        raise KnowledgeDbError(f"M5 profile이 JSON object가 아닙니다: {path}")
+        raise KnowledgeDbError(f"JSON object가 아닙니다: {path}")
     return value
 
 
