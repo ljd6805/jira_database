@@ -24,6 +24,7 @@ MILESTONE_HTML_DOCS = (
     Path("docs/status/M6_DB_LOGICAL_SCHEMA_COMPLETION.html"),
     Path("docs/status/M7_SQLITE_MATERIALIZATION.html"),
     Path("docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html"),
+    Path("docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html"),
 )
 
 STALE_STATUS_MARKERS = (
@@ -76,8 +77,8 @@ def test_current_docs_do_not_regress_to_old_milestone_status() -> None:
             assert marker not in text, f"{path} contains stale marker: {marker}"
 
 
-def test_current_docs_record_m8_done_and_m9_next() -> None:
-    """전역 Current 문서가 M7 PASS, M8 DONE, M9 NEXT/PLAN을 함께 나타냅니다."""
+def test_current_docs_record_m8_done_and_m9_current() -> None:
+    """전역 Current 문서가 M8 DONE과 M9 CURRENT/IMPLEMENTED를 함께 나타냅니다."""
 
     required = (
         Path("README.md"),
@@ -93,7 +94,10 @@ def test_current_docs_record_m8_done_and_m9_next() -> None:
         assert "M8" in text
         assert "DONE" in upper
         assert "M9" in text
-        assert "NEXT" in upper or "PLAN" in upper
+        assert "CURRENT" in upper
+        assert "IMPLEMENTED" in upper
+        assert "M9-03" in text
+        assert "NEXT" in upper
 
 
 def test_authoritative_docs_keep_generation_attempt_identity() -> None:
@@ -132,7 +136,6 @@ def test_m7_completion_doc_records_real_run_gate() -> None:
     """M7 완료 문서가 raw/canonical Evidence와 최종 integrity Gate를 보존합니다."""
 
     text = _read(Path("docs/M7_SQLITE_MATERIALIZATION.md"))
-
     assert "M7_REAL_RUN = PASS" in text
     assert "Evidence raw      503" in text
     assert "Evidence           502" in text
@@ -176,8 +179,30 @@ def test_m8_real_embedding_log_records_final_integrity_gate() -> None:
     assert "Semantic Quality Sanity Check · PASS" in text
 
 
-def test_m0_to_m8_visual_docs_exist_and_are_static() -> None:
-    """M0~M8 HTML이 삭제되거나 fragment loader로 퇴행하지 않게 합니다."""
+def test_m9_design_and_implementation_contract_is_visible() -> None:
+    """M9 exact baseline, identity, scaling path, 구현 상태가 문서에서 유실되지 않게 합니다."""
+
+    design = _read(Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.md"))
+    decision = _read(Path("docs/M9_DECISION_LOG.md"))
+    visual = _read(Path("docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html"))
+    for text in (design, decision, visual):
+        assert "IndexFlatIP" in text
+        assert "cosine" in text.lower()
+        assert "Top-3" in text
+        assert "embedding_id" in text
+        assert "knowledge_item_id" in text
+        assert "HNSW" in text
+        assert "IVF" in text
+        assert "IMPLEMENTED" in text
+    assert "rc_" in design
+    assert "fi_" in design
+    assert "manifest" in design.lower()
+    assert "M9-03" in design
+    assert "NEXT" in design
+
+
+def test_m0_to_m9_visual_docs_exist_and_are_static() -> None:
+    """M0~M9 HTML이 삭제되거나 fragment loader로 퇴행하지 않게 합니다."""
 
     for path in MILESTONE_HTML_DOCS:
         assert path.is_file(), f"missing milestone HTML: {path}"
@@ -202,7 +227,7 @@ def test_every_done_or_current_milestone_has_visual_html() -> None:
 
 
 def test_documentation_hub_links_all_milestone_visual_docs() -> None:
-    """docs/index.html에서 M0~M8 시각 문서가 모두 발견되게 합니다."""
+    """docs/index.html에서 M0~M9 시각 문서가 모두 발견되게 합니다."""
 
     index = _read(Path("docs/index.html"))
     for path in MILESTONE_HTML_DOCS:
@@ -222,6 +247,9 @@ def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
         Path("docs/M8_REAL_EMBEDDING_LOG.md"),
         Path("docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html"),
         Path("docs/status/M8_REAL_EMBEDDING_TROUBLESHOOTING.html"),
+        Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.md"),
+        Path("docs/M9_DECISION_LOG.md"),
+        Path("docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html"),
     )
     issue_key_pattern = re.compile(r"\b[A-Z][A-Z0-9_]{1,15}-[1-9]\d{3,}\b")
     for path in public_docs:
