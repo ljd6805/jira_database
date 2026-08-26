@@ -1,7 +1,7 @@
 # Jira Knowledge Pipeline 전체 아키텍처
 
 기준일: 2026-08-26  
-현재 단계: **M9 · FAISS + Active Retrieval — M9-01 DESIGN FROZEN / M9-02 IMPLEMENTED / M9-03 REAL-RUN NEXT**
+현재 단계: **M9 · FAISS + Active Retrieval — M9-01 DESIGN FROZEN / M9-02 IMPLEMENTED / M9-03 REAL BUILD PASS · REBUILD NEXT**
 
 ## 1. 전체 흐름
 
@@ -32,7 +32,7 @@ Retrieval Contract                     M9-01 DESIGN FROZEN
     ↓
 FAISS Build / Search                   M9-02 IMPLEMENTED · CI PASS
     ↓
-Real Index / Query Validation          M9-03 CURRENT / NEXT
+Real Index / Query Validation          M9-03 CURRENT · REAL BUILD PASS
     ↓
 Evidence Builder + MCP                 M10 Functional MVP Gate
 ```
@@ -102,6 +102,7 @@ M7 Canonical Evidence Row    502
 Review Attempt                37
 M8 Validated Embedding       285
 Embedding dimension         1024
+M9 FAISS vector_count        285
 ```
 
 M8는 **Knowledge Item 1개 = Embedding Unit 1개**, 기본 Chunk 없음으로 완료했다.
@@ -327,32 +328,39 @@ query model/profile/dimension mismatch → API 전 차단
 M9-02 = IMPLEMENTED / CI PASS
 ```
 
-## 8. M9-03 · Real Index / Retrieval Gate — NEXT
+## 8. M9-03 · Real Index / Retrieval Gate — CURRENT
 
-실제 M8 Pilot 285 embeddings로 다음을 확인한다.
+### First Real Build · PASS
 
-### Build Gate
-
-```text
-[ ] vector_count = 285
-[ ] dimension = 1024
-[ ] mapping_rows = 285
-[ ] unique embedding_id = 285
-[ ] unique knowledge_item_id = 285
-[ ] contract/hash/mapping failure = 0
-[ ] dimension/normalization failure = 0
-[ ] temp artifact = false
-```
-
-### Rebuild Gate
+실제 M8 Pilot 285 embeddings로 첫 FAISS build를 완료했다.
 
 ```text
-[ ] same M8 source → same rc_
-[ ] same M8 source → same fi_
-[ ] same M8 source → same canonical mapping bytes
+validation: PASS
+vector_count: 285
+dimension: 1024
+retrieval_contract_hash: rc_6b9fc7222abbf08ff5861fbb73ab31cc37a12cd78585313d05e2645e7603dd77
+faiss_index_id: fi_b544c57a560cec99069be46b6ee8f2047841b522ddf81681d3cd6027baa65b2d
+source_embedding_artifact_sha256: 45c363194defbb0e7095c32ecd462e749c943d4524ec7dd6acda093260abe2f8
+mapping_sha256: 9e546845b97307d095dd1ff3ec3ab3e4262dcf9b0a1444cbcd4391e0837e947b
+mapping_failure_count: 0
+hash_failure_count: 0
+normalization_failure_count: 0
 ```
 
-### Real Query Gate
+### Rebuild Gate · NEXT
+
+같은 M8 source + 같은 retrieval contract에서:
+
+```text
+[ ] same rc_
+[ ] same fi_
+[ ] same source embedding SHA-256
+[ ] same mapping SHA-256
+```
+
+FAISS binary SHA는 같은 환경에서 동일하면 좋은 신호지만 logical identity의 필수 조건으로 두지 않는다.
+
+### Real Query Gate · AFTER REBUILD
 
 ```text
 [ ] same BGE-M3 query embedding
@@ -413,5 +421,6 @@ M9 current records:
 ```text
 docs/M9_FAISS_ACTIVE_RETRIEVAL.md
 docs/M9_DECISION_LOG.md
+docs/M9_REAL_RETRIEVAL_LOG.md
 docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html
 ```
