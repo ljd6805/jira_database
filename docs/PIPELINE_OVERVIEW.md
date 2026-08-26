@@ -1,7 +1,7 @@
 # Jira Knowledge Pipeline 전체 아키텍처
 
 기준일: 2026-08-26  
-현재 단계: **M8 · Embedding Unit / Chunk + BGE-M3 — M8-01 PASS / M8-02 IMPLEMENTED / M8-03 REAL API NEXT**
+현재 단계: **M8 DONE / M9 NEXT · DESIGN NOT STARTED**
 
 ## 1. 전체 흐름
 
@@ -22,13 +22,13 @@ Logical Identity / Version Model       M6 DONE
     ↓
 SQLite Materialization                 M7 DONE · REAL-RUN PASS
     ↓
-Active Accepted Corpus                 M8-01 PASS
+Active Accepted Corpus                 M8-01 DONE · PASS
     ↓
-Embedding Contract / Adapter           M8-02 IMPLEMENTED
+Embedding Contract / Adapter           M8-02 DONE · PASS
     ↓
-Real BGE-M3 Validation                 M8-03 CURRENT
+Real BGE-M3 Validation                 M8-03 DONE · PASS
     ↓
-FAISS + Active Retrieval               M9 PLAN
+FAISS + Active Retrieval               M9 NEXT · DESIGN NOT STARTED
     ↓
 Evidence Builder + MCP                 M10 Functional MVP Gate
 ```
@@ -59,7 +59,7 @@ DB
 jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 ```
 
-`knowledge_attempt_id(ka_)`는 `knowledge_generation_id + attempt_no`로 결정되며 실제 1차/2차/3차 재생성 회차 identity를 보존한다.
+`knowledge_attempt_id(ka_)`는 `knowledge_generation_id + attempt_no`로 결정되며 실제 재생성 회차 identity를 보존한다.
 
 Embedding은 별도 artifact 계층이다.
 
@@ -127,8 +127,6 @@ M7_REAL_RUN = PASS
 
 ## 5. M8-01 · Active Accepted Corpus — PASS
 
-Source:
-
 ```text
 knowledge_generation.state = active
 AND accepted_attempt_id IS NOT NULL
@@ -157,14 +155,14 @@ M7 active accepted Knowledge Item 285
 
 **M8-01 PASS**
 
-## 6. M8-02 · Embedding Contract / Adapter — IMPLEMENTED
+## 6. M8-02 · Embedding Contract / Adapter — PASS
 
 Contract:
 
 ```text
 embedding_contract_version = 0.1
 model                       = BAAI/bge-m3
-model_profile               = runtime supplied
+model_profile               = internal-bge-m3-unversioned
 text_profile                = statement_v1
 dimension                   = 1024
 ```
@@ -179,109 +177,119 @@ emb_ = deterministic Embedding Artifact ID
 API:
 
 ```text
-OpenAI-compatible request
-{ model, input[] }
-
-response data[].index
-→ request input 위치와 다시 연결
+TEI / OpenAI-compatible embeddings
+Request max batch = 64
+Dense dimension = 1024
+Custom header runtime 지원
 ```
 
 Batch:
 
 ```text
-max = 64
 285 → 64 + 64 + 64 + 64 + 29
 → 5 requests
 ```
 
-Validation:
+Response mapping:
 
 ```text
-index 누락/중복/범위 오류 차단
-모든 vector dimension = 1024
+data[].index
+→ request input 위치와 다시 연결
 ```
 
-Retry:
+Failure / publish:
 
 ```text
-retry    network / timeout / 429 / 500 / 502 / 503 / 504
-no retry request/auth 오류 / schema 오류 / index 오류 / dimension 오류
+network / timeout / 429 / 5xx → 제한 재시도
+400 / 401 / 403 / 404        → 즉시 실패
+schema / index / dim 오류     → 즉시 실패
+모든 batch 성공               → atomic final publish
 ```
 
-Publish:
+**M8-02 PASS**
+
+## 7. M8-03 · Real Embedding Gate — PASS
+
+Smoke:
 
 ```text
-모든 batch 성공
-→ temp JSONL
-→ atomic replace
-→ final artifact
-
-중간 실패
-→ final artifact publish 금지
+API call: PASS
+vectors : 1
+dimension: 1024
 ```
 
-구현:
+Full Pilot:
 
 ```text
-src/jira_collector/embedding/
-├─ corpus.py
-├─ contract.py
-├─ client.py
-├─ config.py
-├─ artifact.py
-└─ runner.py
-
-tools/jira_knowledge/embed_bge_m3.py
+corpus_rows: 285
+embedding_rows: 285
+batch_count: 5
+embedding_dimension: 1024
 ```
 
-GitHub Actions pytest: **PASS**
-
-## 7. M8-03 · Real Embedding Gate — CURRENT
-
-Runtime secret/config:
+Artifact integrity:
 
 ```text
-.env
-BGE_M3_ENDPOINT=<사내 OpenAI-compatible embeddings endpoint>
-BGE_M3_API_KEY=<필요한 경우>
+validation: PASS
+unique_knowledge_item_ids: 285
+unique_embedding_ids: 285
+contract_count: 1
+mapping_failure_count: 0
+identity_failure_count: 0
+dimension_failure_count: 0
+non_finite_vector_count: 0
+zero_norm_vector_count: 0
+temp_artifact_exists: false
 ```
 
-일반 설정은 `config/settings.yaml`의 `embedding:` 블록에서 관리한다.
-
-실행:
-
-```powershell
-python tools/jira_knowledge/embed_bge_m3.py --corpus data/embedding/runs/20260804T043628Z/corpus.statement_v1.jsonl --output data/embedding/runs/20260804T043628Z/embeddings.statement_v1.bge_m3.jsonl --expected-count 285
-```
-
-Gate:
+Semantic sanity:
 
 ```text
-[ ] corpus_rows = 285
-[ ] embedding_rows = 285
-[ ] batch_count = 5
-[ ] embedding_dimension = 1024
-[ ] emb_ ↔ ki_ mapping 무결성
-[ ] 동일 input/contract 재실행 identity 재현
-[ ] 작은 quality sanity check
+Sample 1  PASS
+Sample 2  PASS · 매우 양호
+Sample 3  PASS · 후보 모두 의미상 타당
 ```
 
-## 8. M9와의 경계
+Sample 3의 Top-3 cosine score는 `0.5918 / 0.5908 / 0.5900`으로 margin이 작았다. 이는 embedding 실패가 아니라 dense semantic neighborhood 관찰로 기록한다.
 
-**M8에서는 FAISS를 구현하지 않는다.**
+M9에는 다음 설계 힌트를 넘긴다.
 
 ```text
-M8
-→ validated embedding artifact
-→ deterministic emb_ ↔ ki_ mapping
-
-M9
-→ FAISS index
-→ active Retrieval
-→ Top-k
+Top-1 단독 확정 과신 금지
+Top-k 후보군 유지 검토
+Knowledge + Evidence 함께 사용
+threshold / reranking은 실측 후 결정
 ```
 
-M8 Real Embedding Gate가 끝나기 전에는 M9로 이동하지 않는다.
+```text
+M8 = DONE / PASS
+```
+
+## 8. M9 · FAISS + Active Retrieval — NEXT
+
+M9는 아직 구현하지 않았다.
+
+M8 출력:
+
+```text
+validated embedding artifact
++ deterministic emb_ ↔ ki_ mapping
+```
+
+M9 설계 대상:
+
+```text
+FAISS index type
+similarity metric / normalization
+active-only index policy
+embedding_id ↔ knowledge_item_id mapping
+query embedding contract
+Top-k baseline
+index rebuild / reproducibility
+retrieval sanity / quality Gate
+```
+
+**M9는 설계 문서를 먼저 확정한 뒤 구현한다.**
 
 ## 9. Current Source of Truth
 
@@ -293,10 +301,12 @@ docs/status/jira_knowledge_db_current_status.html
 docs/architecture/jira_data_relationship_map.*
 ```
 
-M8 contract:
+M8 final records:
 
 ```text
 docs/M8_EMBEDDING_CHUNK_BGE_M3.md
 docs/M8_DECISION_LOG.md
+docs/M8_REAL_EMBEDDING_LOG.md
 docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html
+docs/status/M8_REAL_EMBEDDING_TROUBLESHOOTING.html
 ```
