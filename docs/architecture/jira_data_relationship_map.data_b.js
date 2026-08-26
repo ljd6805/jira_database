@@ -1,21 +1,17 @@
 Object.assign(window.JIRA_MAP_VIEWS,{
 "issue":{
   "title":"Evidence Round-trip · Accepted Attempt",
-  "help":"현재 Retrieval/Embedding 후보에 노출되는 Knowledge Item이 accepted Attempt를 거쳐 exact evidence_ref로 원본 Source까지 돌아가는 경로입니다. M7 real-run에서 502 canonical Evidence row가 integrity Gate를 통과했고, M8/M9는 이 active accepted Knowledge snapshot을 검색 artifact로 사용합니다.",
+  "help":"M7에서 502 canonical Evidence row가 검증됐고 M8/M9는 active accepted Knowledge snapshot만 사용합니다. M10은 이 round-trip을 Evidence package/MCP로 노출하는 다음 단계입니다.",
   "nodes":[
     {"id":"issue","type":"issue","kind":"issue","shape":"pill","x":150,"y":80,"w":200,"h":62,"label":"Issue","sub":"jira_id authoritative"},
     {"id":"version","type":"issue","kind":"issue","shape":"rect","x":150,"y":245,"w":220,"h":90,"label":"Issue Version · iv_","sub":"source_hash immutable state"},
     {"id":"generation","type":"knowledge","kind":"knowledge","shape":"rect","x":440,"y":245,"w":230,"h":90,"label":"Generation · kg_","sub":"Version + Contract lineage"},
     {"id":"attempt","type":"knowledge","kind":"knowledge","shape":"rect","x":730,"y":245,"w":230,"h":90,"label":"Accepted Attempt · ka_","sub":"attempt_no · PASS"},
-    {"id":"item","type":"knowledge","kind":"knowledge","shape":"rect","x":1020,"y":245,"w":230,"h":90,"label":"Knowledge Item · ki_","sub":"statement + evidence_refs[]"},
+    {"id":"item","type":"knowledge","kind":"knowledge","shape":"rect","x":1020,"y":245,"w":230,"h":90,"label":"Knowledge Item · ki_","sub":"statement + evidence refs"},
     {"id":"eref","type":"evidence","kind":"evidence","shape":"rect","x":1150,"y":430,"w":230,"h":90,"label":"Evidence · ke_","sub":"502 canonical exact refs"},
-    {"id":"resolver","type":"db","kind":"db","shape":"rect","x":920,"y":590,"w":250,"h":90,"label":"Type-specific Resolver","sub":"ref parse + source lookup"},
+    {"id":"resolver","type":"db","kind":"db","shape":"rect","x":920,"y":590,"w":250,"h":90,"label":"M10 Resolver · NEXT","sub":"type-specific source lookup"},
     {"id":"source","type":"evidence","kind":"evidence","shape":"rect","x":620,"y":590,"w":250,"h":90,"label":"Resolved Source","sub":"version / comment / attachment / edge / field"},
     {"id":"raw","type":"store","kind":"store","shape":"rect","x":320,"y":590,"w":240,"h":90,"label":"ANALYSIS → RAW","sub":"source_path round-trip"},
-    {"id":"comment","type":"comment","kind":"comment","shape":"rect","x":170,"y":760,"w":190,"h":80,"label":"Comment","sub":"comment:<id>"},
-    {"id":"attach","type":"attach","kind":"attach","shape":"rect","x":410,"y":760,"w":190,"h":80,"label":"Attachment","sub":"attachment:<id>"},
-    {"id":"rel","type":"rel","kind":"rel","shape":"rect","x":650,"y":760,"w":190,"h":80,"label":"Relationship","sub":"relationship:<id>"},
-    {"id":"custom","type":"custom","kind":"custom","shape":"rect","x":890,"y":760,"w":200,"h":80,"label":"Custom Field","sub":"custom_field:<id>"},
     {"id":"review","type":"review","kind":"review","shape":"rect","x":1160,"y":760,"w":210,"h":80,"label":"Review Audit","sub":"Attempt별 verdict / finding"}
   ],
   "edges":[
@@ -27,16 +23,12 @@ Object.assign(window.JIRA_MAP_VIEWS,{
     {"from":"eref","to":"resolver","label":"parse type / key","fromSide":"left","toSide":"top"},
     {"from":"resolver","to":"source","label":"exact lookup","fromSide":"left","toSide":"right"},
     {"from":"source","to":"raw","label":"source_path","fromSide":"left","toSide":"right"},
-    {"from":"attempt","to":"review","label":"0..1 review","fromSide":"bottom","toSide":"top","c1":[760,430],"c2":[1140,650]},
-    {"from":"source","to":"comment","label":"comment","fromSide":"bottom","toSide":"top"},
-    {"from":"source","to":"attach","label":"attachment","fromSide":"bottom","toSide":"top"},
-    {"from":"source","to":"rel","label":"relationship","fromSide":"bottom","toSide":"top"},
-    {"from":"source","to":"custom","label":"custom field","fromSide":"bottom","toSide":"top"}
+    {"from":"attempt","to":"review","label":"0..1 review","fromSide":"bottom","toSide":"top"}
   ]
 },
 "schema":{
-  "title":"M7 SQLite v1 → M8 Embedding → M9 Retrieval",
-  "help":"M7 SQLite real-run PASS 뒤 active accepted Knowledge 285개를 M8에서 BGE-M3로 285×1024 embedding했습니다. M9-02는 이를 L2-normalized IndexFlatIP + mapping + manifest로 구현했고, M9-03 실데이터 Gate가 다음입니다.",
+  "title":"M7 SQLite → M8 Embedding → M9 Retrieval → M10 Boundary",
+  "help":"M7 SQLite, M8 BGE-M3, M9 FAISS retrieval은 모두 PASS했습니다. M10은 ki_/ke_를 resolve하여 Evidence package와 MCP를 설계합니다.",
   "nodes":[
     {"id":"run","type":"db","kind":"db","shape":"rect","x":115,"y":80,"w":200,"h":82,"label":"pipeline_run","sub":"run_id"},
     {"id":"issue","type":"issue","kind":"issue","shape":"rect","x":365,"y":80,"w":210,"h":82,"label":"issue","sub":"jira_id PK · issue_key locator"},
@@ -48,14 +40,10 @@ Object.assign(window.JIRA_MAP_VIEWS,{
     {"id":"evidence","type":"evidence","kind":"evidence","shape":"rect","x":1190,"y":430,"w":220,"h":88,"label":"knowledge_evidence","sub":"502 canonical · exact ref"},
     {"id":"review","type":"review","kind":"review","shape":"rect","x":900,"y":430,"w":220,"h":88,"label":"knowledge_review","sub":"37 · UNIQUE(attempt)"},
     {"id":"finding","type":"review","kind":"review","shape":"rect","x":900,"y":610,"w":220,"h":82,"label":"review_finding","sub":"audit history"},
-    {"id":"comment","type":"comment","kind":"comment","shape":"rect","x":120,"y":480,"w":190,"h":80,"label":"comment","sub":"run + issue + id"},
-    {"id":"attach","type":"attach","kind":"attach","shape":"rect","x":340,"y":480,"w":190,"h":80,"label":"attachment","sub":"run + attachment id"},
-    {"id":"rel","type":"rel","kind":"rel","shape":"rect","x":560,"y":480,"w":190,"h":80,"label":"relationship","sub":"run + edge id"},
-    {"id":"custom","type":"custom","kind":"custom","shape":"rect","x":340,"y":650,"w":220,"h":80,"label":"custom_field_value","sub":"run + issue + field"},
     {"id":"active","type":"db","kind":"db","shape":"rect","x":650,"y":790,"w":300,"h":90,"label":"Active UNIQUE Index","sub":"30 active · one per jira_id"},
     {"id":"gate","type":"store","kind":"store","shape":"rect","x":1010,"y":790,"w":300,"h":90,"label":"M7 Real-run PASS","sub":"idempotent · FK 0 · integrity OK"},
     {"id":"embedding","type":"db","kind":"db","shape":"rect","x":1120,"y":650,"w":250,"h":80,"label":"M8 Validated Embeddings","sub":"285 emb_ · 1024 dim · PASS"},
-    {"id":"retrieval","type":"db","kind":"db","shape":"rect","x":650,"y":650,"w":250,"h":80,"label":"M9 Retrieval Artifact","sub":"rc_ · fi_ · IndexFlatIP · Top-3"}
+    {"id":"retrieval","type":"db","kind":"db","shape":"rect","x":650,"y":650,"w":250,"h":80,"label":"M9 Retrieval Artifact","sub":"DONE · rc_ · fi_ · real-run PASS"}
   ],
   "edges":[
     {"from":"run","to":"obs","label":"1:N","fromSide":"bottom","toSide":"top"},
@@ -67,13 +55,9 @@ Object.assign(window.JIRA_MAP_VIEWS,{
     {"from":"attempt","to":"review","label":"0..1 review","fromSide":"bottom","toSide":"top"},
     {"from":"item","to":"evidence","label":"1:N refs","fromSide":"bottom","toSide":"top"},
     {"from":"review","to":"finding","label":"1:N findings","fromSide":"bottom","toSide":"top"},
-    {"from":"evidence","to":"comment","label":"resolver","fromSide":"left","toSide":"right","c1":[1050,470],"c2":[250,400]},
-    {"from":"evidence","to":"attach","label":"resolver","fromSide":"left","toSide":"right"},
-    {"from":"evidence","to":"rel","label":"resolver","fromSide":"left","toSide":"right"},
-    {"from":"evidence","to":"custom","label":"resolver","fromSide":"left","toSide":"right","c1":[1050,540],"c2":[450,600]},
-    {"from":"generation","to":"active","label":"partial UNIQUE","fromSide":"bottom","toSide":"top","c1":[650,500],"c2":[650,700]},
+    {"from":"generation","to":"active","label":"partial UNIQUE","fromSide":"bottom","toSide":"top"},
     {"from":"evidence","to":"gate","label":"round-trip PASS","fromSide":"bottom","toSide":"top"},
-    {"from":"attempt","to":"gate","label":"count / idempotency PASS","fromSide":"bottom","toSide":"top","c1":[950,420],"c2":[1050,700]},
+    {"from":"attempt","to":"gate","label":"count / idempotency PASS","fromSide":"bottom","toSide":"top"},
     {"from":"item","to":"embedding","label":"active accepted → emb_","fromSide":"bottom","toSide":"top"},
     {"from":"embedding","to":"retrieval","label":"L2 normalize + index","fromSide":"left","toSide":"right"},
     {"from":"retrieval","to":"item","label":"position → emb_ → ki_","fromSide":"top","toSide":"bottom"}
