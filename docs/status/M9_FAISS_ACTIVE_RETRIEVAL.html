@@ -2,27 +2,44 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="M9 FAISS + Active Retrieval 설계 초안. IndexFlatIP, cosine normalization, Top-3, emb_↔ki_ mapping, full rebuild 정책을 쉽게 설명">
+<meta name="description" content="M9 FAISS + Active Retrieval 설계. IndexFlatIP exact baseline, cosine normalization, Top-3, emb_↔ki_ mapping, ANN 확장 정책을 쉽게 설명">
 <title>M9 · FAISS + Active Retrieval · Design</title>
 <link rel="stylesheet" href="milestone.css">
 <style>.grid3,.grid4{display:grid;gap:12px}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.proposed{border-left:5px solid #3157d5;background:#edf3ff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}.mono{font-family:"Cascadia Code","D2Coding",Consolas,monospace}@media(max-width:800px){.grid3,.grid4{grid-template-columns:1fr}}</style>
 </head>
 <body><main class="wrap">
 <nav class="top"><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">← M8 DONE</a><a href="../index.html">문서 허브</a><a href="../M9_FAISS_ACTIVE_RETRIEVAL.md">상세 설계</a><a href="../M9_DECISION_LOG.md">Decision Log</a><a href="jira_knowledge_db_current_status.html">현재 상태</a></nav>
-<header class="hero"><span class="eyebrow">M9 · CURRENT DESIGN</span><h1>285개의 의미 좌표에서<br>정확한 Top-3를 찾기</h1><p>M8에서 검증된 285개의 1024차원 BGE-M3 vector를 FAISS exact index로 만들고, 질문을 같은 vector 공간에 넣어 가장 가까운 Knowledge 후보를 찾는 단계입니다. 아직 구현은 시작하지 않았고 검색 계약을 먼저 고정합니다.</p><span class="state">DESIGN / IMPLEMENTATION NOT STARTED · 2026-08-26</span></header>
-<div class="kpis"><div class="kpi"><b>285</b><span>Validated embeddings</span></div><div class="kpi"><b>1024</b><span>Dimension</span></div><div class="kpi"><b>~1.11 MiB</b><span>Raw float32 vectors</span></div><div class="kpi"><b>Top-3</b><span>Baseline candidates</span></div></div>
+<header class="hero"><span class="eyebrow">M9 · CURRENT DESIGN</span><h1>285개에서는 정확하게,<br>커지면 ANN으로 교체 가능하게</h1><p>M8에서 검증된 285개의 1024차원 BGE-M3 vector를 먼저 FAISS exact baseline으로 만들고, 데이터가 커지면 latency·RAM·QPS를 측정해 HNSW/IVF 같은 approximate index로 교체할 수 있게 설계합니다.</p><span class="state">DESIGN / IMPLEMENTATION NOT STARTED · 2026-08-26</span></header>
+<div class="kpis"><div class="kpi"><b>285</b><span>Validated embeddings</span></div><div class="kpi"><b>1024</b><span>Dimension</span></div><div class="kpi"><b>~1.11 MiB</b><span>Current raw vectors</span></div><div class="kpi"><b>Top-3</b><span>Baseline candidates</span></div></div>
 <section><h2>1. M8 → M9 → M10</h2><div class="flow">M8 · DONE
 validated embedding JSONL
 emb_ ↔ ki_ integrity PASS
         ↓
 M9 · CURRENT DESIGN
-FAISS exact retrieval
+FAISS retrieval
 rank + cosine score + emb_ + ki_
         ↓
 M10 · LATER
 Knowledge/Evidence resolve + MCP</div></section>
-<section><h2>2. 왜 IndexFlatIP인가?</h2><div class="grid3"><div class="box good"><b>Exact</b><p>285개 전부와 거리를 계산해 approximate recall 손실이 없습니다.</p></div><div class="box good"><b>No training</b><p>IVF처럼 centroids를 학습할 필요가 없습니다.</p></div><div class="box good"><b>작은 규모</b><p>285 × 1024 × 4 bytes ≈ 1.11 MiB라 메모리 최적화가 필요 없습니다.</p></div></div><div class="box warn"><b>지금 HNSW/IVF를 쓰지 않는 이유</b><p>빠르게 만들 수는 있지만 현재 규모에서는 복잡도만 늘고 exact baseline을 잃습니다. 나중에 데이터가 커졌을 때 Flat 대비 recall/latency를 측정하며 도입하는 편이 안전합니다.</p></div></section>
-<section><h2>3. Cosine은 FAISS에서 어떻게 계산하나?</h2><div class="flow">M8 vector
+<section><h2>2. 왜 지금 IndexFlatIP인가?</h2><div class="grid3"><div class="box good"><b>Exact</b><p>285개 전부와 비교해 approximate recall 손실이 없습니다.</p></div><div class="box good"><b>No training</b><p>IVF처럼 centroids를 학습할 필요가 없습니다.</p></div><div class="box good"><b>작은 규모</b><p>285 × 1024 × 4 bytes ≈ 1.11 MiB라 메모리 최적화가 필요 없습니다.</p></div></div><div class="box warn"><b>Flat은 영구 구조가 아닙니다</b><p>현재는 exact baseline과 정답 기준을 확보하기 위해 Flat을 선택합니다. 이후 HNSW/IVF를 도입할 때 Flat Top-k와 비교해 recall 손실을 측정할 수 있습니다.</p></div></section>
+<section><h2>3. 데이터가 커지면 어떻게 하나?</h2><div class="grid3"><div class="box"><b>10,000</b><p>1024-d float32 raw vector 약 39 MiB</p></div><div class="box"><b>100,000</b><p>약 391 MiB</p></div><div class="box"><b>1,000,000</b><p>약 3.81 GiB</p></div></div><p>Flat 검색은 query마다 모든 vector를 비교하므로 데이터와 동시 query가 늘수록 CPU 비용이 커집니다. 그래서 개수 하나만 보고 전환하지 않고 실제 운영 지표를 봅니다.</p><div class="flow">ANN 검토 Trigger
+
+p95 search latency > 서비스 목표
+index RAM > memory budget
+예상 QPS에서 CPU saturation
+rebuild/reload 시간이 운영 목표 초과
+Flat 검색이 end-to-end query 병목</div></section>
+<section><h2>4. 그때 비교할 ANN 후보</h2><div class="grid3"><div class="box proposed"><b>IndexHNSWFlat</b><p>training 없이 빠른 검색과 높은 recall을 얻기 쉽습니다. 대신 graph memory overhead가 있고 FAISS HNSW는 remove 제약이 있습니다.</p></div><div class="box proposed"><b>IndexIVFFlat</b><p>일부 inverted list만 검색해 큰 N에서 계산량을 줄입니다. 대신 training과 nlist/nprobe tuning이 필요합니다.</p></div><div class="box good"><b>IndexFlatIP</b><p>ANN의 품질을 검증하는 exact test oracle로 계속 보존합니다.</p></div></div><div class="flow">ANN 평가
+
+Flat Top-k = exact reference
+ANN Top-k  = candidate
+
+→ recall@k
+→ p50 / p95 latency
+→ memory
+→ build time
+→ query throughput</div></section>
+<section><h2>5. Cosine은 FAISS에서 어떻게 계산하나?</h2><div class="flow">M8 vector
 → float32 copy
 → L2 normalize
 → IndexFlatIP.add()
@@ -33,35 +50,35 @@ Knowledge/Evidence resolve + MCP</div></section>
 → IndexFlatIP.search()
 
 normalized inner product = cosine similarity</div><div class="box proposed"><b>중요</b><p>M8 API가 이미 normalized vector를 반환한다고 가정하지 않습니다. M9에서 항상 normalize한 복사본을 index에 넣고 원본 JSONL은 수정하지 않습니다.</p></div></section>
-<section><h2>4. Top-k baseline</h2><div class="grid3"><div class="box proposed"><b>Top-k</b><p><strong>3</strong></p></div><div class="box"><b>Threshold</b><p>없음</p></div><div class="box"><b>Reranker</b><p>없음</p></div></div><p>M8 sanity check에서 한 sample의 Top-3가 0.5918 / 0.5908 / 0.5900으로 거의 동률이었지만 모두 의미상 타당했습니다. 따라서 Top-1 하나만 강제 선택하지 않고 후보군을 유지합니다.</p></section>
-<section><h2>5. Position은 ID가 아니다</h2><div class="flow">FAISS position
+<section><h2>6. Top-k baseline</h2><div class="grid3"><div class="box proposed"><b>Top-k</b><p><strong>3</strong></p></div><div class="box"><b>Threshold</b><p>없음</p></div><div class="box"><b>Reranker</b><p>없음</p></div></div><p>M8 sanity check에서 한 sample의 Top-3가 0.5918 / 0.5908 / 0.5900으로 거의 동률이었지만 모두 의미상 타당했습니다. 따라서 Top-1 하나만 강제 선택하지 않고 후보군을 유지합니다.</p></section>
+<section><h2>7. Position은 ID가 아니다</h2><div class="flow">FAISS position
       ↓ index.mapping.jsonl
 embedding_id · emb_
       ↓
 knowledge_item_id · ki_
       ↓ M10
 Knowledge + Evidence</div><div class="box proposed"><b>Canonical order</b><p><code>embedding_id ascending</code> 순서로 index를 만들 것을 제안합니다. source JSONL row 순서가 달라도 같은 embedding set이면 같은 mapping order를 만들기 위해서입니다.</p></div></section>
-<section><h2>6. 세 개의 Retrieval artifact</h2><div class="grid3"><div class="box"><b>index.faiss</b><p>Normalized 1024-d vectors의 exact FAISS index.</p></div><div class="box"><b>index.mapping.jsonl</b><p>position → emb_ → ki_ mapping.</p></div><div class="box"><b>index.manifest.json</b><p>contract/hash/count/version과 publish 완료 marker.</p></div></div><div class="flow">temp index + temp mapping
+<section><h2>8. index를 바꿔도 상위 계약은 유지</h2><div class="flow">현재
+IndexFlatIP
+      ↓
+faiss position → emb_ → ki_
+
+향후
+HNSW / IVF
+      ↓
+faiss position → emb_ → ki_
+
+M10 인터페이스는 동일</div><div class="box good"><b>설계 핵심</b><p><code>index_type</code>은 retrieval contract identity에 포함하지만, Knowledge/Evidence identity는 index 구현과 분리합니다. 검색 엔진 내부만 교체할 수 있게 합니다.</p></div></section>
+<section><h2>9. 세 개의 Retrieval artifact</h2><div class="grid3"><div class="box"><b>index.faiss</b><p>현재는 normalized 1024-d exact FAISS index.</p></div><div class="box"><b>index.mapping.jsonl</b><p>position → emb_ → ki_ mapping.</p></div><div class="box"><b>index.manifest.json</b><p>contract/hash/count/version과 publish 완료 marker.</p></div></div><div class="flow">temp index + temp mapping
 → load/search/mapping validation
 → index/mapping replace
 → manifest LAST publish
 
 manifest/hash mismatch
 → invalid index로 거부</div></section>
-<section><h2>7. M9 identity 제안</h2><div class="flow">Retrieval Contract · rc_
-index type + metric + normalization
-+ query profile + Top-k policy
-+ model/profile/dimension
-
-FAISS Index Artifact · fi_
-source embedding artifact hash
-+ index build profile</div><p><code>faiss_position</code>은 identity material이 아닙니다. binary file SHA는 reproducibility metadata로 기록하지만 logical identity를 직접 결정하지 않습니다.</p></section>
-<section><h2>8. 업데이트 정책</h2><div class="box good"><b>Pilot = full rebuild</b><p>새 active Knowledge/embedding이 생기면 incremental add/delete 대신 M8 artifact를 다시 만들고 M9 index 전체를 재구축합니다.</p></div><div class="flow">새 active Knowledge
-→ M8 validated embedding artifact
-→ M9 full rebuild
-→ 새 manifest publish</div><p>285개 규모에서는 rebuild 비용보다 stale vector 제거와 재현성 단순화 이점이 훨씬 큽니다.</p></section>
-<section><h2>9. M9 Gate</h2><div class="grid3"><div class="box proposed"><b>M9-01 · Design</b><p>Flat/IP/cosine, mapping, rc_/fi_, Top-3, rebuild 정책 확정.</p></div><div class="box"><b>M9-02 · Build</b><p>faiss-cpu, normalization, index/mapping/manifest, idempotency.</p></div><div class="box"><b>M9-03 · Retrieval</b><p>실제 query Top-3, mapping, ranking 재현, semantic sanity.</p></div></div></section>
-<section><h2>10. 구현 전 승인할 baseline</h2><div class="flow">Index       IndexFlatIP
+<section><h2>10. 업데이트 정책</h2><div class="box good"><b>Pilot = full rebuild</b><p>새 active Knowledge/embedding이 생기면 incremental add/delete 대신 M8 artifact를 다시 만들고 M9 index 전체를 재구축합니다.</p></div><p>데이터 규모가 커져 full rebuild가 운영 병목이 되면 incremental indexing도 같은 방식으로 별도 설계합니다.</p></section>
+<section><h2>11. M9 Gate</h2><div class="grid3"><div class="box proposed"><b>M9-01 · Design</b><p>Flat exact baseline + ANN scaling policy, cosine, mapping, rc_/fi_, Top-3 확정.</p></div><div class="box"><b>M9-02 · Build</b><p>faiss-cpu, normalization, index/mapping/manifest, idempotency.</p></div><div class="box"><b>M9-03 · Retrieval</b><p>실제 query Top-3, mapping, ranking 재현, semantic sanity.</p></div></div></section>
+<section><h2>12. 구현 전 승인할 baseline</h2><div class="flow">Index       IndexFlatIP · exact baseline
 Metric      cosine
 Normalize   DB/query 모두 L2
 Order       embedding_id ascending
@@ -70,6 +87,7 @@ Threshold   none
 Reranker    none
 Update      full rebuild
 Mapping     FAISS position → emb_ → ki_
-Publish     index + mapping + manifest-last</div><div class="box warn"><b>아직 코드 구현 전</b><p>이 설계 계약을 확정한 뒤에만 M9-02 구현을 시작합니다.</p></div></section>
-<footer>M9 · FAISS + Active Retrieval · DESIGN · implementation not started</footer>
+Publish     index + mapping + manifest-last
+Scaling     latency/RAM/QPS 기준 초과 시 HNSW/IVF benchmark</div><div class="box warn"><b>아직 코드 구현 전</b><p>이 설계 계약을 확정한 뒤에만 M9-02 구현을 시작합니다.</p></div></section>
+<footer>M9 · FAISS + Active Retrieval · DESIGN · exact baseline with ANN scaling path</footer>
 </main></body></html>
