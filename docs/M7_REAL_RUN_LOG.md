@@ -5,13 +5,11 @@
 
 대상 Pilot Run: `20260804T043628Z`
 
-이 문서는 M7 SQLite Materialization의 실제 Jira Pilot 검증에서 발견한 문제, 해결 결정, 최종 Gate 결과를 시간 순서대로 기록한다.
+이 문서는 M7 SQLite Materialization의 실제 Jira Pilot 검증에서 발견한 문제, 해결 결정, 최종 Gate 결과를 시간 순서대로 기록한다. 실제 Jira Issue Key, Review 본문, 원문 내용은 기록하지 않고 aggregate 정보만 보존한다.
 
 ---
 
 ## 1. Preflight
-
-로컬 Pilot artifact 확인:
 
 ```text
 Knowledge issue JSON = 30
@@ -24,17 +22,7 @@ M5 baseline과 동일한 입력 집합이 존재함을 확인했다.
 
 ## 2. 실행 문제 1 — src layout import 실패
 
-최초 실행:
-
-```text
-python tools/jira_knowledge/validate_m7_real_run.py ...
-→ ModuleNotFoundError: No module named 'jira_collector'
-```
-
-원인:
-
-- repository가 `src/jira_collector` layout을 사용한다.
-- tool script 직접 실행 시 `src`가 자동 import path에 들어가지 않았다.
+최초 실행에서 tool script가 `src/jira_collector`를 import하지 못했다.
 
 결정/해결:
 
@@ -43,17 +31,11 @@ python tools/jira_knowledge/validate_m7_real_run.py ...
 
 ---
 
-## 3. 실행 문제 2 — M4 Review Schema v0.3 위반 artifact
+## 3. 실행 문제 2 — Review Schema v0.3 historical nonconformance
 
-다음 실행에서:
+실데이터 37개 Review를 검사한 결과 historical Review 2개에서 `critical_issues`가 Schema v0.3의 `string[]` 계약과 달리 object 형태로 남아 있음을 확인했다.
 
-```text
-오류: 필수 문자열이 없습니다: finding.message
-```
-
-실데이터 37개 Review를 검사한 결과 `ISSUE-1137`, `ISSUE-1306`의 historical Review에서 `critical_issues`가 Schema v0.3의 `string[]` 계약과 달리 `{type, location, message}` object로 남아 있음을 확인했다.
-
-Git history를 확인한 결과 M4 당시 계약도 이미 Review Schema v0.3이었으므로, 이는 옛 schema가 아니라 실제 Reviewer output의 nonconformance다.
+Git history를 확인한 결과 M4 당시 계약도 이미 Review Schema v0.3이었다. 따라서 이는 옛 schema가 아니라 실제 Reviewer output의 nonconformance다.
 
 결정:
 
@@ -66,10 +48,10 @@ review_schema_version
 
 M7 compatibility
 string critical_issue
-→ type="", location="", message=<string>
+→ message로 보존
 
 object critical_issue
-→ type/location/message를 그대로 review_finding에 보존
+→ type/location/message를 review_finding에 보존
 ```
 
 회귀 방지 integration test를 추가했다.
@@ -77,12 +59,6 @@ object critical_issue
 ---
 
 ## 4. 실행 문제 3 — Knowledge Evidence 중복 1회
-
-다음 Gate에서:
-
-```text
-오류: Knowledge Item Evidence가 중복됐습니다
-```
 
 30개 Knowledge JSON 전체 진단 결과:
 
@@ -92,17 +68,6 @@ M5 raw Evidence refs     503
 Unique per-item refs     502
 Duplicate occurrences      1
 Items with duplicates      1
-```
-
-유일한 중복:
-
-```text
-AI5-1270.json
-key_findings[2]
-
-comment:2717096
-comment:2720803
-comment:2720803   ← duplicate
 ```
 
 Knowledge Schema v0.1은 `evidence_refs.uniqueItems=true`였지만 M3/M4 `validate_knowledge.py`가 중복 검사를 구현하지 않아 historical artifact로 남았다.
@@ -180,8 +145,6 @@ M7_REAL_RUN = PASS
 
 ## 6. M7 Closure 결정
 
-M7 완료 조건을 모두 만족했으므로 상태를 다음과 같이 전환한다.
-
 ```text
 M0~M7  DONE
 M8     CURRENT / READY TO START
@@ -197,10 +160,10 @@ M8은 M7의 active accepted Knowledge를 입력으로 Chunk 전략과 BGE-M3 emb
 
 이번 real-run Gate에서 synthetic test만으로는 발견하지 못한 두 historical contract drift를 실제 데이터로 찾았다.
 
-1. Review Schema v0.3 `critical_issues` nonconformance
-2. Knowledge Schema v0.1 duplicate Evidence nonconformance
+1. Review Schema v0.3 `critical_issues` nonconformance 2건
+2. Knowledge Schema v0.1 duplicate Evidence 1건
 
-처리 원칙은 공통적으로 다음과 같다.
+처리 원칙:
 
 ```text
 과거 artifact를 사후 수정하지 않는다.
