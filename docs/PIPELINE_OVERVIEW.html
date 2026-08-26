@@ -1,75 +1,58 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · 전체 아키텍처</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1120px;margin:auto;padding:38px 22px 80px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.meta{font-size:12px;font-weight:800}.back{display:inline-block;margin-bottom:14px;color:#3157d5;text-decoration:none;font-weight:800}section{margin-top:40px}h2{margin-bottom:8px}.lead{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.card h3{margin:0 0 6px}.card p{margin:0;color:var(--muted);font-size:14px}.flow,pre{white-space:pre-wrap;overflow:auto;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 "Cascadia Code","D2Coding",Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.good{border-color:var(--green);background:#eaf8f3}.warn{border-color:var(--amber);background:#fff6e9}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line)}th,td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.pill{display:inline-block;padding:5px 9px;margin:3px;border-radius:999px;background:#e7edff;color:#2548b5;font-size:11px;font-weight:900}@media(max-width:760px){.grid{grid-template-columns:1fr}.hero{padding:28px}}</style></head><body><main class="wrap"><a class="back" href="index.html">← Documentation Hub</a>
-<header class="hero"><div class="meta">CURRENT ARCHITECTURE · 2026-08-26</div><h1>Jira Knowledge Pipeline<br>전체 아키텍처</h1><p>Jira 원문 수집부터 Knowledge DB, BGE-M3 embedding, FAISS retrieval, Evidence/MCP까지의 책임 경계를 한 장의 문서로 정리합니다. M0~M8은 완료했고, M9는 실제 285개 FAISS build까지 PASS했습니다.</p><div><span class="pill">M0~M8 DONE</span><span class="pill">M9-01 FROZEN</span><span class="pill">M9-02 IMPLEMENTED</span><span class="pill">M9-03 REAL BUILD PASS</span></div></header>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · 전체 아키텍처</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1120px;margin:auto;padding:38px 22px 80px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.card p{color:var(--muted)}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.good{border-color:var(--green);background:#eaf8f3}.warn{border-color:var(--amber);background:#fff6e9}.pill{display:inline-block;padding:5px 9px;margin:3px;border-radius:999px;background:#e7edff;color:#2548b5;font-size:11px;font-weight:900}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a><a href="status/M10_START_HERE.html">M10 Start Here →</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-26</div><h1>Jira Knowledge Pipeline<br>전체 아키텍처</h1><p>Jira 원문에서 Knowledge DB, BGE-M3 embedding, FAISS retrieval까지 실데이터 검증을 완료했습니다. M0~M9는 DONE이며 다음은 Evidence Builder + MCP인 M10입니다.</p><div><span class="pill">M0~M9 DONE</span><span class="pill">M9 REAL-RUN PASS</span><span class="pill">M10 NEXT · DESIGN</span></div></header>
 <section><h2>1. 전체 흐름</h2><div class="flow">Jira REST API
     ↓
 RAW / ANALYSIS                         M0 DONE
     ↓
 KNOWLEDGE INPUT                        M1 DONE
     ↓
-KNOWLEDGE + REVIEW                     M2~M4 DONE
+Knowledge / Review                     M2~M4 DONE
     ↓
 Profiling                              M5 DONE
     ↓
-Logical Identity / Version             M6 DONE
+Logical Identity                       M6 DONE
     ↓
 SQLite Materialization                 M7 DONE · PASS
     ↓
 BGE-M3 Embedding                       M8 DONE · PASS
     ↓
-Retrieval Contract                     M9-01 FROZEN
+FAISS + Active Retrieval               M9 DONE · PASS
     ↓
-FAISS Build / Search                   M9-02 IMPLEMENTED · CI PASS
-    ↓
-Real FAISS / Query Validation          M9-03 CURRENT · BUILD PASS
-    ↓
-Evidence Builder + MCP                 M10 GATE</div></section>
-<section><h2>2. 흔들리면 안 되는 원칙</h2><div class="grid"><article class="card"><h3>RAW = Source of Truth</h3><p>뒤 계층은 앞 계층에서 다시 만들 수 있는 파생물이어야 합니다.</p></article><article class="card"><h3>History ≠ Active Retrieval</h3><p>DB는 이력을 보존하지만 검색 입력은 active accepted snapshot만 사용합니다.</p></article><article class="card"><h3>Identity 분리</h3><p>Knowledge, Embedding, Retrieval, FAISS position을 섞지 않습니다.</p></article></div><pre>jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
+Evidence Builder + MCP                 M10 NEXT · DESIGN NOT STARTED</div></section>
+<section><h2>2. Identity Ladder</h2><pre>jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 
-Embedding Contract   ec_
-Embedding Artifact   emb_
-Retrieval Contract   rc_
-FAISS Index Artifact fi_
+knowledge_attempt_id = ka_
+attempt_no            = retry 회차
 
-FAISS position ≠ emb_ ≠ ki_</pre></section>
-<section><h2>3. M8 완료 근거</h2><div class="grid"><article class="card"><h3>Corpus</h3><p>active accepted Knowledge Item 285개.</p></article><article class="card"><h3>Embedding</h3><p>실제 BGE-M3 285 × 1024.</p></article><article class="card"><h3>Integrity</h3><p>mapping/identity/dimension/non-finite/zero-norm failure 0.</p></article></div></section>
-<section><h2>4. M9 exact baseline</h2><div class="flow">Index       IndexFlatIP
-Metric      cosine
-Normalize   DB/query L2
+Embedding Contract    ec_
+Embedding Artifact    emb_
+Retrieval Contract    rc_
+FAISS Index Artifact  fi_
+
+FAISS position ≠ emb_ ≠ ki_</pre><div class="callout"><strong>핵심:</strong> M10에서도 M9의 position을 ID처럼 쓰지 않고 <code>ki_</code>를 통해 Knowledge, <code>ke_</code>를 통해 Evidence로 돌아갑니다.</div></section>
+<section><h2>3. 완료된 실데이터 Gate</h2><div class="grid"><div class="card"><h3>M7 SQLite</h3><p>30 Issue, 37 Attempt, 285 Knowledge, 502 canonical Evidence. FK/Evidence failure 0, integrity/idempotency PASS.</p></div><div class="card"><h3>M8 Embedding</h3><p>285 corpus → 285 BGE-M3 vectors × 1024 dimensions. mapping/identity/vector integrity PASS.</p></div><div class="card"><h3>M9 Retrieval</h3><p>IndexFlatIP exact cosine. Real build/rebuild/query/same-query reproducibility까지 PASS.</p></div></div></section>
+<section><h2>4. M9 Final Contract</h2><div class="flow">Index       IndexFlatIP
+Metric      cosine · DB/query L2 normalize
+Query       raw_query_v1
 Order       embedding_id ascending
 Top-k       3
 Threshold   none
 Reranker    none
-Update      full rebuild
-Mapping     position → emb_ → ki_
-Publish     index + mapping + manifest-last</div><div class="callout warn"><strong>Flat은 영구 구조가 아닙니다.</strong><br>규모 증가 시 latency/RAM/QPS/rebuild 비용과 recall@k를 측정해 HNSW/IVF를 비교합니다.</div></section>
-<section><h2>5. M9-03 첫 실제 build · PASS</h2><div class="flow">validation: PASS
-vector_count: 285
-dimension: 1024
-rc_: rc_6b9fc722...
-fi_: fi_b544c57a...
-source embedding SHA: 45c36319...
-mapping SHA: 9e546845...
-mapping_failure_count: 0
-hash_failure_count: 0
-normalization_failure_count: 0</div><div class="callout good"><strong>Real Build PASS</strong><br>실제 M8 embedding 285개가 canonical order → L2 normalize → IndexFlatIP → mapping/manifest publish까지 성공했습니다.</div></section>
-<section><h2>6. 남은 M9 Gate</h2><div class="flow">Rebuild
-[ ] same source → same rc_
-[ ] same source → same fi_
-[ ] same source → same mapping SHA
+Mapping     position → emb_ → ki_</div><div class="callout good"><strong>Same-query:</strong> vector exact equal, max diff 0, cosine 1.0, ranking equal, scores equal.</div><div class="callout warn"><strong>Quality observation:</strong> 서로 다른 실제 질문 2개 모두 Rank 1/2는 유효했지만 Rank 3에는 noise가 있었습니다. 그래서 threshold/reranker는 아직 임의 추가하지 않습니다.</div></section>
+<section><h2>5. Production Update Direction</h2><div class="flow">운영 기본 = delta-first
+unchanged → reuse
+added     → cache/embed → add
+changed   → remove/tombstone → cache/embed → add
+removed   → remove/tombstone
 
-Real Query
-[ ] actual BGE-M3 query embedding
-[ ] exact cosine Top-3
-[ ] same query ranking reproducibility
-[ ] semantic sanity
-[ ] dense-neighborhood observation</div></section>
-<section><h2>7. M10 경계</h2><div class="flow">M9
+full rebuild = maintenance / recovery / migration</div><p>Incremental exact 후보는 <code>IndexIDMap2(IndexFlatIP)</code> + stable int64 vector_id입니다. HNSW/IVF는 실제 benchmark 후 결정합니다.</p></section>
+<section><h2>6. M10 Boundary</h2><div class="flow">M9 output
 rank + score + faiss_position + emb_ + ki_
         ↓
 M10
 ki_ → Knowledge statement
 ke_ → Evidence source
 → Evidence package
-→ MCP</div></section>
-<section><h2>8. 사람이 읽는 공식 진입점</h2><div class="grid"><article class="card"><h3>현재 상태</h3><p><a href="status/jira_knowledge_db_current_status.html">Current Status</a></p></article><article class="card"><h3>M9 Visual</h3><p><a href="status/M9_FAISS_ACTIVE_RETRIEVAL.html">M9 FAISS</a></p></article><article class="card"><h3>M9 Real Log</h3><p><a href="M9_REAL_RETRIEVAL_LOG.html">Real Retrieval Log</a></p></article></div></section></main></body></html>
+→ MCP</div><div class="callout good"><strong>새 세션 시작:</strong> <a href="status/M10_START_HERE.html">M10 Start Here</a>를 먼저 읽고 Evidence Package / Resolver / MCP Tool Contract를 DESIGN부터 확정합니다.</div></section>
+<section><h2>7. 공식 문서</h2><div class="grid"><div class="card"><h3>새 세션</h3><p><a href="status/M10_START_HERE.html">M10 Start Here</a></p></div><div class="card"><h3>M9 완료 근거</h3><p><a href="M9_REAL_RETRIEVAL_LOG.html">M9 Real Validation</a><br><a href="status/M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Final Visual</a></p></div><div class="card"><h3>관계 구조</h3><p><a href="architecture/jira_data_relationship_map.html">Relationship Map</a></p></div></div></section>
+<footer style="margin-top:40px;color:var(--muted);font-size:12px">M0~M9 DONE / PASS · M10 NEXT / DESIGN NOT STARTED · 2026-08-26</footer></main></body></html>
