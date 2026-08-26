@@ -1,7 +1,7 @@
 # M8 Real BGE-M3 Validation Log
 
 기준일: 2026-08-26  
-상태: **CURRENT / FULL 285 EMBEDDING PASS / ARTIFACT INTEGRITY VALIDATION NEXT**
+상태: **CURRENT / FULL 285 EMBEDDING PASS / SEMANTIC SANITY PASS / ARTIFACT INTEGRITY VALIDATION NEXT**
 
 이 문서는 M8-03 실제 사내 BGE-M3 embedding 검증 과정을 기록한다. 실제 endpoint, API key, custom header 이름/값, Jira 식별자/본문은 기록하지 않는다.
 
@@ -121,7 +121,48 @@ M8-03 Full Real Embedding = PASS
 
 ---
 
-## 5. Troubleshooting Summary
+## 5. Semantic Quality Sanity Check · PASS
+
+FAISS를 만들기 전에 285개 embedding을 brute-force cosine similarity로 비교해 실제 의미 품질을 사람이 확인했다.
+
+사용자 판정:
+
+```text
+Sample 1  잘됨
+Sample 2  아주 잘됨
+Sample 3  잘됨
+          단, Top-1/2/3 점수 차이가 매우 작음
+```
+
+Sample 3 cosine score:
+
+```text
+Top-1  0.5918
+Top-2  0.5908
+Top-3  0.5900
+
+Top-1 - Top-3 margin = 0.0018
+```
+
+해석:
+
+- Sample 1/2는 의미적으로 기대한 가까운 Knowledge를 잘 찾았다.
+- Sample 3도 Top-3가 의미상 타당했으므로 embedding 실패로 판단하지 않는다.
+- Sample 3의 작은 score margin은 해당 query 주변에 의미적으로 비슷한 후보가 촘촘하게 존재할 수 있음을 보여준다.
+- cosine 절대값 `0.59` 자체만으로 품질을 판정하지 않는다. 모델/도메인/문장 분포에 따라 score scale이 달라질 수 있기 때문이다.
+- M9에서 Top-1만 무조건 확정하거나 작은 score margin만으로 후보를 버리는 정책은 주의가 필요하다.
+- 이 관찰은 M9 Top-k/threshold/reranking 설계의 입력 근거로 사용하되, M8에서 M9 정책을 미리 확정하지 않는다.
+
+판정:
+
+```text
+M8-03 Semantic Quality Sanity = PASS
+Observation: dense neighborhood / small Top-3 margin exists
+```
+
+---
+
+## 6. Troubleshooting Summary
 
 이번 실제 연결 과정에서 다음 문제와 해결을 확인했다.
 
@@ -149,9 +190,9 @@ T06  corpus_rows 28 전달 오류
 
 ---
 
-## 6. Artifact Integrity Gate · NEXT
+## 7. Artifact Integrity Gate · NEXT
 
-API 성공만으로 M8을 닫지 않는다. 생성된 final embedding JSONL과 corpus를 다시 읽어 다음을 deterministic하게 검증한다.
+API 성공과 semantic sanity만으로 M8을 닫지 않는다. 생성된 final embedding JSONL과 corpus를 다시 읽어 다음을 deterministic하게 검증한다.
 
 ```text
 [ ] corpus_rows = 285
@@ -182,7 +223,7 @@ python tools/jira_knowledge/validate_m8_embedding_artifact.py --corpus data/embe
 
 ---
 
-## 7. 현재 M8-03 Gate 상태
+## 8. 현재 M8-03 Gate 상태
 
 ```text
 [x] M8-01 corpus_rows = 285
@@ -195,9 +236,9 @@ python tools/jira_knowledge/validate_m8_embedding_artifact.py --corpus data/embe
 [x] batch_count = 5
 [x] reported output dimension = 1024
 [x] final artifact publish 완료
+[x] 작은 semantic quality sanity check
 [ ] artifact mapping / deterministic identity validation
 [ ] finite / non-zero vector validation
-[ ] 작은 semantic quality sanity check
 [ ] 문서/HTML 최종 sync
 ```
 
