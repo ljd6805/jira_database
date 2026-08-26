@@ -1,1 +1,76 @@
-placeholder
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Jira Knowledge Pipeline의 초기 Jira→BGE-M3 RAG→MCP 최소 구현 계획과 현재 M8 구조의 연결 문서">
+<title>Baseline Plan · Jira → BGE-M3 RAG → MCP</title>
+<style>
+:root{--bg:#f4f7fb;--surface:#fff;--text:#172033;--muted:#62718a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86400;--red:#b63c3c;--shadow:0 12px 30px rgba(31,49,84,.08)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 7% 0%,rgba(49,87,213,.11),transparent 30rem),var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.65}.top{position:sticky;top:0;z-index:20;display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;background:rgba(16,24,39,.94);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.12)}.top a{padding:6px 9px;border-radius:8px;background:rgba(255,255,255,.08);color:#e8efff;text-decoration:none;font-size:12px;font-weight:850}.wrap{max-width:1180px;margin:auto;padding:36px 22px 80px}.hero{padding:38px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#17284d,#3157d5 64%,#6986eb);box-shadow:var(--shadow)}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;opacity:.86}.hero h1{margin:11px 0 10px;font-size:clamp(34px,5vw,54px);line-height:1.1;letter-spacing:-.04em}.hero p{max-width:960px;margin:0;color:rgba(255,255,255,.9)}.hero-grid,.grid2,.grid3{display:grid;gap:14px}.hero-grid{grid-template-columns:repeat(3,1fr);margin-top:22px}.hero-grid div{padding:14px;border:1px solid rgba(255,255,255,.16);border-radius:14px;background:rgba(8,22,53,.25)}.hero-grid b,.hero-grid span{display:block}.hero-grid span{font-size:12px;opacity:.78}.baseline{margin-top:18px;padding:16px 18px;border:1px solid #e8ca83;border-radius:15px;background:#fff7df;color:#694900}.baseline strong{color:#503700}section{margin-top:42px}h2{margin:0 0 8px;font-size:28px;letter-spacing:-.025em}.lead{margin:0 0 18px;color:var(--muted)}.card{padding:19px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:0 6px 18px rgba(31,49,84,.045)}.card h3{margin:0 0 7px}.card p{margin:0;color:var(--muted)}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.callout{margin-top:16px;padding:16px 18px;border-left:5px solid var(--blue);border-radius:0 13px 13px 0;background:#edf3ff}.callout.good{border-color:var(--green);background:#eaf8f3}.callout.warn{border-color:var(--amber);background:#fff5e7}.flow{display:grid;grid-template-columns:1fr 42px 1fr 42px 1fr;gap:8px;align-items:stretch;margin-top:14px}.node{display:flex;flex-direction:column;justify-content:center;min-height:105px;padding:15px;border:1px solid var(--line);border-radius:14px;background:#fff}.node b{font-size:15px}.node span{margin-top:4px;color:var(--muted);font-size:12px}.arrow{display:grid;place-items:center;font-size:23px;font-weight:900;color:#71809a}.flow.second{grid-template-columns:1fr 42px 1fr 42px 1fr;margin-top:8px}.node.current{border:2px solid var(--blue);background:#eef3ff}.node.done{border-color:#a8d9c5;background:#eef9f4}.node.plan{border-color:#e5ca93;background:#fff9ed}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}th,td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:13px}th{background:#edf2f8;color:#39475c}tr:last-child td{border-bottom:0}.journey{display:grid;grid-template-columns:repeat(6,minmax(135px,1fr));gap:9px;overflow:auto;padding-bottom:4px}.step{min-width:135px;padding:13px;border:1px solid var(--line);border-radius:13px;background:#fff}.step b,.step span{display:block}.step span{margin-top:3px;color:var(--muted);font-size:11px}.step.done{background:#eef9f4}.step.current{border:2px solid var(--blue);background:#eef2ff}.step.plan{background:#fff8e9}.links{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.button{display:inline-block;padding:7px 10px;border-radius:9px;background:var(--blue);color:#fff;text-decoration:none;font-size:12px;font-weight:850}.button.alt{background:#66758b}.button.green{background:var(--green)}code,.mono{font-family:"Cascadia Code","D2Coding",Consolas,monospace}.code{white-space:pre-wrap;padding:16px;border-radius:13px;background:#101827;color:#dce8ff;font:12px/1.65 "Cascadia Code","D2Coding",Consolas,monospace}.footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;text-align:center}@media(max-width:850px){.hero-grid,.grid3,.grid2{grid-template-columns:1fr}.flow,.flow.second{grid-template-columns:1fr}.arrow{transform:rotate(90deg);min-height:28px}.journey{grid-template-columns:repeat(6,150px)}}
+</style>
+</head>
+<body>
+<nav class="top" aria-label="프로젝트 문서 이동">
+  <a href="../index.html">← Documentation Hub</a>
+  <a href="../status/jira_knowledge_db_current_status.html">Current Status</a>
+  <a href="../architecture/jira_data_relationship_map.html">Relationship Map</a>
+  <a href="../status/M8_EMBEDDING_CHUNK_BGE_M3.html">M8 Current</a>
+</nav>
+<main class="wrap">
+<header class="hero">
+  <div class="eyebrow">BASELINE / HISTORICAL PLAN · ORIGINAL DIRECTION 2026-08-03</div>
+  <h1>Jira → BGE-M3 RAG → MCP<br>최소 구현 계획</h1>
+  <p>프로젝트 초기에는 “Jira 원문을 보존하고, BGE-M3와 FAISS로 관련 근거를 찾고, MCP가 그 근거를 Agent에게 제공한다”는 최소 한 바퀴를 목표로 시작했습니다. 이 문서는 그 출발점을 현재 Jira Knowledge Pipeline 문서 체계 안에 연결한 버전입니다.</p>
+  <div class="hero-grid"><div><b>입력</b><span>계정이 조회 가능한 Jira 프로젝트</span></div><div><b>검색</b><span>BGE-M3 · SQLite · FAISS · 원문 복원</span></div><div><b>응답</b><span>MCP evidence → Agent LLM 최종 분석</span></div></div>
+</header>
+<div class="baseline"><strong>중요:</strong> 이 문서는 현재 구현 계약의 최종 Source of Truth가 아닙니다. M0~M8을 진행하며 Version/Generation/Attempt/Evidence/active-history 구조가 구체화되었습니다. 현재 판단은 <a href="../status/jira_knowledge_db_current_status.html">Current Status</a>와 <a href="../architecture/jira_data_relationship_map.html">Relationship Map</a>을 우선합니다.</div>
+
+<section><h2>1. 이 문서가 Pipeline에서 어디에 위치하는가</h2><p class="lead">초기 설계는 사라진 문서가 아니라, 현재 구조가 왜 이렇게 발전했는지를 설명하는 출발점으로 보존합니다.</p>
+<div class="journey"><div class="step plan"><b>Baseline Plan</b><span>Jira→RAG→MCP 최소 구조</span></div><div class="step done"><b>M0~M1</b><span>RAW/ANALYSIS · Knowledge Input</span></div><div class="step done"><b>M2~M5</b><span>Knowledge Schema · Quality · Pilot · Profile</span></div><div class="step done"><b>M6~M7</b><span>Logical Schema · SQLite</span></div><div class="step current"><b>M8 CURRENT</b><span>Embedding Unit · BGE-M3</span></div><div class="step plan"><b>M9~M10</b><span>FAISS Retrieval · Evidence/MCP</span></div></div></section>
+
+<section><h2>2. 초기 계획에서 확정했던 조건</h2><div class="grid3"><article class="card"><h3>Jira 접근</h3><p>ID/Password 기반 읽기 API 통신을 사용하고, 운영 목표는 인증 계정이 조회 가능한 모든 프로젝트입니다. 파일럿은 프로젝트별 최근 수정 이슈 30개였습니다.</p></article><article class="card"><h3>BGE-M3</h3><p>사내 OpenAI-compatible embedding API를 사용합니다. 당시 확인한 핵심 제약은 HTTP 200회/분, batch 최대 64, dense dimension 1024였습니다.</p></article><article class="card"><h3>LLM 경계</h3><p>생성형 LLM은 Agent 쪽에만 둡니다. MCP는 검색·필터·원문 복원·출처 반환에 집중하고 최종 답변을 먼저 생성하지 않습니다.</p></article></div>
+<div class="callout good"><strong>초기 핵심 문장</strong><br>“Jira 원문을 보존하고 검색 가능한 형태로 색인한 뒤, MCP는 관련 원문과 출처를 반환하고 Agent LLM이 그 근거를 분석해 답한다.”</div></section>
+
+<section><h2>3. 초기 전체 아키텍처</h2><p class="lead">당시의 역할 분리는 지금도 큰 방향은 유지됩니다. 다만 DB identity와 Knowledge lineage가 M6/M7에서 훨씬 정교해졌습니다.</p>
+<div class="flow"><div class="node"><b>Jira REST API</b><span>Project · Issue · Comment · Link · Attachment metadata</span></div><div class="arrow">→</div><div class="node"><b>Raw / Metadata Store</b><span>원문 JSON + SQLite 참조</span></div><div class="arrow">→</div><div class="node"><b>Chunk / BGE-M3</b><span>검색 단위 → 1024-d embedding</span></div></div>
+<div class="flow second"><div class="node"><b>FAISS</b><span>Top-K vector candidate</span></div><div class="arrow">→</div><div class="node"><b>Retriever / MCP</b><span>DB mapping → 실제 원문 evidence</span></div><div class="arrow">→</div><div class="node"><b>Agent + LLM</b><span>근거 비교 · 최종 답변 · 출처 표시</span></div></div>
+<div class="callout"><strong>현재도 유지되는 원칙</strong><br>FAISS는 원문 저장소가 아닙니다. 검색 ID는 DB의 안정적인 Knowledge/Source identity와 매핑되어야 하고, 최종 근거는 원문 또는 canonical evidence로 돌아갈 수 있어야 합니다.</div></section>
+
+<section><h2>4. 초기 계획과 현재 구현의 차이</h2><table><thead><tr><th>축</th><th>초기 Baseline</th><th>현재 Pipeline</th></tr></thead><tbody>
+<tr><td>사실 계층</td><td>Raw JSON + SQLite metadata</td><td>M0에서 RAW → ANALYSIS를 명확한 결정적 계층으로 고정</td></tr>
+<tr><td>검색 지식</td><td>제목·설명·댓글을 직접 chunk하는 그림</td><td>M1~M5에서 Knowledge Input → Light Structured Knowledge → Review를 구축</td></tr>
+<tr><td>DB identity</td><td>issue/chunk/source 중심</td><td>M6/M7에서 <span class="mono">jira_id → iv_ → kc_ → kg_ → ka_ → ki_ → ke_</span>로 구체화</td></tr>
+<tr><td>History</td><td>증분 갱신 개념</td><td>Version/Generation/Attempt history와 active retrieval을 분리</td></tr>
+<tr><td>Embedding Unit</td><td>100~500 token chunk를 기본 후보로 가정</td><td>M8-01 baseline은 <strong>Knowledge Item 1개 = Embedding Unit 1개</strong>, 필요 근거가 있을 때만 chunk 추가</td></tr>
+<tr><td>FAISS</td><td>초기 MVP 구성에 포함</td><td>명시적으로 M9 책임으로 분리</td></tr>
+<tr><td>MCP</td><td>search/get_issue 2개 도구 구상</td><td>M10 Functional MVP Gate에서 Evidence Builder와 함께 구현 예정</td></tr>
+</tbody></table></section>
+
+<section><h2>5. 현재 Authoritative DB 연결</h2><div class="code">Pipeline Run
+  └─ Issue Version Observation
+
+Issue (jira_id authoritative)
+  └─ Issue Version (iv_ · source_hash)
+       └─ Knowledge Generation (kg_)
+            └─ Knowledge Attempt (ka_ · attempt_no)
+                 ├─ Knowledge Item (ki_)
+                 │    └─ Knowledge Evidence (ke_)
+                 └─ Knowledge Review
+                      └─ Review Finding
+
+M8 input
+→ active Generation
+→ accepted Attempt
+→ content_available Knowledge Item
+→ Embedding corpus</div>
+<div class="links"><a class="button green" href="../status/M6_DB_LOGICAL_SCHEMA_COMPLETION.html">M6 Visual</a><a class="button green" href="../status/M7_SQLITE_MATERIALIZATION.html">M7 Visual</a><a class="button" href="../architecture/jira_data_relationship_map.html">Interactive Relationship Map</a></div></section>
+
+<section><h2>6. 현재 단계 · M8</h2><div class="grid2"><article class="card"><h3>M8-01 · Corpus</h3><p>active accepted Knowledge만 deterministic하게 export합니다. baseline embedding text는 Knowledge Item의 statement이며 현재 목표 real-run corpus는 285 rows입니다.</p></article><article class="card"><h3>M8 이후</h3><p>M8에서 BGE-M3 embedding artifact를 완성한 뒤 M9에서 FAISS/Top-k retrieval, M10에서 Evidence Builder + MCP를 붙입니다.</p></article></div>
+<div class="links"><a class="button" href="../status/M8_EMBEDDING_CHUNK_BGE_M3.html">M8 Visual</a><a class="button alt" href="../M8_EMBEDDING_CHUNK_BGE_M3.md">M8 Design</a><a class="button alt" href="../M8_DECISION_LOG.md">M8 Decision Log</a></div></section>
+
+<section><h2>7. 문서를 읽는 권장 순서</h2><div class="grid2"><article class="card"><h3>프로젝트를 처음 볼 때</h3><p>① 이 Baseline Plan → ② Pipeline Overview → ③ M0~M7 Milestone → ④ M8 Current → ⑤ Relationship Map 순서가 맥락을 이해하기 쉽습니다.</p><div class="links"><a class="button" href="../index.html">Hub로 이동</a><a class="button alt" href="../PIPELINE_OVERVIEW.md">Pipeline Overview</a></div></article><article class="card"><h3>지금 당장 작업할 때</h3><p>Baseline보다 Current Status와 현재 Milestone 계약을 우선합니다. 과거 문서는 결정 배경을 확인할 때 사용합니다.</p><div class="links"><a class="button" href="../status/jira_knowledge_db_current_status.html">Current Status</a><a class="button alt" href="../status/M8_EMBEDDING_CHUNK_BGE_M3.html">M8 Current</a></div></article></div></section>
+
+<footer class="footer">Jira Knowledge Pipeline · Baseline Jira→BGE-M3 RAG→MCP Plan · Historical direction linked into Documentation Hub · 2026-08-26</footer>
+</main>
+</body>
+</html>
