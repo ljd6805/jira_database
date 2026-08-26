@@ -1,46 +1,31 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M9 실제 FAISS 285개 build와 same-source rebuild reproducibility PASS, real query Gate 진행 중"><title>M9 · Real FAISS Validation Log</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1080px;margin:auto;padding:36px 22px 80px}.hero{padding:36px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,50px)}section{margin-top:34px}.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:16px;border-radius:13px;background:var(--code);color:#dce8ff;font:12px/1.65 "Cascadia Code","D2Coding",Consolas,monospace}.top a{display:inline-block;margin:0 8px 10px 0;color:#3157d5;text-decoration:none;font-weight:800}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}.kpi{padding:14px;border-radius:13px;background:#fff;border:1px solid var(--line)}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--muted)}@media(max-width:760px){.grid2,.grid3,.kpis{grid-template-columns:1fr 1fr}}@media(max-width:520px){.grid2,.grid3,.kpis{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="index.html">← 문서 허브</a><a href="status/M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Visual</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Contract</a><a href="M9_DECISION_LOG.html">Decision Log</a></nav><header class="hero"><div>M9 · REAL VALIDATION · 2026-08-26</div><h1>FAISS build도,<br>같은 입력의 rebuild도 PASS</h1><p>M8에서 검증된 285개의 1024차원 BGE-M3 embedding으로 첫 IndexFlatIP build를 통과한 뒤, 같은 source와 같은 contract로 다시 build해 logical identity와 canonical mapping이 그대로 재현되는지 확인했습니다.</p></header><div class="kpis"><div class="kpi"><b>285</b><span>vector_count</span></div><div class="kpi"><b>1024</b><span>dimension</span></div><div class="kpi"><b>PASS</b><span>Real Build</span></div><div class="kpi"><b>PASS</b><span>Rebuild Reproducibility</span></div></div><section><h2>1. 첫 Build와 Rebuild 비교</h2><div class="flow">첫 Build
-rc_       rc_6b9fc7222abbf08ff5861fbb73ab31cc37a12cd78585313d05e2645e7603dd77
-fi_       fi_b544c57a560cec99069be46b6ee8f2047841b522ddf81681d3cd6027baa65b2d
-source    45c363194defbb0e7095c32ecd462e749c943d4524ec7dd6acda093260abe2f8
-mapping   9e546845b97307d095dd1ff3ec3ab3e4262dcf9b0a1444cbcd4391e0837e947b
-binary    b54e172b2a9d302b8ad6003cd3f56680021cc64f6d0e2ea619f537395055cec2
-
-Rebuild
-rc_       SAME
-fi_       SAME
-source    SAME
-mapping   SAME
-binary    SAME · same environment observation
-
-validation: PASS
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M9 실제 FAISS build/rebuild PASS와 서로 다른 두 real query semantic sanity 결과, same-query reproducibility next"><title>M9 · Real FAISS Validation Log</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1080px;margin:auto;padding:36px 22px 80px}.hero{padding:36px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,50px)}section{margin-top:34px}.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:16px;border-radius:13px;background:var(--code);color:#dce8ff;font:12px/1.65 "Cascadia Code","D2Coding",Consolas,monospace}.top a{display:inline-block;margin:0 8px 10px 0;color:#3157d5;text-decoration:none;font-weight:800}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}.kpi{padding:14px;border-radius:13px;background:#fff;border:1px solid var(--line)}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--muted)}@media(max-width:760px){.grid2,.grid3,.kpis{grid-template-columns:1fr 1fr}}@media(max-width:520px){.grid2,.grid3,.kpis{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="index.html">← 문서 허브</a><a href="status/M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Visual</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Contract</a><a href="M9_DECISION_LOG.html">Decision Log</a></nav><header class="hero"><div>M9 · REAL VALIDATION · 2026-08-26</div><h1>Build/Rebuild는 PASS,<br>서로 다른 두 질문도 실제 검색 확인</h1><p>실제 285개 IndexFlatIP build와 same-source rebuild reproducibility를 통과했습니다. 이어 서로 다른 두 질문으로 실제 BGE-M3 → FAISS Top-3를 확인했고, 두 경우 모두 Rank 1/2는 유효했지만 Rank 3에는 noise가 관찰됐습니다. 같은 질문 반복 재현성은 아직 별도 Gate로 남아 있습니다.</p></header><div class="kpis"><div class="kpi"><b>PASS</b><span>Real Build</span></div><div class="kpi"><b>PASS</b><span>Rebuild</span></div><div class="kpi"><b>2</b><span>Distinct real queries</span></div><div class="kpi"><b>NEXT</b><span>Same-query reproducibility</span></div></div><section><h2>1. Build / Rebuild</h2><div class="flow">vector_count: 285
+dimension: 1024
 mapping_failure_count: 0
 hash_failure_count: 0
-normalization_failure_count: 0</div><div class="card good"><strong>M9-03 Rebuild Reproducibility = PASS</strong><p>같은 source와 같은 contract가 같은 logical retrieval artifact와 같은 position↔emb_↔ki_ mapping으로 재현됐습니다.</p></div></section><section><h2>2. 각각 무엇을 의미하나?</h2><div class="grid3"><div class="card"><b>rc_</b><p>검색 규칙의 logical ID. IndexFlatIP, cosine/L2, query profile, Top-3, model/profile/dimension 계약을 식별합니다.</p></div><div class="card"><b>fi_</b><p>source embedding snapshot + index build profile의 logical FAISS artifact ID입니다.</p></div><div class="card"><b>mapping SHA</b><p>FAISS position → embedding_id → knowledge_item_id 연결표가 같은지 확인합니다.</p></div></div><div class="card warn"><b>FAISS binary SHA</b><p>이번에는 같은 머신/같은 환경에서 두 build가 byte-for-byte 동일했습니다. 좋은 신호지만 library/platform serialization 차이를 고려해 logical identity의 필수 조건으로 두지는 않습니다.</p></div></section><section><h2>3. 왜 Rebuild Test를 했나?</h2><div class="flow">same source
-+ same retrieval contract
-        ↓
-rebuild
-        ↓
-same rc_
-same fi_
-same canonical mapping
-        ↓
-deterministic / reproducible PASS</div><p>이 검증은 정식 서비스에서 매번 전체 rebuild하겠다는 의미가 아닙니다. 파일럿에서 현재 구현이 시간값·랜덤 ordering·숨은 상태에 흔들리지 않는지 확인하는 Gate입니다.</p></section><section><h2>4. Pilot vs Production</h2><div class="grid2"><div class="card"><b>Pilot</b><p>full rebuild로 결정성, mapping, 무결성, exact baseline을 확인합니다.</p></div><div class="card"><b>Production</b><p>delta-first로 added/changed/removed Knowledge만 embedding/index에 반영하고, full rebuild는 maintenance/recovery/migration에 사용합니다.</p></div></div></section><section><h2>5. 현재 Gate</h2><div class="flow">[x] real build
-[x] 285 vectors
-[x] 1024 dimensions
-[x] mapping/hash/norm failure = 0
-[x] artifact publish
-[x] rebuild → same rc_
-[x] rebuild → same fi_
-[x] rebuild → same source SHA
-[x] rebuild → same mapping SHA
-[x] same environment → same FAISS binary SHA · observation
-[ ] real BGE-M3 query Top-3
-[ ] same query ranking reproducibility
-[ ] semantic sanity
-[ ] dense-neighborhood observation</div></section><section><h2>6. 다음 단계 · 실제 질문 검색</h2><div class="flow">사용자 질문
-→ 같은 BGE-M3 1024-d
-→ L2 normalize
-→ IndexFlatIP exact cosine
-→ Top-3
-→ faiss_position → emb_ → ki_</div><div class="card good"><b>이제 실제 검색 품질을 봅니다</b><p>대표 질문을 넣고 Top-3가 의미상 타당한지, 같은 질문을 재실행하면 같은 ranking이 나오는지 확인합니다. 실제 Jira-derived 문장은 로컬 화면에서만 봅니다.</p></div></section></main></body></html>
+normalization_failure_count: 0
+
+same source rebuild
+→ same rc_
+→ same fi_
+→ same source SHA
+→ same mapping SHA
+→ same binary SHA · same environment observation</div><div class="card good"><strong>Real Build + Rebuild Reproducibility = PASS</strong></div></section><section><h2>2. 서로 다른 두 Real Query</h2><div class="grid2"><div class="card"><b>Case 1 · Query A</b><div class="flow">rank1  좋음    0.843981
+rank2  좋음    0.788863
+rank3  어색함  0.601325</div></div><div class="card"><b>Case 2 · Query B</b><div class="flow">rank1  좋음    0.708450
+rank2  괜찮음  0.699601
+rank3  어색함  0.687829</div></div></div><div class="card good"><b>Semantic observation</b><p>두 질문 모두 Rank 1은 좋고 Rank 2도 유효했습니다. Rank 3에는 noise가 있었습니다.</p></div><div class="card warn"><b>중요한 해석</b><p>Case 1과 Case 2는 서로 다른 질문이므로 score 차이를 재현성 문제로 해석하지 않습니다.</p></div></section><section><h2>3. Top-3 baseline에서 얻은 관찰</h2><div class="flow">Top-1  유효 · 2/2
+Top-2  유효 · 2/2
+Top-3  noise · 2/2</div><p>특히 Case 2는 Rank 2와 Rank 3 score 차이가 작지만 의미 품질은 달랐습니다. 따라서 단순 global cosine threshold만으로 relevant/non-relevant를 가르는 것은 아직 근거가 부족합니다. Top-k/threshold/reranker 계약은 즉시 바꾸지 않고 M10 Evidence 사용 및 후속 품질 실험에서 다시 판단합니다.</p></section><section><h2>4. Same-query Reproducibility · NEXT</h2><p>이제 완전히 동일한 한 질문을 반복해 같은 query vector와 ranking이 재현되는지 확인합니다.</p><div class="flow">same exact query string
+→ BGE-M3 call #1
+→ BGE-M3 call #2
+→ vector SHA / cosine 비교
+→ FAISS Top-3 ID / score 비교</div><p>수동 복사 차이를 피하기 위해 <code>tools/jira_knowledge/diagnose_query_reproducibility.py</code>를 사용할 수 있습니다. 이 도구는 실제 query text를 출력하지 않고 hash/vector/ranking 비교값만 표시합니다.</p></section><section><h2>5. 현재 Gate</h2><div class="flow">[x] real build
+[x] rebuild reproducibility
+[x] distinct real query Case 1
+[x] distinct real query Case 2
+[x] semantic sanity observation
+[x] Top-3 noise observation
+[ ] same exact query vector reproducibility
+[ ] same exact query ranking reproducibility
+[ ] final documentation sync</div></section></main></body></html>
