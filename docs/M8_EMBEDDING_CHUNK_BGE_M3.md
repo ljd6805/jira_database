@@ -405,6 +405,8 @@ embedding_dimension: 1024
 
 ## 12. M9와의 경계
 
+**M8에서는 FAISS를 구현하지 않는다.**
+
 ```text
 M8
 → validated embedding JSONL
