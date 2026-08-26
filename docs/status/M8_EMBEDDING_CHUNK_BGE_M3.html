@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M8 · Embedding Unit / Chunk + BGE-M3</title><link rel="stylesheet" href="milestone.css"><style>.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.current{border:2px solid var(--blue);background:#edf3ff}.flow3{display:grid;grid-template-columns:1fr 44px 1fr 44px 1fr;gap:8px;align-items:stretch}.arrow{display:grid;place-items:center;font-size:22px;font-weight:900}.kpi b{font-size:28px}.warn{border-left:5px solid #a86500;background:#fff7e9}.good{border-left:5px solid #16805d;background:#eef9f4}@media(max-width:800px){.grid3,.flow3{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}}</style></head><body><main class="wrap"><nav class="top"><a href="M7_SQLITE_MATERIALIZATION.html">← M7</a><a href="../index.html">문서 허브</a><a href="../M8_EMBEDDING_CHUNK_BGE_M3.md">상세 Markdown</a><a href="jira_knowledge_db_current_status.html">현재 상태</a></nav><header class="hero"><span class="eyebrow">M8 · CURRENT</span><h1>Knowledge를<br>검색 벡터로 바꾸는 경계</h1><p>M7 SQLite의 active accepted Knowledge를 입력으로 Embedding Unit과 Chunk 전략을 결정하고 BGE-M3 embedding을 생성·검증하는 단계입니다.</p><span class="state">DESIGN KICKOFF · 2026-08-26</span></header><div class="kpis"><div class="kpi"><b>285</b><span>Pilot Knowledge Item</span></div><div class="kpi"><b>64</b><span>BGE-M3 max batch</span></div><div class="kpi"><b>1024</b><span>Dense dimension</span></div><div class="kpi"><b>M9</b><span>FAISS responsibility</span></div></div><section><h2>1. M7 → M8 → M9</h2><div class="flow3"><div class="box"><b>M7 · DONE</b><p>SQLite real-run PASS. Active Generation 30, canonical Evidence 502, integrity OK.</p></div><div class="arrow">→</div><div class="box current"><b>M8 · CURRENT</b><p>Embedding Unit / Chunk + BGE-M3.</p></div><div class="arrow">→</div><div class="box"><b>M9 · PLAN</b><p>FAISS + Active Retrieval.</p></div></div><div class="callout good"><strong>입력 경계</strong> M8은 DB 전체가 아니라 <code>state=active</code> Generation의 accepted Attempt Knowledge만 기본 corpus로 사용합니다.</div></section><section><h2>2. 기본 Embedding Unit 후보</h2><div class="flow">Knowledge Item 1개
+→ Embedding Unit 1개
+
+우선 이 단순한 구조를 기본안으로 검증
+→ 검색 품질이나 길이 때문에 필요할 때만 Chunk 추가</div><p class="lead">M5 Pilot의 285개 Item은 이미 검색 가치가 있는 atomic statement와 Evidence를 갖고 있습니다. 무조건 Chunk부터 만드는 것은 피합니다.</p></section><section><h2>3. BGE-M3 현재 계약</h2><div class="grid3"><div class="box"><b>Model</b><p>BAAI/bge-m3</p></div><div class="box"><b>Serving</b><p>TEI · OpenAI-compatible embeddings API</p></div><div class="box"><b>Dense Output</b><p>1024 dimension · request batch 최대 64</p></div></div><div class="callout warn"><strong>미확정</strong> 축소 dimension 지원 여부는 아직 확인되지 않았습니다. 확인 전까지 1024-dim을 authoritative output으로 취급합니다.</div></section><section><h2>4. M8에서 결정할 계약</h2><table><thead><tr><th>축</th><th>결정할 내용</th></tr></thead><tbody><tr><td>Corpus</td><td>active accepted Knowledge 추출 query와 제외 규칙</td></tr><tr><td>Embedding Unit</td><td>Knowledge Item 그대로 쓸지, 어떤 경우 Chunk할지</td></tr><tr><td>Embedding Text</td><td>statement / category+statement / summary context 조합 비교</td></tr><tr><td>Identity</td><td>embedding_id와 knowledge_item_id mapping, deterministic contract</td></tr><tr><td>API</td><td>batch, 실패/재시도, 응답 순서, 1024-dim 검증</td></tr><tr><td>Artifact</td><td>M9가 그대로 index할 수 있는 저장 형식과 metadata</td></tr></tbody></table></section><section><h2>5. Identity 원칙</h2><div class="flow">Knowledge identity
+jira_id → iv_ → kc_ → kg_ → ka_ → ki_
+
+Embedding artifact identity
+→ 별도 embedding_id / chunk_id
+→ 반드시 knowledge_item_id로 역참조 가능
+
+FAISS vector position
+≠ Knowledge identity</div><div class="callout"><strong>핵심</strong> M9에서 index를 다시 만들어도 어떤 Knowledge Item의 어떤 embedding인지 복원할 수 있어야 합니다.</div></section><section><h2>6. M8 Gate 초안</h2><div class="grid3"><div class="box"><b>Corpus</b><p>active accepted만 포함, historical/candidate 제외.</p></div><div class="box"><b>Embedding</b><p>batch ≤64, output 1024-dim, mapping 보존.</p></div><div class="box"><b>Reproducibility</b><p>같은 input/contract에서 identity와 artifact mapping 재현.</p></div></div><div class="flow">[ ] active corpus query 확정
+[ ] embedding unit 결정
+[ ] Chunk 적용 조건 확정
+[ ] deterministic embedding identity 확정
+[ ] BGE-M3 adapter 구현
+[ ] 실제 샘플 embedding 성공
+[ ] Knowledge Item ↔ Embedding mapping 무결성
+[ ] 재실행 재현성
+[ ] 문서/HTML 동기화</div></section><section><h2>7. 첫 액션</h2><div class="flow">1. M7 SQLite active accepted Knowledge 추출 SQL 확인
+2. 285 Item 분포 재확인
+3. Embedding Text 후보 2~3개 정의
+4. Chunk 필요 조건 가설 수립
+5. BGE-M3 adapter contract 설계
+6. 작은 샘플 embedding 실험
+7. 결과 기반 M8 contract 고정</div></section><footer>M8 · Embedding Unit / Chunk + BGE-M3 · CURRENT · 2026-08-26</footer></main></body></html>
