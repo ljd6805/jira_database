@@ -1,9 +1,9 @@
 # M9 Decision Log
 
 기준일: 2026-08-26  
-상태: **ACTIVE / M9-01 APPROVED / M9-02 IMPLEMENTED · CI PASS**
+상태: **ACTIVE / M9-01 APPROVED / M9-02 IMPLEMENTED · CI PASS / M9-03 REAL BUILD PASS**
 
-M9 · FAISS + Active Retrieval에서 합의한 검색 계약과 구현 결정을 기록한다.
+M9 · FAISS + Active Retrieval에서 합의한 검색 계약과 구현/실환경 검증 결정을 기록한다.
 
 ---
 
@@ -289,19 +289,53 @@ M9-02 = IMPLEMENTED / CI PASS
 
 ## M9-03 · Real Retrieval Gate
 
-상태: **NEXT**
+상태: **CURRENT / REAL BUILD PASS / REBUILD NEXT**
 
-실제 Pilot에서 확인할 항목:
+### R1. 첫 실제 FAISS Build · PASS
+
+실제 M8 Pilot embedding 285개로 로컬 Windows에서 `IndexFlatIP` artifact를 생성했다.
 
 ```text
-[ ] vector_count = 285
-[ ] dimension = 1024
-[ ] mapping_rows = 285
-[ ] unique embedding_id = 285
-[ ] unique knowledge_item_id = 285
-[ ] contract/hash/mapping failure = 0
-[ ] dimension/normalization failure = 0
-[ ] temp artifact = false
+validation: PASS
+vector_count: 285
+dimension: 1024
+retrieval_contract_hash: rc_6b9fc7222abbf08ff5861fbb73ab31cc37a12cd78585313d05e2645e7603dd77
+faiss_index_id: fi_b544c57a560cec99069be46b6ee8f2047841b522ddf81681d3cd6027baa65b2d
+source_embedding_artifact_sha256: 45c363194defbb0e7095c32ecd462e749c943d4524ec7dd6acda093260abe2f8
+mapping_sha256: 9e546845b97307d095dd1ff3ec3ab3e4262dcf9b0a1444cbcd4391e0837e947b
+faiss_binary_sha256: b54e172b2a9d302b8ad6003cd3f56680021cc64f6d0e2ea619f537395055cec2
+mapping_failure_count: 0
+hash_failure_count: 0
+normalization_failure_count: 0
+```
+
+판정:
+
+```text
+M9-03 Real Build = PASS
+```
+
+### R2. Rebuild 재현성 판정 기준
+
+같은 source + 같은 contract로 재실행할 때 다음은 반드시 같아야 한다.
+
+```text
+retrieval_contract_hash
+faiss_index_id
+source_embedding_artifact_sha256
+mapping_sha256
+```
+
+`faiss_binary_sha256`는 같은 머신/FAISS version에서 동일하면 좋은 신호지만, logical identity의 필수 Gate는 아니다. library/platform serialization 차이를 허용하기 위해 `rc_`, `fi_`, canonical mapping을 authoritative 기준으로 둔다.
+
+### R3. 남은 Gate
+
+```text
+[x] vector_count = 285
+[x] dimension = 1024
+[x] contract/hash/mapping failure = 0
+[x] normalization failure = 0
+[x] artifact publish 완료
 [ ] same source rebuild → same rc_ / fi_ / mapping
 [ ] actual BGE-M3 query → Top-3 exact retrieval
 [ ] same query ranking reproducibility
@@ -309,6 +343,8 @@ M9-02 = IMPLEMENTED / CI PASS
 [ ] dense-neighborhood case observation
 [ ] documentation final sync
 ```
+
+상세 실행 로그는 `docs/M9_REAL_RETRIEVAL_LOG.md`와 HTML companion에 기록한다.
 
 ---
 
