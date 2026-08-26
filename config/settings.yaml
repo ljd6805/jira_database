@@ -50,6 +50,10 @@ embedding:
   dimension: 1024
   batch_size: 64
 
+  # 사내 endpoint의 인증서 정책에 맞춰 local config에서 조정할 수 있습니다.
+  tls:
+    verify_ssl: true
+
   # 현재 확인된 사내 API 기본 사용량 제한입니다.
   rate_limit:
     requests_per_minute: 200
