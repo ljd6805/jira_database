@@ -1,7 +1,7 @@
 # M9 Real FAISS Retrieval Validation Log
 
 기준일: 2026-08-26  
-상태: **CURRENT / REAL BUILD PASS / REBUILD REPRODUCIBILITY PASS / REAL QUERY NEXT**
+상태: **CURRENT / REAL BUILD PASS / REBUILD REPRODUCIBILITY PASS / REAL QUERY QUALITY PARTIAL PASS / QUERY REPRODUCIBILITY INVESTIGATE**
 
 이 문서는 M9-03 실제 Pilot FAISS index 생성과 retrieval 검증 과정을 기록한다. 실제 Jira 본문, Issue Key, 사내 endpoint/header 값은 기록하지 않는다.
 
@@ -65,23 +65,7 @@ M9-03 Real Build = PASS
 
 같은 source, 같은 retrieval contract, 같은 output directory에서 동일한 build 명령을 다시 실행했다.
 
-두 번째 실행도:
-
-```text
-validation: PASS
-vector_count: 285
-dimension: 1024
-retrieval_contract_hash: rc_6b9fc7222abbf08ff5861fbb73ab31cc37a12cd78585313d05e2645e7603dd77
-faiss_index_id: fi_b544c57a560cec99069be46b6ee8f2047841b522ddf81681d3cd6027baa65b2d
-source_embedding_artifact_sha256: 45c363194defbb0e7095c32ecd462e749c943d4524ec7dd6acda093260abe2f8
-mapping_sha256: 9e546845b97307d095dd1ff3ec3ab3e4262dcf9b0a1444cbcd4391e0837e947b
-faiss_binary_sha256: b54e172b2a9d302b8ad6003cd3f56680021cc64f6d0e2ea619f537395055cec2
-mapping_failure_count: 0
-hash_failure_count: 0
-normalization_failure_count: 0
-```
-
-첫 실행과 두 번째 실행 비교:
+두 번째 실행도 첫 실행과 동일했다.
 
 ```text
 retrieval_contract_hash             SAME
@@ -184,7 +168,100 @@ Production
 
 ---
 
-## 6. 현재 M9-03 Gate 상태
+## 6. Real Query Semantic Sanity · PARTIAL PASS
+
+동일 질문을 두 번 실행해 실제 BGE-M3 query embedding → FAISS Top-3를 확인했다.
+
+실제 query text와 Jira-derived Knowledge text는 공개 문서에 기록하지 않는다.
+
+사용자 의미 판정:
+
+```text
+Run 1
+rank1  좋음    score 0.843981
+rank2  좋음    score 0.788863
+rank3  어색함  score 0.601325
+
+Run 2
+rank1  좋음    score 0.708450
+rank2  괜찮음  score 0.699601
+rank3  어색함  score 0.687829
+```
+
+관찰:
+
+- 두 실행 모두 Rank 1은 의미상 양호했다.
+- Rank 2도 유효 후보였다.
+- Rank 3은 두 실행 모두 어색해 Top-3 baseline에 일부 noise가 섞일 수 있음을 확인했다.
+- 단일 query 사례만으로 Top-k/threshold/reranker 정책을 변경하지 않는다.
+- 점수 자체보다 더 중요한 문제는 동일 질문 실행 간 score/ranking 재현성이다.
+
+판정:
+
+```text
+Real Query Semantic Sanity = PARTIAL PASS
+Top-1 / Top-2 quality       = acceptable
+Top-3 noise observation     = recorded
+```
+
+---
+
+## 7. Same-query Reproducibility · INVESTIGATE
+
+동일 질문을 두 번 실행했다는 전제에서 score가 크게 달랐다.
+
+```text
+Run 1: 0.843981 / 0.788863 / 0.601325
+Run 2: 0.708450 / 0.699601 / 0.687829
+```
+
+이 차이는 단순 float rounding 수준이 아니다.
+
+현재 검색 코드의 구조:
+
+```text
+query text
+→ 매 실행 BGE-M3 API 호출
+→ query vector
+→ float32
+→ L2 normalize
+→ deterministic IndexFlatIP.search()
+```
+
+`IndexFlatIP.search()` 경로에는 random 요소가 없으므로 우선 다음을 분리 진단한다.
+
+```text
+A. 실제 입력 query bytes가 두 실행에서 달랐는가
+B. 같은 query bytes에 사내 BGE-M3 API가 서로 다른 vector를 반환했는가
+```
+
+이를 위해 `tools/jira_knowledge/diagnose_query_reproducibility.py`를 추가했다.
+
+이 도구는 같은 Python 문자열을 한 프로세스 안에서 연속 호출하여 다음만 출력한다.
+
+```text
+query_text_sha256
+query vector SHA-256
+vector norm
+Top-k identity / score
+vector exact equality
+max absolute diff
+vector cosine
+ranking equality
+```
+
+실제 query text와 Knowledge text는 출력하지 않는다.
+
+판정:
+
+```text
+Same-query Ranking Reproducibility = NOT YET PASS
+M9 = NOT DONE
+```
+
+---
+
+## 8. 현재 M9-03 Gate 상태
 
 ```text
 [x] real FAISS build success
@@ -197,36 +274,13 @@ Production
 [x] same source rebuild → same source SHA
 [x] same source rebuild → same mapping_sha256
 [x] same environment → same faiss_binary_sha256 · observation
-[ ] real BGE-M3 query → Top-3 exact retrieval
+[x] real BGE-M3 query → Top-3 retrieval 실행
+[x] representative semantic sanity · partial pass
+[x] Top-3 noise observation
+[ ] same query vector reproducibility
 [ ] same query ranking reproducibility
-[ ] representative semantic sanity
-[ ] dense-neighborhood observation
+[ ] root cause diagnosis
 [ ] final documentation sync
 ```
 
----
-
-## 7. 다음 Gate · Real Query
-
-이제 실제 사용자 질문을 같은 BGE-M3 model/profile/dimension으로 embedding하고, 현재 FAISS index에서 exact cosine Top-3를 검색한다.
-
-검증 대상:
-
-```text
-query text
-→ BGE-M3 1024-d
-→ L2 normalize
-→ IndexFlatIP exact search
-→ Top-3
-→ faiss_position → emb_ → ki_
-```
-
-확인할 것:
-
-```text
-Top-3가 의미상 타당한가
-같은 질문을 다시 실행하면 같은 rank/identity가 나오는가
-score가 dense-neighborhood를 보이는 경우에도 후보군이 타당한가
-```
-
-실제 Jira-derived Top-k text는 로컬 화면에서만 확인하고 공개 문서에는 복사하지 않는다.
+다음 단계는 query vector reproducibility 진단이다.
