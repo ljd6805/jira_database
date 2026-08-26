@@ -9,7 +9,7 @@ Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 
 
 ```text
 M0~M7   DONE
-M8      CURRENT / M8-01 CORPUS IMPLEMENTED
+M8      CURRENT / M8-01 PASS / M8-02 IMPLEMENTED / M8-03 REAL API NEXT
 M9      PLAN
 M10     Functional MVP Gate
 ```
@@ -36,7 +36,9 @@ M6  DB Logical Schema                       DONE
 M7  SQLite Materialization                  DONE
     ↓
 M8  Embedding Unit / Chunk + BGE-M3         CURRENT
-    └─ M8-01 corpus exporter 구현 완료
+    ├─ M8-01 corpus 285                    PASS
+    ├─ M8-02 contract/adapter              IMPLEMENTED
+    └─ M8-03 real BGE-M3                   NEXT
     ↓
 M9  FAISS + Active Retrieval                PLAN
     ↓
@@ -98,31 +100,13 @@ Issue (jira_id authoritative)
                        └─ Review Finding
 ```
 
-Run-scoped source entity:
-
-```text
-comment
-attachment
-relationship
-custom_field_catalog
-custom_field_value
-```
-
 Deterministic ID ladder:
 
 ```text
-jira_id → iv_ → kc_ → kg_ → ka_ → ki_ → ke_
+jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 ```
 
 ## 5. M7 Real-run Gate — PASS
-
-대상 Run:
-
-```text
-20260804T043628Z
-```
-
-최종 검증:
 
 ```text
 M5 raw expected
@@ -150,14 +134,13 @@ Idempotent          true
 Failures            []
 ```
 
-M5의 `503`은 historical JSON의 raw 관찰값입니다. Pilot에는 duplicate Evidence가 1회 있었고, M7은 M6의 `UNIQUE(knowledge_item_id, evidence_ref)` 계약을 유지하며 첫 occurrence만 적재해 canonical DB row를 `502`로 만듭니다. 실제 Jira 식별자는 공개 문서에 기록하지 않습니다.
+M5의 `503`은 historical JSON raw 관찰값이며 M7은 duplicate Evidence 1회를 canonicalize해 `502` row를 저장합니다.
 
 M7 상세 근거:
 
 - [`docs/M7_SQLITE_MATERIALIZATION.md`](docs/M7_SQLITE_MATERIALIZATION.md)
 - [`docs/M7_REAL_RUN_LOG.md`](docs/M7_REAL_RUN_LOG.md)
 - [`docs/status/M7_SQLITE_MATERIALIZATION_COMPLETION.md`](docs/status/M7_SQLITE_MATERIALIZATION_COMPLETION.md)
-- [`docs/status/M7_SQLITE_MATERIALIZATION.html`](docs/status/M7_SQLITE_MATERIALIZATION.html)
 
 ## 6. Active / Historical 정책
 
@@ -165,73 +148,103 @@ M7 상세 근거:
 DB
 → Current + Historical Version/Generation/Attempt 보존
 
-기본 Retrieval
+기본 Retrieval / Embedding corpus
 → state=active Generation의 accepted Attempt만 사용
-
-History Retrieval
-→ 감사 / 재현 / 변화 분석 / temporal query에서 사용
 ```
 
 새 candidate가 생겨도 PASS 전에는 기존 active를 유지합니다.
 
 ## 7. 현재 단계 · M8
 
-M8은 **Embedding Unit / Chunk 전략 + BGE-M3** 단계입니다.
-
-M8-01에서 다음 baseline을 고정하고 구현했습니다.
+### M8-01 · PASS
 
 ```text
-Corpus
-→ state=active
-→ accepted_attempt_id 존재
-→ accepted Attempt content_available=1
-→ Knowledge Item만 포함
+Knowledge Item 1개 = Embedding Unit 1개
+baseline Chunk 없음
+text_profile = statement_v1
 
-Embedding Unit
-→ Knowledge Item 1개 = Embedding Unit 1개
-
-Chunk
-→ baseline에서는 없음
-→ tokenizer/검색 품질 근거가 있을 때만 추가
-
-Text Profile
-→ statement_v1
-→ embedding_text = statement.strip()
-→ embedding_text_hash = SHA-256(UTF-8 text)
+M7 active accepted Knowledge Item 285
+→ corpus_rows: 285
 ```
+
+### M8-02 · IMPLEMENTED
+
+Embedding identity:
+
+```text
+Embedding Contract  ec_
+Embedding Artifact  emb_
+
+emb_ = H(knowledge_item_id, embedding_text_hash, ec_)
+```
+
+BGE-M3 contract:
+
+```text
+model               BAAI/bge-m3
+API                 OpenAI-compatible
+batch max           64
+Pilot batch         64 + 64 + 64 + 64 + 29 = 5 requests
+dense dimension     1024
+usage limit         200 requests/min
+```
+
+검증/실패 정책:
+
+- `data[].index`로 request↔response mapping
+- index 누락/중복/범위 오류 차단
+- 1024-dim이 아니면 실패
+- network/429/5xx만 retry
+- 모든 batch 성공 후에만 atomic final JSONL publish
 
 구현:
 
 ```text
-src/jira_collector/embedding/corpus.py
-tools/jira_knowledge/export_embedding_corpus.py
-tests/embedding/test_corpus.py
+src/jira_collector/embedding/
+├─ corpus.py
+├─ contract.py
+├─ client.py
+├─ config.py
+├─ artifact.py
+└─ runner.py
+
+tools/jira_knowledge/
+├─ export_embedding_corpus.py
+└─ embed_bge_m3.py
 ```
 
-Synthetic filtering/order/hash test는 CI PASS입니다. 다음 Gate는 실제 M7 DB에서 corpus가 정확히 **285 row**인지 확인하는 것입니다.
+GitHub Actions pytest: **PASS**
 
-FAISS는 M9 책임이며 M8에 섞지 않습니다.
+### M8-03 · NEXT
+
+`.env`에 실제 사내 endpoint를 넣고 real embedding Gate를 수행합니다.
+
+```dotenv
+BGE_M3_ENDPOINT=<사내 OpenAI-compatible embeddings endpoint>
+BGE_M3_API_KEY=<필요한 경우>
+```
+
+```powershell
+python tools/jira_knowledge/embed_bge_m3.py --corpus data/embedding/runs/20260804T043628Z/corpus.statement_v1.jsonl --output data/embedding/runs/20260804T043628Z/embeddings.statement_v1.bge_m3.jsonl --expected-count 285
+```
+
+성공 기대값:
+
+```text
+corpus_rows: 285
+embedding_rows: 285
+batch_count: 5
+embedding_dimension: 1024
+```
+
+**M8에서는 FAISS를 구현하지 않습니다.** FAISS와 Top-k Retrieval은 M9 책임입니다.
 
 ## 8. 주요 문서
 
-**공식 단일 진입점:**
-
-- [Documentation Hub](docs/index.html) — Baseline → M0~M8 → M9/M10 전체 여정
-- [Baseline Jira → BGE-M3 RAG → MCP 최소 구현 계획](docs/planning/jira_rag_mcp_minimum_implementation_plan.html)
-
-Current Source of Truth:
-
+- [Documentation Hub](docs/index.html)
 - [현재 상태와 향후 계획](docs/status/jira_knowledge_db_current_status.html)
 - [Pipeline 전체 아키텍처](docs/PIPELINE_OVERVIEW.md)
 - [Jira Knowledge 관계 맵](docs/architecture/jira_data_relationship_map.html)
-- [Documentation Policy](docs/DOCUMENTATION_POLICY.md)
-
-설계/완료 기록:
-
-- [M6 DB Logical Schema](docs/DB_LOGICAL_SCHEMA.md)
-- [M6 Decision Log](docs/M6_DECISION_LOG.md)
-- [M7 SQLite Materialization](docs/M7_SQLITE_MATERIALIZATION.md)
-- [M7 Completion Record](docs/status/M7_SQLITE_MATERIALIZATION_COMPLETION.md)
 - [M8 Design](docs/M8_EMBEDDING_CHUNK_BGE_M3.md)
 - [M8 Decision Log](docs/M8_DECISION_LOG.md)
 
@@ -247,37 +260,18 @@ py -3.12 -m venv .venv
 python -m pip install -e ".[dev]"
 ```
 
-Linux/macOS:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e ".[dev]"
-```
-
-Jira API 제한 기본값:
-
-```yaml
-jira:
-  rate_limit:
-    requests_per_minute: 20
-    max_concurrency: 1
-```
-
 ## 10. 다음 액션
 
 ```text
-M8-01 구현 완료
-  ↓
-실제 M7 SQLite에서 active accepted corpus export
-  ↓
-corpus_rows = 285 확인
-  ↓
 M8-01 PASS
   ↓
-M8-02
-→ deterministic embedding contract / embedding_id
-→ BGE-M3 adapter
-→ batch <= 64
-→ dense dimension = 1024
+M8-02 IMPLEMENTED / CI PASS
+  ↓
+M8-03 실제 BGE-M3 endpoint 검증
+  ↓
+285 vectors / 5 batches / 1024-dim / mapping 확인
+  ↓
+M8 Gate
+  ↓
+M9 FAISS
 ```
