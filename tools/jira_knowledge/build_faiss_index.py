@@ -15,6 +15,7 @@ if str(_SRC_ROOT) not in sys.path:
 from jira_collector.knowledge_db import KnowledgeDbError
 from jira_collector.retrieval import (
     build_retrieval_artifacts,
+    load_retrieval_manifest,
     validate_retrieval_artifact,
 )
 
@@ -49,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         if not validation.passed:
             raise KnowledgeDbError("최종 M9 retrieval artifact 검증이 실패했습니다.")
+        manifest = load_retrieval_manifest(args.output_dir)
     except (KnowledgeDbError, ValueError, OSError) as exc:
         print(f"오류: {exc}", file=sys.stderr)
         return 1
@@ -58,6 +60,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"dimension: {result.dimension}")
     print(f"retrieval_contract_hash: {result.retrieval_contract_hash}")
     print(f"faiss_index_id: {result.faiss_index_id}")
+    print(f"source_embedding_artifact_sha256: {manifest.source_embedding_artifact_sha256}")
+    print(f"mapping_sha256: {manifest.mapping_sha256}")
+    print(f"faiss_binary_sha256: {manifest.faiss_binary_sha256}")
     print(f"mapping_failure_count: {validation.mapping_failure_count}")
     print(f"hash_failure_count: {validation.hash_failure_count}")
     print(f"normalization_failure_count: {validation.normalization_failure_count}")
