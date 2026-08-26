@@ -1,28 +1,71 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M9 FAISS + Active Retrieval 최종 완료. Real build, rebuild, query, same-query reproducibility PASS"><title>M9 · FAISS + Active Retrieval · DONE</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid3,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}@media(max-width:800px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">← M8 DONE</a><a href="../index.html">문서 허브</a><a href="../M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Contract</a><a href="../M9_REAL_RETRIEVAL_LOG.html">Real Log</a><a href="M10_START_HERE.html">M10 Start Here →</a></nav><header class="hero"><span class="eyebrow">M9 · DONE / PASS · 2026-08-26</span><h1>FAISS Retrieval을<br>실데이터까지 검증 완료했습니다</h1><p>실제 BGE-M3 embedding 285개로 exact cosine FAISS index를 만들고 build/rebuild/query/same-query reproducibility까지 모두 확인했습니다.</p><span class="state">M9-01 DESIGN PASS · M9-02 IMPLEMENTATION PASS · M9-03 REAL-RUN PASS · M10 NEXT</span></header><div class="kpis"><div class="kpi"><b>285</b><span>vectors</span></div><div class="kpi"><b>1024</b><span>dimension</span></div><div class="kpi"><b>PASS</b><span>rebuild</span></div><div class="kpi"><b>PASS</b><span>same-query</span></div></div><section><h2>1. 최종 Retrieval 계약</h2><div class="flow">Index       IndexFlatIP
-Metric      cosine
-Normalize   DB/query 모두 L2
-Query       raw_query_v1
-Order       embedding_id ascending
-Top-3       exact candidates
-Threshold   none
-Reranker    none
-Mapping     position → embedding_id(emb_) → knowledge_item_id(ki_)</div></section><section><h2>2. Real Build / Rebuild</h2><div class="grid2"><div class="box good"><b>Real Build PASS</b><p>285 vectors, 1024 dimensions, mapping/hash/normalization failure 0.</p></div><div class="box good"><b>Rebuild PASS</b><p>같은 source/contract → same rc_ / fi_ / source SHA / mapping SHA.</p></div></div></section><section><h2>3. Real Query 품질</h2><div class="grid2"><div class="box"><b>Case 1</b><p>Rank 1/2 유효 · Rank 3 noise</p></div><div class="box"><b>Case 2</b><p>Rank 1/2 유효 · Rank 3 noise</p></div></div><div class="box warn"><b>관찰</b><p>global cosine threshold/reranker는 아직 임의 추가하지 않습니다.</p></div></section><section><h2>4. Same-query</h2><div class="flow">vector_exact_equal = True
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M9 FAISS + Active Retrieval을 초보자도 이해할 수 있게 설명한 최종 완료 문서. Real build, rebuild, query, same-query reproducibility PASS"><title>M9 · FAISS + Active Retrieval · 쉬운 상세판</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid3,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}@media(max-width:800px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">← M8 DONE</a><a href="../index.html">문서 허브</a><a href="../M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Contract</a><a href="../M9_REAL_RETRIEVAL_LOG.html">Real Log</a><a href="M10_START_HERE.html">M10 Start Here →</a></nav>
+<header class="hero"><span class="eyebrow">M9 · DONE / PASS · 2026-08-26</span><h1>질문과 가장 가까운<br>Knowledge를 실제로 찾아내기</h1><p>M8에서 만든 285개의 BGE-M3 vector를 FAISS에 넣고, 사용자 질문도 같은 BGE-M3 공간으로 변환해 의미가 가까운 Knowledge Top-3를 찾는 검색 엔진을 만든 단계입니다.</p><span class="state">M9 DONE / REAL-RUN PASS · M10 DESIGN IN PROGRESS</span><div class="breadcrumb">질문 → BGE-M3 → FAISS → Top-3 Knowledge candidate → M10 Evidence</div></header>
+<div class="kpis"><div class="kpi"><b>285</b><span>vectors</span></div><div class="kpi"><b>1024</b><span>dimension</span></div><div class="kpi"><b>Top-3</b><span>Knowledge candidates</span></div><div class="kpi"><b>PASS</b><span>same-query reproducibility</span></div></div>
+<section class="beginner"><span class="badge">1분 요약</span><h2>M9를 아주 쉽게 말하면</h2><div class="grid3"><div class="easy-card"><div class="emoji">❓</div><b>사용자 질문</b><p>예를 들어 “부팅 중 PMBus timeout을 어떻게 해결했지?”라는 질문이 들어옵니다.</p></div><div class="easy-card"><div class="emoji">🧭</div><b>가까운 Knowledge 찾기</b><p>질문을 BGE-M3 vector로 바꾼 뒤 M8의 285개 vector와 비교해 의미가 가까운 Knowledge를 순위대로 찾습니다.</p></div><div class="easy-card"><div class="emoji">🏁</div><b>Top-3 반환</b><p>M9는 “이 3개 Knowledge가 질문과 가장 관련 있어 보인다”까지 알려줍니다. 실제 Jira 원문 근거를 붙이는 것은 M10입니다.</p></div></div><div class="analogy"><strong>비유</strong> M8이 책 285권을 의미 지도 위에 배치한 단계라면, M9는 사용자의 질문도 지도 위에 점 하나로 찍고 그 점에서 가장 가까운 책 3권을 찾아주는 단계입니다.</div></section>
+<section><h2>전체 파이프라인에서 M9는 어디인가?</h2><div class="flow">[M8] 285 Knowledge → 285개의 의미 vector
+  ↓
+[M9] 질문과 가까운 Knowledge Top-3 검색  ← 지금 여기
+  ↓
+[M10] Top-3의 ki_를 따라 실제 Jira Evidence/원문 복원
+  ↓
+Agent / LLM
+  ↓
+근거를 바탕으로 최종 답변</div><div class="grid3"><div class="box"><b>M8과 차이</b><p>M8은 vector를 만드는 단계, M9는 그 vector를 이용해 실제로 검색하는 단계입니다.</p></div><div class="box"><b>M10과 차이</b><p>M9는 관련 Knowledge를 찾지만 “왜 이 문장을 믿어도 되는지” 실제 Jira 근거까지 가져오지는 않습니다.</p></div><div class="box"><b>M9 완료 후</b><p>자연어 질문 하나로 관련 Knowledge 후보를 Top-k 형태로 안정적으로 찾을 수 있습니다.</p></div></div><div class="callout good"><strong>M9의 핵심 역할</strong> “vector는 만들어졌다”를 넘어, <strong>실제로 질문하면 관련 Knowledge를 찾아주는 검색 엔진</strong>을 완성하는 단계입니다.</div></section>
+<section><h2>예시로 보면 M9와 M10의 경계가 더 쉽습니다</h2><div class="flow">사용자 질문
+"부팅 중 PMBus timeout은 어떻게 해결했지?"
+
+M9 검색 결과 예시
+Rank 1  "retry를 추가한 뒤 문제가 재현되지 않았다"
+Rank 2  "초기화 순서를 변경해 timeout을 방지했다"
+Rank 3  "PMBus 통신에서 간헐적인 timeout이 발생했다"
+
+여기까지 M9
+──────────────────────────────
+아직 모르는 것
+- 이 Knowledge가 어느 Jira Issue에서 나왔나?
+- 어느 Comment/Description이 근거인가?
+- 실제 원문은 무엇인가?
+
+이 질문에 답하는 것이 M10</div><div class="callout warn"><strong>중요</strong> M9 결과는 “관련 있어 보이는 지식 후보”입니다. 검색 점수가 높다고 그 문장이 자동으로 사실 인증되는 것은 아닙니다. 그래서 M10의 Evidence round-trip이 필요합니다.</div></section>
+<section><h2>1. 최종 Retrieval 계약</h2><table><thead><tr><th>항목</th><th>계약</th><th>쉽게 말하면</th></tr></thead><tbody><tr><td>Index</td><td><code>IndexFlatIP</code></td><td>파일럿에서는 근사 검색이 아니라 285개를 정확하게 비교</td></tr><tr><td>Metric</td><td>cosine</td><td>vector 방향이 얼마나 비슷한지 측정</td></tr><tr><td>Normalize</td><td>DB/query 모두 L2</td><td>cosine 비교가 같은 규칙으로 동작하게 맞춤</td></tr><tr><td>Query</td><td><code>raw_query_v1</code></td><td>질문 양끝 공백만 정리한 baseline</td></tr><tr><td>Top-k</td><td>3</td><td>한 개만 과신하지 않고 후보 3개 유지</td></tr><tr><td>Threshold</td><td>none</td><td>실측 근거 없는 점수 cutoff를 임의로 넣지 않음</td></tr><tr><td>Reranker</td><td>none</td><td>현재 baseline에서는 추가 재정렬 없음</td></tr><tr><td>Mapping</td><td>position → emb_ → ki_</td><td>FAISS 결과를 실제 Knowledge Item으로 되돌림</td></tr></tbody></table></section>
+<section><h2>2. 검색할 때 내부에서 무슨 일이 일어나나?</h2><div class="steps"><div class="step-row"><div><b>① 질문을 vector로 변환</b><p>M8과 동일한 BGE-M3 model/profile/dimension 계약을 사용합니다.</p></div></div><div class="step-row"><div><b>② FAISS에서 cosine Top-3 검색</b><p>L2 normalize된 질문 vector와 285개 vector를 비교합니다.</p></div></div><div class="step-row"><div><b>③ FAISS position을 stable ID로 변환</b><p>물리 position 자체를 Knowledge ID로 사용하지 않고 mapping을 통해 <code>emb_ → ki_</code>로 돌아갑니다.</p></div></div><div class="step-row"><div><b>④ 후보를 순위와 점수로 반환</b><p><code>rank, score, embedding_id, knowledge_item_id, category</code>를 M10에 넘깁니다.</p></div></div></div></section>
+<section><h2>3. Real Build / Rebuild</h2><div class="grid2"><div class="box good"><b>Real Build PASS</b><p>285 vectors, 1024 dimensions, mapping/hash/normalization failure 0.</p></div><div class="box good"><b>Rebuild PASS</b><p>같은 source/contract → same rc_ / fi_ / source SHA / mapping SHA.</p></div></div><p class="plain">즉 같은 M8 artifact와 같은 검색 계약으로 다시 만들면 같은 논리적 FAISS artifact가 재현됩니다.</p></section>
+<section><h2>4. Real Query 품질에서 무엇을 배웠나?</h2><div class="grid2"><div class="box"><b>Case 1</b><p>Rank 1 좋음 · Rank 2 좋음 · Rank 3 어색함</p></div><div class="box"><b>Case 2</b><p>Rank 1 좋음 · Rank 2 괜찮음 · Rank 3 어색함</p></div></div><div class="box warn"><b>관찰</b><p>두 사례 모두 Rank 1/2는 유효했지만 Rank 3에는 noise가 있었습니다. 특히 점수가 서로 가까워도 의미 품질 차이가 날 수 있어 global cosine threshold/reranker를 근거 없이 추가하지 않았습니다.</p></div><div class="analogy"><strong>쉽게 말하면</strong> 검색 점수는 “정답 확률”이 아닙니다. 같은 동네에 있는 문서를 찾아주는 거리값에 가깝습니다. 그래서 실제 근거와 함께 봐야 합니다.</div></section>
+<section><h2>5. Same-query 재현성</h2><div class="flow">vector_exact_equal = True
 max_abs_diff       = 0
 cosine             = 1.000000000
 ranking_equal      = True
-scores_exact_equal = True</div></section><section><h2>5. Production 방향</h2><div class="flow">운영 기본 = delta-first
-Incremental exact = IndexIDMap2(IndexFlatIP) + stable int64 vector_id
-Scaling 후보 = HNSW / IVF
-full rebuild = maintenance / recovery / migration</div></section><section><h2>6. Final Gate</h2><div class="flow">[x] build
-[x] rebuild
-[x] semantic sanity
-[x] Top-3 noise observation
+scores_exact_equal = True</div><p>같은 질문을 같은 계약으로 다시 처리했을 때 vector·순위·점수가 정확히 같았습니다. 검색 결과가 실행할 때마다 요동치는 baseline이 아니라는 뜻입니다.</p></section>
+<section><h2>6. Production 방향</h2><div class="flow">운영 기본 = delta-first
+
+unchanged → reuse
+added     → cache 확인 → 필요 시 embed → add
+changed   → old remove/tombstone → cache/embed → add
+removed   → remove/tombstone
+
+Incremental exact 후보 = IndexIDMap2(IndexFlatIP) + stable int64 vector_id
+Scaling 후보           = HNSW / IVF
+full rebuild            = maintenance / recovery / migration</div><div class="callout"><strong>하지만 M10과 섞지 않습니다.</strong> 운영용 incremental hardening은 중요한 후속 과제지만, 지금 M10의 Evidence Builder/MCP 책임과 분리합니다.</div></section>
+<section><h2>7. Final Gate</h2><div class="flow">[x] real 285-vector build
+[x] 1024 dimension
+[x] mapping/hash/normalization failure 0
+[x] same-source rebuild reproducibility
+[x] real-query semantic sanity
+[x] Top-3 noise 관찰 및 기록
 [x] same-query vector/ranking/score reproducibility
 
-M9 = DONE / PASS</div></section><section><h2>7. M10 Boundary</h2><div class="flow">M9 output
-rank + score + faiss_position + embedding_id + knowledge_item_id + category
+M9 = DONE / PASS</div></section>
+<section><h2>8. M10으로 정확히 무엇을 넘기나?</h2><div class="flow">M9 output
+rank
+score
+faiss_position
+embedding_id (emb_)
+knowledge_item_id (ki_)
+category
         ↓
 M10
-knowledge_item_id(ki_) → Knowledge statement
-knowledge_evidence(ke_) → Evidence source
-→ Evidence package → MCP</div><div class="box good"><a href="M10_START_HERE.html">새 세션은 M10 Start Here에서 시작</a></div></section><footer>M9 DONE / PASS · M10 NEXT / DESIGN NOT STARTED · 2026-08-26</footer></main></body></html>
+ki_ → Knowledge statement
+ki_ → ke_ → 실제 Evidence source
+→ Evidence package
+→ MCP</div><div class="box good"><b>M9의 마지막 말</b><p>“관련 Knowledge는 찾았습니다. 이제 그 Knowledge가 실제 Jira 어디에서 나온 것인지 M10이 근거를 붙여주세요.”</p></div><div class="box"><a href="M10_START_HERE.html">M10 Start Here →</a></div></section>
+<footer>M9 · FAISS + Active Retrieval · DONE / PASS · M10 DESIGN IN PROGRESS · 2026-08-26</footer></main></body></html>
