@@ -1,9 +1,9 @@
 # M8 Decision Log
 
 기준일: 2026-08-26  
-상태: **ACTIVE**
+상태: **CLOSED / M8 DONE**
 
-M8 · Embedding Unit / Chunk + BGE-M3 단계에서 합의한 결정을 시간 순서대로 기록한다.
+M8 · Embedding Unit / Chunk + BGE-M3 단계에서 합의한 결정과 실데이터 검증 결과를 보존한다.
 
 ---
 
@@ -13,7 +13,7 @@ M8 · Embedding Unit / Chunk + BGE-M3 단계에서 합의한 결정을 시간 �
 
 ### 결정
 
-M8 기본 corpus는 M7 SQLite의 모든 Knowledge가 아니라 다음 조건만 사용한다.
+M8 기본 corpus:
 
 ```text
 knowledge_generation.state = active
@@ -43,7 +43,7 @@ statement p95        206.4 chars
 statement max        447 chars
 ```
 
-따라서 baseline에서는 Chunk를 사용하지 않는다. Chunk는 실제 tokenizer 길이 문제, 복합 검색 의도, Retrieval sanity 개선 근거가 있을 때만 추가 검토한다.
+따라서 baseline에서는 Chunk를 사용하지 않는다. Chunk는 tokenizer 길이 문제, 복합 검색 의도, Retrieval 품질 개선 근거가 확인될 때만 추가 검토한다.
 
 Baseline text:
 
@@ -53,25 +53,7 @@ embedding_text = knowledge_item.statement.strip()
 embedding_text_hash = SHA-256(UTF-8 embedding_text)
 ```
 
-Corpus row:
-
-```text
-corpus_schema_version
-text_profile
-knowledge_item_id
-knowledge_attempt_id
-knowledge_generation_id
-issue_version_id
-jira_id
-category
-ordinal
-embedding_text
-embedding_text_hash
-```
-
-### Real DB Gate
-
-최종 사용자 로컬 실행 결과:
+Real DB Gate:
 
 ```text
 corpus_schema_version: 0.1
@@ -79,16 +61,7 @@ text_profile: statement_v1
 corpus_rows: 285
 ```
 
-초기에 `28`로 전달된 값은 복사/붙여넣기 과정의 전달 오류였고 실제 실행 결과는 `285`로 즉시 정정됐다. 프로젝트 결함으로 취급하지 않는다.
-
 ```text
-[x] active accepted corpus exporter
-[x] historical/candidate/review_required 제외
-[x] accepted Attempt가 아닌 Item 제외
-[x] deterministic ordering
-[x] statement_v1 hash
-[x] 실제 M7 DB corpus row = 285
-
 M8-01 = PASS / DONE
 ```
 
@@ -96,11 +69,9 @@ M8-01 = PASS / DONE
 
 ## M8-02 · Deterministic Embedding Contract / BGE-M3 Adapter
 
-상태: **IMPLEMENTED / CI PASS**
+상태: **PASS / DONE**
 
-### 1. Embedding Contract v0.1
-
-Knowledge identity와 Embedding artifact identity를 분리한다.
+### Embedding identity
 
 ```text
 Knowledge Item       ki_
@@ -108,142 +79,75 @@ Embedding Contract   ec_
 Embedding Artifact   emb_
 ```
 
-Embedding Contract v0.1 identity 입력:
+Embedding Contract v0.1:
 
 ```text
 embedding_contract_version = 0.1
 text_profile               = statement_v1
 embedding_model            = BAAI/bge-m3
-embedding_model_profile    = runtime supplied
+embedding_model_profile    = internal-bge-m3-unversioned
 embedding_dimension        = 1024
 ```
 
-`embedding_model_profile`은 같은 model name 아래 serving revision/deployment 차이를 표현한다. revision metadata를 알 수 없는 Pilot에서는 `internal-bge-m3-unversioned`를 사용한다.
-
-Endpoint URL과 인증/라우팅 header는 실행 환경 정보이므로 logical identity에 넣지 않는다.
-
-### 2. Deterministic ID
-
-M6와 같은 `id_schema_version=1 + kind + canonical JSON + full SHA-256` 규칙을 재사용한다.
+Deterministic ID:
 
 ```text
 ec_ = H(contract version, text profile, model, model profile, dimension)
-
 emb_ = H(knowledge_item_id, embedding_text_hash, ec_)
 ```
 
-Vector 값, API endpoint, custom header, FAISS position은 `embedding_id` material이 아니다.
+Endpoint URL, API key, custom header, vector 값, FAISS position은 logical identity에 넣지 않는다.
 
-### 3. Runtime 설정 분리
-
-실제 사내 endpoint/API key/custom header는 Git에 기록하지 않는다.
+### API / batch
 
 ```text
-.env
-BGE_M3_ENDPOINT
-BGE_M3_API_KEY
-BGE_M3_HEADERS_JSON
+Model              BAAI/bge-m3
+Serving            TEI / OpenAI-compatible
+Request max batch  64
+Dense dimension    1024
+Usage limit        200 requests/min
 ```
-
-일반 설정은 `config/settings.yaml`에서 관리한다.
 
 ```text
-model = BAAI/bge-m3
-model_profile = internal-bge-m3-unversioned
-text_profile = statement_v1
-dimension = 1024
-batch_size = 64
-requests_per_minute = 200
-max_attempts = 3
+285 → 64 + 64 + 64 + 64 + 29 → 5 requests
 ```
 
-Embedding 설정 loader는 Jira ID/Password 없이 독립 실행된다.
+응답 배열의 물리 순서가 아니라 `data[].index`를 authoritative input mapping으로 사용한다.
 
-### 4. Custom Header Contract
+### Custom header
 
-사내 API가 표준 Bearer token 대신 custom header를 요구할 수 있으므로 generic header injection을 지원한다.
-
-`.env` 예시:
-
-```dotenv
-BGE_M3_ENDPOINT=https://.../v1/embeddings
-BGE_M3_API_KEY=
-BGE_M3_HEADERS_JSON='{"X-Custom-Header-1":"value1","X-Custom-Header-2":"value2"}'
-```
-
-규칙:
-
-- `BGE_M3_HEADERS_JSON`은 JSON object이며 key/value 모두 문자열이다.
-- header가 여러 개여도 하나의 JSON object로 전달한다.
-- 표준 Bearer 인증을 사용하지 않으면 `BGE_M3_API_KEY`는 비운다.
-- API key와 custom header를 둘 다 사용하는 배포도 지원한다.
-- custom header는 HTTP request에만 사용한다.
-- header 이름/값은 embedding identity, vector artifact, stdout, 공개 문서에 기록하지 않는다.
-- 실제 header 이름/값은 `.env`에만 저장한다.
-
-### 5. Request / Batch
-
-OpenAI-compatible baseline:
-
-```json
-{
-  "model": "BAAI/bge-m3",
-  "input": ["text1", "text2"]
-}
-```
-
-최대 batch 64:
+사내 runtime의 custom HTTP header를 generic하게 지원한다.
 
 ```text
-285
-→ 64 + 64 + 64 + 64 + 29
-→ 5 requests
+BGE_M3_ENDPOINT      required
+BGE_M3_API_KEY       optional
+BGE_M3_HEADERS_JSON  optional
 ```
 
-64 초과 설정은 HTTP 호출 전에 거부한다.
+Secret/header 값은 HTTP runtime에만 사용하고 identity/artifact/stdout/public docs에는 기록하지 않는다.
 
-### 6. Response Mapping
-
-응답 배열의 물리 순서가 아니라 `data[].index`를 authoritative mapping으로 사용한다.
-
-검증:
-
-```text
-index 누락 없음
-index 중복 없음
-범위 밖 index 없음
-response count = request count
-각 vector dimension = 1024
-```
-
-### 7. Retry / Failure
+### Retry / failure
 
 재시도:
 
 ```text
-network / timeout
-HTTP 429
-HTTP 500 / 502 / 503 / 504
+network / timeout / 429 / 500 / 502 / 503 / 504
 ```
-
-기본 총 시도 횟수 3회.
 
 즉시 실패:
 
 ```text
-400 / 401 / 403 / 404 등 request/auth/config 오류
+400 / 401 / 403 / 404
 response schema 오류
 index mapping 오류
 dimension 오류
 ```
 
-### 8. Publish
-
-Pilot에서는 partial vector artifact를 final 결과로 publish하지 않는다.
+### Publish
 
 ```text
 모든 batch 성공
-→ 전체 mapping/dimension 검증
+→ validation
 → temp JSONL
 → atomic replace
 → final artifact
@@ -252,107 +156,146 @@ Pilot에서는 partial vector artifact를 final 결과로 publish하지 않는�
 → final artifact publish 금지
 ```
 
-Resume/checkpoint는 후속 orchestration 단계에서 다룬다.
-
-### 9. Embedding Artifact v0.1
+Synthetic/unit test와 CI가 PASS했다.
 
 ```text
-embedding_schema_version
-embedding_contract_version
-embedding_contract_hash
-embedding_id
-knowledge_item_id
-knowledge_attempt_id
-knowledge_generation_id
-issue_version_id
-jira_id
-category
-ordinal
-text_profile
-embedding_text_hash
-embedding_model
-embedding_model_profile
-embedding_dimension
-vector
-```
-
-M9는 `embedding_id ↔ knowledge_item_id` mapping을 유지한 채 FAISS를 만든다.
-
-### 10. 구현
-
-```text
-src/jira_collector/embedding/
-├─ corpus.py
-├─ contract.py
-├─ client.py
-├─ config.py
-├─ artifact.py
-└─ runner.py
-
-tools/jira_knowledge/embed_bge_m3.py
-```
-
-테스트:
-
-```text
-deterministic ec_/emb_
-285 → 5 batch
-response index 순서 복원
-index 중복/누락 차단
-dimension mismatch 차단
-429/5xx retry
-400 즉시 실패
-custom header JSON validation / HTTP forwarding
-corpus JSONL hash 재검증
-atomic publish
-Jira credential 없이 embedding config load
-```
-
-GitHub Actions pytest: **PASS**
-
-```text
-[x] embedding contract / deterministic ID
-[x] OpenAI-compatible client
-[x] batch <= 64
-[x] response index mapping
-[x] 1024 dimension contract
-[x] retry/non-retry test
-[x] custom header runtime support
-[x] atomic publish
-[x] independent runtime config
-[x] CI PASS
-
-M8-02 = IMPLEMENTED
+M8-02 = PASS / DONE
 ```
 
 ---
 
 ## M8-03 · Real BGE-M3 Gate
 
-상태: **CURRENT / NEXT VALIDATION**
+상태: **PASS / DONE**
 
-실제 사내 endpoint로 다음을 확인한다.
+### 1. Runtime preflight
 
 ```text
-[ ] corpus_rows = 285
-[ ] embedding_rows = 285
-[ ] batch_count = 5
-[ ] embedding_dimension = 1024
-[ ] emb_ ↔ ki_ mapping 무결성
-[ ] 동일 input/contract 재실행 identity 재현
-[ ] 작은 quality sanity check
+endpoint configured : true
+api_key configured  : false
+custom_headers      : 6
+model               : BAAI/bge-m3
+dimension           : 1024
 ```
 
-실행 전 `.env`에 실제 endpoint와 필요한 인증 정보를 입력한다. Bearer 방식이면 `BGE_M3_API_KEY`, custom header 방식이면 `BGE_M3_HEADERS_JSON`, 둘 다 필요한 환경이면 둘 다 사용한다. 실제 값은 Git/public 문서에 기록하지 않는다.
+### 2. 1-row smoke
+
+```text
+API call: PASS
+vectors : 1
+dimension: 1024
+```
+
+초기 HTTP 404는 endpoint path 설정 오류였으며 실제 embeddings route로 수정한 뒤 PASS했다.
+
+### 3. Full Pilot embedding
+
+```text
+corpus_rows: 285
+embedding_rows: 285
+batch_count: 5
+embedding_dimension: 1024
+```
+
+### 4. Artifact integrity
+
+```text
+validation: PASS
+corpus_rows: 285
+embedding_rows: 285
+unique_knowledge_item_ids: 285
+unique_embedding_ids: 285
+contract_count: 1
+mapping_failure_count: 0
+identity_failure_count: 0
+dimension_failure_count: 0
+non_finite_vector_count: 0
+zero_norm_vector_count: 0
+temp_artifact_exists: false
+```
+
+따라서 `ki_ ↔ emb_`는 285:285로 1:1이고, deterministic identity와 lineage mapping 실패가 없다.
+
+### 5. Semantic sanity
+
+3개 샘플을 brute-force cosine similarity로 검토했다.
+
+```text
+Sample 1  PASS
+Sample 2  PASS · 매우 양호
+Sample 3  PASS
+```
+
+Sample 3 Top-3:
+
+```text
+0.5918 / 0.5908 / 0.5900
+```
+
+Top-3 margin은 작지만 후보 모두 의미상 타당했다. 이를 실패가 아니라 **dense semantic neighborhood**로 기록한다.
+
+M9 설계 시 이 관찰을 다음처럼 사용한다.
+
+```text
+Top-1만 과신하지 않음
+→ Top-k 후보군 유지 검토
+→ Knowledge + Evidence를 함께 사용
+→ threshold/reranking은 M9 이후 근거를 보고 결정
+```
+
+### 6. Troubleshooting 결정
+
+실환경에서 확인한 문제를 별도 기록으로 보존한다.
+
+```text
+T01 legacy SQLite Viewer 오류
+T02 dotenv multi-line parse 오류
+T03 JSON 안의 Python 표현식 오류
+T04 custom header 지원 필요
+T05 endpoint path 404
+T06 corpus count 전달 오류
+```
+
+상세:
+
+```text
+docs/M8_REAL_EMBEDDING_LOG.md
+docs/status/M8_REAL_EMBEDDING_TROUBLESHOOTING.html
+```
+
+### Final Gate
+
+```text
+[x] corpus 285
+[x] embedding 285
+[x] 5 batches
+[x] 1024 dimension
+[x] unique ki_ 285
+[x] unique emb_ 285
+[x] mapping failure 0
+[x] identity failure 0
+[x] invalid vector 0
+[x] atomic publish
+[x] semantic sanity PASS
+[x] troubleshooting documented
+
+M8-03 = PASS / DONE
+M8 = DONE
+```
 
 ---
 
-## 아직 결정하지 않은 것
+## M9로 넘기는 관찰사항
 
-- Chunk size / overlap
-- BGE-M3 축소 dimension
-- FAISS index structure
-- retrieval top-k
-- production incremental embedding/resume orchestration
+M9는 아직 구현 시작 전이다. 다음 내용은 M9 설계 입력으로 넘긴다.
 
-**M8에서는 FAISS를 구현하지 않는다.** FAISS는 M9 책임이다.
+```text
+1. M8 validated embedding JSONL만 FAISS 입력으로 사용
+2. FAISS position은 emb_ 또는 ki_ identity가 아님
+3. emb_ ↔ ki_ mapping을 별도로 보존
+4. active Retrieval만 기본 search 대상
+5. Sample 3에서 Top-3 score margin이 작았으므로 Top-1 단독 확정은 피하는 방향 검토
+6. Top-k / threshold / metric / normalization은 M9에서 실측 후 결정
+```
+
+**M8에서는 FAISS를 구현하지 않았다.**
