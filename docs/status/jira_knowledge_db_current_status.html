@@ -1,58 +1,33 @@
 <!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M8 완료, M9-02 IMPLEMENTED, M9-03 실제 FAISS build/rebuild PASS, 서로 다른 두 real query 확인, same-query reproducibility 예정."><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.current{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid2{grid-template-columns:1fr}}</style>
-</head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="../architecture/jira_data_relationship_map.html">관계 맵</a><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">M8 Visual</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Visual</a><a href="../M9_REAL_RETRIEVAL_LOG.html">M9 Real Run</a></nav>
-<header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-26</span><h1>FAISS build/rebuild PASS,<br>서로 다른 두 실제 질문도 검색 확인.</h1><p>M0~M8은 DONE입니다. M9-01 retrieval contract를 확정하고 M9-02 FAISS build/search를 <strong>IMPLEMENTED / CI PASS</strong> 상태로 완료했습니다. M9-03에서는 실제 285개 IndexFlatIP build와 same-source rebuild reproducibility를 PASS했고, 서로 다른 두 실제 질문에서도 Rank 1/2가 유효 후보로 확인됐습니다. 다음은 완전히 동일한 질문을 반복해 query vector와 ranking 재현성을 확인하는 단계입니다.</p><span class="state">M0~M8 DONE · M9 CURRENT · REAL BUILD PASS · REBUILD PASS · 2 REAL QUERY CASES · SAME-QUERY REPRODUCIBILITY NEXT</span></header>
-<div class="kpis"><div class="kpi"><b>285</b><span>FAISS vectors</span></div><div class="kpi"><b>1024</b><span>Dimension</span></div><div class="kpi"><b>2/2</b><span>Top-1 good</span></div><div class="kpi"><b>NEXT</b><span>Same-query reproducibility</span></div></div>
-<section><h2>1. Milestone 상태</h2><div class="grid4"><div class="box"><b>M7 · DONE / PASS</b><p>SQLite materialization, identity, Evidence round-trip, idempotency PASS.</p></div><div class="box good"><b>M8 · DONE / PASS</b><p>285 corpus → 실제 BGE-M3 285×1024 embedding + integrity/sanity PASS.</p></div><div class="box good"><b>M9-01/02 · FROZEN / IMPLEMENTED</b><p>Retrieval contract freeze + FAISS build/search implementation + CI PASS.</p></div><div class="box current"><b>M9-03 · CURRENT</b><p>Real build/rebuild PASS. 서로 다른 query 2개 확인 완료. same-query 재현성이 남았습니다.</p></div></div></section>
-<section><h2>2. Identity는 계속 같은 기준을 씁니다</h2><div class="flow">jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M9 완료, M10 Evidence Builder + MCP 설계가 다음 단계"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid4,.grid2{display:grid;gap:12px}.grid4{grid-template-columns:repeat(4,1fr)}.grid2{grid-template-columns:repeat(2,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid2{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 DONE</a><a href="M10_START_HERE.html">M10 Start Here →</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-26</span><h1>M0~M9 완료.<br>다음은 M10 Evidence Builder + MCP입니다.</h1><p>SQLite Knowledge DB, 실제 BGE-M3 embedding, FAISS exact retrieval까지 실데이터 Gate를 모두 통과했습니다. M10은 아직 구현하지 않았으며 새 세션에서 Evidence Package / Resolver / MCP Tool Contract를 <strong>DESIGN부터</strong> 확정합니다.</p><span class="state">M0~M9 DONE / PASS · M10 NEXT / DESIGN NOT STARTED</span></header>
+<div class="kpis"><div class="kpi"><b>285</b><span>Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>1024</b><span>BGE-M3 dimension</span></div><div class="kpi"><b>PASS</b><span>M9 same-query</span></div><div class="kpi"><b>NEXT</b><span>M10 Evidence + MCP</span></div></div>
+<section><h2>1. Milestone</h2><div class="grid4"><div class="box"><b>M7 · DONE</b><p>SQLite 30 issue / 37 attempt / 285 item / 502 Evidence.</p></div><div class="box good"><b>M8 · DONE</b><p>285 BGE-M3 embeddings × 1024, integrity/sanity PASS.</p></div><div class="box good"><b>M9 · DONE</b><p>FAISS build/rebuild/query/same-query reproducibility PASS.</p></div><div class="box next"><b>M10 · NEXT</b><p>Evidence Builder + MCP. 설계는 아직 시작하지 않았습니다.</p></div></div></section>
+<section><h2>2. Identity</h2><div class="flow">jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 
 knowledge_attempt
   knowledge_attempt_id = ka_
-  attempt_no = 1 / 2 / 3 ...
+  attempt_no = retry 회차
 
-Embedding
-  ec_ = embedding contract
-  emb_ = embedding artifact
+Embedding  ec_ → emb_
+Retrieval  rc_ → fi_
 
-Retrieval
-  rc_ = retrieval contract
-  fi_ = FAISS index artifact
-
-FAISS position ≠ emb_ ≠ ki_</div><div class="callout">M9에서도 FAISS 내부 position을 Knowledge identity로 사용하지 않습니다. <code>position → emb_ → ki_</code> mapping을 보존해 M10에서 Evidence까지 되돌아갈 수 있게 합니다.</div></section>
-<section><h2>3. 실제 M9 Build / Rebuild 결과</h2><div class="flow">첫 build
-validation: PASS
-vector_count: 285
-dimension: 1024
-mapping/hash/normalization failure: 0 / 0 / 0
-
-같은 source rebuild
-retrieval_contract_hash: SAME
-faiss_index_id: SAME
-source_embedding_artifact_sha256: SAME
-mapping_sha256: SAME
-faiss_binary_sha256: SAME · same environment observation</div><div class="callout good"><strong>M9-03 Real Build + Rebuild = PASS</strong></div></section>
-<section><h2>4. Real Query 두 사례</h2><table><thead><tr><th>Case</th><th>Rank 1</th><th>Rank 2</th><th>Rank 3</th></tr></thead><tbody><tr><td>Query A</td><td>좋음 · 0.843981</td><td>좋음 · 0.788863</td><td>어색함 · 0.601325</td></tr><tr><td>Query B</td><td>좋음 · 0.708450</td><td>괜찮음 · 0.699601</td><td>어색함 · 0.687829</td></tr></tbody></table><div class="callout good"><strong>실제 검색 경로는 정상 동작</strong><br>서로 다른 두 질문 모두 Rank 1은 좋고 Rank 2도 유효했습니다.</div><div class="callout warn"><strong>Top-3 noise 관찰</strong><br>두 사례 모두 Rank 3은 어색했습니다. Case 2에서는 Rank 2와 Rank 3 score 차이도 작아서 단순 global cosine threshold만으로 관련성을 구분하기 어렵다는 근거가 생겼습니다.</div></section>
-<section><h2>5. Pilot / Production update</h2><table><thead><tr><th>환경</th><th>정책</th></tr></thead><tbody><tr><td>Pilot</td><td>full rebuild로 deterministic/integrity/reproducibility 검증</td></tr><tr><td>Production</td><td>delta-first; added/changed/removed만 반영, full rebuild는 maintenance/recovery/migration</td></tr></tbody></table></section>
-<section><h2>6. 현재 남은 Gate</h2><div class="flow">[x] actual FAISS build
-[x] vector_count = 285
-[x] dimension = 1024
-[x] mapping/hash/normalization failure = 0
-[x] same source rebuild → same rc_ / fi_ / source SHA / mapping SHA
-[x] distinct real query A → Top-3
-[x] distinct real query B → Top-3
-[x] representative semantic sanity observation
-[x] Top-3 noise observation
-[ ] same exact query vector reproducibility
-[ ] same exact query ranking reproducibility
-[ ] M9 final documentation sync</div></section>
-<section><h2>7. 이후 M10 경계</h2><div class="flow">M9 output
+FAISS position ≠ emb_ ≠ ki_</div><p>M10에서도 <code>ki_</code>를 통해 Knowledge를 조회하고 <code>ke_</code>를 통해 Evidence source로 round-trip합니다.</p></section>
+<section><h2>3. M9 최종 근거</h2><table><thead><tr><th>Gate</th><th>결과</th></tr></thead><tbody><tr><td>Real Build</td><td>285 vectors / 1024 dimensions / mapping·hash·normalization failure 0</td></tr><tr><td>Rebuild</td><td>same rc_ / fi_ / source SHA / mapping SHA</td></tr><tr><td>Distinct Query A/B</td><td>두 사례 모두 Rank 1/2 유효, Rank 3 noise 관찰</td></tr><tr><td>Same-query</td><td>vector exact equal, max diff 0, cosine 1.0, ranking equal, scores equal</td></tr></tbody></table><div class="box good"><b>M9 = DONE / PASS</b></div></section>
+<section><h2>4. M10 Input / Boundary</h2><div class="flow">M9 output
 rank + score + faiss_position + emb_ + ki_
         ↓
 M10
 ki_ → Knowledge statement
 ke_ → Evidence source
 → Evidence package
-→ MCP</div><div class="callout warn"><strong>M9에서는 Evidence Builder/MCP를 구현하지 않습니다.</strong> same-query 재현성까지 닫은 뒤 M10으로 넘어갑니다.</div></section>
-<footer>M9 CURRENT · REAL BUILD PASS · REBUILD PASS · 2 REAL QUERY CASES · SAME-QUERY REPRODUCIBILITY NEXT · 2026-08-26</footer></main></body></html>
+→ MCP</div></section>
+<section><h2>5. M10에서 처음 결정할 것</h2><div class="grid2"><div class="box next"><b>Evidence Package</b><p>Agent에 전달할 schema/필드.</p></div><div class="box next"><b>Resolver Contract</b><p>Evidence type별 source resolve와 failure 정책.</p></div><div class="box next"><b>MCP Tool Surface</b><p>search와 evidence resolve를 어떻게 tool로 노출할지.</p></div><div class="box next"><b>Quality Gate</b><p>round-trip/citation/partial failure를 어떻게 검증할지.</p></div></div></section>
+<section><h2>6. Production 방향은 M10과 분리</h2><div class="flow">운영 기본 = delta-first
+full rebuild = maintenance / recovery / migration
+
+후속 후보
+vector cache
+IndexIDMap2(IndexFlatIP) + stable vector_id
+HNSW / IVF benchmark</div><p>이 production-hardening을 M10 Evidence Builder 구현에 섞지 않습니다.</p></section>
+<section><h2>7. 새 세션</h2><div class="box good"><b><a href="M10_START_HERE.html">M10 Start Here</a></b><p>새 세션은 이 문서를 첫 진입점으로 사용합니다. 완료된 M0~M9를 다시 추측하지 않고, M10의 미결정 설계부터 시작합니다.</p></div></section>
+<footer>M0~M9 DONE / PASS · M10 NEXT / DESIGN NOT STARTED · 2026-08-26</footer></main></body></html>
