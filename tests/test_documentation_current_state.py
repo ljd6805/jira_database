@@ -68,7 +68,7 @@ def _done_or_current_milestones() -> set[str]:
 
 
 def test_current_docs_do_not_regress_to_old_milestone_status() -> None:
-    """Current Source of Truth가 M7 CURRENT/M8 BLOCKED 상태로 퇴행하지 않게 합니다."""
+    """Current Source of Truth가 과거 M6/M7/M8-blocked 상태로 퇴행하지 않게 합니다."""
 
     for path in CURRENT_DOCS:
         text = _read(path)
@@ -76,8 +76,8 @@ def test_current_docs_do_not_regress_to_old_milestone_status() -> None:
             assert marker not in text, f"{path} contains stale marker: {marker}"
 
 
-def test_current_docs_point_to_m8_after_m7_pass() -> None:
-    """전역 Current 문서가 M7 PASS와 M8 CURRENT를 함께 나타내는지 확인합니다."""
+def test_current_docs_record_m8_done_and_m9_next() -> None:
+    """전역 Current 문서가 M7 PASS, M8 DONE, M9 NEXT/PLAN을 함께 나타냅니다."""
 
     required = (
         Path("README.md"),
@@ -87,10 +87,13 @@ def test_current_docs_point_to_m8_after_m7_pass() -> None:
     )
     for path in required:
         text = _read(path)
+        upper = text.upper()
         assert "M7" in text
-        assert "PASS" in text.upper()
+        assert "PASS" in upper
         assert "M8" in text
-        assert "CURRENT" in text.upper()
+        assert "DONE" in upper
+        assert "M9" in text
+        assert "NEXT" in upper or "PLAN" in upper
 
 
 def test_authoritative_docs_keep_generation_attempt_identity() -> None:
@@ -139,17 +142,38 @@ def test_m7_completion_doc_records_real_run_gate() -> None:
     assert "Integrity          true" in text
 
 
-def test_m8_current_design_keeps_m9_boundary() -> None:
-    """M8에서 FAISS를 미리 구현하는 경계 회귀를 막습니다."""
+def test_m8_final_design_records_gate_and_keeps_m9_boundary() -> None:
+    """M8 완료 근거와 FAISS=M9 경계가 문서에서 유지되는지 확인합니다."""
 
     text = _read(Path("docs/M8_EMBEDDING_CHUNK_BGE_M3.md"))
-    assert "CURRENT" in text
+    assert "DONE" in text
     assert "BGE-M3" in text
+    assert "285" in text
     assert "1024" in text
     assert "64" in text
+    assert "validation: PASS" in text
     assert "FAISS" in text
     assert "M9" in text
     assert "M8에서는 FAISS" in text
+
+
+def test_m8_real_embedding_log_records_final_integrity_gate() -> None:
+    """M8 실환경 완료 숫자가 후속 문서 수정으로 유실되지 않게 합니다."""
+
+    text = _read(Path("docs/M8_REAL_EMBEDDING_LOG.md"))
+    assert "M8 = DONE" in text
+    assert "corpus_rows: 285" in text
+    assert "embedding_rows: 285" in text
+    assert "batch_count: 5" in text
+    assert "embedding_dimension: 1024" in text
+    assert "unique_knowledge_item_ids: 285" in text
+    assert "unique_embedding_ids: 285" in text
+    assert "mapping_failure_count: 0" in text
+    assert "identity_failure_count: 0" in text
+    assert "non_finite_vector_count: 0" in text
+    assert "zero_norm_vector_count: 0" in text
+    assert "temp_artifact_exists: false" in text
+    assert "Semantic Quality Sanity Check · PASS" in text
 
 
 def test_m0_to_m8_visual_docs_exist_and_are_static() -> None:
@@ -193,9 +217,12 @@ def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
         Path("docs/M7_SQLITE_MATERIALIZATION.md"),
         Path("docs/status/M7_SQLITE_MATERIALIZATION_COMPLETION.md"),
         Path("docs/status/M7_SQLITE_MATERIALIZATION.html"),
+        Path("docs/M8_EMBEDDING_CHUNK_BGE_M3.md"),
+        Path("docs/M8_DECISION_LOG.md"),
+        Path("docs/M8_REAL_EMBEDDING_LOG.md"),
+        Path("docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html"),
+        Path("docs/status/M8_REAL_EMBEDDING_TROUBLESHOOTING.html"),
     )
-    # Pilot의 Issue 번호 형태에 맞춰 4자리 이상만 감지해 SHA-256, UTF-8,
-    # M6-01 같은 기술/문서 표기를 Jira Key로 오인하지 않습니다.
     issue_key_pattern = re.compile(r"\b[A-Z][A-Z0-9_]{1,15}-[1-9]\d{3,}\b")
     for path in public_docs:
         text = _read(path)
