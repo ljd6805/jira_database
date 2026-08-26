@@ -4,6 +4,15 @@
 <header class="hero"><span class="eyebrow">M1 · COMPLETION RECORD</span><h1>여러 사실 파일을<br>“Issue 한 건짜리 완전한 서류봉투”로</h1><p>M1은 M0에서 따로 저장한 Issue·Comment·Attachment·Relationship·Custom Field를 Issue 기준으로 결정적으로 JOIN해, Agent가 한 파일만 읽어도 해당 Issue의 사실 전체를 볼 수 있게 만들었습니다.</p><span class="state">PASS / DONE · PR #2 merge 2026-08-07</span><div class="breadcrumb">ANALYSIS → Issue별 Knowledge Input → M2 의미 추출</div></header>
 <div class="kpis"><div class="kpi"><b>30</b><span>Issue package</span></div><div class="kpi"><b>278</b><span>포함 Comment</span></div><div class="kpi"><b>447</b><span>Custom Field Value</span></div><div class="kpi"><b>0</b><span>Package warning</span></div></div>
 <section class="beginner"><span class="badge">1분 요약</span><h2>M1를 아주 쉽게 말하면</h2><div class="grid3"><div class="easy-card"><div class="emoji">🗃️</div><b>M0의 문제</b><p>사실은 정확하지만 Issue, Comment, Attachment 등이 서로 다른 JSONL에 흩어져 있어 한 Issue를 읽으려면 여러 파일을 JOIN해야 했습니다.</p></div><div class="easy-card"><div class="emoji">✉️</div><b>M1의 해결</b><p>Issue key를 기준으로 관련 사실을 한 JSON package에 모았습니다. Issue 1건은 Package 1건입니다.</p></div><div class="easy-card"><div class="emoji">🧠</div><b>중요한 경계</b><p>아직 LLM이 의미를 만들지 않습니다. “원인”, “결론”, “의사결정”을 추론하지 않고 사실만 조립합니다.</p></div></div><div class="analogy"><strong>비유</strong> M0가 회사의 문서를 “회의록 서랍, 첨부파일 서랍, 관계 서랍”처럼 정리했다면, M1은 특정 업무 건을 볼 때 필요한 서류를 한 봉투에 복사해 넣는 작업입니다. 봉투 안의 내용을 해석하는 일은 M2 이후입니다.</div></section>
+<section><h2>전체 파이프라인에서 M1는 어디인가?</h2><div class="flow">[M0] Jira 사실을 종류별로 안전하게 저장
+  ↓
+[M1] 같은 Issue에 속한 사실을 한 Package로 조립  ← 지금 여기
+  ↓
+[M2] 긴 사실에서 검색 가치가 높은 의미를 추출
+  ↓
+[M3~M7] 품질 검증·실데이터 검증·DB 저장
+  ↓
+[M8~M10] Vector 검색 + 실제 근거 + MCP</div><div class="grid3"><div class="mini"><b>M0와 차이</b><p>M0는 “데이터 종류별 저장”, M1은 “Issue별 한 묶음”입니다.</p></div><div class="mini"><b>M2와 차이</b><p>M1은 사실을 해석하지 않습니다. M2부터 LLM이 검색용 의미 문장을 만듭니다.</p></div><div class="mini"><b>M1 완료 후</b><p>Agent가 여러 JSONL을 직접 JOIN하지 않고 Issue 한 건의 사실 전체를 한 입력으로 읽을 수 있습니다.</p></div></div><div class="callout good"><strong>M1의 핵심 역할</strong> M0의 “잘 보관된 자료”를 M2가 읽기 쉬운 <strong>Issue 단위 완전한 입력지</strong>로 만드는 단계입니다.</div></section>
 <section><h2>1. 입력과 출력</h2><div class="flow">[ANALYSIS]
 issues.jsonl
 comments.jsonl
