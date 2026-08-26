@@ -3,16 +3,23 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="M8 Embedding Unit / Chunk + BGE-M3 완료 기록. 실제 285개 embedding, 1024차원, mapping/identity/semantic sanity PASS.">
-<title>M8 · Embedding Unit / Chunk + BGE-M3 · DONE</title>
+<title>M8 · Embedding Unit / Chunk + BGE-M3 · 쉬운 상세판</title>
 <link rel="stylesheet" href="milestone.css">
 <style>.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid3{grid-template-columns:1fr}}</style>
 </head>
 <body><main class="wrap">
-<nav class="top"><a href="M7_SQLITE_MATERIALIZATION.html">← M7</a><a href="../index.html">문서 허브</a><a href="../M8_EMBEDDING_CHUNK_BGE_M3.md">Final Contract</a><a href="../M8_DECISION_LOG.md">Decision Log</a><a href="../M8_REAL_EMBEDDING_LOG.md">Real-run Log</a><a href="M8_REAL_EMBEDDING_TROUBLESHOOTING.html">Troubleshooting</a></nav>
-<header class="hero"><span class="eyebrow">M8 · DONE / PASS</span><h1>285개의 Knowledge Item을<br>검증된 BGE-M3 벡터로 만들었습니다</h1><p>M8-01에서 active accepted corpus 285개를 고정하고, M8-02에서 deterministic embedding identity와 API adapter를 구현한 뒤, M8-03에서 실제 사내 BGE-M3로 285개 전체 embedding을 만들고 mapping·identity·vector 무결성·semantic sanity까지 검증했습니다.</p><span class="state">M8 DONE · REAL-RUN PASS · M9 NEXT / DESIGN NOT STARTED · 2026-08-26</span><div class="breadcrumb">M7 active Knowledge → corpus 285 → BGE-M3 285×1024 → validated artifact → M9 FAISS</div></header>
+<nav class="top"><a href="M7_SQLITE_MATERIALIZATION.html">← M7</a><a href="../index.html">문서 허브</a><a href="../M8_EMBEDDING_CHUNK_BGE_M3.html">Final Contract</a><a href="../M8_DECISION_LOG.html">Decision Log</a><a href="../M8_REAL_EMBEDDING_LOG.html">Real-run Log</a><a href="M8_REAL_EMBEDDING_TROUBLESHOOTING.html">Troubleshooting</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 →</a></nav>
+<header class="hero"><span class="eyebrow">M8 · DONE / PASS</span><h1>검색할 Knowledge를<br>BGE-M3가 이해하는 숫자 좌표로 바꾸기</h1><p>M8은 M7 SQLite의 active accepted Knowledge 285개를 BGE-M3로 1024차원 vector로 변환하고, 각 vector가 어떤 Knowledge Item에서 왔는지 정확히 연결되는지 검증한 단계입니다.</p><span class="state">M8 DONE · REAL-RUN PASS · M9 DONE · M10 DESIGN IN PROGRESS · 2026-08-26</span><div class="breadcrumb">M7 active Knowledge → corpus 285 → BGE-M3 285×1024 → validated artifact → M9 FAISS</div></header>
 <div class="kpis"><div class="kpi"><b>285</b><span>Corpus rows</span></div><div class="kpi"><b>285</b><span>Validated embeddings</span></div><div class="kpi"><b>5</b><span>64+64+64+64+29 batches</span></div><div class="kpi"><b>1024</b><span>Dense dimension</span></div></div>
-<section><h2>1. M8을 아주 쉽게 말하면</h2><div class="grid3"><div class="box"><b>📝 285개 검색 문장</b><p>M7의 active accepted Knowledge Item만 corpus로 사용했습니다.</p></div><div class="box"><b>🔢 의미 좌표 생성</b><p>BAAI/bge-m3가 각 문장을 1024개의 숫자로 바꿨습니다.</p></div><div class="box"><b>✅ 결과 검증</b><p>285개 모두 정확히 연결됐는지 deterministic ID와 mapping으로 다시 검사했습니다.</p></div></div><div class="callout good"><strong>M8 최종 결론</strong> 실제 사내 endpoint에서 285개 vector 생성과 artifact integrity 검증까지 PASS했습니다.</div></section>
-<section><h2>2. 입력 경계</h2><div class="flow">knowledge_generation.state = active
+<section class="beginner"><span class="badge">1분 요약</span><h2>M8을 아주 쉽게 말하면</h2><div class="grid3"><div class="easy-card"><div class="emoji">📝</div><b>검색 문장 285개</b><p>M7 DB에서 현재 검색에 사용해도 되는 Knowledge Item만 골랐습니다.</p></div><div class="easy-card"><div class="emoji">📍</div><b>의미를 숫자 좌표로</b><p>BGE-M3가 각 문장을 1024개의 숫자로 바꿉니다. 뜻이 비슷한 문장은 숫자 공간에서도 가까워지도록 만드는 것입니다.</p></div><div class="easy-card"><div class="emoji">🔗</div><b>원래 문장과 연결 유지</b><p>vector만 덩그러니 저장하지 않고 <code>emb_ → ki_</code> 연결을 유지해 나중에 검색 결과를 실제 Knowledge로 되돌릴 수 있게 했습니다.</p></div></div><div class="analogy"><strong>비유</strong> M7이 285권의 책에 관리번호를 붙여 서가에 정리한 단계라면, M8은 각 책의 내용을 보고 “의미 지도” 위에 좌표를 찍는 단계입니다. 아직 가장 가까운 책을 찾지는 않습니다. 그 검색은 M9입니다.</div></section>
+<section><h2>전체 파이프라인에서 M8은 어디인가?</h2><div class="flow">[M7] Knowledge와 Evidence를 SQLite에 구조화 저장
+  ↓
+[M8] Knowledge 문장을 1024차원 의미 vector로 변환  ← 지금 여기
+  ↓
+[M9] 질문도 같은 공간의 vector로 만들고 가까운 Knowledge Top-k 검색
+  ↓
+[M10] 검색된 Knowledge에 실제 Jira Evidence를 붙여 MCP로 제공</div><div class="grid3"><div class="box"><b>M7과 차이</b><p>M7은 구조화 저장입니다. M8은 “문장의 의미를 비교할 수 있는 숫자 표현”을 만듭니다.</p></div><div class="box"><b>M9와 차이</b><p>M8은 vector를 만들기만 합니다. 어떤 vector가 질문과 가까운지 찾는 FAISS 검색은 M9입니다.</p></div><div class="box"><b>M8 완료 후</b><p>질문과 Knowledge를 같은 의미 공간에서 비교할 수 있는 검색 재료가 준비됩니다.</p></div></div><div class="callout good"><strong>M8의 핵심 역할</strong> 사람이 읽는 Knowledge 문장을 컴퓨터가 <strong>의미 거리로 비교할 수 있는 좌표</strong>로 바꾸는 단계입니다.</div></section>
+<section><h2>1. 입력 경계</h2><div class="flow">knowledge_generation.state = active
 AND accepted_attempt_id IS NOT NULL
     ↓
 accepted knowledge_attempt
@@ -21,6 +28,15 @@ AND content_available = 1
 knowledge_item
     ↓
 285 embedding units</div><p>M8 baseline은 <strong>Knowledge Item 1개 = Embedding Unit 1개</strong>입니다. 현재 statement 길이는 mean 114.01자, p95 206.4자, max 447자여서 선제 Chunk가 필요하다는 근거가 없었습니다.</p></section>
+<section><h2>2. Embedding이라는 말이 낯설다면</h2><div class="flow">"부팅 중 PMBus timeout이 발생했다"
+        ↓ BGE-M3
+[0.013, -0.087, 0.221, ... 총 1024개 숫자]
+
+"PMBus 통신이 기동 시 timeout 난다"
+        ↓ BGE-M3
+[비슷한 방향의 1024개 숫자]
+
+의미가 비슷하면 → vector 사이의 cosine 값이 더 높아질 가능성이 큼</div><p>1024개의 각 숫자를 사람이 해석할 필요는 없습니다. 중요한 것은 같은 모델과 같은 계약으로 만든 vector끼리 의미적 가까움을 계산할 수 있다는 점입니다.</p></section>
 <section><h2>3. Identity</h2><div class="flow">Knowledge
 jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 
@@ -28,8 +44,8 @@ Embedding
 ec_ = embedding contract
 emb_ = H(knowledge_item_id, embedding_text_hash, ec_)
 
-FAISS position ≠ emb_ ≠ ki_</div><p><code>knowledge_attempt</code> / <code>ka_</code> / <code>attempt_no</code> 구조는 M9에서도 계속 authoritative history lineage입니다.</p></section>
-<section><h2>4. BGE-M3 Contract</h2><table><thead><tr><th>항목</th><th>확정값</th></tr></thead><tbody><tr><td>Model</td><td><code>BAAI/bge-m3</code></td></tr><tr><td>Serving</td><td>TEI / OpenAI-compatible embeddings API</td></tr><tr><td>Max batch</td><td>64</td></tr><tr><td>Dense dimension</td><td>1024</td></tr><tr><td>Pilot requests</td><td>64 + 64 + 64 + 64 + 29 = 5</td></tr><tr><td>Runtime auth</td><td>custom header 지원, Bearer는 optional</td></tr></tbody></table></section>
+FAISS position ≠ emb_ ≠ ki_</div><p><code>emb_</code>는 “이 Knowledge를 이 Embedding 계약으로 vector화한 결과”의 안정적인 식별자입니다. M9의 배열 위치인 FAISS position과 혼동하지 않습니다.</p></section>
+<section><h2>4. BGE-M3 Contract</h2><table><thead><tr><th>항목</th><th>확정값</th><th>쉽게 말하면</th></tr></thead><tbody><tr><td>Model</td><td><code>BAAI/bge-m3</code></td><td>문장을 vector로 바꾸는 모델</td></tr><tr><td>Serving</td><td>TEI / OpenAI-compatible embeddings API</td><td>사내에서 호출하는 API 형식</td></tr><tr><td>Max batch</td><td>64</td><td>한 HTTP 요청에 문장 최대 64개</td></tr><tr><td>Dense dimension</td><td>1024</td><td>문장 하나가 1024개 숫자로 변환됨</td></tr><tr><td>Pilot requests</td><td>64 + 64 + 64 + 64 + 29 = 5</td><td>285개를 실제로 5번 요청해 처리</td></tr><tr><td>Runtime auth</td><td>custom header 지원, Bearer optional</td><td>사내 환경의 인증 차이를 runtime 설정으로 처리</td></tr></tbody></table></section>
 <section><h2>5. Full Real Embedding 결과</h2><div class="flow">corpus_rows: 285
 embedding_rows: 285
 batch_count: 5
@@ -44,7 +60,7 @@ dimension_failure_count: 0
 non_finite_vector_count: 0
 zero_norm_vector_count: 0
 temp_artifact_exists: false</div><div class="grid4"><div class="box"><b>285</b><p>unique ki_</p></div><div class="box"><b>285</b><p>unique emb_</p></div><div class="box"><b>0</b><p>mapping / identity failures</p></div><div class="box"><b>0</b><p>invalid vectors</p></div></div></section>
-<section><h2>7. Semantic Sanity</h2><table><thead><tr><th>Sample</th><th>판정</th><th>관찰</th></tr></thead><tbody><tr><td>1</td><td>PASS</td><td>유사 후보가 의미상 타당</td></tr><tr><td>2</td><td>PASS</td><td>매우 양호</td></tr><tr><td>3</td><td>PASS</td><td>Top-3 모두 타당하나 score가 0.5918 / 0.5908 / 0.5900으로 촘촘함</td></tr></tbody></table><div class="callout"><strong>M9로 넘기는 관찰</strong> Sample 3은 dense semantic neighborhood 사례입니다. M9에서 Top-1 하나만 과신하지 않고 Top-k 후보군과 Evidence를 함께 사용하는 방향을 검토합니다.</div></section>
+<section><h2>7. Semantic Sanity</h2><table><thead><tr><th>Sample</th><th>판정</th><th>관찰</th></tr></thead><tbody><tr><td>1</td><td>PASS</td><td>유사 후보가 의미상 타당</td></tr><tr><td>2</td><td>PASS</td><td>매우 양호</td></tr><tr><td>3</td><td>PASS</td><td>Top-3 모두 타당하나 score가 0.5918 / 0.5908 / 0.5900으로 촘촘함</td></tr></tbody></table><div class="callout"><strong>M9로 넘긴 관찰</strong> Sample 3은 dense semantic neighborhood 사례였습니다. 이 때문에 M9에서 Top-1만 과신하지 않고 Top-k 후보군을 검증했습니다.</div></section>
 <section><h2>8. Troubleshooting도 자산으로 남겼습니다</h2><div class="grid3"><div class="box"><b>dotenv / JSON</b><p>multi-line value와 Python 표현식 혼입 문제를 분리해 해결했습니다.</p></div><div class="box"><b>Custom Header</b><p>사내 runtime custom header를 generic하게 주입하도록 구현했습니다.</p></div><div class="box"><b>HTTP 404</b><p>인증이 아니라 endpoint path 문제로 진단해 실제 embeddings route로 수정했습니다.</p></div></div><p><a href="M8_REAL_EMBEDDING_TROUBLESHOOTING.html">Troubleshooting 전체 기록 열기</a></p></section>
 <section><h2>9. M8 Final Gate</h2><div class="flow">[x] corpus 285
 [x] embedding 285
@@ -60,6 +76,12 @@ temp_artifact_exists: false</div><div class="grid4"><div class="box"><b>285</b><
 [x] troubleshooting documented
 
 M8 = DONE / PASS</div></section>
-<section><h2>10. 다음은 M9</h2><div class="box next"><b>M9 · FAISS + Active Retrieval · NEXT</b><p>아직 구현하지 않았습니다. FAISS index type, metric/normalization, active-only policy, <code>emb_ ↔ ki_</code> mapping, query embedding, Top-k, rebuild/reproducibility, search quality Gate를 먼저 문서로 설계합니다.</p></div><div class="callout warn"><strong>M8에서는 FAISS를 구현하지 않았습니다.</strong> Embedding 문제와 Retrieval 문제를 분리하기 위해 Milestone 경계를 유지합니다.</div></section>
-<footer>M8 Embedding Unit / Chunk + BGE-M3 · DONE / PASS · 2026-08-26</footer>
+<section><h2>10. M8 이후 실제로 어떻게 이어졌나?</h2><div class="flow">M8 vector artifact
+        ↓
+M9 IndexFlatIP + cosine retrieval
+        ↓
+285-vector real build / rebuild / query Gate PASS
+        ↓
+현재: M10 Evidence Builder + MCP DESIGN IN PROGRESS</div><div class="callout good"><strong>M9도 현재 DONE / PASS입니다.</strong> M8 완료 당시에는 M9가 다음 단계였고, 이후 실제 FAISS Retrieval 검증까지 완료했습니다. 현재 프로젝트의 다음 작업은 M10입니다.</div></section>
+<footer>M8 Embedding Unit / Chunk + BGE-M3 · DONE / PASS · M9 DONE · M10 DESIGN IN PROGRESS · 2026-08-26</footer>
 </main></body></html>
