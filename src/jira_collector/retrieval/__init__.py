@@ -21,6 +21,7 @@ from .contract import (
     RetrievalContract,
     faiss_index_id,
 )
+from .query import embed_query_text
 from .search import RetrievalCandidate, RetrievalSearcher, load_retrieval_searcher
 from .source import load_embedding_artifact, sha256_file
 from .validation import (
@@ -52,6 +53,7 @@ __all__ = [
     "RetrievalMappingRow",
     "RetrievalSearcher",
     "build_retrieval_artifacts",
+    "embed_query_text",
     "faiss_index_id",
     "load_embedding_artifact",
     "load_retrieval_manifest",
