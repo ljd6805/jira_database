@@ -12,7 +12,22 @@
 <header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-26</span><h1>M9 구현까지 완료했습니다.<br>이제 실제 285개 FAISS Gate입니다.</h1><p>M0~M8은 DONE입니다. M9에서는 exact retrieval baseline을 먼저 확정했고, <strong>IndexFlatIP + cosine(L2 normalize) + Top-3 + deterministic mapping/manifest</strong> 구현과 synthetic CI까지 통과했습니다. 다음은 실제 M8 embedding 285개로 index를 만들고 실제 BGE-M3 질문을 검색하는 M9-03입니다.</p><span class="state">M0~M8 DONE · M9 CURRENT · M9-01 DESIGN FROZEN · M9-02 IMPLEMENTED / CI PASS · M9-03 NEXT</span></header>
 <div class="kpis"><div class="kpi"><b>285</b><span>Validated Embeddings</span></div><div class="kpi"><b>1024</b><span>Dimension</span></div><div class="kpi"><b>Top-3</b><span>Exact cosine baseline</span></div><div class="kpi"><b>3 files</b><span>Index + Mapping + Manifest</span></div></div>
 <section><h2>1. Milestone 상태</h2><div class="grid4"><div class="box"><b>M7 · DONE / PASS</b><p>SQLite materialization, identity, Evidence round-trip, idempotency PASS.</p></div><div class="box good"><b>M8 · DONE / PASS</b><p>285 corpus → 실제 BGE-M3 285×1024 embedding + integrity/sanity PASS.</p></div><div class="box good"><b>M9-01/02 · DONE</b><p>Retrieval contract freeze + FAISS build/search implementation + CI PASS.</p></div><div class="box current"><b>M9-03 · NEXT</b><p>실제 285 index build, rebuild 재현성, 실제 query Top-3 semantic sanity.</p></div></div></section>
-<section><h2>2. M9 baseline을 아주 쉽게 말하면</h2><div class="flow">M8 validated vector 285개
+<section><h2>2. Authoritative identity는 M9에서도 그대로입니다</h2><div class="flow">jira_id
+  ↓
+iv_  issue_version
+  ↓
+kc_  knowledge contract
+  ↓
+kg_  knowledge_generation
+  ↓
+ka_  knowledge_attempt · attempt_no
+  ├─ ki_ knowledge_item
+  │    └─ ke_ knowledge_evidence
+  └─ knowledge_review
+
+M8: ec_ → emb_ → ki_
+M9: rc_ → fi_ → faiss_position → emb_ → ki_</div><div class="callout"><strong>Generation과 Knowledge Attempt를 섞지 않습니다.</strong> <code>knowledge_attempt</code>가 실제 1차/2차/3차 생성 시도이고, <code>ka_</code>와 <code>attempt_no</code>가 그 회차를 보존합니다. FAISS position은 이 identity 계층을 대체하지 않습니다.</div></section>
+<section><h2>3. M9 baseline을 아주 쉽게 말하면</h2><div class="flow">M8 validated vector 285개
         ↓ embedding_id 순서로 정렬
 float32 copy + L2 normalize
         ↓
@@ -23,12 +38,12 @@ FAISS IndexFlatIP
 exact cosine Top-3
         ↓
 faiss_position → emb_ → ki_</div><div class="callout"><strong>FAISS position은 ID가 아닙니다.</strong> 검색 엔진 내부 숫자는 언제든 달라질 수 있으므로 mapping sidecar를 통해 stable <code>embedding_id</code>와 <code>knowledge_item_id</code>로 돌아갑니다.</div></section>
-<section><h2>3. M9-01 · 확정된 검색 계약</h2><table><thead><tr><th>항목</th><th>Baseline</th><th>이유</th></tr></thead><tbody><tr><td>Index</td><td><code>IndexFlatIP</code></td><td>285개 Pilot에서는 exact search를 정답 기준으로 확보</td></tr><tr><td>Metric</td><td>cosine</td><td>DB/query 모두 L2 normalize 후 inner product</td></tr><tr><td>Top-k</td><td>3</td><td>M8 dense-neighborhood 관찰을 반영해 Top-1 과신 방지</td></tr><tr><td>Threshold</td><td>none</td><td>절대 score cutoff 근거가 아직 없음</td></tr><tr><td>Reranker</td><td>none</td><td>baseline 원인 분리를 위해 미도입</td></tr><tr><td>Update</td><td>full rebuild</td><td>Pilot에서는 stale vector 제거와 재현성이 단순</td></tr></tbody></table></section>
-<section><h2>4. M9-02 · 구현된 안전장치</h2><div class="grid2"><div class="box"><b>M8 source 재검증</b><p>build 시작 시 corpus + embedding의 M8 integrity Gate를 다시 실행합니다.</p></div><div class="box"><b>Canonical order</b><p>source JSONL 순서와 무관하게 <code>embedding_id ascending</code>으로 index/mapping을 만듭니다.</p></div><div class="box"><b>Manifest-last publish</b><p>index/mapping을 검증한 뒤 manifest를 마지막에 publish해 완료 marker로 사용합니다.</p></div><div class="box"><b>Runtime reject</b><p>manifest SHA/mapping/normalization이 깨지면 검색기가 artifact를 열지 않습니다.</p></div><div class="box"><b>Query contract</b><p>현재 BGE-M3 model/profile/dimension이 index source와 다르면 API 호출 전에 차단합니다.</p></div><div class="box"><b>ANN 확장 경로</b><p>향후 latency/RAM/QPS/recall@k를 측정해 HNSW/IVF로 교체할 수 있습니다.</p></div></div></section>
-<section><h2>5. Retrieval artifact</h2><div class="flow">index.faiss
+<section><h2>4. M9-01 · 확정된 검색 계약</h2><table><thead><tr><th>항목</th><th>Baseline</th><th>이유</th></tr></thead><tbody><tr><td>Index</td><td><code>IndexFlatIP</code></td><td>285개 Pilot에서는 exact search를 정답 기준으로 확보</td></tr><tr><td>Metric</td><td>cosine</td><td>DB/query 모두 L2 normalize 후 inner product</td></tr><tr><td>Top-k</td><td>3</td><td>M8 dense-neighborhood 관찰을 반영해 Top-1 과신 방지</td></tr><tr><td>Threshold</td><td>none</td><td>절대 score cutoff 근거가 아직 없음</td></tr><tr><td>Reranker</td><td>none</td><td>baseline 원인 분리를 위해 미도입</td></tr><tr><td>Update</td><td>full rebuild</td><td>Pilot에서는 stale vector 제거와 재현성이 단순</td></tr></tbody></table></section>
+<section><h2>5. M9-02 · 구현된 안전장치</h2><div class="grid2"><div class="box"><b>M8 source 재검증</b><p>build 시작 시 corpus + embedding의 M8 integrity Gate를 다시 실행합니다.</p></div><div class="box"><b>Canonical order</b><p>source JSONL 순서와 무관하게 <code>embedding_id ascending</code>으로 index/mapping을 만듭니다.</p></div><div class="box"><b>Manifest-last publish</b><p>index/mapping을 검증한 뒤 manifest를 마지막에 publish해 완료 marker로 사용합니다.</p></div><div class="box"><b>Runtime reject</b><p>manifest SHA/mapping/normalization이 깨지면 검색기가 artifact를 열지 않습니다.</p></div><div class="box"><b>Query contract</b><p>현재 BGE-M3 model/profile/dimension이 index source와 다르면 API 호출 전에 차단합니다.</p></div><div class="box"><b>ANN 확장 경로</b><p>향후 latency/RAM/QPS/recall@k를 측정해 HNSW/IVF로 교체할 수 있습니다.</p></div></div></section>
+<section><h2>6. Retrieval artifact</h2><div class="flow">index.faiss
 index.mapping.jsonl
 index.manifest.json</div><p>Manifest에는 <code>rc_</code>, <code>fi_</code>, source embedding SHA-256, mapping/index SHA-256, FAISS version, vector count/dimension, query profile/Top-k 정책이 들어갑니다.</p></section>
-<section><h2>6. M9-03 실제 Gate</h2><div class="flow">Build
+<section><h2>7. M9-03 실제 Gate</h2><div class="flow">Build
 [ ] vector_count = 285
 [ ] dimension = 1024
 [ ] mapping_rows = 285
@@ -48,7 +63,7 @@ Real Query
 [ ] same query ranking reproducibility
 [ ] representative semantic sanity
 [ ] dense-neighborhood 관찰</div></section>
-<section><h2>7. 이후 M10 경계</h2><div class="flow">M9 output
+<section><h2>8. 이후 M10 경계</h2><div class="flow">M9 output
 rank + score + faiss_position + emb_ + ki_
         ↓
 M10
@@ -56,6 +71,6 @@ ki_ → Knowledge statement
 ke_ → Evidence source
 → Evidence package
 → MCP</div><div class="callout warn"><strong>M9에서는 Evidence Builder/MCP를 미리 구현하지 않습니다.</strong> 검색 후보 identity와 score까지 검증한 뒤 M10으로 넘어갑니다.</div></section>
-<section><h2>8. 사람이 읽는 문서</h2><div class="grid2"><div class="box"><b>전체 상태</b><p><a href="../index.html">Documentation Hub</a><br><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><br><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a></p></div><div class="box"><b>M8 / M9</b><p><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">M8 Final</a><br><a href="M8_REAL_EMBEDDING_TROUBLESHOOTING.html">M8 Troubleshooting</a><br><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Visual</a></p></div></div></section>
+<section><h2>9. 사람이 읽는 문서</h2><div class="grid2"><div class="box"><b>전체 상태</b><p><a href="../index.html">Documentation Hub</a><br><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><br><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a></p></div><div class="box"><b>M8 / M9</b><p><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">M8 Final</a><br><a href="M8_REAL_EMBEDDING_TROUBLESHOOTING.html">M8 Troubleshooting</a><br><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Visual</a></p></div></div></section>
 <footer>M9 CURRENT · M9-01 DESIGN FROZEN · M9-02 IMPLEMENTED / CI PASS · M9-03 REAL-RUN NEXT · 2026-08-26</footer>
 </main></body></html>
