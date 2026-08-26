@@ -1,7 +1,7 @@
 # M8 Real BGE-M3 Validation Log
 
 기준일: 2026-08-26  
-상태: **CURRENT / FULL 285 EMBEDDING PASS / SEMANTIC SANITY PASS / ARTIFACT INTEGRITY VALIDATION NEXT**
+상태: **PASS / DONE**
 
 이 문서는 M8-03 실제 사내 BGE-M3 embedding 검증 과정을 기록한다. 실제 endpoint, API key, custom header 이름/값, Jira 식별자/본문은 기록하지 않는다.
 
@@ -21,12 +21,6 @@ M8-01 실데이터 Gate:
 corpus_schema_version: 0.1
 text_profile: statement_v1
 corpus_rows: 285
-```
-
-판정:
-
-```text
-M8-01 = PASS
 ```
 
 M7 SQLite의 active accepted Knowledge Item 285개와 M8 corpus 285개가 일치한다.
@@ -67,13 +61,6 @@ vectors : 1
 dimension: 1024
 ```
 
-확인:
-
-- 로컬 PC → 사내 BGE-M3 endpoint 연결 성공
-- current custom headers로 실제 request 성공
-- OpenAI-compatible request/response baseline 동작
-- dense vector 1개 / 1024 dimension
-
 초기 HTTP 404는 endpoint path가 실제 embeddings route와 달랐던 설정 문제였다. endpoint 수정 후 동일 smoke test가 PASS했다.
 
 ---
@@ -81,8 +68,6 @@ dimension: 1024
 ## 4. Full 285 Real Embedding · PASS
 
 사용자 로컬에서 전체 Pilot corpus를 실제 사내 BGE-M3 API로 실행했다.
-
-최종 출력:
 
 ```text
 corpus_rows: 285
@@ -95,74 +80,86 @@ embedding_dimension: 1024
 
 ```text
 285 corpus rows
-→ Batch 1 = 64
-→ Batch 2 = 64
-→ Batch 3 = 64
-→ Batch 4 = 64
-→ Batch 5 = 29
+→ 64 + 64 + 64 + 64 + 29
+→ 5 batches
 → 285 embedding rows
 → each vector = 1024 dimensions
 ```
 
-확인된 사실:
+확인:
 
 - corpus 285개 전부 API 처리 성공
 - embedding output 285개 생성
 - batch max 64 계약 준수
-- 총 request batch = 5
+- 총 batch = 5
 - output dimension = 1024
-- runner가 모든 batch 성공 후 final JSONL을 publish했으므로 partial result를 완료본으로 오인하지 않음
-
-판정:
-
-```text
-M8-03 Full Real Embedding = PASS
-```
+- 모든 batch 성공 후 final JSONL을 atomic publish
 
 ---
 
-## 5. Semantic Quality Sanity Check · PASS
+## 5. Artifact Integrity Gate · PASS
 
-FAISS를 만들기 전에 285개 embedding을 brute-force cosine similarity로 비교해 실제 의미 품질을 사람이 확인했다.
+최종 embedding artifact와 corpus를 다시 읽어 deterministic 검증을 수행했다.
 
-사용자 판정:
-
-```text
-Sample 1  잘됨
-Sample 2  아주 잘됨
-Sample 3  잘됨
-          단, Top-1/2/3 점수 차이가 매우 작음
-```
-
-Sample 3 cosine score:
+최종 출력:
 
 ```text
-Top-1  0.5918
-Top-2  0.5908
-Top-3  0.5900
-
-Top-1 - Top-3 margin = 0.0018
+validation: PASS
+corpus_rows: 285
+embedding_rows: 285
+unique_knowledge_item_ids: 285
+unique_embedding_ids: 285
+contract_count: 1
+mapping_failure_count: 0
+identity_failure_count: 0
+dimension_failure_count: 0
+non_finite_vector_count: 0
+zero_norm_vector_count: 0
+temp_artifact_exists: false
 ```
+
+의미:
+
+```text
+Knowledge Item 285
+↕ 1:1
+Embedding 285
+
+mapping failure        0
+identity failure       0
+dimension failure      0
+non-finite vector      0
+zero-norm vector       0
+leftover temp artifact false
+```
+
+즉 `emb_ ↔ ki_` mapping, deterministic ID 재계산, vector 수치 유효성, atomic publish 상태가 모두 정상이다.
+
+---
+
+## 6. Semantic Quality Sanity Check · PASS
+
+FAISS 없이 Pilot 285개 vector를 brute-force cosine similarity로 비교하고 사용자 검토를 수행했다.
+
+```text
+Sample 1  PASS
+Sample 2  PASS · 매우 양호
+Sample 3  PASS
+          top-3 scores = 0.5918 / 0.5908 / 0.5900
+```
+
+Sample 3은 Top-1~3 점수 차이가 작았지만 세 후보 모두 의미상 타당하다고 판단했다.
 
 해석:
 
-- Sample 1/2는 의미적으로 기대한 가까운 Knowledge를 잘 찾았다.
-- Sample 3도 Top-3가 의미상 타당했으므로 embedding 실패로 판단하지 않는다.
-- Sample 3의 작은 score margin은 해당 query 주변에 의미적으로 비슷한 후보가 촘촘하게 존재할 수 있음을 보여준다.
-- cosine 절대값 `0.59` 자체만으로 품질을 판정하지 않는다. 모델/도메인/문장 분포에 따라 score scale이 달라질 수 있기 때문이다.
-- M9에서 Top-1만 무조건 확정하거나 작은 score margin만으로 후보를 버리는 정책은 주의가 필요하다.
-- 이 관찰은 M9 Top-k/threshold/reranking 설계의 입력 근거로 사용하되, M8에서 M9 정책을 미리 확정하지 않는다.
-
-판정:
-
-```text
-M8-03 Semantic Quality Sanity = PASS
-Observation: dense neighborhood / small Top-3 margin exists
-```
+- embedding 실패가 아니라 유사한 Knowledge가 같은 semantic neighborhood에 촘촘히 존재하는 사례다.
+- cosine absolute score 자체만으로 품질을 판정하지 않는다.
+- M9에서는 Top-1 하나를 과신하기보다 Top-k 후보군을 유지하고 Evidence와 함께 사용하는 방식을 검토한다.
+- 이 관찰은 M9 retrieval 설계 근거이며 M8 Gate 실패 사유가 아니다.
 
 ---
 
-## 6. Troubleshooting Summary
+## 7. Troubleshooting Summary
 
 이번 실제 연결 과정에서 다음 문제와 해결을 확인했다.
 
@@ -190,56 +187,36 @@ T06  corpus_rows 28 전달 오류
 
 ---
 
-## 7. Artifact Integrity Gate · NEXT
-
-API 성공과 semantic sanity만으로 M8을 닫지 않는다. 생성된 final embedding JSONL과 corpus를 다시 읽어 다음을 deterministic하게 검증한다.
+## 8. M8-03 Final Gate
 
 ```text
-[ ] corpus_rows = 285
-[ ] embedding_rows = 285
-[ ] unique knowledge_item_id = 285
-[ ] unique embedding_id = 285
-[ ] embedding contract = 1개
-[ ] corpus ↔ embedding lineage mapping failure = 0
-[ ] emb_ deterministic ID recomputation failure = 0
-[ ] dimension failure = 0
-[ ] non-finite vector = 0
-[ ] zero-norm vector = 0
-[ ] leftover .tmp artifact = false
-```
+[x] corpus_rows = 285
+[x] embedding_rows = 285
+[x] batch_count = 5
+[x] embedding_dimension = 1024
+[x] unique knowledge_item_id = 285
+[x] unique embedding_id = 285
+[x] embedding contract = 1
+[x] mapping failure = 0
+[x] deterministic identity failure = 0
+[x] dimension failure = 0
+[x] non-finite vector = 0
+[x] zero-norm vector = 0
+[x] leftover temp artifact = false
+[x] semantic quality sanity check PASS
+[x] troubleshooting 기록 보존
 
-도구:
-
-```text
-src/jira_collector/embedding/validation.py
-tools/jira_knowledge/validate_m8_embedding_artifact.py
-```
-
-실행:
-
-```powershell
-python tools/jira_knowledge/validate_m8_embedding_artifact.py --corpus data/embedding/runs/20260804T043628Z/corpus.statement_v1.jsonl --embeddings data/embedding/runs/20260804T043628Z/embeddings.statement_v1.bge_m3.jsonl --expected-count 285 --expected-dimension 1024
+M8-03 = PASS / DONE
+M8 = DONE
 ```
 
 ---
 
-## 8. 현재 M8-03 Gate 상태
+## 9. 다음 단계
 
 ```text
-[x] M8-01 corpus_rows = 285
-[x] embedding runtime settings parse
-[x] custom header 6개 runtime load
-[x] 1-row real API call success
-[x] smoke vector dimension = 1024
-[x] corpus 285개 full embedding success
-[x] embedding_rows = 285
-[x] batch_count = 5
-[x] reported output dimension = 1024
-[x] final artifact publish 완료
-[x] 작은 semantic quality sanity check
-[ ] artifact mapping / deterministic identity validation
-[ ] finite / non-zero vector validation
-[ ] 문서/HTML 최종 sync
+M8 validated embedding artifact
+→ M9 FAISS + Active Retrieval 설계
 ```
 
-M8에서는 FAISS를 구현하지 않는다. 위 M8 Gate를 닫은 뒤 M9에서 FAISS를 시작한다.
+M8에서는 FAISS를 구현하지 않았다. M9는 아직 구현 시작 전이며, 먼저 index/mapping/search/top-k 검증 계약을 문서로 설계한 뒤 구현한다.
