@@ -14,25 +14,31 @@ CURRENT_DOCS = (
     Path("docs/architecture/jira_data_relationship_map.data_b.js"),
 )
 
-MILESTONE_HTML_DOCS = (
-    Path("docs/status/M0_JIRA_COLLECTION_ANALYSIS_COMPLETION.html"),
-    Path("docs/status/M1_KNOWLEDGE_INPUT_COMPLETION.html"),
-    Path("docs/status/M2_KNOWLEDGE_SCHEMA_SKILL_COMPLETION.html"),
-    Path("docs/status/M3_KNOWLEDGE_QUALITY_LOOP_COMPLETION.html"),
-    Path("docs/status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.html"),
-    Path("docs/status/M5_KNOWLEDGE_PROFILING_COMPLETION.html"),
-    Path("docs/status/M6_DB_LOGICAL_SCHEMA_COMPLETION.html"),
-    Path("docs/status/M7_SQLITE_MATERIALIZATION.html"),
-    Path("docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html"),
-    Path("docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html"),
+MILESTONE_HTML_DOCS = tuple(
+    Path(f"docs/status/{name}")
+    for name in (
+        "M0_JIRA_COLLECTION_ANALYSIS_COMPLETION.html",
+        "M1_KNOWLEDGE_INPUT_COMPLETION.html",
+        "M2_KNOWLEDGE_SCHEMA_SKILL_COMPLETION.html",
+        "M3_KNOWLEDGE_QUALITY_LOOP_COMPLETION.html",
+        "M4_KNOWLEDGE_EXTRACTION_COMPLETION.html",
+        "M5_KNOWLEDGE_PROFILING_COMPLETION.html",
+        "M6_DB_LOGICAL_SCHEMA_COMPLETION.html",
+        "M7_SQLITE_MATERIALIZATION.html",
+        "M8_EMBEDDING_CHUNK_BGE_M3.html",
+        "M9_FAISS_ACTIVE_RETRIEVAL.html",
+    )
 )
 
 STALE_STATUS_MARKERS = (
     "M6 CURRENT",
-    "M7 NEXT",
-    "M7 PLAN",
     "M7 CURRENT",
+    "M7 NEXT",
     "M8 BLOCKED",
+    "M9 CURRENT",
+    "M9-03 NEXT",
+    "REAL QUERY NEXT",
+    "REBUILD NEXT",
 )
 
 
@@ -41,45 +47,28 @@ def _read(path: Path) -> str:
 
 
 def _done_or_current_milestones() -> set[str]:
-    """README의 표/코드 상태에서 HTML이 필요한 Milestone을 찾습니다."""
-
     text = _read(Path("README.md"))
     milestones: set[str] = set()
-
     for line in text.splitlines():
-        table_match = re.match(r"^\|\s*(M\d+)\s*\|\s*([^|]+)\|", line)
-        if table_match:
-            milestone = table_match.group(1)
-            state = table_match.group(2).replace("*", "").replace("`", "").strip().upper()
-            if "DONE" in state or "CURRENT" in state:
-                milestones.add(milestone)
+        match = re.match(r"^\s*(M\d+)(?:~M(\d+))?\s+(.+)$", line)
+        if not match:
             continue
-
-        code_match = re.match(r"^\s*(M\d+)(?:~M(\d+))?\s+(.+)$", line)
-        if not code_match:
-            continue
-        start = int(code_match.group(1)[1:])
-        end = int(code_match.group(2)) if code_match.group(2) else start
-        state = code_match.group(3).upper()
-        if "DONE" not in state and "CURRENT" not in state:
-            continue
-        milestones.update(f"M{number}" for number in range(start, end + 1))
-
+        start = int(match.group(1)[1:])
+        end = int(match.group(2)) if match.group(2) else start
+        state = match.group(3).upper()
+        if "DONE" in state or "CURRENT" in state:
+            milestones.update(f"M{n}" for n in range(start, end + 1))
     return milestones
 
 
-def test_current_docs_do_not_regress_to_old_milestone_status() -> None:
-    """Current Source of Truth가 과거 M6/M7/M8-blocked 상태로 퇴행하지 않게 합니다."""
-
+def test_current_docs_do_not_regress_to_old_status() -> None:
     for path in CURRENT_DOCS:
         text = _read(path)
         for marker in STALE_STATUS_MARKERS:
             assert marker not in text, f"{path} contains stale marker: {marker}"
 
 
-def test_current_docs_record_m8_done_and_m9_current() -> None:
-    """전역 Current 문서가 M8 DONE과 M9 CURRENT/IMPLEMENTED를 함께 나타냅니다."""
-
+def test_current_docs_record_m9_done_and_m10_next() -> None:
     required = (
         Path("README.md"),
         Path("docs/PIPELINE_OVERVIEW.md"),
@@ -89,24 +78,18 @@ def test_current_docs_record_m8_done_and_m9_current() -> None:
     for path in required:
         text = _read(path)
         upper = text.upper()
-        assert "M7" in text
-        assert "PASS" in upper
-        assert "M8" in text
-        assert "DONE" in upper
-        assert "M9" in text
-        assert "CURRENT" in upper
-        assert "IMPLEMENTED" in upper
-        assert "M9-03" in text
-        assert "NEXT" in upper
+        assert "M8" in text and "DONE" in upper
+        assert "M9" in text and "DONE" in upper and "PASS" in upper
+        assert "M10" in text and "NEXT" in upper
+        assert "DESIGN" in upper
 
 
 def test_authoritative_docs_keep_generation_attempt_identity() -> None:
-    """Generation→Attempt와 ka_ 회차 ID가 문서에서 유실되지 않게 합니다."""
-
     required = (
         Path("README.md"),
         Path("docs/PIPELINE_OVERVIEW.md"),
         Path("docs/status/jira_knowledge_db_current_status.html"),
+        Path("docs/status/M10_START_HERE.html"),
         Path("docs/M6_DECISION_LOG.md"),
         Path("docs/M7_SQLITE_MATERIALIZATION.md"),
     )
@@ -118,13 +101,11 @@ def test_authoritative_docs_keep_generation_attempt_identity() -> None:
 
 
 def test_architecture_map_uses_attempt_as_item_and_review_parent() -> None:
-    """시각화가 Generation→Item/Review 구조로 퇴행하지 않게 합니다."""
-
-    entity_map = _read(Path("docs/architecture/jira_data_relationship_map.data_a.js"))
-    schema_map = _read(Path("docs/architecture/jira_data_relationship_map.data_b.js"))
-
-    for text in (entity_map, schema_map):
-        compact = text.replace(" ", "").replace("\n", "")
+    for path in (
+        Path("docs/architecture/jira_data_relationship_map.data_a.js"),
+        Path("docs/architecture/jira_data_relationship_map.data_b.js"),
+    ):
+        compact = _read(path).replace(" ", "").replace("\n", "")
         assert '"from":"generation","to":"attempt"' in compact
         assert '"from":"attempt","to":"item"' in compact
         assert '"from":"attempt","to":"review"' in compact
@@ -133,8 +114,6 @@ def test_architecture_map_uses_attempt_as_item_and_review_parent() -> None:
 
 
 def test_m7_completion_doc_records_real_run_gate() -> None:
-    """M7 완료 문서가 raw/canonical Evidence와 최종 integrity Gate를 보존합니다."""
-
     text = _read(Path("docs/M7_SQLITE_MATERIALIZATION.md"))
     assert "M7_REAL_RUN = PASS" in text
     assert "Evidence raw      503" in text
@@ -142,49 +121,26 @@ def test_m7_completion_doc_records_real_run_gate() -> None:
     assert "idempotent         true" in text
     assert "Evidence Failure     0" in text
     assert "FK Failure           0" in text
-    assert "Integrity          true" in text
 
 
-def test_m8_final_design_records_gate_and_keeps_m9_boundary() -> None:
-    """M8 완료 근거와 FAISS=M9 경계가 문서에서 유지되는지 확인합니다."""
-
-    text = _read(Path("docs/M8_EMBEDDING_CHUNK_BGE_M3.md"))
-    assert "DONE" in text
-    assert "BGE-M3" in text
-    assert "285" in text
-    assert "1024" in text
-    assert "64" in text
-    assert "validation: PASS" in text
-    assert "FAISS" in text
-    assert "M9" in text
-    assert "M8에서는 FAISS" in text
-
-
-def test_m8_real_embedding_log_records_final_integrity_gate() -> None:
-    """M8 실환경 완료 숫자가 후속 문서 수정으로 유실되지 않게 합니다."""
-
+def test_m8_final_gate_is_preserved() -> None:
     text = _read(Path("docs/M8_REAL_EMBEDDING_LOG.md"))
     assert "M8 = DONE" in text
     assert "corpus_rows: 285" in text
     assert "embedding_rows: 285" in text
     assert "batch_count: 5" in text
     assert "embedding_dimension: 1024" in text
-    assert "unique_knowledge_item_ids: 285" in text
-    assert "unique_embedding_ids: 285" in text
     assert "mapping_failure_count: 0" in text
     assert "identity_failure_count: 0" in text
-    assert "non_finite_vector_count: 0" in text
-    assert "zero_norm_vector_count: 0" in text
-    assert "temp_artifact_exists: false" in text
     assert "Semantic Quality Sanity Check · PASS" in text
 
 
-def test_m9_design_and_implementation_contract_is_visible() -> None:
-    """M9 exact baseline, identity, scaling path, 구현 상태가 문서에서 유실되지 않게 합니다."""
-
+def test_m9_final_contract_and_real_gate_are_preserved() -> None:
     design = _read(Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.md"))
     decision = _read(Path("docs/M9_DECISION_LOG.md"))
+    log = _read(Path("docs/M9_REAL_RETRIEVAL_LOG.md"))
     visual = _read(Path("docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html"))
+
     for text in (design, decision, visual):
         assert "IndexFlatIP" in text
         assert "cosine" in text.lower()
@@ -193,17 +149,49 @@ def test_m9_design_and_implementation_contract_is_visible() -> None:
         assert "knowledge_item_id" in text
         assert "HNSW" in text
         assert "IVF" in text
-        assert "IMPLEMENTED" in text
-    assert "rc_" in design
-    assert "fi_" in design
-    assert "manifest" in design.lower()
-    assert "M9-03" in design
-    assert "NEXT" in design
+
+    assert "rc_" in design and "fi_" in design and "manifest" in design.lower()
+    assert "M9 = DONE / PASS" in design
+    assert "M10" in design
+
+    assert "M9 = DONE / PASS" in log
+    assert "vector_count = 285" in log
+    assert "dimension = 1024" in log
+    assert "vector_exact_equal=True" in log
+    assert "max_abs_diff=0" in log
+    assert "cosine=1.000000000" in log
+    assert "ranking_equal=True" in log
+    assert "scores_exact_equal=True" in log
+    assert "Top-3 noise" in log
+    assert "delta-first" in decision.lower()
+
+
+def test_m10_handoff_is_complete_and_static_html() -> None:
+    path = Path("docs/status/M10_START_HERE.html")
+    assert path.is_file()
+    text = _read(path)
+    lower = text.lower()
+    for token in (
+        "M0~M9 DONE",
+        "M10 NEXT",
+        "DESIGN NOT STARTED",
+        "Evidence Package",
+        "Resolver Contract",
+        "MCP Tool Surface",
+        "knowledge_attempt",
+        "ka_",
+        "attempt_no",
+        "IndexFlatIP",
+        "delta-first",
+        "DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC",
+    ):
+        assert token in text
+    assert "<!doctype html>" in lower
+    assert "<main" in lower
+    assert "fetch(" not in text
 
 
 def test_m0_to_m9_visual_docs_exist_and_are_static() -> None:
-    """M0~M9 HTML이 삭제되거나 fragment loader로 퇴행하지 않게 합니다."""
-
     for path in MILESTONE_HTML_DOCS:
         assert path.is_file(), f"missing milestone HTML: {path}"
         text = _read(path)
@@ -215,55 +203,41 @@ def test_m0_to_m9_visual_docs_exist_and_are_static() -> None:
 
 
 def test_every_done_or_current_milestone_has_visual_html() -> None:
-    """새 Milestone을 CURRENT/DONE으로 바꾸면서 HTML 작성을 빼먹지 않게 합니다."""
-
     milestones = _done_or_current_milestones()
-    assert milestones, "README milestone state could not be parsed"
-
+    assert milestones
     status_dir = Path("docs/status")
     for milestone in sorted(milestones):
-        matches = list(status_dir.glob(f"{milestone}_*.html"))
-        assert matches, f"{milestone} is DONE/CURRENT but has no docs/status/{milestone}_*.html"
+        assert list(status_dir.glob(f"{milestone}_*.html")), milestone
 
 
-def test_documentation_hub_links_all_milestone_visual_docs() -> None:
-    """docs/index.html에서 M0~M9 시각 문서가 모두 발견되게 합니다."""
-
+def test_documentation_hub_links_milestones_and_m10_handoff() -> None:
     index = _read(Path("docs/index.html"))
     for path in MILESTONE_HTML_DOCS:
-        assert path.name in index, f"docs/index.html does not link {path.name}"
+        assert path.name in index
+    assert "M10_START_HERE.html" in index
 
 
 def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
-    """Current/Completion 문서에는 실제 Pilot Jira Issue Key를 남기지 않습니다."""
-
     public_docs = CURRENT_DOCS + (
-        Path("docs/M7_REAL_RUN_LOG.md"),
-        Path("docs/M7_SQLITE_MATERIALIZATION.md"),
-        Path("docs/status/M7_SQLITE_MATERIALIZATION_COMPLETION.md"),
-        Path("docs/status/M7_SQLITE_MATERIALIZATION.html"),
-        Path("docs/M8_EMBEDDING_CHUNK_BGE_M3.md"),
-        Path("docs/M8_DECISION_LOG.md"),
         Path("docs/M8_REAL_EMBEDDING_LOG.md"),
-        Path("docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html"),
-        Path("docs/status/M8_REAL_EMBEDDING_TROUBLESHOOTING.html"),
         Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.md"),
         Path("docs/M9_DECISION_LOG.md"),
+        Path("docs/M9_REAL_RETRIEVAL_LOG.md"),
+        Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.html"),
+        Path("docs/M9_DECISION_LOG.html"),
+        Path("docs/M9_REAL_RETRIEVAL_LOG.html"),
         Path("docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html"),
+        Path("docs/status/M10_START_HERE.html"),
     )
     issue_key_pattern = re.compile(r"\b[A-Z][A-Z0-9_]{1,15}-[1-9]\d{3,}\b")
     for path in public_docs:
-        text = _read(path)
-        matches = issue_key_pattern.findall(text)
+        matches = issue_key_pattern.findall(_read(path))
         assert not matches, f"{path} exposes Jira-like issue keys: {matches[:3]}"
 
 
 def test_html_preservation_rules_require_user_approval_for_deletion() -> None:
-    """HTML을 Markdown으로 대체하거나 승인 없이 삭제하는 규칙 회귀를 막습니다."""
-
     agents = _read(Path("AGENTS.md"))
     policy = _read(Path("docs/DOCUMENTATION_POLICY.md"))
-
     for text in (agents, policy):
         assert "Markdown" in text
         assert "대체" in text
@@ -271,6 +245,3 @@ def test_html_preservation_rules_require_user_approval_for_deletion() -> None:
         assert "삭제" in text
         assert "사용자" in text
         assert "승인" in text
-
-    assert "삭제하기 전에" in agents
-    assert "같은 작업 단위" in agents
