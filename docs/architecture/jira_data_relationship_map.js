@@ -31,101 +31,131 @@ function svgEl(name,attrs={},parent){
   if(parent)parent.appendChild(el);
   return el;
 }
-function getPort(n,side='right'){
-  const hw=n.w/2,hh=n.h/2;
-  return {left:[n.x-hw,n.y],right:[n.x+hw,n.y],top:[n.x,n.y-hh],bottom:[n.x,n.y+hh]}[side]||[n.x,n.y];
-}
-function control(p,side,d){
-  return {left:[p[0]-d,p[1]],right:[p[0]+d,p[1]],top:[p[0],p[1]-d],bottom:[p[0],p[1]+d]}[side]||p;
-}
-function pathForEdge(from,to,e){
-  const start=e.fromPoint||getPort(from,e.fromSide||'right');
-  const end=e.toPoint||getPort(to,e.toSide||'left');
-  const dx=Math.abs(end[0]-start[0]),dy=Math.abs(end[1]-start[1]);
-  const bend=Math.max(70,Math.min(190,Math.max(dx,dy)*.35));
-  const c1=e.c1||control(start,e.fromSide||'right',bend);
-  const c2=e.c2||control(end,e.toSide||'left',bend);
-  if(e.via){
-    const c3=e.c3||control(e.via,'left',bend*.6);
-    const c4=e.c4||control(end,e.toSide||'left',bend);
-    return {
-      d:`M ${start[0]} ${start[1]} C ${c1[0]} ${c1[1]}, ${c2[0]} ${c2[1]}, ${e.via[0]} ${e.via[1]} C ${c3[0]} ${c3[1]}, ${c4[0]} ${c4[1]}, ${end[0]} ${end[1]}`,
-      start,end,c1,c2
-    };
-  }
-  return {d:`M ${start[0]} ${start[1]} C ${c1[0]} ${c1[1]}, ${c2[0]} ${c2[1]}, ${end[0]} ${end[1]}`,start,end,c1,c2};
-}
-function bezierMid(p0,p1,p2,p3,t=.5){
-  const m=1-t;
-  return [
-    m*m*m*p0[0]+3*m*m*t*p1[0]+3*m*t*t*p2[0]+t*t*t*p3[0],
-    m*m*m*p0[1]+3*m*m*t*p1[1]+3*m*t*t*p2[1]+t*t*t*p3[1]
-  ];
-}
+
 function createNode(svg,n){
   const g=svgEl('g',{
-    class:'node',
-    transform:`translate(${n.x},${n.y})`,
-    'data-id':n.id,
-    'data-group':n.kind
+    class:'node',transform:`translate(${n.x},${n.y})`,
+    'data-id':n.id,'data-group':n.kind
   },svg);
   const c=groupColors[n.type]||'#999';
   svgEl('rect',{
     x:-n.w/2,y:-n.h/2,width:n.w,height:n.h,
-    rx:n.shape==='pill'?n.h/2:18,
-    fill:c+'22',
-    stroke:c
+    rx:n.shape==='pill'?n.h/2:18,fill:c+'22',stroke:c
   },g);
   svgEl('text',{x:0,y:-4,'text-anchor':'middle'},g).textContent=n.label;
   svgEl('text',{x:0,y:18,'text-anchor':'middle',class:'small'},g).textContent=n.sub||'';
   g.onclick=()=>showInfo(n);
+  g.onmouseenter=()=>focusNode(n.id);
+  g.onmouseleave=clearFocus;
 }
-function createEdge(svg,from,to,e){
-  const {d,start,end,c1,c2}=pathForEdge(from,to,e);
-  const p=e.labelPos||bezierMid(start,c1,c2,end);
-  const g=svgEl('g',{class:'edge-group','data-from':e.from,'data-to':e.to},svg);
-  svgEl('path',{d,class:'edge'},g);
-  if(e.label){
-    const w=Math.max(60,e.label.length*7.4);
-    svgEl('rect',{x:p[0]-w/2,y:p[1]-12,width:w,height:22,rx:11,class:'label-tag'},g);
-    svgEl('text',{x:p[0],y:p[1]+3,'text-anchor':'middle',class:'edge-label'},g).textContent=e.label;
+
+function createEdgePath(svg,route,e,index){
+  const g=svgEl('g',{
+    class:'edge-group','data-edge-index':index,
+    'data-from':e.from,'data-to':e.to
+  },svg);
+  const d=JiraDiagramRouter.path(route);
+  svgEl('path',{d,class:'edge-halo'},g);
+  const path=svgEl('path',{d,class:'edge'},g);
+  if(e.label)svgEl('title',{},path).textContent=e.label;
+}
+
+function createEdgeLabel(svg,route,e,index,nodes,placed,view){
+  if(!e.label)return;
+  const p=JiraDiagramRouter.placeLabel(route,e.label,nodes,placed,view);
+  if(!p)return;
+  placed.push(p.rect);
+  const g=svgEl('g',{
+    class:'edge-label-group','data-edge-index':index,
+    'data-from':e.from,'data-to':e.to
+  },svg);
+  if(p.distance>JiraDiagramRouter.settings.labelOffset*1.5){
+    svgEl('line',{
+      x1:p.anchor[0],y1:p.anchor[1],x2:p.x,y2:p.y,class:'edge-label-leader'
+    },g);
   }
+  svgEl('rect',{
+    x:p.x-p.w/2,y:p.y-p.h/2,width:p.w,height:p.h,rx:12,class:'label-tag'
+  },g);
+  svgEl('text',{
+    x:p.x,y:p.y+3.5,'text-anchor':'middle',class:'edge-label'
+  },g).textContent=e.label;
 }
+
 function showInfo(n){
   document.getElementById('infoPanel').innerHTML=
     `<div class="info-title">${n.label}</div><div class="info-body">${n.sub||'현재 데이터 구조의 구성 요소입니다.'}</div>`;
 }
+
 function groupVisible(kind){
   return kind==='store'||visibleGroups[kind]!==false;
 }
+
 function edgeVisible(v,e){
   const a=v.nodes.find(n=>n.id===e.from);
   const b=v.nodes.find(n=>n.id===e.to);
   return groupVisible(a.kind)&&groupVisible(b.kind);
 }
+
 function applyVisibility(){
   const svg=document.getElementById('networkSvg');
   const v=JIRA_MAP_VIEWS[currentView];
   svg.querySelectorAll('.node').forEach(n=>{
     n.classList.toggle('hidden',!groupVisible(n.dataset.group));
   });
-  svg.querySelectorAll('.edge-group').forEach((g,i)=>{
-    g.classList.toggle('hidden',!edgeVisible(v,v.edges[i]));
+  svg.querySelectorAll('[data-edge-index]').forEach(g=>{
+    const e=v.edges[Number(g.dataset.edgeIndex)];
+    g.classList.toggle('hidden',!edgeVisible(v,e));
   });
 }
+
+function focusNode(nodeId){
+  const svg=document.getElementById('networkSvg');
+  const connected=new Set([nodeId]);
+  svg.querySelectorAll('[data-edge-index]').forEach(g=>{
+    if(g.dataset.from===nodeId||g.dataset.to===nodeId){
+      connected.add(g.dataset.from);
+      connected.add(g.dataset.to);
+      g.classList.add('focused');
+    }else g.classList.add('focus-muted');
+  });
+  svg.querySelectorAll('.node').forEach(n=>{
+    if(connected.has(n.dataset.id))n.classList.add('focused');
+    else n.classList.add('focus-muted');
+  });
+}
+
+function clearFocus(){
+  const svg=document.getElementById('networkSvg');
+  svg.querySelectorAll('.focus-muted,.focused').forEach(el=>{
+    el.classList.remove('focus-muted','focused');
+  });
+}
+
+function svgViewSize(svg){
+  const vb=svg.viewBox.baseVal;
+  return {w:vb&&vb.width?vb.width:1320,h:vb&&vb.height?vb.height:920};
+}
+
 function drawView(name){
   currentView=name;
   const svg=document.getElementById('networkSvg');
   const v=JIRA_MAP_VIEWS[name];
-  svg.innerHTML='<defs><marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 z" fill="rgba(216,230,255,.60)"></path></marker></defs>';
+  svg.innerHTML='<defs><marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 z" fill="rgba(216,230,255,.74)"></path></marker></defs>';
   document.getElementById('viewTitle').textContent=v.title;
   document.getElementById('viewHelp').textContent=v.help;
-  const map=Object.fromEntries(v.nodes.map(n=>[n.id,n]));
-  v.edges.forEach(e=>createEdge(svg,map[e.from],map[e.to],e));
-  v.nodes.forEach(n=>createNode(svg,n));
+  const view=svgViewSize(svg),placed=[];
+  const routes=JiraDiagramRouter.routeEdges(v.nodes,v.edges,view);
+  const edgeLayer=svgEl('g',{class:'edge-layer'},svg);
+  const labelLayer=svgEl('g',{class:'edge-label-layer'},svg);
+  const nodeLayer=svgEl('g',{class:'node-layer'},svg);
+  v.edges.forEach((e,index)=>createEdgePath(edgeLayer,routes[index],e,index));
+  v.edges.forEach((e,index)=>createEdgeLabel(labelLayer,routes[index],e,index,v.nodes,placed,view));
+  v.nodes.forEach(n=>createNode(nodeLayer,n));
   applyVisibility();
   showInfo(v.nodes[0]);
 }
+
 document.querySelectorAll('.tab').forEach(b=>{
   b.onclick=()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
@@ -133,6 +163,7 @@ document.querySelectorAll('.tab').forEach(b=>{
     drawView(b.dataset.view);
   };
 });
+
 document.querySelectorAll('.toggle').forEach(b=>{
   b.onclick=()=>{
     const k=b.dataset.group;
@@ -141,4 +172,5 @@ document.querySelectorAll('.toggle').forEach(b=>{
     applyVisibility();
   };
 });
+
 drawView('entity');

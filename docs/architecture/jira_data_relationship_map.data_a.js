@@ -19,7 +19,7 @@ window.JIRA_MAP_VIEWS={
     {"id":"review","type":"review","kind":"review","shape":"rect","x":660,"y":590,"w":220,"h":88,"label":"Knowledge Review","sub":"37 Attempt reviews"},
     {"id":"finding","type":"review","kind":"review","shape":"rect","x":660,"y":760,"w":220,"h":82,"label":"Review Finding","sub":"audit / critical / major"},
     {"id":"sqlite","type":"db","kind":"db","shape":"rect","x":930,"y":760,"w":260,"h":88,"label":"M7 SQLite Schema v1","sub":"DONE · real-run PASS"},
-    {"id":"embedding","type":"db","kind":"db","shape":"rect","x":1040,"y":855,"w":260,"h":55,"label":"M8 Embedding","sub":"CURRENT · BGE-M3"}
+    {"id":"embedding","type":"db","kind":"db","shape":"rect","x":1040,"y":880,"w":260,"h":55,"label":"M8 Embedding","sub":"CURRENT · BGE-M3"}
   ],
   "edges":[
     {"from":"run","to":"obs","label":"records","fromSide":"bottom","toSide":"top"},
