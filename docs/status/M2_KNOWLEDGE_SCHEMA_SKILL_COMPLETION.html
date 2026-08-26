@@ -4,6 +4,15 @@
 <header class="hero"><span class="eyebrow">M2 · COMPLETION RECORD</span><h1>긴 Jira 사실을<br>검색하기 좋은 “의미 카드”로 압축하기</h1><p>M2는 M1의 완전한 사실 Package를 대체하지 않고, 검색 가치가 높은 의미를 Light Structured Knowledge로 뽑는 계약과 Skill을 확정한 단계입니다.</p><span class="state">PASS / DONE · Schema v0.1 · Skill v0.9 · Pro 채택</span><div class="breadcrumb">Knowledge Input → Extraction Skill → Knowledge → M3 Quality Loop</div></header>
 <div class="kpis"><div class="kpi"><b>30</b><span>합성 검증 case</span></div><div class="kpi"><b>v0.1</b><span>Knowledge Schema</span></div><div class="kpi"><b>v0.9</b><span>Extraction Skill</span></div><div class="kpi"><b>Pro</b><span>채택 Worker profile</span></div></div>
 <section class="beginner"><span class="badge">1분 요약</span><h2>M2를 아주 쉽게 말하면</h2><div class="grid3"><div class="easy-card"><div class="emoji">📚</div><b>입력</b><p>M1 Package에는 Issue 전체 사실이 들어 있습니다. 정확하지만 검색할 때는 너무 길고 세부 정보가 많습니다.</p></div><div class="easy-card"><div class="emoji">🗂️</div><b>출력</b><p>“문제/목표, 핵심 발견, 조치·결정, 결과, 남은 일”처럼 검색 가치가 높은 의미를 구조화한 Knowledge를 만듭니다.</p></div><div class="easy-card"><div class="emoji">🔗</div><b>안전장치</b><p>모든 Knowledge Item은 원문 근거인 Evidence reference를 가져야 하며, 원문의 확실성보다 더 강하게 말하면 안 됩니다.</p></div></div><div class="analogy"><strong>비유</strong> Knowledge Input이 책 전체라면 Knowledge는 도서관의 색인 카드입니다. 색인 카드가 책을 대신하지는 않지만, “내가 찾는 내용이 어느 책에 있는지” 빠르게 좁혀 줍니다.</div></section>
+<section><h2>전체 파이프라인에서 M2는 어디인가?</h2><div class="flow">[M1] Issue 한 건의 사실 전체를 한 Package로 준비
+  ↓
+[M2] 긴 사실을 검색하기 좋은 의미 카드로 압축  ← 지금 여기
+  ↓
+[M3] 그 의미 카드를 더 안정적으로 만들 품질 Loop
+  ↓
+[M4~M7] 실데이터 검증·측정·DB 저장
+  ↓
+[M8~M10] Vector 검색 + 원문 Evidence + MCP</div><div class="grid3"><div class="mini"><b>M1과 차이</b><p>M1은 사실을 그대로 모으고, M2는 그 사실에서 검색 가치가 높은 의미를 뽑습니다.</p></div><div class="mini"><b>M3와 차이</b><p>M2는 “어떤 Knowledge를 만들 것인가”를 정하고, M3는 “그 Knowledge를 어떻게 안정적으로 만들고 검토할 것인가”를 정합니다.</p></div><div class="mini"><b>M2 완료 후</b><p>긴 Jira 전체를 매번 검색하지 않고 짧은 Knowledge Item을 검색 후보로 사용할 기반이 생깁니다.</p></div></div><div class="callout good"><strong>M2의 핵심 역할</strong> Jira 원문을 버리는 요약이 아니라, <strong>원문으로 돌아갈 수 있는 검색용 의미 색인</strong>을 만드는 단계입니다.</div></section>
 <section><h2>1. 데이터 계층부터 구분하기</h2><div class="flow">[RAW]               사실의 최종 기준
   ↓
 [ANALYSIS]          결정적으로 정규화된 사실
