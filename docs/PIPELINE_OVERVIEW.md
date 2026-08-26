@@ -1,11 +1,11 @@
 # Jira Knowledge Pipeline 전체 아키텍처
 
-기준일: 2026-08-25  
-현재 단계: **M7 · SQLite Materialization — IMPLEMENTED / REAL-RUN VALIDATION PENDING**
+기준일: 2026-08-26  
+현재 단계: **M8 · Embedding Unit / Chunk + BGE-M3 — CURRENT / READY TO START**
 
 ## 1. 문서 목적
 
-이 문서는 Jira 원본에서 검색 가능한 업무지식 시스템과 MCP까지 이어지는 **전체 데이터 계층, identity, lifecycle, 책임 경계**를 설명하는 Current Source of Truth입니다.
+이 문서는 Jira 원본에서 검색 가능한 업무지식 시스템과 MCP까지 이어지는 **전체 데이터 계층, identity, lifecycle, 책임 경계**를 설명하는 Current Source of Truth다.
 
 현재 진행 상태:
 
@@ -17,10 +17,9 @@ M3  Quality Loop                       DONE
 M4  실제 Jira Knowledge Pilot          DONE
 M5  Knowledge / Review Profiling       DONE
 M6  DB Logical Schema                  DONE
-M7  SQLite Materialization             CURRENT · IMPLEMENTED
-                                          real 30-issue validation pending
-M8  Chunk · BGE-M3                     BLOCKED
-M9  FAISS · Active Retrieval
+M7  SQLite Materialization             DONE · REAL-RUN PASS
+M8  Embedding Unit / Chunk · BGE-M3    CURRENT
+M9  FAISS · Active Retrieval           PLAN
 M10 Evidence Builder · MCP             Functional MVP Gate
 ```
 
@@ -43,13 +42,13 @@ Knowledge / Review Profiling           M5
             ↓
 Logical Identity / Version Model       M6
             ↓
-SQLite Materialization                 M7
+SQLite Materialization                 M7 · DONE
     ├─ deterministic ID
     ├─ Generation / Attempt history
     ├─ Active / Historical state
     └─ Evidence round-trip integrity
             ↓
-Chunk + BGE-M3                         M8
+Embedding Unit / Chunk + BGE-M3        M8 · CURRENT
             ↓
 FAISS + Active Retrieval               M9
             ↓
@@ -63,10 +62,10 @@ Evidence Builder + MCP                 M10
 ### 2.1 RAW가 Source of Truth
 
 ```text
-RAW → ANALYSIS → KNOWLEDGE INPUT → KNOWLEDGE → DB → VECTOR
+RAW → ANALYSIS → KNOWLEDGE INPUT → KNOWLEDGE → DB → EMBEDDING → VECTOR
 ```
 
-뒤 계층은 모두 앞 계층에서 다시 만들 수 있는 파생물이어야 합니다.
+뒤 계층은 모두 앞 계층에서 다시 만들 수 있는 파생물이어야 한다.
 
 ### 2.2 Deterministic processing과 LLM interpretation 분리
 
@@ -82,7 +81,7 @@ LLM 의미 해석:
 KNOWLEDGE INPUT → KNOWLEDGE
 ```
 
-Validator, 집계, Profiling, DB materialization, Evidence resolver는 deterministic Python/SQLite 책임입니다.
+Validator, 집계, Profiling, DB materialization, Evidence resolver, embedding orchestration의 구조 검증은 deterministic code 책임이다.
 
 ### 2.3 Knowledge는 사실 원장이 아니다
 
@@ -96,7 +95,7 @@ Issue Version / Source Entity
 ANALYSIS / RAW
 ```
 
-### 2.4 Issue identity와 Version을 분리한다
+### 2.4 Identity와 Version 분리
 
 ```text
 jira_id
@@ -107,7 +106,7 @@ issue_key
 = 변경 가능
 ```
 
-Issue 의미 상태는 Knowledge Input `source_hash`로 Versioning합니다.
+Issue 의미 상태는 Knowledge Input `source_hash`로 Versioning한다.
 
 ```text
 same source_hash
@@ -117,9 +116,9 @@ different source_hash
 → new issue_version
 ```
 
-Run이 바뀌었다는 이유만으로 Version을 복제하지 않습니다.
+Run이 바뀌었다는 이유만으로 Version을 복제하지 않는다.
 
-### 2.5 Generation과 Attempt를 분리한다
+### 2.5 Generation과 Attempt 분리
 
 ```text
 Issue Version
@@ -129,57 +128,49 @@ Issue Version
     └── Attempt N
 ```
 
-Generation은 **Issue Version + Knowledge Contract의 retry lineage**, Attempt는 실제 생성/재생성 회차입니다.
+Generation은 **Issue Version + Knowledge Contract의 retry lineage**, Attempt는 실제 생성/재생성 회차다.
 
-### 2.6 History Storage와 Active Retrieval을 분리한다
+### 2.6 History Storage와 Active Retrieval 분리
 
 ```text
-[DB]
-Current + Historical Version/Generation/Attempt 보존
+DB
+→ Current + Historical Version/Generation/Attempt 보존
 
-[기본 RAG / FAISS]
-active Generation의 accepted Attempt만
+기본 Retrieval
+→ active Generation의 accepted Attempt만
 
-[History Retrieval]
-감사 · 재현 · 변화 분석 · temporal query
+History Retrieval
+→ 감사 · 재현 · 변화 분석 · temporal query
 ```
 
-### 2.7 문서는 구현과 같이 움직인다
+### 2.7 Historical drift는 원본을 고쳐 쓰지 않는다
 
-Milestone 상태, Entity/Cardinality, ID 계약이 바뀌면 Current Source of Truth를 같은 작업 단위에서 갱신합니다.
+실데이터 Gate에서 과거 artifact가 계약을 벗어난 경우:
+
+```text
+historical JSON 수정 X
+DB contract 완화 X
+compatibility layer로 history 보존
+future validator 강화
+```
+
+### 2.8 문서는 구현과 같이 움직인다
+
+Milestone 상태, Entity/Cardinality, ID 계약이 바뀌면 Current Source of Truth를 같은 작업 단위에서 갱신한다.
 
 기준: `docs/DOCUMENTATION_POLICY.md`
 
 ---
 
-## 3. [RAW] 계층 · M0
+## 3. RAW / ANALYSIS · M0
 
-경로:
+RAW:
 
 ```text
 data/raw/runs/<run_id>/...
 ```
 
-역할:
-
-- Jira API 응답 보존
-- 재파싱/재검증 기준
-- read-only 사실 계층
-- SHA-256 무결성
-- Run별 source snapshot
-
-핵심 운영 제약:
-
-```text
-Jira API requests_per_minute = 20
-max_concurrency = 1
-```
-
-Comment는 embedded response에 의존하지 않고 전용 API에서 전체 pagination 수집합니다.
-
----
-
-## 4. [ANALYSIS] 계층 · M0
+ANALYSIS:
 
 ```text
 data/analysis/<run_id>/
@@ -192,23 +183,12 @@ data/analysis/<run_id>/
 └─ summary.json
 ```
 
-주요 처리:
-
-- HTML → text
-- 타입 검증
-- Comment sequence
-- Relationship canonicalization
-- Attachment metadata
-- Custom Field Catalog / Value 분리
-- 개인정보 불필요 복제 최소화
-- `source_path` 유지
-
-실환경 기준:
+실환경 aggregate:
 
 ```text
 Issue                         30
 Comment                      278
-Attachment                    79
+Attachment metadata           79
 Canonical Relationship         6
 Custom Field Catalog         220
 Custom Field Value           447
@@ -216,7 +196,7 @@ Custom Field Value           447
 
 ---
 
-## 5. [KNOWLEDGE INPUT] 계층 · M1
+## 4. KNOWLEDGE INPUT · M1
 
 ```text
 data/knowledge_input/runs/<run_id>/
@@ -237,29 +217,11 @@ counts
 source_hash
 ```
 
-`source_hash`는 다음 의미 데이터의 canonical SHA-256입니다.
-
-```text
-issue + comments + attachments + relationships + custom_fields
-```
-
-생성시각과 경로 정보는 제외합니다.
+`source_hash`는 의미 데이터 기반 canonical SHA-256이며 Issue Version 변경 판단 기준이다.
 
 ---
 
-## 6. [KNOWLEDGE] / [REVIEW] · M2~M4
-
-Knowledge:
-
-```text
-data/knowledge/runs/<run_id>/issues/<ISSUE_KEY>.json
-```
-
-Review:
-
-```text
-data/knowledge/runs/<run_id>/reviews/<ISSUE_KEY>.review.attempt<N>.json
-```
+## 5. KNOWLEDGE / REVIEW · M2~M4
 
 Knowledge Schema v0.1:
 
@@ -303,32 +265,26 @@ max 3 Attempts
 2차 PASS 5
 3차 PASS 1
 Review files 37
-Human Validation 5/5
 ```
 
 ---
 
-## 7. M5 Profiling
-
-실제 DB 설계 근거:
+## 6. M5 Profiling
 
 ```text
 Knowledge Item               285
 Issue당 item mean            9.5
 Statement p95              206.4 chars
-Evidence Ref                 503
+Raw Evidence Ref             503
 Evidence / item mean        1.76
-Comment Evidence           79.92%
 Review JSON                   37
 ```
 
-이 수치를 하드 컬럼 상한으로 쓰지는 않습니다.
+M5 수치는 historical artifact의 raw 관찰값이다.
 
 ---
 
-## 8. M6 최종 Logical Schema
-
-M6-01~03의 최종 구조:
+## 7. M6 Logical Schema
 
 ```text
 pipeline_run
@@ -356,14 +312,11 @@ custom_field_catalog
 custom_field_value
 ```
 
-M6-01 초기에 검토했던 `knowledge_generation → knowledge_item` 직접 연결은 **M6-02에서 superseded**되었습니다.
-현재 authoritative 구조는 반드시 `generation → attempt → item/review`입니다.
+Authoritative 구조는 반드시 `generation → attempt → item/review`다.
 
 ---
 
-## 9. M6-02 Deterministic ID
-
-ID ladder:
+## 8. Deterministic ID
 
 ```text
 jira_id
@@ -372,10 +325,7 @@ issue_version_id           iv_
   = H(jira_id, source_hash)
 
 knowledge_contract_hash    kc_
-  = H(knowledge_schema_version,
-      skill_version,
-      runtime_version,
-      model_profile)
+  = H(schema, skill, runtime, model_profile)
 
 knowledge_generation_id    kg_
   = H(issue_version_id, knowledge_contract_hash)
@@ -390,47 +340,9 @@ knowledge_evidence_id      ke_
   = H(knowledge_item_id, ordinal, exact evidence_ref)
 ```
 
-공통 규칙:
-
-```text
-id_schema_version=1
-kind 포함
-canonical JSON UTF-8
-sort_keys=true
-separators=(",", ":")
-SHA-256 full lowercase 64 hex
-```
-
-Timestamp는 logical ID material이 아닙니다.
-
-중요:
-
-```text
-Attempt 1 ≠ Attempt 2 ≠ Attempt 3
-```
-
-`attempt_no`가 `knowledge_attempt_id`에 들어가므로 generation 내부 재생성 회차 identity가 유실되지 않습니다.
-
 ---
 
-## 10. M7 SQLite Materialization
-
-현재 구현 위치:
-
-```text
-src/jira_collector/knowledge_db/
-├─ ids.py
-├─ schema.py
-├─ loader.py
-├─ evidence.py
-└─ models.py
-```
-
-실행:
-
-```text
-tools/jira_knowledge/materialize_knowledge_db.py
-```
+## 9. M7 SQLite Materialization · DONE
 
 SQLite table:
 
@@ -452,135 +364,116 @@ knowledge_review
 review_finding
 ```
 
-### Active constraint
-
-Issue마다 active Generation은 최대 1개입니다.
-
-```sql
-CREATE UNIQUE INDEX ...
-ON knowledge_generation(jira_id)
-WHERE state = 'active';
-```
-
-### Legacy failed Attempt
-
-현재 M4 artifact는 failed Attempt 당시 Knowledge body를 보존하지 않았습니다.
+Active constraint:
 
 ```text
-failed Attempt
-→ attempt/review/finding 저장
-→ content_available=false
-
-accepted final Attempt
-→ item/evidence 저장
-→ content_available=true
+Issue당 active Generation 최대 1개
+→ SQLite partial UNIQUE
 ```
 
-없는 과거 Knowledge는 추정하지 않습니다.
-
----
-
-## 11. Evidence round-trip
-
-Accepted Attempt의 Evidence는 모두 resolver를 통과해야 합니다.
+Evidence resolver:
 
 ```text
 summary
-→ issue_version.summary
-
 description
-→ issue_version.description
-
 comment:<id>
-→ comment(run_id, issue_key, comment_id)
-
 attachment:<id>
-→ attachment(run_id, attachment_id)
-→ owner issue 확인
-
 relationship:<id>
-→ relationship(run_id, relationship_id)
-→ source/target endpoint 확인
-
 custom_field:<id>
-→ custom_field_value(run_id, issue_key, field_id)
 ```
 
-Resolver 실패 하나라도 있으면 transaction 전체를 rollback합니다.
+Accepted Attempt의 모든 Evidence는 source까지 round-trip해야 하며 실패 시 transaction을 rollback한다.
+
+### 9.1 Final Real-run Gate
+
+```text
+M5 raw expected
+Issue              30
+Generation         30
+Attempt            37
+Knowledge Item    285
+Evidence raw      503
+Review             37
+
+M7 canonical DB
+Issue              30
+Generation         30
+Attempt            37
+Knowledge Item    285
+Evidence           502
+Review             37
+
+Active Generation  30
+Review Required      0
+Evidence Failure     0
+FK Failure           0
+Integrity           OK
+Idempotent          true
+Failures            []
+```
+
+판정:
+
+```text
+M7_REAL_RUN = PASS
+M7 = DONE
+```
+
+### 9.2 raw 503 vs canonical 502
+
+실데이터 30건 중 한 Item에서 동일 Evidence ref가 한 번 중복됐다.
+
+```text
+M5 raw count       503
+M7 canonical rows 502
+Duplicate refs       1
+Duplicate items      1
+```
+
+Historical JSON은 수정하지 않고 첫 occurrence만 DB에 materialize한다. M6의 `UNIQUE(knowledge_item_id, evidence_ref)` 계약은 유지한다.
+
+### 9.3 Review historical compatibility
+
+Review Schema v0.3의 `critical_issues: string[]` 계약과 다른 object 형태가 historical Review 2개에서 발견됐다. 원본은 수정하지 않고 compatibility layer로 `review_finding`에 보존한다.
+
+실제 Jira 식별자와 본문은 공개 문서에 기록하지 않는다.
 
 ---
 
-## 12. M7 자동 검증 완료 범위
+## 10. M8 · CURRENT
 
-Synthetic integration test + GitHub Actions에서 확인:
+M8의 입력은 M7 SQLite의 **active accepted Knowledge**다.
+
+M8 책임:
 
 ```text
-same Run 2회 materialize
-→ duplicate 없음
-
-Attempt history
-→ failed Attempt content unavailable
-→ accepted Attempt content available
-
-6 Evidence types
-→ 모두 round-trip
-
-broken Evidence
-→ integrity failure + rollback
-
-active Generation 2개
-→ SQLite IntegrityError
-
-historical + active
-→ 허용
+1. Embedding unit contract 확정
+2. Knowledge Item을 기본 embedding unit 후보로 검증
+3. Chunk가 필요한 조건 정의
+4. BGE-M3 API contract 고정
+5. Embedding 생성 / 저장 구조 결정
+6. 실데이터 소규모 embedding 검증
+7. M8 Gate 정의 / 통과
 ```
 
-따라서 M7 코드는 구현됐지만 **실제 30건 Gate는 아직 닫지 않았습니다.**
+BGE-M3 현재 제약:
+
+```text
+OpenAI-compatible embeddings API
+model = BAAI/bge-m3
+request max batch = 64
+dense dimension = 1024
+```
+
+축소 dimension 지원 여부는 아직 확정하지 않는다.
+
+M8에서는 FAISS를 구현하지 않는다.
 
 ---
 
-## 13. M7 Real-run Gate
-
-대상:
+## 11. M9~M10
 
 ```text
-run_id = 20260804T043628Z
-```
-
-기대 regression count:
-
-```text
-Issue               30
-Generation          30
-Attempt             37
-Knowledge Item     285
-Evidence            503
-Review               37
-```
-
-필수 확인:
-
-```text
-동일 명령 2회 실행 후 row count 불변
-active Generation = 30
-review_required = 0
-Evidence resolver failures = 0
-```
-
-이 검증 전에는 M8로 이동하지 않습니다.
-
----
-
-## 14. M8~M10
-
-M7 Gate 이후:
-
-```text
-M8
-Knowledge Item을 기본 embedding unit 후보로 검증
-→ 필요할 때만 Chunk 추가
-→ BGE-M3
-
 M9
 FAISS
 → active accepted corpus만 index
@@ -594,11 +487,11 @@ Evidence Builder + MCP
 → Agent answer
 ```
 
-M10이 Functional MVP 완료선입니다.
+M10이 Functional MVP 완료선이다.
 
 ---
 
-## 15. Phase 2 · M11~M16
+## 12. Phase 2 · M11~M16
 
 ```text
 M11 Incremental Jira Sync
@@ -609,11 +502,9 @@ M15 Observability
 M16 Production Lifecycle Gate
 ```
 
-다중 Run chronology와 증분 운영은 M7에서 과설계하지 않고 M11~M14에서 구현합니다.
-
 ---
 
-## 16. Current Source of Truth
+## 13. Current Source of Truth
 
 ```text
 README.md
@@ -623,17 +514,12 @@ docs/status/jira_knowledge_db_current_status.html
 docs/architecture/jira_data_relationship_map.*
 ```
 
-설계/구현 계약:
+M6/M7 계약 및 완료 근거:
 
 ```text
 docs/DB_LOGICAL_SCHEMA.md
 docs/M6_DECISION_LOG.md
-docs/status/M6_DB_LOGICAL_SCHEMA_COMPLETION.md
 docs/M7_SQLITE_MATERIALIZATION.md
-```
-
-문서 유지 규칙:
-
-```text
-docs/DOCUMENTATION_POLICY.md
+docs/M7_REAL_RUN_LOG.md
+docs/status/M7_SQLITE_MATERIALIZATION_COMPLETION.md
 ```
