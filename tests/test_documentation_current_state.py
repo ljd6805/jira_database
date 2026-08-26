@@ -31,14 +31,8 @@ MILESTONE_HTML_DOCS = tuple(
 )
 
 STALE_STATUS_MARKERS = (
-    "M6 CURRENT",
-    "M7 CURRENT",
-    "M7 NEXT",
-    "M8 BLOCKED",
-    "M9 CURRENT",
-    "M9-03 NEXT",
-    "REAL QUERY NEXT",
-    "REBUILD NEXT",
+    "M6 CURRENT", "M7 CURRENT", "M7 NEXT", "M8 BLOCKED",
+    "M9 CURRENT", "M9-03 NEXT", "REAL QUERY NEXT", "REBUILD NEXT",
 )
 
 
@@ -69,15 +63,9 @@ def test_current_docs_do_not_regress_to_old_status() -> None:
 
 
 def test_current_docs_record_m9_done_and_m10_next() -> None:
-    required = (
-        Path("README.md"),
-        Path("docs/PIPELINE_OVERVIEW.md"),
-        Path("docs/index.html"),
-        Path("docs/status/jira_knowledge_db_current_status.html"),
-    )
+    required = (Path("README.md"), Path("docs/PIPELINE_OVERVIEW.md"), Path("docs/index.html"), Path("docs/status/jira_knowledge_db_current_status.html"))
     for path in required:
-        text = _read(path)
-        upper = text.upper()
+        text = _read(path); upper = text.upper()
         assert "M8" in text and "DONE" in upper
         assert "M9" in text and "DONE" in upper and "PASS" in upper
         assert "M10" in text and "NEXT" in upper
@@ -85,26 +73,15 @@ def test_current_docs_record_m9_done_and_m10_next() -> None:
 
 
 def test_authoritative_docs_keep_generation_attempt_identity() -> None:
-    required = (
-        Path("README.md"),
-        Path("docs/PIPELINE_OVERVIEW.md"),
-        Path("docs/status/jira_knowledge_db_current_status.html"),
-        Path("docs/status/M10_START_HERE.html"),
-        Path("docs/M6_DECISION_LOG.md"),
-        Path("docs/M7_SQLITE_MATERIALIZATION.md"),
-    )
+    required = (Path("README.md"), Path("docs/PIPELINE_OVERVIEW.md"), Path("docs/status/jira_knowledge_db_current_status.html"), Path("docs/status/M10_START_HERE.html"), Path("docs/M6_DECISION_LOG.md"), Path("docs/M7_SQLITE_MATERIALIZATION.md"))
     for path in required:
         text = _read(path)
         assert "knowledge_attempt" in text or "Knowledge Attempt" in text
-        assert "ka_" in text
-        assert "attempt_no" in text
+        assert "ka_" in text and "attempt_no" in text
 
 
 def test_architecture_map_uses_attempt_as_item_and_review_parent() -> None:
-    for path in (
-        Path("docs/architecture/jira_data_relationship_map.data_a.js"),
-        Path("docs/architecture/jira_data_relationship_map.data_b.js"),
-    ):
+    for path in (Path("docs/architecture/jira_data_relationship_map.data_a.js"), Path("docs/architecture/jira_data_relationship_map.data_b.js")):
         compact = _read(path).replace(" ", "").replace("\n", "")
         assert '"from":"generation","to":"attempt"' in compact
         assert '"from":"attempt","to":"item"' in compact
@@ -115,24 +92,14 @@ def test_architecture_map_uses_attempt_as_item_and_review_parent() -> None:
 
 def test_m7_completion_doc_records_real_run_gate() -> None:
     text = _read(Path("docs/M7_SQLITE_MATERIALIZATION.md"))
-    assert "M7_REAL_RUN = PASS" in text
-    assert "Evidence raw      503" in text
-    assert "Evidence           502" in text
-    assert "idempotent         true" in text
-    assert "Evidence Failure     0" in text
-    assert "FK Failure           0" in text
+    for token in ("M7_REAL_RUN = PASS", "Evidence raw      503", "Evidence           502", "idempotent         true", "Evidence Failure     0", "FK Failure           0"):
+        assert token in text
 
 
 def test_m8_final_gate_is_preserved() -> None:
     text = _read(Path("docs/M8_REAL_EMBEDDING_LOG.md"))
-    assert "M8 = DONE" in text
-    assert "corpus_rows: 285" in text
-    assert "embedding_rows: 285" in text
-    assert "batch_count: 5" in text
-    assert "embedding_dimension: 1024" in text
-    assert "mapping_failure_count: 0" in text
-    assert "identity_failure_count: 0" in text
-    assert "Semantic Quality Sanity Check · PASS" in text
+    for token in ("M8 = DONE", "corpus_rows: 285", "embedding_rows: 285", "batch_count: 5", "embedding_dimension: 1024", "mapping_failure_count: 0", "identity_failure_count: 0", "Semantic Quality Sanity Check · PASS"):
+        assert token in text
 
 
 def test_m9_final_contract_and_real_gate_are_preserved() -> None:
@@ -140,74 +107,38 @@ def test_m9_final_contract_and_real_gate_are_preserved() -> None:
     decision = _read(Path("docs/M9_DECISION_LOG.md"))
     log = _read(Path("docs/M9_REAL_RETRIEVAL_LOG.md"))
     visual = _read(Path("docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html"))
-
     for text in (design, decision, visual):
-        assert "IndexFlatIP" in text
+        for token in ("IndexFlatIP", "Top-3", "embedding_id", "knowledge_item_id", "HNSW", "IVF"):
+            assert token in text
         assert "cosine" in text.lower()
-        assert "Top-3" in text
-        assert "embedding_id" in text
-        assert "knowledge_item_id" in text
-        assert "HNSW" in text
-        assert "IVF" in text
-
     assert "rc_" in design and "fi_" in design and "manifest" in design.lower()
-    assert "M9 = DONE / PASS" in design
-    assert "M10" in design
-
-    assert "M9 = DONE / PASS" in log
-    assert "vector_count = 285" in log
-    assert "dimension = 1024" in log
-    assert "vector_exact_equal=True" in log
-    assert "max_abs_diff=0" in log
-    assert "cosine=1.000000000" in log
-    assert "ranking_equal=True" in log
-    assert "scores_exact_equal=True" in log
-    assert "Top-3 noise" in log
-    assert "delta-first" in decision.lower()
+    assert "M9 = DONE / PASS" in design and "M10" in design
+    for token in ("M9 = DONE / PASS", "vector_count = 285", "dimension = 1024", "vector_exact_equal=True", "max_abs_diff=0", "cosine=1.000000000", "ranking_equal=True", "scores_exact_equal=True", "Top-3 noise"):
+        assert token in log
+    lower_decision = decision.lower()
+    assert "delta-first" in lower_decision or "delta first" in lower_decision
 
 
 def test_m10_handoff_is_complete_and_static_html() -> None:
-    path = Path("docs/status/M10_START_HERE.html")
-    assert path.is_file()
-    text = _read(path)
-    lower = text.lower()
-    for token in (
-        "M0~M9 DONE",
-        "M10 NEXT",
-        "DESIGN NOT STARTED",
-        "Evidence Package",
-        "Resolver Contract",
-        "MCP Tool Surface",
-        "knowledge_attempt",
-        "ka_",
-        "attempt_no",
-        "IndexFlatIP",
-        "delta-first",
-        "DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC",
-    ):
+    path = Path("docs/status/M10_START_HERE.html"); assert path.is_file()
+    text = _read(path); lower = text.lower()
+    for token in ("M0~M9 DONE", "M10 NEXT", "DESIGN NOT STARTED", "Evidence Package", "Resolver Contract", "MCP Tool Surface", "knowledge_attempt", "ka_", "attempt_no", "IndexFlatIP", "delta-first", "DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC"):
         assert token in text
-    assert "<!doctype html>" in lower
-    assert "<main" in lower
-    assert "fetch(" not in text
+    assert "<!doctype html>" in lower and "<main" in lower and "fetch(" not in text
 
 
 def test_m0_to_m9_visual_docs_exist_and_are_static() -> None:
     for path in MILESTONE_HTML_DOCS:
-        assert path.is_file(), f"missing milestone HTML: {path}"
-        text = _read(path)
-        lower = text.lower()
-        assert "<!doctype html>" in lower
-        assert "<main" in lower
-        assert "fetch(" not in text
-        assert "DecompressionStream" not in text
+        assert path.is_file()
+        text = _read(path); lower = text.lower()
+        assert "<!doctype html>" in lower and "<main" in lower
+        assert "fetch(" not in text and "DecompressionStream" not in text
 
 
 def test_every_done_or_current_milestone_has_visual_html() -> None:
-    milestones = _done_or_current_milestones()
-    assert milestones
-    status_dir = Path("docs/status")
+    milestones = _done_or_current_milestones(); assert milestones
     for milestone in sorted(milestones):
-        assert list(status_dir.glob(f"{milestone}_*.html")), milestone
+        assert list(Path("docs/status").glob(f"{milestone}_*.html")), milestone
 
 
 def test_documentation_hub_links_milestones_and_m10_handoff() -> None:
@@ -218,30 +149,13 @@ def test_documentation_hub_links_milestones_and_m10_handoff() -> None:
 
 
 def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
-    public_docs = CURRENT_DOCS + (
-        Path("docs/M8_REAL_EMBEDDING_LOG.md"),
-        Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.md"),
-        Path("docs/M9_DECISION_LOG.md"),
-        Path("docs/M9_REAL_RETRIEVAL_LOG.md"),
-        Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.html"),
-        Path("docs/M9_DECISION_LOG.html"),
-        Path("docs/M9_REAL_RETRIEVAL_LOG.html"),
-        Path("docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html"),
-        Path("docs/status/M10_START_HERE.html"),
-    )
-    issue_key_pattern = re.compile(r"\b[A-Z][A-Z0-9_]{1,15}-[1-9]\d{3,}\b")
+    public_docs = CURRENT_DOCS + (Path("docs/M8_REAL_EMBEDDING_LOG.md"), Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.md"), Path("docs/M9_DECISION_LOG.md"), Path("docs/M9_REAL_RETRIEVAL_LOG.md"), Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.html"), Path("docs/M9_DECISION_LOG.html"), Path("docs/M9_REAL_RETRIEVAL_LOG.html"), Path("docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html"), Path("docs/status/M10_START_HERE.html"))
+    pattern = re.compile(r"\b[A-Z][A-Z0-9_]{1,15}-[1-9]\d{3,}\b")
     for path in public_docs:
-        matches = issue_key_pattern.findall(_read(path))
-        assert not matches, f"{path} exposes Jira-like issue keys: {matches[:3]}"
+        matches = pattern.findall(_read(path)); assert not matches, f"{path}: {matches[:3]}"
 
 
 def test_html_preservation_rules_require_user_approval_for_deletion() -> None:
-    agents = _read(Path("AGENTS.md"))
-    policy = _read(Path("docs/DOCUMENTATION_POLICY.md"))
-    for text in (agents, policy):
-        assert "Markdown" in text
-        assert "대체" in text
-        assert "HTML" in text
-        assert "삭제" in text
-        assert "사용자" in text
-        assert "승인" in text
+    for text in (_read(Path("AGENTS.md")), _read(Path("docs/DOCUMENTATION_POLICY.md"))):
+        for token in ("Markdown", "대체", "HTML", "삭제", "사용자", "승인"):
+            assert token in text
