@@ -4,6 +4,15 @@
 <header class="hero"><span class="eyebrow">M4 · REAL JIRA PILOT</span><h1>M3의 품질 Loop를<br>실제 Jira 30건으로 검증하기</h1><p>M4는 설계가 예뻐 보이는지 확인한 단계가 아니라, 로컬 Knowledge Input 30건을 실제로 처리해 30/30 PASS와 Human Validation까지 확인한 단계입니다.</p><span class="state">PASS / DONE · Pilot Run 20260804T043628Z</span><div class="breadcrumb">Knowledge Input 30 → Worker/Validator/Reviewer → 30 PASS → Human Validation</div></header>
 <div class="kpis"><div class="kpi"><b>30/30</b><span>최종 PASS</span></div><div class="kpi"><b>24</b><span>1차 PASS</span></div><div class="kpi"><b>6</b><span>재생성 Issue</span></div><div class="kpi"><b>5/5</b><span>Human Validation</span></div></div>
 <section class="beginner"><span class="badge">1분 요약</span><h2>M4를 아주 쉽게 말하면</h2><div class="grid3"><div class="easy-card"><div class="emoji">🧪</div><b>실전 시험</b><p>M3에서 만든 Agent Loop를 합성 예가 아니라 실제 Jira에서 만든 30개 Knowledge Input에 적용했습니다.</p></div><div class="easy-card"><div class="emoji">🔁</div><b>재생성도 실제 발생</b><p>24건은 첫 시도에 통과했고, 5건은 두 번째, 1건은 세 번째 시도에 통과해 총 6건이 재생성됐습니다.</p></div><div class="easy-card"><div class="emoji">👀</div><b>사람도 확인</b><p>Reviewer PASS만 믿지 않고 대표 5건을 사람이 원본 사실 Package와 최종 Knowledge로 직접 비교했습니다.</p></div></div><div class="analogy"><strong>비유</strong> M3가 자동차의 시험 절차를 설계한 단계라면, M4는 실제 도로에서 30번 달려 보고 자동 계기판뿐 아니라 사람이 직접 차량 상태까지 확인한 단계입니다.</div></section>
+<section><h2>전체 파이프라인에서 M4는 어디인가?</h2><div class="flow">[M3] 생성→검증→Review→재생성 품질 Loop 설계
+  ↓
+[M4] 그 Loop를 실제 Jira 30건으로 끝까지 돌려 검증  ← 지금 여기
+  ↓
+[M5] 실제 산출물의 크기·분포·Evidence 수를 측정
+  ↓
+[M6~M7] 측정값을 근거로 DB 설계·SQLite 구현
+  ↓
+[M8~M10] Vector 검색 + 실제 근거 + MCP</div><div class="grid3"><div class="mini"><b>M3와 차이</b><p>M3는 절차를 만든 단계이고, M4는 그 절차가 실제 데이터에서도 버티는지 확인한 단계입니다.</p></div><div class="mini"><b>M5와 차이</b><p>M4는 “잘 동작하는가?”를 보고, M5는 “실제 결과가 얼마나 크고 어떤 분포인가?”를 잽니다.</p></div><div class="mini"><b>M4 완료 후</b><p>합성 예가 아니라 실제 Jira 30건에서 품질 Loop와 재생성 방식이 작동한다는 근거가 생겼습니다.</p></div></div><div class="callout good"><strong>M4의 핵심 역할</strong> 설계 문서에서만 그럴듯했던 Knowledge 생성 파이프라인을 <strong>실제 업무 데이터로 통과시킨 첫 실전 Gate</strong>입니다.</div></section>
 <section><h2>1. M4의 사실 입력 경계</h2><div class="flow">[KNOWLEDGE INPUT]
 data/knowledge_input/runs/20260804T043628Z/issues
         ↓
