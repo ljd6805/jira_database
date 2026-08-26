@@ -1,14 +1,14 @@
 Object.assign(window.JIRA_MAP_VIEWS,{
 "issue":{
   "title":"Evidence Round-trip · Accepted Attempt",
-  "help":"현재 Retrieval에 노출되는 Knowledge Item이 accepted Attempt를 거쳐 exact evidence_ref로 원본 Source까지 돌아가는 경로입니다. Retry 회차는 knowledge_attempt_id와 attempt_no로 보존됩니다.",
+  "help":"현재 Retrieval/Embedding 후보에 노출되는 Knowledge Item이 accepted Attempt를 거쳐 exact evidence_ref로 원본 Source까지 돌아가는 경로입니다. M7 real-run에서 502 canonical Evidence row가 모두 integrity Gate를 통과했습니다.",
   "nodes":[
     {"id":"issue","type":"issue","kind":"issue","shape":"pill","x":150,"y":80,"w":200,"h":62,"label":"Issue","sub":"jira_id authoritative"},
     {"id":"version","type":"issue","kind":"issue","shape":"rect","x":150,"y":245,"w":220,"h":90,"label":"Issue Version · iv_","sub":"source_hash immutable state"},
     {"id":"generation","type":"knowledge","kind":"knowledge","shape":"rect","x":440,"y":245,"w":230,"h":90,"label":"Generation · kg_","sub":"Version + Contract lineage"},
     {"id":"attempt","type":"knowledge","kind":"knowledge","shape":"rect","x":730,"y":245,"w":230,"h":90,"label":"Accepted Attempt · ka_","sub":"attempt_no · PASS"},
     {"id":"item","type":"knowledge","kind":"knowledge","shape":"rect","x":1020,"y":245,"w":230,"h":90,"label":"Knowledge Item · ki_","sub":"statement + evidence_refs[]"},
-    {"id":"eref","type":"evidence","kind":"evidence","shape":"rect","x":1150,"y":430,"w":230,"h":90,"label":"Evidence · ke_","sub":"exact evidence_ref"},
+    {"id":"eref","type":"evidence","kind":"evidence","shape":"rect","x":1150,"y":430,"w":230,"h":90,"label":"Evidence · ke_","sub":"502 canonical exact refs"},
     {"id":"resolver","type":"db","kind":"db","shape":"rect","x":920,"y":590,"w":250,"h":90,"label":"Type-specific Resolver","sub":"ref parse + source lookup"},
     {"id":"source","type":"evidence","kind":"evidence","shape":"rect","x":620,"y":590,"w":250,"h":90,"label":"Resolved Source","sub":"version / comment / attachment / edge / field"},
     {"id":"raw","type":"store","kind":"store","shape":"rect","x":320,"y":590,"w":240,"h":90,"label":"ANALYSIS → RAW","sub":"source_path round-trip"},
@@ -35,8 +35,8 @@ Object.assign(window.JIRA_MAP_VIEWS,{
   ]
 },
 "schema":{
-  "title":"M7 SQLite Schema v1 · Current",
-  "help":"M6-01~03의 최종 계약을 실제 SQLite v1 테이블로 옮긴 구조입니다. Generation과 Attempt를 분리하고, Item과 Review는 Attempt에 연결합니다.",
+  "title":"M7 SQLite v1 → M8 Embedding Boundary",
+  "help":"M6-01~03의 최종 계약을 실제 SQLite v1로 구현하고 M7 real-run PASS까지 확인했습니다. 현재 M8은 active accepted Knowledge만 꺼내 Embedding Unit / Chunk + BGE-M3로 연결합니다.",
   "nodes":[
     {"id":"run","type":"db","kind":"db","shape":"rect","x":115,"y":80,"w":200,"h":82,"label":"pipeline_run","sub":"run_id"},
     {"id":"issue","type":"issue","kind":"issue","shape":"rect","x":365,"y":80,"w":210,"h":82,"label":"issue","sub":"jira_id PK · issue_key locator"},
@@ -44,16 +44,17 @@ Object.assign(window.JIRA_MAP_VIEWS,{
     {"id":"obs","type":"db","kind":"db","shape":"rect","x":115,"y":245,"w":220,"h":88,"label":"issue_version_observation","sub":"PK(run_id, jira_id)"},
     {"id":"generation","type":"knowledge","kind":"knowledge","shape":"rect","x":660,"y":80,"w":235,"h":88,"label":"knowledge_generation","sub":"kg_ · state · accepted_attempt_id"},
     {"id":"attempt","type":"knowledge","kind":"knowledge","shape":"rect","x":935,"y":80,"w":235,"h":88,"label":"knowledge_attempt","sub":"ka_ · attempt_no · content hash"},
-    {"id":"item","type":"knowledge","kind":"knowledge","shape":"rect","x":1190,"y":245,"w":220,"h":88,"label":"knowledge_item","sub":"ki_ · category · ordinal"},
-    {"id":"evidence","type":"evidence","kind":"evidence","shape":"rect","x":1190,"y":430,"w":220,"h":88,"label":"knowledge_evidence","sub":"ke_ · exact ref"},
-    {"id":"review","type":"review","kind":"review","shape":"rect","x":900,"y":430,"w":220,"h":88,"label":"knowledge_review","sub":"UNIQUE(attempt)"},
+    {"id":"item","type":"knowledge","kind":"knowledge","shape":"rect","x":1190,"y":245,"w":220,"h":88,"label":"knowledge_item","sub":"285 · ki_ · category · ordinal"},
+    {"id":"evidence","type":"evidence","kind":"evidence","shape":"rect","x":1190,"y":430,"w":220,"h":88,"label":"knowledge_evidence","sub":"502 canonical · exact ref"},
+    {"id":"review","type":"review","kind":"review","shape":"rect","x":900,"y":430,"w":220,"h":88,"label":"knowledge_review","sub":"37 · UNIQUE(attempt)"},
     {"id":"finding","type":"review","kind":"review","shape":"rect","x":900,"y":610,"w":220,"h":82,"label":"review_finding","sub":"audit history"},
     {"id":"comment","type":"comment","kind":"comment","shape":"rect","x":120,"y":480,"w":190,"h":80,"label":"comment","sub":"run + issue + id"},
     {"id":"attach","type":"attach","kind":"attach","shape":"rect","x":340,"y":480,"w":190,"h":80,"label":"attachment","sub":"run + attachment id"},
     {"id":"rel","type":"rel","kind":"rel","shape":"rect","x":560,"y":480,"w":190,"h":80,"label":"relationship","sub":"run + edge id"},
     {"id":"custom","type":"custom","kind":"custom","shape":"rect","x":340,"y":650,"w":220,"h":80,"label":"custom_field_value","sub":"run + issue + field"},
-    {"id":"active","type":"db","kind":"db","shape":"rect","x":650,"y":790,"w":300,"h":90,"label":"Active UNIQUE Index","sub":"one active Generation per jira_id"},
-    {"id":"gate","type":"store","kind":"store","shape":"rect","x":1060,"y":790,"w":320,"h":90,"label":"M7 Real-run Gate","sub":"30 / 30 / 37 / 285 / 503 / 37"}
+    {"id":"active","type":"db","kind":"db","shape":"rect","x":650,"y":790,"w":300,"h":90,"label":"Active UNIQUE Index","sub":"30 active · one per jira_id"},
+    {"id":"gate","type":"store","kind":"store","shape":"rect","x":1010,"y":790,"w":300,"h":90,"label":"M7 Real-run PASS","sub":"idempotent · FK 0 · integrity OK"},
+    {"id":"embedding","type":"db","kind":"db","shape":"rect","x":1120,"y":650,"w":250,"h":80,"label":"M8 Embedding Corpus","sub":"active accepted Knowledge only"}
   ],
   "edges":[
     {"from":"run","to":"obs","label":"1:N","fromSide":"bottom","toSide":"top"},
@@ -70,8 +71,9 @@ Object.assign(window.JIRA_MAP_VIEWS,{
     {"from":"evidence","to":"rel","label":"resolver","fromSide":"left","toSide":"right"},
     {"from":"evidence","to":"custom","label":"resolver","fromSide":"left","toSide":"right","c1":[1050,540],"c2":[450,600]},
     {"from":"generation","to":"active","label":"partial UNIQUE","fromSide":"bottom","toSide":"top","c1":[650,500],"c2":[650,700]},
-    {"from":"evidence","to":"gate","label":"round-trip validation","fromSide":"bottom","toSide":"top"},
-    {"from":"attempt","to":"gate","label":"count / idempotency","fromSide":"bottom","toSide":"top","c1":[950,420],"c2":[1050,700]}
+    {"from":"evidence","to":"gate","label":"round-trip PASS","fromSide":"bottom","toSide":"top"},
+    {"from":"attempt","to":"gate","label":"count / idempotency PASS","fromSide":"bottom","toSide":"top","c1":[950,420],"c2":[1050,700]},
+    {"from":"item","to":"embedding","label":"M8 corpus input","fromSide":"bottom","toSide":"top"}
   ]
 }
 });
