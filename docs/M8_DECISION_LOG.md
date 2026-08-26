@@ -11,12 +11,12 @@ M8 · Embedding Unit / Chunk + BGE-M3 단계에서 합의한 결정을 시간 �
 
 상태: **PASS / DONE**
 
-### 1. M8 corpus의 authoritative source
+### 결정
 
-M8 기본 corpus는 M7 SQLite의 모든 Knowledge가 아니다.
+M8 기본 corpus는 M7 SQLite의 모든 Knowledge가 아니라 다음 조건만 사용한다.
 
 ```text
-knowledge_generation.state = 'active'
+knowledge_generation.state = active
 AND accepted_attempt_id IS NOT NULL
     ↓
 accepted knowledge_attempt
@@ -25,11 +25,9 @@ AND content_available = 1
 knowledge_item
 ```
 
-Historical / candidate / review_required Generation과 accepted되지 않은 Attempt는 기본 embedding corpus에서 제외한다.
+Historical / candidate / review_required Generation과 accepted되지 않은 Attempt는 제외한다.
 
-### 2. 기본 Embedding Unit
-
-Pilot baseline은 다음으로 고정한다.
+기본 Embedding Unit:
 
 ```text
 Knowledge Item 1개
@@ -45,95 +43,17 @@ statement p95        206.4 chars
 statement max        447 chars
 ```
 
-현재 데이터에서는 이미 Knowledge Item이 짧은 atomic semantic unit으로 유지되고 있다.
-모든 Item을 다시 Chunk하면 identity / Evidence mapping과 재현성만 복잡해질 가능성이 높다.
+따라서 baseline에서는 Chunk를 사용하지 않는다. Chunk는 실제 tokenizer 길이 문제, 복합 검색 의도, Retrieval sanity 개선 근거가 있을 때만 추가 검토한다.
 
-따라서 **기본 Chunk는 사용하지 않는다.**
-
-### 3. Chunk를 추가할 수 있는 조건
-
-Chunk는 기본 구조가 아니라 검증 결과에 따른 예외다.
-
-다음 중 하나가 실데이터에서 확인될 때만 Chunk profile을 추가 검토한다.
-
-- 실제 BGE-M3 tokenizer 기준으로 Item이 지나치게 길다.
-- 한 statement가 독립 검색 의도를 여러 개 포함한다.
-- Retrieval sanity test에서 분할이 일관되게 더 좋은 후보를 만든다.
-
-단순 문자 길이 임계값만으로 현재 285 Item을 선제 분할하지 않는다.
-
-### 4. Baseline Embedding Text
-
-첫 text profile은 다음으로 고정한다.
+Baseline text:
 
 ```text
 text_profile = statement_v1
 embedding_text = knowledge_item.statement.strip()
+embedding_text_hash = SHA-256(UTF-8 embedding_text)
 ```
 
-이유:
-
-- Knowledge Item 자체가 이미 검색용 의미 압축 결과다.
-- Category나 Issue Summary를 모든 Item에 붙이면 같은 Issue의 Item들이 과도하게 비슷해질 수 있다.
-- 원문 context를 임의로 늘리기보다 atomic statement의 검색성을 먼저 검증하는 편이 원인 분석이 쉽다.
-
-후속 비교 실험 후보:
-
-```text
-category_statement_v1
-issue_summary_category_statement_v1
-```
-
-실험 결과가 baseline보다 명확히 좋을 때만 기본 text profile 변경을 검토한다.
-
-### 5. Corpus query 계약
-
-논리 SQL:
-
-```sql
-SELECT
-    ki.knowledge_item_id,
-    ki.knowledge_attempt_id,
-    ka.knowledge_generation_id,
-    kg.issue_version_id,
-    kg.jira_id,
-    ki.category,
-    ki.ordinal,
-    ki.statement
-FROM knowledge_generation AS kg
-JOIN knowledge_attempt AS ka
-  ON ka.knowledge_attempt_id = kg.accepted_attempt_id
- AND ka.knowledge_generation_id = kg.knowledge_generation_id
-JOIN knowledge_item AS ki
-  ON ki.knowledge_attempt_id = ka.knowledge_attempt_id
-WHERE kg.state = 'active'
-  AND kg.accepted_attempt_id IS NOT NULL
-  AND ka.content_available = 1;
-```
-
-Exporter는 DB row 순서에 의존하지 않고 deterministic sort를 적용한다.
-
-```text
-jira_id
-→ category canonical order
-→ ordinal
-→ knowledge_item_id
-```
-
-Category canonical order:
-
-```text
-issue_summary
-problem_or_goal
-key_findings
-actions_and_decisions
-outcomes
-open_items
-```
-
-### 6. Corpus artifact v0.1
-
-Vector를 만들기 전 deterministic corpus row의 최소 계약:
+Corpus row:
 
 ```text
 corpus_schema_version
@@ -149,9 +69,7 @@ embedding_text
 embedding_text_hash
 ```
 
-`embedding_text_hash`는 UTF-8 `embedding_text`의 SHA-256 lowercase hex다.
-
-### 7. M8-01 Real DB Gate
+### Real DB Gate
 
 최종 사용자 로컬 실행 결과:
 
@@ -161,17 +79,15 @@ text_profile: statement_v1
 corpus_rows: 285
 ```
 
-초기에 `corpus_rows: 28`로 전달된 값은 사용자의 복사/붙여넣기 과정에서 잘못 전달된 값이었고, 동일 명령의 실제 출력은 `285`임이 바로 정정됐다. 프로젝트 결함으로 취급하지 않는다.
-
-최종 판정:
+초기에 `28`로 전달된 값은 복사/붙여넣기 과정의 전달 오류였고 실제 실행 결과는 `285`로 즉시 정정됐다. 프로젝트 결함으로 취급하지 않는다.
 
 ```text
-[x] active accepted corpus exporter 구현
-[x] synthetic test에서 historical/candidate/review_required 제외 확인
-[x] accepted Attempt가 아닌 Item 제외 확인
-[x] deterministic ordering 확인
-[x] statement_v1 text canonicalization/hash 확인
-[x] 실제 M7 DB에서 corpus row = 285 확인
+[x] active accepted corpus exporter
+[x] historical/candidate/review_required 제외
+[x] accepted Attempt가 아닌 Item 제외
+[x] deterministic ordering
+[x] statement_v1 hash
+[x] 실제 M7 DB corpus row = 285
 
 M8-01 = PASS / DONE
 ```
@@ -180,24 +96,19 @@ M8-01 = PASS / DONE
 
 ## M8-02 · Deterministic Embedding Contract / BGE-M3 Adapter
 
-상태: **DECIDED / IMPLEMENTATION NEXT**
+상태: **IMPLEMENTED / CI PASS**
 
 ### 1. Embedding Contract v0.1
 
-Embedding artifact는 Knowledge identity와 분리한다.
+Knowledge identity와 Embedding artifact identity를 분리한다.
 
 ```text
-Knowledge identity
-→ knowledge_item_id (ki_)
-
-Embedding contract
-→ ec_
-
-Embedding artifact
-→ emb_
+Knowledge Item       ki_
+Embedding Contract   ec_
+Embedding Artifact   emb_
 ```
 
-Embedding Contract v0.1의 identity 입력:
+Embedding Contract v0.1 identity 입력:
 
 ```text
 embedding_contract_version = 0.1
@@ -207,133 +118,120 @@ embedding_model_profile    = runtime supplied
 embedding_dimension        = 1024
 ```
 
-`embedding_model_profile`은 같은 model name 아래 실제 serving revision/deployment가 달라질 가능성을 구분하기 위한 필드다. 사내 API가 revision metadata를 제공하지 않는 경우 Pilot에서는 명시적으로 `internal-bge-m3-unversioned`처럼 "version metadata를 알 수 없음"을 기록한다.
+`embedding_model_profile`은 같은 model name 아래 serving revision/deployment 차이를 표현한다. revision metadata를 알 수 없는 Pilot에서는 `internal-bge-m3-unversioned`를 사용한다.
 
-Endpoint URL은 배포 위치 정보이므로 embedding logical identity에는 넣지 않는다.
+Endpoint URL은 배포 위치이므로 logical identity에 넣지 않는다.
 
 ### 2. Deterministic ID
 
-공통 canonical JSON + SHA-256 규칙을 재사용한다.
+M6와 같은 `id_schema_version=1 + kind + canonical JSON + full SHA-256` 규칙을 재사용한다.
 
 ```text
-embedding_contract_hash
-= ec_ + SHA256({
-    id_schema_version,
-    kind="embedding_contract",
-    embedding_contract_version,
-    text_profile,
-    embedding_model,
-    embedding_model_profile,
-    embedding_dimension
-  })
+ec_ = H(contract version, text profile, model, model profile, dimension)
 
-embedding_id
-= emb_ + SHA256({
-    id_schema_version,
-    kind="embedding",
-    knowledge_item_id,
-    embedding_text_hash,
-    embedding_contract_hash
-  })
+emb_ = H(knowledge_item_id, embedding_text_hash, ec_)
 ```
 
-Vector 값 자체와 API endpoint는 `embedding_id` material에 넣지 않는다.
+Vector 값과 API endpoint, FAISS position은 `embedding_id` material이 아니다.
 
-### 3. Request Contract
+### 3. Runtime 설정 분리
 
-사내 API는 OpenAI-compatible embeddings API로 취급한다.
+실제 사내 endpoint/API key는 Git에 기록하지 않는다.
+
+```text
+.env
+BGE_M3_ENDPOINT
+BGE_M3_API_KEY
+```
+
+일반 설정은 `config/settings.yaml`에서 관리한다.
+
+```text
+model = BAAI/bge-m3
+model_profile = internal-bge-m3-unversioned
+text_profile = statement_v1
+dimension = 1024
+batch_size = 64
+requests_per_minute = 200
+max_attempts = 3
+```
+
+Embedding 설정 loader는 Jira ID/Password 없이 독립 실행된다.
+
+### 4. Request / Batch
+
+OpenAI-compatible baseline:
 
 ```json
 {
   "model": "BAAI/bge-m3",
-  "input": ["text1", "text2", "..."]
+  "input": ["text1", "text2"]
 }
 ```
 
-Endpoint는 코드에 하드코딩하지 않는다.
+최대 batch 64:
 
 ```text
-BGE_M3_ENDPOINT
-→ local .env / runtime environment
-
-BGE_M3_API_KEY
-→ 필요할 때만 local .env / Secret
-```
-
-API key가 제공되면 `Authorization: Bearer <token>`을 사용한다. 인증 방식이 다른 배포에서는 adapter의 header injection으로 분리한다.
-
-### 4. Batch Contract
-
-확인된 최대 HTTP batch size는 64다.
-
-```text
-285 corpus rows
+285
 → 64 + 64 + 64 + 64 + 29
-→ 총 5 requests
+→ 5 requests
 ```
 
-기본 batch size는 64로 두되 runtime에서 더 작은 값으로 낮출 수 있다. 64를 초과하는 값은 시작 전에 거부한다.
+64 초과 설정은 HTTP 호출 전에 거부한다.
 
 ### 5. Response Mapping
 
-OpenAI-compatible response의 `data[].index`를 authoritative input mapping으로 사용한다.
+응답 배열의 물리 순서가 아니라 `data[].index`를 authoritative mapping으로 사용한다.
+
+검증:
 
 ```text
-request input position 0..N-1
-↔ response data[].index
+index 누락 없음
+index 중복 없음
+범위 밖 index 없음
+response count = request count
+각 vector dimension = 1024
 ```
 
-응답 배열의 물리 순서에 의존하지 않는다.
+### 6. Retry / Failure
 
-반드시 확인:
-
-- index 누락 없음
-- index 중복 없음
-- 범위 밖 index 없음
-- vector 개수 = request input 개수
-- 각 vector dimension = 1024
-
-### 6. Retry / Failure Contract
-
-재시도 대상:
+재시도:
 
 ```text
-network/timeout
+network / timeout
 HTTP 429
-HTTP 500/502/503/504
+HTTP 500 / 502 / 503 / 504
 ```
 
-재시도하지 않는 오류:
+기본 총 시도 횟수 3회.
+
+즉시 실패:
 
 ```text
-HTTP 400/401/403/404 등 명백한 request/auth/config 오류
+400 / 401 / 403 / 404 등 request/auth/config 오류
 response schema 오류
-vector dimension 오류
 index mapping 오류
+dimension 오류
 ```
 
-기본 총 시도 횟수는 3회로 둔다.
+### 7. Publish
 
-### 7. Publish Contract
-
-Pilot 규모에서는 partial vector artifact를 최종 산출물로 publish하지 않는다.
+Pilot에서는 partial vector artifact를 final 결과로 publish하지 않는다.
 
 ```text
 모든 batch 성공
 → 전체 mapping/dimension 검증
-→ temp artifact 작성
+→ temp JSONL
 → atomic replace
-→ final embedding artifact publish
+→ final artifact
 
 중간 batch 실패
 → final artifact publish 금지
 ```
 
-Resume/checkpoint는 M8에서 과설계하지 않고 후속 orchestration 단계에서 다룬다.
+Resume/checkpoint는 후속 orchestration 단계에서 다룬다.
 
 ### 8. Embedding Artifact v0.1
-
-M8-03에서 생성할 JSONL row 후보:
 
 ```text
 embedding_schema_version
@@ -355,20 +253,72 @@ embedding_dimension
 vector
 ```
 
-M9는 `embedding_id ↔ knowledge_item_id` mapping을 유지한 채 FAISS index를 만든다.
+M9는 `embedding_id ↔ knowledge_item_id` mapping을 유지한 채 FAISS를 만든다.
 
-### 9. M8-02 Gate
+### 9. 구현
 
 ```text
-[ ] embedding contract / deterministic ID module 구현
-[ ] OpenAI-compatible BGE-M3 client 구현
-[ ] batch <= 64 강제
-[ ] response index mapping 검증
-[ ] 1024 dimension 검증
-[ ] retry 대상/비대상 test
-[ ] atomic publish helper 구현
-[ ] CI PASS
+src/jira_collector/embedding/
+├─ corpus.py
+├─ contract.py
+├─ client.py
+├─ config.py
+├─ artifact.py
+└─ runner.py
+
+tools/jira_knowledge/embed_bge_m3.py
 ```
+
+테스트:
+
+```text
+deterministic ec_/emb_
+285 → 5 batch
+response index 순서 복원
+index 중복/누락 차단
+dimension mismatch 차단
+429/5xx retry
+400 즉시 실패
+corpus JSONL hash 재검증
+atomic publish
+Jira credential 없이 embedding config load
+```
+
+GitHub Actions pytest: **PASS**
+
+```text
+[x] embedding contract / deterministic ID
+[x] OpenAI-compatible client
+[x] batch <= 64
+[x] response index mapping
+[x] 1024 dimension contract
+[x] retry/non-retry test
+[x] atomic publish
+[x] independent runtime config
+[x] CI PASS
+
+M8-02 = IMPLEMENTED
+```
+
+---
+
+## M8-03 · Real BGE-M3 Gate
+
+상태: **CURRENT / NEXT VALIDATION**
+
+실제 사내 endpoint로 다음을 확인한다.
+
+```text
+[ ] corpus_rows = 285
+[ ] embedding_rows = 285
+[ ] batch_count = 5
+[ ] embedding_dimension = 1024
+[ ] emb_ ↔ ki_ mapping 무결성
+[ ] 동일 input/contract 재실행 identity 재현
+[ ] 작은 quality sanity check
+```
+
+실행 전 `.env`에 실제 endpoint와 필요한 경우 API key를 입력한다. 실제 값은 Git/public 문서에 기록하지 않는다.
 
 ---
 
@@ -380,4 +330,4 @@ M9는 `embedding_id ↔ knowledge_item_id` mapping을 유지한 채 FAISS index�
 - retrieval top-k
 - production incremental embedding/resume orchestration
 
-특히 FAISS는 M9 책임이다.
+**M8에서는 FAISS를 구현하지 않는다.** FAISS는 M9 책임이다.
