@@ -11,6 +11,8 @@ M7은 M6에서 확정한 Logical Schema를 실제 SQLite DB로 materialize하고
 M7_REAL_RUN = PASS
 ```
 
+실제 Jira Issue Key, Review 본문, 원문 내용은 문서에 기록하지 않고 aggregate 결과만 보존한다.
+
 ---
 
 ## 1. 구현 범위
@@ -148,24 +150,15 @@ accepted final Attempt
 
 없는 과거 Knowledge는 추정 복원하지 않는다.
 
-### 4.1 Review `critical_issues` nonconformance
+### 4.1 Review Schema v0.3 nonconformance
 
-M4 당시 Review Schema v0.3은 `critical_issues: string[]` 계약이었지만 실제 Review 2개에는 `{type, location, message}` object가 남아 있었다.
+실제 historical Review 2개에서 `critical_issues`가 당시 Schema v0.3의 `string[]` 계약과 달리 object 형태로 남아 있었다.
 
 원본 JSON은 수정하지 않고 M7 compatibility layer가 string/object 양쪽을 `review_finding`에 손실 없이 보존한다. `review_schema_version=0.3`은 당시 계약 그대로 유지한다.
 
 ### 4.2 Duplicate Evidence nonconformance
 
 Knowledge Schema v0.1은 `evidence_refs.uniqueItems=true`였지만 Pilot에는 단 1개의 duplicate Evidence가 있었다.
-
-```text
-AI5-1270.json
-key_findings[2]
-
-comment:2717096
-comment:2720803
-comment:2720803   ← duplicate
-```
 
 처리 원칙:
 
