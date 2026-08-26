@@ -44,17 +44,53 @@ def test_load_embedding_settings_without_jira_credentials(tmp_path: Path) -> Non
         env={
             "BGE_M3_ENDPOINT": "https://embedding.example/v1/embeddings",
             "BGE_M3_API_KEY": "secret",
+            "BGE_M3_HEADERS_JSON": '{"X-User-Id":"tester","X-Project-Key":"pilot"}',
         },
     )
 
     assert settings.endpoint.endswith("/v1/embeddings")
     assert settings.api_key == "secret"
+    assert settings.custom_headers == {
+        "X-User-Id": "tester",
+        "X-Project-Key": "pilot",
+    }
     assert settings.model == "BAAI/bge-m3"
     assert settings.dimension == 1024
     assert settings.batch_size == 64
     assert settings.requests_per_minute == 200
     assert settings.verify_ssl is False
     assert settings.timeout_seconds == 30
+
+
+def test_embedding_custom_headers_are_optional(tmp_path: Path) -> None:
+    config = tmp_path / "settings.yaml"
+    _write_config(config)
+
+    settings = load_embedding_settings(
+        config,
+        local_config_path=None,
+        dotenv_path=None,
+        env={"BGE_M3_ENDPOINT": "https://embedding.example/v1/embeddings"},
+    )
+
+    assert settings.api_key is None
+    assert settings.custom_headers == {}
+
+
+def test_embedding_custom_headers_require_json_object(tmp_path: Path) -> None:
+    config = tmp_path / "settings.yaml"
+    _write_config(config)
+
+    with pytest.raises(EmbeddingSettingsError, match="BGE_M3_HEADERS_JSON"):
+        load_embedding_settings(
+            config,
+            local_config_path=None,
+            dotenv_path=None,
+            env={
+                "BGE_M3_ENDPOINT": "https://embedding.example/v1/embeddings",
+                "BGE_M3_HEADERS_JSON": "not-json",
+            },
+        )
 
 
 def test_embedding_endpoint_is_required(tmp_path: Path) -> None:
