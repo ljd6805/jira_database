@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar
 
 import requests
 
@@ -11,6 +11,7 @@ import requests
 DEFAULT_MAX_BATCH_SIZE = 64
 DEFAULT_MAX_ATTEMPTS = 3
 _RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+_T = TypeVar("_T")
 
 
 class EmbeddingApiError(RuntimeError):
@@ -166,7 +167,7 @@ class OpenAICompatibleEmbeddingClient:
         return tuple(values)
 
 
-def partition_batches[T](items: Sequence[T], batch_size: int) -> tuple[tuple[T, ...], ...]:
+def partition_batches(items: Sequence[_T], batch_size: int) -> tuple[tuple[_T, ...], ...]:
     """입력 순서를 유지하면서 지정 크기로 deterministic batch를 만듭니다."""
 
     if batch_size < 1 or batch_size > DEFAULT_MAX_BATCH_SIZE:
