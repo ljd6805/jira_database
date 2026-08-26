@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="M8 실제 BGE-M3 embedding 과정에서 발생한 SQLite Viewer, dotenv, custom header JSON, endpoint 404, smoke test 문제와 해결 기록">
+<title>M8 · Real Embedding Troubleshooting</title>
+<link rel="stylesheet" href="milestone.css">
+<style>
+:root{--green:#16805d;--amber:#a86500;--red:#b33b3b;--blue:#3157d5;--line:#d9e2ef}.wrap{max-width:1180px}.hero p{max-width:930px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card h3{margin:0 0 6px}.symptom{border-left:5px solid var(--red);background:#fff3f3}.cause{border-left:5px solid var(--amber);background:#fff7e9}.fix{border-left:5px solid var(--green);background:#eef9f4}.rule{border-left:5px solid var(--blue);background:#edf3ff}.flow{white-space:pre-wrap}.status{display:inline-flex;padding:5px 9px;border-radius:999px;background:#e6f7ef;color:#0b6d4a;font-size:11px;font-weight:900}.code{white-space:pre-wrap;background:#101827;color:#dce8ff;padding:14px;border-radius:12px;overflow:auto;font:12px/1.65 "Cascadia Code","D2Coding",Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px;border:1px solid var(--line);text-align:left;vertical-align:top;font-size:13px}th{background:#eef2f7}@media(max-width:760px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main class="wrap">
+<nav class="top"><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">← M8</a><a href="../M8_REAL_EMBEDDING_LOG.md">실행 로그</a><a href="../M8_DECISION_LOG.md">Decision Log</a><a href="../index.html">문서 허브</a></nav>
+<header class="hero"><span class="eyebrow">M8 · TROUBLESHOOTING RECORD</span><h1>실제 BGE-M3 연결에서<br>무엇이 막혔고 어떻게 풀었나</h1><p>문제를 지우지 않고 증상→원인→해결→재발 방지로 남깁니다. 실제 endpoint, Jira 식별자, header 이름/값 같은 내부 정보는 공개 문서에 기록하지 않습니다.</p><span class="state">2026-08-26 · 1-ROW REAL API SMOKE PASS</span></header>
+<section><h2>현재 결론</h2><div class="grid"><div class="card fix"><h3>1-row API 호출 성공</h3><div class="code">API call: PASS
+vectors : 1
+dimension: 1024</div></div><div class="card rule"><h3>현재 M8-03 위치</h3><p>설정 preflight와 실제 1건 smoke는 PASS. 다음은 285개 전체 embedding, 5 batch, mapping/재현성 검증입니다.</p></div></div></section>
+<section><h2>T01 · VS Code SQLite extension 오류</h2><div class="grid"><div class="card symptom"><h3>증상</h3><div class="code">no such column: "table"
+WHERE (type="table" OR type="view")</div></div><div class="card cause"><h3>판단</h3><p>M7 SQLite integrity/FK Gate는 이미 PASS였습니다. 오류는 DB 내용이 아니라 오래된 Viewer extension이 schema 목록을 읽으며 실행한 query에서 발생했습니다.</p></div><div class="card fix"><h3>해결</h3><p>legacy vscode-sqlite 대신 read-only 중심의 다른 SQLite Viewer로 교체해 DB 내용을 확인했습니다.</p></div><div class="card rule"><h3>재발 방지</h3><p>Viewer 오류를 DB corruption으로 바로 해석하지 않습니다. Python sqlite3와 PRAGMA integrity_check를 우선 기준으로 봅니다.</p></div></div></section>
+<section><h2>T02 · python-dotenv parse error</h2><div class="grid"><div class="card symptom"><h3>증상</h3><div class="code">python-dotenv could not parse statement starting at line ...</div></div><div class="card cause"><h3>원인</h3><p>여러 줄 custom header JSON이 하나의 환경변수 값으로 묶이지 않아 각 JSON 줄이 별도 KEY=VALUE 문장처럼 해석됐습니다.</p></div><div class="card fix"><h3>해결</h3><p><code>BGE_M3_HEADERS_JSON</code> 전체를 하나의 dotenv value로 작성했습니다. 한 줄 JSON 또는 quote로 감싼 multi-line JSON을 사용할 수 있습니다.</p></div><div class="card rule"><h3>핵심</h3><div class="code">한 줄이어야 한다 X
+JSON 전체가 하나의 환경변수 값이어야 한다 O</div></div></div></section>
+<section><h2>T03 · JSONDecodeError와 Python 표현식</h2><div class="grid"><div class="card symptom"><h3>증상</h3><div class="code">JSONDecodeError: Expecting value
+BGE_M3_HEADERS_JSON은 JSON object여야 합니다.</div></div><div class="card cause"><h3>원인</h3><p>header 값에 <code>str(uuid.uuid4())</code> 같은 Python 실행식이 들어 있었습니다. 이는 JSON literal이 아닙니다.</p></div><div class="card fix"><h3>해결</h3><p>static custom header만 JSON에 남겼습니다. 동적으로 계산해야 하는 header는 static JSON에서 제외했습니다.</p></div><div class="card rule"><h3>재발 방지</h3><p>runtime 계산값이 정말 필요하다고 확인될 때만 code-level dynamic header provider로 분리합니다.</p></div></div></section>
+<section><h2>T04 · 사내 custom header 지원</h2><div class="grid"><div class="card cause"><h3>상황</h3><p>사내 embedding API는 표준 Bearer token만 쓰지 않고 custom header를 사용합니다.</p></div><div class="card fix"><h3>구현</h3><div class="code">BGE_M3_ENDPOINT
+BGE_M3_API_KEY        optional
+BGE_M3_HEADERS_JSON   optional</div></div><div class="card rule"><h3>보안/Identity 원칙</h3><p>custom header는 HTTP runtime에만 사용합니다. header 이름/값은 ec_/emb_ identity, vector artifact, stdout, public docs에 넣지 않습니다.</p></div><div class="card rule"><h3>설정 결과</h3><div class="code">endpoint: True
+api_key: False
+custom_headers: 6
+model: BAAI/bge-m3
+dimension: 1024</div></div></div></section>
+<section><h2>T05 · HTTP 404</h2><div class="grid"><div class="card symptom"><h3>증상</h3><div class="code">Embedding API HTTP 404; retry하지 않습니다.</div></div><div class="card cause"><h3>진단</h3><p>서버까지는 도달했지만 embeddings route가 아닌 경로를 사용한 것으로 판단했습니다. 404는 transient 장애가 아니므로 retry 대상이 아닙니다.</p></div><div class="card fix"><h3>해결</h3><p><code>BGE_M3_ENDPOINT</code>를 실제 사내 OpenAI-compatible embeddings 전체 URL로 수정했습니다.</p></div><div class="card rule"><h3>상태코드 기준</h3><div class="code">404       → endpoint/path
+401 / 403 → auth/header
+400 / 422 → request contract
+429 / 5xx → transient retry
+200       → schema/dimension 검증</div></div></div></section>
+<section><h2>T06 · corpus_rows 28 전달 오류</h2><div class="grid"><div class="card cause"><h3>상황</h3><p>대화 중 복사/붙여넣기로 28이 전달됐지만 실제 실행 결과는 285였습니다.</p></div><div class="card fix"><h3>조치</h3><p>프로젝트 결함으로 기록하지 않고, CLI의 <code>--expected-count 285</code> Gate를 유지했습니다.</p></div><div class="card rule"><h3>교훈</h3><p>사람이 전달한 숫자와 deterministic 실행 Gate를 분리합니다. count mismatch는 CLI가 종료코드로 강제합니다.</p></div></div></section>
+<section><h2>Smoke Test 최종 확인</h2><table><thead><tr><th>검증</th><th>결과</th></tr></thead><tbody><tr><td>endpoint load</td><td><span class="status">PASS</span></td></tr><tr><td>custom header parse / 6개 load</td><td><span class="status">PASS</span></td></tr><tr><td>actual endpoint route</td><td><span class="status">PASS</span></td></tr><tr><td>real request 1건</td><td><span class="status">PASS</span></td></tr><tr><td>returned vectors</td><td>1</td></tr><tr><td>dense dimension</td><td>1024</td></tr></tbody></table></section>
+<section><h2>다음 Gate</h2><div class="flow">[ ] corpus 285개 full embedding
+[ ] embedding_rows = 285
+[ ] batch_count = 5
+[ ] 모든 output dimension = 1024
+[ ] emb_ ↔ ki_ mapping 무결성
+[ ] 동일 input/contract identity 재현
+[ ] 작은 quality sanity check
+[ ] atomic final publish</div><div class="card rule"><strong>M8에서는 FAISS를 구현하지 않습니다.</strong> validated embedding artifact가 완성된 뒤 M9에서 FAISS를 시작합니다.</div></section>
+<footer>M8 Real Embedding Troubleshooting · 2026-08-26 · secret-safe aggregate record</footer>
+</main></body></html>
