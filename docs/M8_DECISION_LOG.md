@@ -9,7 +9,7 @@ M8 · Embedding Unit / Chunk + BGE-M3 단계에서 합의한 결정을 시간 �
 
 ## M8-01 · Active Accepted Corpus / Embedding Unit Baseline
 
-상태: **DECIDED / REAL DB GATE IN PROGRESS**
+상태: **PASS / DONE**
 
 ### 1. M8 corpus의 authoritative source
 
@@ -77,7 +77,7 @@ embedding_text = knowledge_item.statement.strip()
 - Category나 Issue Summary를 모든 Item에 붙이면 같은 Issue의 Item들이 과도하게 비슷해질 수 있다.
 - 원문 context를 임의로 늘리기보다 atomic statement의 검색성을 먼저 검증하는 편이 원인 분석이 쉽다.
 
-다음 profile은 **후속 비교 실험 후보**이며 기본값이 아니다.
+후속 비교 실험 후보:
 
 ```text
 category_statement_v1
@@ -103,6 +103,7 @@ SELECT
 FROM knowledge_generation AS kg
 JOIN knowledge_attempt AS ka
   ON ka.knowledge_attempt_id = kg.accepted_attempt_id
+ AND ka.knowledge_generation_id = kg.knowledge_generation_id
 JOIN knowledge_item AS ki
   ON ki.knowledge_attempt_id = ka.knowledge_attempt_id
 WHERE kg.state = 'active'
@@ -150,10 +151,19 @@ embedding_text_hash
 
 `embedding_text_hash`는 UTF-8 `embedding_text`의 SHA-256 lowercase hex다.
 
-이 artifact에는 아직 vector를 넣지 않는다.
-Corpus correctness와 text identity를 먼저 검증한 뒤 BGE-M3 adapter를 연결한다.
+### 7. M8-01 Real DB Gate
 
-### 7. M8-01 Gate
+최종 사용자 로컬 실행 결과:
+
+```text
+corpus_schema_version: 0.1
+text_profile: statement_v1
+corpus_rows: 285
+```
+
+초기에 `corpus_rows: 28`로 전달된 값은 사용자의 복사/붙여넣기 과정에서 잘못 전달된 값이었고, 동일 명령의 실제 출력은 `285`임이 바로 정정됐다. 프로젝트 결함으로 취급하지 않는다.
+
+최종 판정:
 
 ```text
 [x] active accepted corpus exporter 구현
@@ -161,45 +171,213 @@ Corpus correctness와 text identity를 먼저 검증한 뒤 BGE-M3 adapter를 �
 [x] accepted Attempt가 아닌 Item 제외 확인
 [x] deterministic ordering 확인
 [x] statement_v1 text canonicalization/hash 확인
-[ ] 실제 M7 DB에서 corpus row = 285 확인
+[x] 실제 M7 DB에서 corpus row = 285 확인
+
+M8-01 = PASS / DONE
 ```
 
-### 8. 첫 Real DB Gate 결과
+---
 
-사용자 로컬 실행에서 다음 결과가 관찰됐다.
+## M8-02 · Deterministic Embedding Contract / BGE-M3 Adapter
+
+상태: **DECIDED / IMPLEMENTATION NEXT**
+
+### 1. Embedding Contract v0.1
+
+Embedding artifact는 Knowledge identity와 분리한다.
 
 ```text
-corpus_schema_version: 0.1
-text_profile: statement_v1
-corpus_rows: 28
+Knowledge identity
+→ knowledge_item_id (ki_)
+
+Embedding contract
+→ ec_
+
+Embedding artifact
+→ emb_
 ```
 
-기대값 285와 크게 다르므로 **M8-01 Gate FAIL / 원인 분석 중**으로 기록한다.
+Embedding Contract v0.1의 identity 입력:
 
-현재 판단:
+```text
+embedding_contract_version = 0.1
+text_profile               = statement_v1
+embedding_model            = BAAI/bge-m3
+embedding_model_profile    = runtime supplied
+embedding_dimension        = 1024
+```
 
-- M7 Real-run Gate에서는 `knowledge_item = 285`, `active_generation = 30`을 확인했다.
-- M8 corpus SQL은 한 Issue당 1개로 제한하지 않으며 accepted Attempt의 모든 `knowledge_item`을 읽도록 구현돼 있다.
-- 따라서 28은 정상적인 corpus 결과로 해석하지 않는다.
-- 로컬 DB 실제 row count, active/accepted join count, 실행 중인 local code revision을 확인한다.
-- 원인 규명 전에는 M8-02 BGE-M3 adapter로 이동하지 않는다.
+`embedding_model_profile`은 같은 model name 아래 실제 serving revision/deployment가 달라질 가능성을 구분하기 위한 필드다. 사내 API가 revision metadata를 제공하지 않는 경우 Pilot에서는 명시적으로 `internal-bge-m3-unversioned`처럼 "version metadata를 알 수 없음"을 기록한다.
 
-추가 단서:
+Endpoint URL은 배포 위치 정보이므로 embedding logical identity에는 넣지 않는다.
 
-최신 `export_embedding_corpus.py`는 `--expected-count 285`가 전달됐는데 actual이 28이면 `corpus row count 불일치` 오류로 종료한다. 정상 요약 출력만 보였다면 실행 명령 또는 local revision도 함께 점검한다.
+### 2. Deterministic ID
 
-M8-01 Gate가 통과한 뒤 BGE-M3 request/response contract(M8-02)로 이동한다.
+공통 canonical JSON + SHA-256 규칙을 재사용한다.
+
+```text
+embedding_contract_hash
+= ec_ + SHA256({
+    id_schema_version,
+    kind="embedding_contract",
+    embedding_contract_version,
+    text_profile,
+    embedding_model,
+    embedding_model_profile,
+    embedding_dimension
+  })
+
+embedding_id
+= emb_ + SHA256({
+    id_schema_version,
+    kind="embedding",
+    knowledge_item_id,
+    embedding_text_hash,
+    embedding_contract_hash
+  })
+```
+
+Vector 값 자체와 API endpoint는 `embedding_id` material에 넣지 않는다.
+
+### 3. Request Contract
+
+사내 API는 OpenAI-compatible embeddings API로 취급한다.
+
+```json
+{
+  "model": "BAAI/bge-m3",
+  "input": ["text1", "text2", "..."]
+}
+```
+
+Endpoint는 코드에 하드코딩하지 않는다.
+
+```text
+BGE_M3_ENDPOINT
+→ local .env / runtime environment
+
+BGE_M3_API_KEY
+→ 필요할 때만 local .env / Secret
+```
+
+API key가 제공되면 `Authorization: Bearer <token>`을 사용한다. 인증 방식이 다른 배포에서는 adapter의 header injection으로 분리한다.
+
+### 4. Batch Contract
+
+확인된 최대 HTTP batch size는 64다.
+
+```text
+285 corpus rows
+→ 64 + 64 + 64 + 64 + 29
+→ 총 5 requests
+```
+
+기본 batch size는 64로 두되 runtime에서 더 작은 값으로 낮출 수 있다. 64를 초과하는 값은 시작 전에 거부한다.
+
+### 5. Response Mapping
+
+OpenAI-compatible response의 `data[].index`를 authoritative input mapping으로 사용한다.
+
+```text
+request input position 0..N-1
+↔ response data[].index
+```
+
+응답 배열의 물리 순서에 의존하지 않는다.
+
+반드시 확인:
+
+- index 누락 없음
+- index 중복 없음
+- 범위 밖 index 없음
+- vector 개수 = request input 개수
+- 각 vector dimension = 1024
+
+### 6. Retry / Failure Contract
+
+재시도 대상:
+
+```text
+network/timeout
+HTTP 429
+HTTP 500/502/503/504
+```
+
+재시도하지 않는 오류:
+
+```text
+HTTP 400/401/403/404 등 명백한 request/auth/config 오류
+response schema 오류
+vector dimension 오류
+index mapping 오류
+```
+
+기본 총 시도 횟수는 3회로 둔다.
+
+### 7. Publish Contract
+
+Pilot 규모에서는 partial vector artifact를 최종 산출물로 publish하지 않는다.
+
+```text
+모든 batch 성공
+→ 전체 mapping/dimension 검증
+→ temp artifact 작성
+→ atomic replace
+→ final embedding artifact publish
+
+중간 batch 실패
+→ final artifact publish 금지
+```
+
+Resume/checkpoint는 M8에서 과설계하지 않고 후속 orchestration 단계에서 다룬다.
+
+### 8. Embedding Artifact v0.1
+
+M8-03에서 생성할 JSONL row 후보:
+
+```text
+embedding_schema_version
+embedding_contract_version
+embedding_contract_hash
+embedding_id
+knowledge_item_id
+knowledge_attempt_id
+knowledge_generation_id
+issue_version_id
+jira_id
+category
+ordinal
+text_profile
+embedding_text_hash
+embedding_model
+embedding_model_profile
+embedding_dimension
+vector
+```
+
+M9는 `embedding_id ↔ knowledge_item_id` mapping을 유지한 채 FAISS index를 만든다.
+
+### 9. M8-02 Gate
+
+```text
+[ ] embedding contract / deterministic ID module 구현
+[ ] OpenAI-compatible BGE-M3 client 구현
+[ ] batch <= 64 강제
+[ ] response index mapping 검증
+[ ] 1024 dimension 검증
+[ ] retry 대상/비대상 test
+[ ] atomic publish helper 구현
+[ ] CI PASS
+```
 
 ---
 
 ## 아직 결정하지 않은 것
 
-다음은 M8-01에서 확정하지 않는다.
-
 - Chunk size / overlap
 - BGE-M3 축소 dimension
-- embedding vector 영구 저장 형식
 - FAISS index structure
 - retrieval top-k
+- production incremental embedding/resume orchestration
 
 특히 FAISS는 M9 책임이다.
