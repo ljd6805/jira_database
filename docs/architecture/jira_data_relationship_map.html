@@ -3,25 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Jira Knowledge Pipeline M0~M7의 Source, Version, Generation, Attempt, Knowledge, Evidence, Review 관계 맵">
-  <title>Jira Knowledge Relationship Map · M7</title>
+  <meta name="description" content="Jira Knowledge Pipeline M0~M8의 Source, Version, Generation, Attempt, Knowledge, Evidence, Review, Embedding 관계 맵">
+  <title>Jira Knowledge Relationship Map · M8</title>
   <link rel="stylesheet" href="jira_data_relationship_map.css">
 </head>
 <body>
 <div class="wrap">
   <section class="hero">
-    <div class="eyebrow">CURRENT ARCHITECTURE · M0~M6 DONE · M7 IMPLEMENTED / REAL-RUN PENDING · 2026-08-25</div>
+    <div class="eyebrow">CURRENT ARCHITECTURE · M0~M7 DONE · M8 CURRENT · 2026-08-26</div>
     <h1>Jira Knowledge Relationship Map</h1>
     <p>
-      Jira 원문에서 <strong>RAW → ANALYSIS → KNOWLEDGE INPUT → KNOWLEDGE / REVIEW → SQLite</strong>로 이어지는 현재 구조입니다.
-      M6-02에서 <strong>Generation과 Retry Attempt를 분리</strong>했고, M7에서 그 구조와 deterministic ID, Evidence resolver를 실제 SQLite로 구현했습니다.
+      Jira 원문에서 <strong>RAW → ANALYSIS → KNOWLEDGE INPUT → KNOWLEDGE / REVIEW → SQLite → Embedding</strong>으로 이어지는 현재 구조입니다.
+      M7 real-run Gate가 PASS했고, 현재는 active accepted Knowledge를 M8의 Embedding Unit / Chunk + BGE-M3로 연결하는 단계입니다.
     </p>
     <div class="pill-row">
       <div class="pill">Issue 30</div>
       <div class="pill">Knowledge Item 285</div>
-      <div class="pill">Evidence Ref 503</div>
-      <div class="pill">Review / Attempt 37</div>
-      <div class="pill current-pill">M7 · Real-run Validation Pending</div>
+      <div class="pill">M5 Raw Evidence 503</div>
+      <div class="pill">M7 Canonical Evidence 502</div>
+      <div class="pill current-pill">M8 · CURRENT</div>
     </div>
   </section>
 
@@ -31,7 +31,7 @@
         <button class="tab active" data-view="entity">1. Current Entity Map</button>
         <button class="tab" data-view="pipeline">2. Milestone Pipeline</button>
         <button class="tab" data-view="issue">3. Evidence Round-trip</button>
-        <button class="tab" data-view="schema">4. M7 SQLite Schema</button>
+        <button class="tab" data-view="schema">4. SQLite + M8 Boundary</button>
       </div>
       <div class="toggles">
         <button class="toggle on" data-group="issue">Issue</button>
@@ -42,7 +42,7 @@
         <button class="toggle on" data-group="knowledge">Generation / Attempt / Item</button>
         <button class="toggle on" data-group="evidence">Evidence</button>
         <button class="toggle on" data-group="review">Review</button>
-        <button class="toggle on" data-group="db">DB</button>
+        <button class="toggle on" data-group="db">DB / Embedding</button>
       </div>
     </div>
 
@@ -65,7 +65,7 @@
             <div class="legend-item"><span class="swatch" style="background:var(--knowledge)"></span>Knowledge lineage</div>
             <div class="legend-item"><span class="swatch" style="background:var(--evidence)"></span>Evidence</div>
             <div class="legend-item"><span class="swatch" style="background:var(--review)"></span>Review / Audit</div>
-            <div class="legend-item"><span class="swatch" style="background:var(--db)"></span>SQLite DB</div>
+            <div class="legend-item"><span class="swatch" style="background:var(--db)"></span>SQLite / Embedding</div>
           </div>
         </div>
 
@@ -77,26 +77,27 @@
             <li><strong>jira_id</strong>가 Issue identity, <span class="mono">issue_key</span>는 locator입니다.</li>
             <li><strong>Issue Version</strong>은 <span class="mono">source_hash</span> 기반 immutable state입니다.</li>
             <li><strong>Knowledge Generation</strong>은 Version + Contract lineage입니다.</li>
-            <li><strong>Knowledge Attempt</strong>가 1/2/3차 실제 재생성 회차이며 각각 <span class="mono">ka_</span> ID를 가집니다.</li>
-            <li><strong>Knowledge Item / Review</strong>는 Generation이 아니라 Attempt에 연결됩니다.</li>
+            <li><strong>Knowledge Attempt</strong>가 실제 재생성 회차이며 각각 <span class="mono">ka_</span> ID를 가집니다.</li>
+            <li><strong>Knowledge Item / Review</strong>는 Attempt에 연결됩니다.</li>
             <li><strong>Evidence</strong>는 exact ref를 보존하고 Source까지 round-trip 해야 합니다.</li>
-            <li><strong>Historical</strong>은 DB에 남고 기본 Retrieval에는 active accepted Attempt만 사용합니다.</li>
+            <li><strong>기본 M8 입력</strong>은 active Generation의 accepted Attempt Knowledge입니다.</li>
           </ul>
         </div>
 
         <div class="card">
           <h3>ID Ladder</h3>
           <div class="mono">jira_id → iv_ → kc_ → kg_ → ka_ → ki_ → ke_</div>
-          <p><span class="mono">ka_ = H(kg_, attempt_no)</span>이므로 generation 내부 재시도 회차가 유실되지 않습니다.</p>
+          <p>Embedding/vector identity는 이 Knowledge identity를 대체하지 않고 mapping 계층으로 둡니다.</p>
         </div>
 
         <div class="card">
           <h3>현재 Gate</h3>
           <ul>
             <li>M6: DONE</li>
-            <li>M7 code/integration tests: DONE</li>
-            <li>M7 real 30-issue materialization: PENDING</li>
-            <li>M8: BLOCKED until M7 Gate</li>
+            <li>M7 real-run materialization: PASS</li>
+            <li>M0~M7: DONE</li>
+            <li>M8: CURRENT / READY TO START</li>
+            <li>M9 FAISS: PLAN</li>
           </ul>
         </div>
       </div>
@@ -104,7 +105,7 @@
   </section>
 
   <div class="footer-note">
-    Current Source of Truth: README.md · docs/PIPELINE_OVERVIEW.md · docs/status/jira_knowledge_db_current_status.html · docs/DB_LOGICAL_SCHEMA.md · docs/M7_SQLITE_MATERIALIZATION.md
+    Current Source of Truth: README.md · docs/PIPELINE_OVERVIEW.md · docs/status/jira_knowledge_db_current_status.html · docs/M7_SQLITE_MATERIALIZATION.md
   </div>
 </div>
 <script src="jira_data_relationship_map.data_a.js"></script>
