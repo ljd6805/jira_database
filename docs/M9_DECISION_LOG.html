@@ -1,29 +1,50 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M9 · Decision Log</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1040px;margin:auto;padding:38px 22px 80px}.hero{padding:34px;border-radius:24px;background:linear-gradient(130deg,#18294f,#3157d5);color:#fff}.hero h1{margin:8px 0;font-size:clamp(32px,5vw,50px)}nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}nav a{padding:7px 10px;border-radius:8px;background:var(--blue);color:#fff;text-decoration:none;font-size:12px;font-weight:800}section{margin-top:34px}.decision{padding:18px;border:1px solid var(--line);border-radius:14px;background:#fff;margin-top:10px}.decision h3{margin:0 0 6px}.decision p{color:var(--muted)}.flow{white-space:pre-wrap;padding:15px;border-radius:12px;background:var(--code);color:#dce8ff;font:12px/1.65 Consolas,monospace}.pass{padding:15px;border-left:5px solid var(--green);background:#eaf8f3;border-radius:10px}</style></head>
-<body><main class="wrap"><nav><a href="index.html">← Documentation Hub</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Contract</a><a href="status/M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Visual</a></nav><header class="hero"><div>M9 DECISION LOG · 2026-08-26</div><h1>FAISS + Active Retrieval<br>의사결정 기록</h1><p>M9-01은 승인되어 설계가 고정됐고, M9-02 구현과 synthetic CI까지 완료했습니다.</p></header>
-<section><h2>M9-01 · APPROVED / DESIGN FROZEN</h2><div class="decision"><h3>D1 · Index</h3><div class="flow">IndexFlatIP = current exact baseline / test oracle</div><p>285개에서는 exact exhaustive search를 사용합니다. 향후 규모가 커지면 Flat 결과를 정답 기준으로 HNSW/IVF의 recall@k와 latency를 비교합니다.</p></div><div class="decision"><h3>D2 · Similarity</h3><div class="flow">cosine = L2 normalize(database) + L2 normalize(query) + inner product</div><p>M8 vector가 이미 정규화됐다고 가정하지 않고 FAISS용 복사본을 정규화합니다.</p></div><div class="decision"><h3>D3 · Query</h3><div class="flow">query_text_profile = raw_query_v1
-query_text = query.strip()
-same model/profile/dimension as M8</div></div><div class="decision"><h3>D4 · Candidate policy</h3><div class="flow">Top-k = 3
-threshold = none
-reranker = none</div><p>M8의 dense-neighborhood 관찰 때문에 Top-1 하나를 과신하지 않습니다.</p></div><div class="decision"><h3>D5 · Mapping</h3><div class="flow">faiss_position → embedding_id → knowledge_item_id
-canonical order = embedding_id ascending</div><p>FAISS position은 stable identity가 아닙니다.</p></div><div class="decision"><h3>D6 · Artifact</h3><div class="flow">index.faiss
-index.mapping.jsonl
-index.manifest.json</div><p>Manifest를 마지막에 publish해 완료 marker로 사용합니다.</p></div><div class="decision"><h3>D7 · Identity</h3><div class="flow">Retrieval Contract  rc_
-FAISS Index Artifact fi_</div></div><div class="decision"><h3>D8 · Update</h3><div class="flow">new active embedding snapshot → full rebuild</div><p>Pilot에서는 incremental mutation보다 재현성과 stale-vector 제거를 우선합니다.</p></div><div class="decision"><h3>D9 · M10 boundary</h3><div class="flow">M9 = rank + score + position + emb_ + ki_
-M10 = Knowledge/Evidence resolve + MCP</div></div><div class="pass"><strong>M9-01 = DESIGN FROZEN</strong></div></section>
-<section><h2>M9-02 · IMPLEMENTED / CI PASS</h2><div class="decision"><h3>I1 · Dependencies</h3><div class="flow">numpy >= 1.26, < 3.0
-faiss-cpu >= 1.15, < 2.0</div></div><div class="decision"><h3>I2 · Source gate</h3><p>M9 build 직전에 현재 M8 corpus/embedding integrity를 다시 검증합니다.</p></div><div class="decision"><h3>I3 · Build</h3><div class="flow">embedding_id sort → float32 copy → L2 normalize → IndexFlatIP</div></div><div class="decision"><h3>I4 · Integrity</h3><p>rc_/fi_, index/mapping SHA-256, count/dimension, canonical order, uniqueness, normalization, temp artifact를 검증합니다.</p></div><div class="decision"><h3>I5 · Query guard</h3><p>Query API 호출 전에 BGE-M3 model/profile/dimension이 manifest와 동일한지 검사합니다.</p></div><div class="decision"><h3>I6 · CI Gate</h3><div class="flow">deterministic rc_/fi_                PASS
-canonical mapping                     PASS
-L2-normalized IndexFlatIP            PASS
-exact cosine ranking                 PASS
-same-source rebuild reproducibility  PASS
-mapping corruption detection         PASS
-query vector-space mismatch guard    PASS</div></div><div class="pass"><strong>M9-02 = IMPLEMENTED / CI PASS</strong></div></section>
-<section><h2>M9-03 · NEXT</h2><div class="flow">[ ] real vector_count = 285
-[ ] real dimension = 1024
-[ ] mapping/hash/norm Gate = PASS
-[ ] same source rebuild = same rc_/fi_/mapping
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M9 · Decision Log</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1080px;margin:auto;padding:38px 22px 80px}.hero{padding:34px;border-radius:24px;background:linear-gradient(130deg,#18294f,#3157d5);color:#fff}.hero h1{margin:8px 0;font-size:clamp(32px,5vw,50px)}nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}nav a{padding:7px 10px;border-radius:8px;background:var(--blue);color:#fff;text-decoration:none;font-size:12px;font-weight:800}section{margin-top:34px}.decision{padding:18px;border:1px solid var(--line);border-radius:14px;background:#fff;margin-top:10px}.decision h3{margin:0 0 6px}.decision p{color:var(--muted)}.flow{white-space:pre-wrap;padding:15px;border-radius:12px;background:var(--code);color:#dce8ff;font:12px/1.65 Consolas,monospace}.pass{padding:15px;border-left:5px solid var(--green);background:#eaf8f3;border-radius:10px}.warn{padding:15px;border-left:5px solid var(--amber);background:#fff6e9;border-radius:10px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style></head>
+<body><main class="wrap"><nav><a href="index.html">← Documentation Hub</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Contract</a><a href="status/M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Visual</a></nav><header class="hero"><div>M9 DECISION LOG · 2026-08-26</div><h1>FAISS + Active Retrieval<br>의사결정 기록</h1><p>파일럿은 exact/full-rebuild로 검증하고, 정식 서비스는 변경분만 처리하는 delta-first 구조로 확장합니다.</p></header>
+<section><h2>1. Pilot Baseline · FROZEN</h2><div class="flow">Index       IndexFlatIP
+Metric      cosine
+Normalize   DB/query 모두 L2
+Top-k       3
+Threshold   none
+Reranker    none
+Order       embedding_id ascending
+Update      full rebuild · Pilot only</div><div class="pass"><strong>M9-01 DESIGN FROZEN / M9-02 IMPLEMENTED · CI PASS</strong></div></section>
+<section><h2>2. Pilot에서 왜 Full Rebuild인가?</h2><div class="grid"><div class="decision"><h3>결정성</h3><p>같은 입력으로 다시 만들 때 같은 rc_/fi_/mapping이 나오는지 검증합니다.</p></div><div class="decision"><h3>단순성</h3><p>285개에서는 incremental mutation보다 전체 재구축이 훨씬 단순합니다.</p></div><div class="decision"><h3>정답 기준</h3><p>Exact Flat index를 향후 ANN 비교용 test oracle로 남깁니다.</p></div></div><div class="warn"><strong>중요:</strong> Pilot full rebuild는 정식 서비스 운영 정책이 아닙니다.</div></section>
+<section><h2>3. 정식 서비스 · DELTA FIRST</h2><div class="flow">변경 없음 → 아무 작업 없음
+
+새 Knowledge
+→ 새 embedding만 생성
+→ index add
+
+변경된 Knowledge
+→ old entry remove/tombstone
+→ 필요한 embedding만 생성 또는 재사용
+→ new entry add
+
+삭제/비활성 Knowledge
+→ index에서 remove/tombstone</div><p>변경 감지는 기존 <code>source_hash → issue_version → active generation → accepted attempt → knowledge_item → embedding_text_hash</code> 계약을 활용합니다.</p></section>
+<section><h2>4. Embedding API도 필요한 경우에만</h2><div class="decision"><h3>Vector cache</h3><p>새 Knowledge Item identity가 생겨도 text와 embedding contract가 같다면 실제 vector 계산은 재사용할 수 있습니다.</p><div class="flow">vector_cache_key
+= H(embedding_text_hash, embedding_contract_hash)
+
+새 ki_ / 새 emb_
++ 같은 text hash + 같은 ec_
+→ BGE-M3 API 재호출 생략
+→ 기존 vector 재사용</div></div><p><code>emb_</code>는 lineage identity를 보존하고, vector cache는 계산 비용 절감을 위한 별도 계층입니다.</p></section>
+<section><h2>5. 운영형 FAISS ID</h2><div class="decision"><h3>Pilot</h3><div class="flow">IndexFlatIP
+position → emb_ → ki_</div><p>순차 position 기반이므로 remove 시 뒤 번호가 이동할 수 있습니다.</p></div><div class="decision"><h3>Production exact 후보</h3><div class="flow">IndexIDMap2(IndexFlatIP)
++ stable int64 vector_id
+
+vector_id ↔ emb_ ↔ ki_</div><p>Stable vector_id는 SQLite에서 collision 없이 관리하는 방식을 우선합니다.</p></div></section>
+<section><h2>6. ANN으로 커질 때</h2><div class="grid"><div class="decision"><h3>IVF</h3><p>Explicit ID와 remove를 지원할 수 있어 incremental 운영에 비교적 자연스럽습니다.</p></div><div class="decision"><h3>HNSW</h3><p>FAISS HNSW는 vector remove를 직접 지원하지 않으므로 tombstone/filter + periodic rebuild가 필요합니다.</p></div><div class="decision"><h3>Flat</h3><p>항상 exact test oracle로 보존해 ANN recall@k를 검증합니다.</p></div></div></section>
+<section><h2>7. Full Rebuild는 없어지지 않는다</h2><div class="flow">평상시
+→ delta update
+
+주기적 / 필요시
+→ full rebuild</div><p>Full rebuild는 tombstone/fragmentation 정리, integrity 검사, index migration, embedding contract 변경, backfill, 장애 복구에 사용합니다.</p><div class="pass"><strong>운영 기본 = delta-first · Full rebuild = maintenance / recovery / migration</strong></div></section>
+<section><h2>8. 현재 Pilot Real Gate</h2><div class="flow">[x] Real Build PASS · 285 × 1024
+[x] mapping/hash/normalization failure = 0
+[ ] same source rebuild → same rc_ / fi_ / mapping
 [ ] actual BGE-M3 query → Top-3
-[ ] same query ranking reproducibility
+[ ] ranking reproducibility
 [ ] semantic sanity</div></section>
 <footer style="margin-top:40px;color:var(--muted);font-size:12px">Canonical source: docs/M9_DECISION_LOG.md · HTML companion</footer></main></body></html>
