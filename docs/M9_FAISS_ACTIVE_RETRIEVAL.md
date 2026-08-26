@@ -107,6 +107,110 @@ FAISS 공식 문서도 `IndexFlatIP`를 exact inner-product search로 설명하�
 - https://github.com/facebookresearch/faiss/wiki/Faiss-indexes
 - https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances
 
+### 3.1 Flat은 영구 고정이 아니라 Exact Baseline
+
+`IndexFlatIP`는 현재 Pilot의 최종 확장 전략이 아니다.
+
+```text
+현재
+→ Flat exact baseline
+→ recall 100% 기준선 확보
+
+향후 규모 증가
+→ Flat latency / memory / CPU / QPS 측정
+→ 필요하면 ANN 후보 benchmark
+→ HNSW / IVF 계열로 교체 가능
+```
+
+중요한 원칙은 **“N개가 넘으면 무조건 ANN” 같은 고정 숫자를 계약으로 박지 않는 것**이다.
+
+1024-d float32 raw vector만 계산해도:
+
+```text
+10,000 vectors   ≈ 39 MiB
+100,000 vectors  ≈ 391 MiB
+1,000,000 vectors ≈ 3.81 GiB
+```
+
+Flat 검색은 query마다 모든 vector를 비교하므로 `N × dimension`에 비례해 검색 비용이 증가한다. 데이터 수뿐 아니라 동시 query 수가 늘어도 CPU 부담이 커진다.
+
+### 3.2 ANN 전환 Trigger
+
+다음 중 하나가 실제 운영 benchmark에서 발생하면 ANN 도입을 검토한다.
+
+```text
+p95 search latency > 서비스 목표
+index RAM > 운영 memory budget
+예상 QPS에서 CPU saturation 발생
+index reload / rebuild 시간이 운영 요구를 초과
+Flat exact search가 전체 query latency의 주요 병목이 됨
+```
+
+첫 scaling benchmark checkpoint는 corpus가 수만~수십만 단위로 커질 때 잡는 것을 권고하지만, **전환 여부는 개수 자체가 아니라 측정값으로 결정**한다.
+
+### 3.3 우선 비교할 ANN 후보
+
+#### HNSWFlat
+
+장점:
+
+- 별도 training 없이 graph index 구성 가능
+- 높은 recall과 빠른 query latency를 얻기 쉬움
+- `efSearch`로 speed/accuracy trade-off 조정 가능
+
+단점:
+
+- Flat보다 추가 memory가 필요함
+- FAISS HNSW는 vector remove를 직접 지원하지 않으므로 update 전략에 제약이 있음
+
+#### IndexIVFFlat
+
+장점:
+
+- query 시 일부 inverted list만 검색해 큰 N에서 검색량 감소
+- 원 vector를 그대로 보존하므로 PQ보다 정확도 손실 원인이 단순함
+- `nprobe`로 speed/accuracy trade-off 조정 가능
+
+단점:
+
+- training 필요
+- `nlist`, `nprobe` tuning 필요
+- recall이 Flat exact보다 낮아질 수 있음
+
+M9 baseline의 Flat 결과를 **정답 기준(test oracle)** 으로 보존하면 이후:
+
+```text
+ANN Top-k
+vs
+Flat Top-k
+```
+
+를 비교해 recall@k와 latency를 함께 측정할 수 있다.
+
+### 3.4 Retrieval Contract는 index 교체 가능하게 설계
+
+따라서 M9 contract에서 `index_type`을 identity에 포함한다.
+
+```text
+rc_ / fi_
+├─ index_type = IndexFlatIP
+├─ metric = cosine
+└─ normalization = l2
+```
+
+향후:
+
+```text
+IndexFlatIP
+→ IndexHNSWFlat
+또는
+→ IndexIVFFlat
+```
+
+로 바뀌어도 `embedding_id → knowledge_item_id` mapping과 M10 인터페이스는 유지한다.
+
+즉 **검색 엔진 내부 구조만 교체하고 상위 Knowledge/Evidence 계약은 흔들리지 않게 하는 것**이 M9 설계 목표다.
+
 ---
 
 ## 4. Similarity Metric · PROPOSED BASELINE
@@ -397,6 +501,7 @@ FAISS binary file 자체의 byte-for-byte 동일성은 필수 Gate로 두지 않
 
 ```text
 [ ] IndexFlatIP baseline 확정
+[ ] Flat은 exact baseline이며 ANN 확장 가능하다는 scaling policy 확정
 [ ] cosine = L2 normalize + inner product 확정
 [ ] canonical embedding_id order 확정
 [ ] mapping / manifest contract 확정
@@ -455,7 +560,7 @@ M10
 현재 권고 baseline:
 
 ```text
-Index       IndexFlatIP
+Index       IndexFlatIP (exact baseline)
 Metric      cosine
 Normalize   DB/query 모두 L2
 Order       embedding_id ascending
@@ -465,6 +570,7 @@ Reranker    none
 Update      full rebuild
 Mapping     FAISS position → emb_ → ki_
 Publish     index + mapping + manifest-last
+Scaling     latency/RAM/QPS 기준 충족 못하면 HNSW/IVF benchmark 후 전환
 ```
 
 이 계약을 확정한 뒤 M9-02 구현으로 이동한다.
