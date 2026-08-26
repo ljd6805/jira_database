@@ -3,7 +3,7 @@
 기준일: 2026-08-26  
 상태: **ACTIVE / M9-01 APPROVED / M9-02 IMPLEMENTED · CI PASS / M9-03 REAL BUILD PASS**
 
-M9 · FAISS + Active Retrieval에서 합의한 검색 계약과 구현/실환경 검증 결정을 기록한다.
+M9 · FAISS + Active Retrieval에서 합의한 검색 계약, 구현 결정, 실환경 검증, 정식 서비스 확장 정책을 기록한다.
 
 ---
 
@@ -11,13 +11,13 @@ M9 · FAISS + Active Retrieval에서 합의한 검색 계약과 구현/실환경
 
 상태: **APPROVED / DESIGN FROZEN**
 
-### D1. Index type
+### D1. Pilot index
 
 ```text
 IndexFlatIP
 ```
 
-Pilot 285개에서는 exact exhaustive search를 baseline으로 사용한다.
+Pilot 285개에서는 exact exhaustive search를 사용한다.
 
 근거:
 
@@ -26,43 +26,7 @@ Pilot 285개에서는 exact exhaustive search를 baseline으로 사용한다.
 - approximate recall 손실 없음
 - 향후 ANN recall을 비교할 exact test oracle 확보
 
-### D1-A. Scaling policy
-
-`IndexFlatIP`는 영구 고정 구조가 아니라 **exact baseline / test oracle**이다.
-
-```text
-현재 285
-→ Flat exact
-
-향후 규모 증가
-→ Flat latency / RAM / QPS / rebuild benchmark
-→ 필요하면 HNSW / IVF benchmark
-→ recall@k + latency + memory를 보고 전환
-```
-
-고정 vector 개수만으로 ANN 전환을 결정하지 않는다.
-
-ANN 검토 trigger:
-
-```text
-p95 search latency가 서비스 목표 초과
-index RAM이 운영 budget 초과
-예상 QPS에서 CPU saturation
-rebuild/reload 시간이 운영 목표 초과
-Flat search가 end-to-end query 병목
-```
-
-우선 비교 후보:
-
-- `IndexHNSWFlat`: training 없이 높은 recall/빠른 검색을 얻기 쉽지만 memory overhead와 remove 제약이 있다.
-- `IndexIVFFlat`: 큰 N에서 일부 inverted list만 검색할 수 있지만 training과 `nlist/nprobe` tuning이 필요하다.
-
-중요:
-
-```text
-IndexFlatIP → HNSW/IVF로 교체되어도
-embedding_id → knowledge_item_id → Evidence 계약은 유지
-```
+`IndexFlatIP`는 영구 고정 구조가 아니다. 규모가 커지면 p95 latency, RAM, QPS, rebuild 시간과 recall@k를 측정해 `IndexHNSWFlat` / `IndexIVFFlat` 등을 benchmark한다.
 
 ### D2. Similarity
 
@@ -73,18 +37,17 @@ cosine similarity
 + inner product search
 ```
 
-M8 vector가 이미 normalized라고 가정하지 않는다. M9에서 복사본을 normalize한다.
+M8 vector가 이미 normalized라고 가정하지 않는다. FAISS용 복사본만 normalize하고 원본 artifact는 수정하지 않는다.
 
 ### D3. Query profile
 
 ```text
 query_text_profile = raw_query_v1
 query_text = query.strip()
+model/profile/dimension = M8과 동일
 ```
 
-모델/프로필/차원은 M8과 동일한 BGE-M3 contract를 사용한다. query prefix는 baseline에 추가하지 않는다.
-
-### D4. Top-k
+### D4. Candidate policy
 
 ```text
 default_top_k = 3
@@ -102,15 +65,15 @@ faiss_position
 → knowledge_item_id
 ```
 
-Canonical build order:
+Pilot canonical build order:
 
 ```text
 embedding_id ascending
 ```
 
-FAISS position은 Knowledge identity가 아니다.
+FAISS position은 stable Knowledge identity가 아니다.
 
-### D6. Artifact set
+### D6. Artifact
 
 ```text
 index.faiss
@@ -118,7 +81,7 @@ index.mapping.jsonl
 index.manifest.json
 ```
 
-manifest는 마지막에 publish해 완료 marker로 사용한다.
+Manifest는 마지막에 publish해 완료 marker로 사용한다.
 
 ### D7. Identity
 
@@ -127,16 +90,21 @@ Retrieval Contract  rc_
 FAISS Index Artifact fi_
 ```
 
-`rc_`는 검색 동작 계약, `fi_`는 source embedding snapshot + index build profile을 식별한다.
+- `rc_`: index type / metric / normalization / query profile / Top-k / model-profile-dimension 등 검색 동작 계약의 ID
+- `fi_`: source embedding snapshot + index build profile의 논리 artifact ID
+- `faiss_position`: identity material이 아님
+- FAISS binary SHA-256: 물리 파일 integrity metadata이며 logical `fi_` 입력은 아님
 
-### D8. Active policy
+### D8. Pilot update policy
 
-Pilot은 incremental add/delete를 하지 않는다.
+Pilot에서는 incremental add/delete를 하지 않는다.
 
 ```text
-새 active embedding artifact
+새 active embedding snapshot
 → M9 full rebuild
 ```
+
+이 정책은 **파일럿 검증용 baseline**이다. 정식 서비스 운영 정책은 아래 D10에서 별도로 정의한다.
 
 ### D9. M10 boundary
 
@@ -151,24 +119,146 @@ knowledge_item_id
 category
 ```
 
-Knowledge statement/Evidence resolve와 MCP는 M10 책임이다.
+Knowledge statement / Evidence resolve와 MCP는 M10 책임이다.
 
 ### M9-01 승인 결과
 
 ```text
-[x] D1 IndexFlatIP exact baseline 승인
-[x] D1-A 측정 기반 ANN scaling policy 승인
-[x] D2 cosine/L2 normalize 승인
-[x] D3 raw_query_v1 승인
-[x] D4 Top-3 / no threshold / no reranker 승인
-[x] D5 embedding_id canonical order / mapping 승인
-[x] D6 index+mapping+manifest artifact 승인
-[x] D7 rc_ / fi_ identity 승인
-[x] D8 full rebuild active snapshot 승인
-[x] D9 M10 boundary 승인
+[x] IndexFlatIP exact baseline
+[x] cosine/L2 normalize
+[x] raw_query_v1
+[x] Top-3 / no threshold / no reranker
+[x] embedding_id canonical mapping
+[x] index + mapping + manifest
+[x] rc_ / fi_ identity
+[x] Pilot full rebuild
+[x] M10 boundary
 
 M9-01 = DESIGN FROZEN
 ```
+
+---
+
+## D10 · 정식 서비스 Update Policy — DELTA FIRST
+
+상태: **PRODUCTION DIRECTION APPROVED / IMPLEMENTATION LATER**
+
+정식 서비스에서는 전체 Knowledge를 매번 다시 embedding하거나 FAISS 전체를 매번 rebuild하지 않는다.
+
+### 기본 원칙
+
+```text
+변경 없음
+→ 아무 작업 없음
+
+새 Knowledge
+→ 새 embedding만 생성
+→ index add
+
+변경된 Knowledge
+→ 필요한 embedding만 생성/재사용
+→ old 검색 entry 비활성/제거
+→ new entry add
+
+삭제/비활성 Knowledge
+→ 검색 entry 비활성/제거
+```
+
+### 변경 감지 기준
+
+기존 DB 계약을 그대로 활용한다.
+
+```text
+jira_id
+→ source_hash / issue_version
+→ active knowledge_generation
+→ accepted knowledge_attempt
+→ knowledge_item
+→ embedding_text_hash
+```
+
+Issue가 그대로면 재처리하지 않는다. Issue가 바뀌더라도 최종 embedding text가 같다면 vector API를 다시 호출하지 않는 방향을 우선한다.
+
+### Embedding vector 재사용
+
+현재 `emb_` identity에는 `knowledge_item_id`가 포함되므로 새 Attempt/Item identity가 생기면 `emb_`는 새로 생길 수 있다. 하지만 실제 vector 값은 같은 text + 같은 embedding contract라면 재사용할 수 있다.
+
+정식 서비스에서는 다음과 같은 **vector cache key**를 별도 도입하는 것을 권고한다.
+
+```text
+vector_cache_key
+= H(embedding_text_hash, embedding_contract_hash)
+```
+
+의미:
+
+```text
+새 ki_ / 새 emb_ identity
+하지만 embedding_text_hash + ec_ 동일
+→ BGE-M3 API 재호출 없이 기존 vector 재사용 가능
+```
+
+`vector_cache_key`는 `emb_`를 대체하지 않는다. `emb_`는 Knowledge lineage를 보존하고, cache key는 계산 비용 절감을 위한 실행 최적화다.
+
+### Incremental FAISS의 stable ID
+
+현재 Pilot의 bare `IndexFlatIP`는 sequential position을 사용한다. FAISS 공식 문서상 Flat index에서 remove하면 뒤 순번이 이동할 수 있으므로 정식 서비스의 incremental mutation에는 부적합하다.
+
+운영형 exact baseline 후보:
+
+```text
+IndexIDMap2(IndexFlatIP)
++ explicit int64 vector_id
+```
+
+권고 mapping:
+
+```text
+vector_id(int64)
+↔ embedding_id(emb_)
+↔ knowledge_item_id(ki_)
+```
+
+`emb_` SHA-256을 단순 잘라 int64로 쓰기보다 SQLite에서 collision 없이 관리되는 stable `vector_id`를 부여하는 방식을 우선한다.
+
+FAISS 공식 문서상 `IndexIDMap2`는 explicit ID를 저장하고 `remove_ids`를 지원해 다른 ID를 밀어내지 않는다. `IndexIVF` 계열도 explicit ID 기반 운영이 가능하다. 반면 HNSW는 vector remove를 직접 지원하지 않으므로 HNSW를 선택할 경우 tombstone/filter + 주기적 rebuild 전략이 필요하다.
+
+### Production update flow
+
+```text
+Jira delta 수집
+→ changed issue/version만 Knowledge pipeline 실행
+→ 이전 active snapshot vs 새 active snapshot diff
+   ├─ unchanged
+   │    → 기존 embedding/index 유지
+   ├─ added
+   │    → vector cache 확인 → 필요 시 BGE-M3 → index add
+   ├─ changed
+   │    → old vector_id remove/tombstone
+   │    → cache 확인 → new vector add
+   └─ removed/inactive
+        → old vector_id remove/tombstone
+```
+
+### Full rebuild의 역할
+
+정식 서비스에서도 full rebuild를 없애지는 않는다.
+
+```text
+평상시       delta update
+주기적/필요시 full rebuild
+```
+
+Full rebuild 용도:
+
+- tombstone / fragmentation 정리
+- mapping/index integrity 재검증
+- index type 변경
+- embedding contract 변경
+- 대규모 backfill
+- 장애 복구
+
+즉 **운영 기본 = delta-first, full rebuild = maintenance / recovery / migration** 으로 구분한다.
 
 ---
 
@@ -176,80 +266,7 @@ M9-01 = DESIGN FROZEN
 
 상태: **IMPLEMENTED / CI PASS**
 
-### I1. Dependency
-
-```text
-numpy >= 1.26, < 3.0
-faiss-cpu >= 1.15, < 2.0
-```
-
-2026-08-26 확인 기준 `faiss-cpu 1.15.0`은 Windows x86-64 CPython 3.11/3.12 wheel을 제공한다.
-
-### I2. Source Gate
-
-M9 build는 M8 완료 기록만 믿지 않고 현재 입력 파일을 다시 검증한다.
-
-```text
-M8 corpus + M8 embeddings
-→ validate_embedding_artifact()
-→ PASS일 때만 build
-```
-
-### I3. Canonical build
-
-```text
-embedding_id ascending
-→ float32 copy
-→ L2 normalize
-→ IndexFlatIP.add()
-```
-
-원본 M8 vector JSONL은 변경하지 않는다.
-
-### I4. Atomic artifact
-
-```text
-index.faiss.tmp
-index.mapping.jsonl.tmp
-→ load/count/dimension/norm validation
-→ index / mapping replace
-→ index.manifest.json LAST publish
-```
-
-manifest에는 source/index/mapping SHA-256과 `rc_`, `fi_`, FAISS version을 저장한다.
-
-### I5. Runtime validation
-
-검색기는 artifact open 시:
-
-```text
-manifest contract
-rc_ / fi_ recomputation
-index SHA-256
-mapping SHA-256
-IndexFlatIP / METRIC_INNER_PRODUCT
-count / dimension
-canonical mapping order
-ID uniqueness
-L2 normalization
-leftover temp
-```
-
-을 검증한다.
-
-### I6. Query contract guard
-
-query embedding API 호출 전에:
-
-```text
-embedding_model
-embedding_model_profile
-dimension
-```
-
-이 manifest와 runtime 설정에서 동일한지 확인한다. 다른 vector space는 즉시 거부한다.
-
-### I7. 구현 위치
+현재 Pilot 구현:
 
 ```text
 src/jira_collector/retrieval/
@@ -267,23 +284,23 @@ tools/jira_knowledge/
 └─ search_faiss.py
 ```
 
-### I8. Synthetic CI Gate
+구현/CI 확인:
 
 ```text
-[x] deterministic rc_ / fi_
-[x] source SHA 변경 시 fi_ 변경
-[x] unapproved index type 차단
 [x] M8 source integrity re-validation
 [x] embedding_id canonical order
-[x] L2-normalized IndexFlatIP build
-[x] exact cosine Top-k search
-[x] rebuild → same rc_ / fi_ / mapping bytes
+[x] L2-normalized IndexFlatIP
+[x] deterministic rc_ / fi_
+[x] manifest-last publish
+[x] index/mapping SHA validation
+[x] exact cosine Top-k
+[x] same-source rebuild synthetic reproducibility
 [x] mapping corruption detection
-[x] query model/profile/dimension mismatch 차단
+[x] query model/profile/dimension guard
 [x] GitHub Actions pytest PASS
-
-M9-02 = IMPLEMENTED / CI PASS
 ```
+
+정식 서비스 delta update / IDMap2 / vector cache는 현재 Pilot M9-02 범위 밖이며 후속 production-hardening 단계에서 구현한다.
 
 ---
 
@@ -291,9 +308,7 @@ M9-02 = IMPLEMENTED / CI PASS
 
 상태: **CURRENT / REAL BUILD PASS / REBUILD NEXT**
 
-### R1. 첫 실제 FAISS Build · PASS
-
-실제 M8 Pilot embedding 285개로 로컬 Windows에서 `IndexFlatIP` artifact를 생성했다.
+첫 실제 FAISS Build:
 
 ```text
 validation: PASS
@@ -315,36 +330,16 @@ normalization_failure_count: 0
 M9-03 Real Build = PASS
 ```
 
-### R2. Rebuild 재현성 판정 기준
-
-같은 source + 같은 contract로 재실행할 때 다음은 반드시 같아야 한다.
+남은 Pilot Gate:
 
 ```text
-retrieval_contract_hash
-faiss_index_id
-source_embedding_artifact_sha256
-mapping_sha256
-```
-
-`faiss_binary_sha256`는 같은 머신/FAISS version에서 동일하면 좋은 신호지만, logical identity의 필수 Gate는 아니다. library/platform serialization 차이를 허용하기 위해 `rc_`, `fi_`, canonical mapping을 authoritative 기준으로 둔다.
-
-### R3. 남은 Gate
-
-```text
-[x] vector_count = 285
-[x] dimension = 1024
-[x] contract/hash/mapping failure = 0
-[x] normalization failure = 0
-[x] artifact publish 완료
 [ ] same source rebuild → same rc_ / fi_ / mapping
 [ ] actual BGE-M3 query → Top-3 exact retrieval
 [ ] same query ranking reproducibility
 [ ] representative semantic sanity
-[ ] dense-neighborhood case observation
+[ ] dense-neighborhood observation
 [ ] documentation final sync
 ```
-
-상세 실행 로그는 `docs/M9_REAL_RETRIEVAL_LOG.md`와 HTML companion에 기록한다.
 
 ---
 
@@ -352,14 +347,15 @@ mapping_sha256
 
 FAISS 공식 문서 기준:
 
-- `IndexFlatIP`는 exact inner-product search다.
-- database/query vector를 normalize하면 cosine similarity search로 사용할 수 있다.
-- Flat index는 training이 필요 없다.
-- IVF/HNSW는 non-exhaustive search이며 `nprobe` / `efSearch`로 speed-accuracy trade-off를 조절한다.
+- `IndexFlatIP`는 exact inner-product search이며 normalize한 vector에서는 cosine에 사용할 수 있다.
+- Flat index는 자체 explicit vector ID를 저장하지 않지만 `IndexIDMap` / `IndexIDMap2`로 explicit ID를 추가할 수 있다.
+- sequential Flat에서 remove하면 뒤 번호가 이동한다.
+- `IndexIDMap2`와 IVF는 explicit ID를 보존하면서 remove가 가능하다.
+- HNSW는 vector remove를 직접 지원하지 않는다.
 
 참고:
 
 - https://github.com/facebookresearch/faiss/wiki/Faiss-indexes
-- https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances
-- https://github.com/facebookresearch/faiss/wiki/FAQ
-- https://pypi.org/project/faiss-cpu/
+- https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
+- https://github.com/facebookresearch/faiss/wiki/Pre--and-post-processing
+- https://github.com/facebookresearch/faiss/wiki/The-index-factory
