@@ -1,7 +1,7 @@
 window.JIRA_MAP_VIEWS={
 "entity":{
-  "title":"Current Knowledge Entity Map · M8 DONE / M9 NEXT",
-  "help":"M6 Logical Schema를 M7 SQLite로 검증했고 M8에서 active accepted Knowledge 285개를 실제 BGE-M3 1024차원 embedding으로 검증 완료했습니다. Knowledge Item과 Review는 Generation이 아니라 Attempt에 연결됩니다.",
+  "title":"Current Knowledge Entity Map · M9 CURRENT",
+  "help":"M6 Logical Schema를 M7 SQLite로 검증하고, M8에서 active accepted Knowledge 285개를 BGE-M3 embedding으로 검증했습니다. M9는 이 emb_를 exact FAISS retrieval artifact(rc_/fi_)로 연결합니다. Knowledge Item과 Review는 Generation이 아니라 Attempt에 연결됩니다.",
   "nodes":[
     {"id":"run","type":"store","kind":"store","shape":"pill","x":120,"y":70,"w":180,"h":60,"label":"Pipeline Run","sub":"observation scope"},
     {"id":"issue","type":"issue","kind":"issue","shape":"pill","x":400,"y":70,"w":200,"h":60,"label":"Issue","sub":"jira_id authoritative"},
@@ -19,7 +19,8 @@ window.JIRA_MAP_VIEWS={
     {"id":"review","type":"review","kind":"review","shape":"rect","x":660,"y":590,"w":220,"h":88,"label":"Knowledge Review","sub":"37 Attempt reviews"},
     {"id":"finding","type":"review","kind":"review","shape":"rect","x":660,"y":760,"w":220,"h":82,"label":"Review Finding","sub":"audit / critical / major"},
     {"id":"sqlite","type":"db","kind":"db","shape":"rect","x":930,"y":760,"w":260,"h":88,"label":"M7 SQLite Schema v1","sub":"DONE · real-run PASS"},
-    {"id":"embedding","type":"db","kind":"db","shape":"rect","x":1040,"y":880,"w":260,"h":55,"label":"M8 Embedding","sub":"DONE · 285 × 1024 PASS"}
+    {"id":"embedding","type":"db","kind":"db","shape":"rect","x":1040,"y":880,"w":260,"h":55,"label":"M8 Embedding · emb_","sub":"DONE · 285 × 1024 PASS"},
+    {"id":"retrieval","type":"db","kind":"db","shape":"rect","x":740,"y":880,"w":260,"h":55,"label":"M9 Retrieval · rc_ / fi_","sub":"IndexFlatIP · Top-3 · IMPLEMENTED"}
   ],
   "edges":[
     {"from":"run","to":"obs","label":"records","fromSide":"bottom","toSide":"top"},
@@ -41,12 +42,14 @@ window.JIRA_MAP_VIEWS={
     {"from":"attempt","to":"sqlite","label":"materialize lineage","fromSide":"bottom","toSide":"top"},
     {"from":"evidence","to":"sqlite","label":"integrity","fromSide":"bottom","toSide":"top"},
     {"from":"finding","to":"sqlite","label":"audit history","fromSide":"right","toSide":"left"},
-    {"from":"sqlite","to":"embedding","label":"active accepted corpus","fromSide":"bottom","toSide":"top"}
+    {"from":"sqlite","to":"embedding","label":"active accepted corpus","fromSide":"bottom","toSide":"top"},
+    {"from":"embedding","to":"retrieval","label":"emb_ → position mapping","fromSide":"left","toSide":"right"},
+    {"from":"retrieval","to":"item","label":"position → emb_ → ki_","fromSide":"top","toSide":"bottom"}
   ]
 },
 "pipeline":{
   "title":"Milestone Pipeline · M0~M10",
-  "help":"M0~M8은 완료했습니다. M7 SQLite real-run과 M8 BGE-M3 real embedding Gate가 PASS했고, 다음은 M9 FAISS + Active Retrieval 설계입니다.",
+  "help":"M0~M8은 완료했습니다. M9-01 검색 계약은 확정됐고 M9-02 FAISS build/search 구현과 CI도 PASS했습니다. 현재 다음 Gate는 실제 285개 index와 BGE-M3 query를 검증하는 M9-03입니다.",
   "nodes":[
     {"id":"m0","type":"store","kind":"store","shape":"rect","x":110,"y":120,"w":175,"h":80,"label":"M0 DONE","sub":"RAW + ANALYSIS"},
     {"id":"m1","type":"store","kind":"store","shape":"rect","x":325,"y":120,"w":175,"h":80,"label":"M1 DONE","sub":"Knowledge Input"},
@@ -57,10 +60,11 @@ window.JIRA_MAP_VIEWS={
     {"id":"m6","type":"db","kind":"db","shape":"rect","x":1100,"y":340,"w":190,"h":84,"label":"M6 DONE","sub":"Version · ID · Attempt"},
     {"id":"m7","type":"db","kind":"db","shape":"rect","x":850,"y":340,"w":220,"h":92,"label":"M7 DONE","sub":"real-run PASS · evidence 502"},
     {"id":"m8","type":"db","kind":"db","shape":"rect","x":590,"y":340,"w":190,"h":84,"label":"M8 DONE","sub":"285 × 1024 · PASS"},
-    {"id":"m9","type":"plan","kind":"store","shape":"rect","x":350,"y":340,"w":190,"h":84,"label":"M9 NEXT","sub":"FAISS · Retrieval design"},
+    {"id":"m9","type":"db","kind":"db","shape":"rect","x":350,"y":340,"w":190,"h":84,"label":"M9 CURRENT","sub":"M9-02 CI PASS · M9-03 NEXT"},
     {"id":"m10","type":"plan","kind":"store","shape":"rect","x":110,"y":340,"w":190,"h":84,"label":"M10 GATE","sub":"Evidence · MCP"},
     {"id":"gate","type":"issue","kind":"issue","shape":"rect","x":850,"y":600,"w":330,"h":100,"label":"M7 Real-run PASS","sub":"30 issue · 37 attempt · 285 item · 502 evidence"},
-    {"id":"m8gate","type":"issue","kind":"issue","shape":"rect","x":500,"y":600,"w":300,"h":100,"label":"M8 Real-run PASS","sub":"285 embedding · 1024 dim · integrity PASS"}
+    {"id":"m8gate","type":"issue","kind":"issue","shape":"rect","x":500,"y":600,"w":300,"h":100,"label":"M8 Real-run PASS","sub":"285 embedding · 1024 dim · integrity PASS"},
+    {"id":"m9gate","type":"issue","kind":"issue","shape":"rect","x":150,"y":600,"w":300,"h":100,"label":"M9-03 Real Gate · NEXT","sub":"285 index · Top-3 query · reproducibility"}
   ],
   "edges":[
     {"from":"m0","to":"m1","label":"facts","fromSide":"right","toSide":"left"},
@@ -72,9 +76,10 @@ window.JIRA_MAP_VIEWS={
     {"from":"m6","to":"m7","label":"logical → physical","fromSide":"left","toSide":"right"},
     {"from":"m7","to":"m8","label":"Gate PASS","fromSide":"left","toSide":"right"},
     {"from":"m8","to":"m9","label":"validated embeddings","fromSide":"left","toSide":"right"},
-    {"from":"m9","to":"m10","label":"retrieval","fromSide":"left","toSide":"right"},
+    {"from":"m9","to":"m10","label":"retrieval candidates","fromSide":"left","toSide":"right"},
     {"from":"m7","to":"gate","label":"validated","fromSide":"bottom","toSide":"top"},
-    {"from":"m8","to":"m8gate","label":"validated","fromSide":"bottom","toSide":"top"}
+    {"from":"m8","to":"m8gate","label":"validated","fromSide":"bottom","toSide":"top"},
+    {"from":"m9","to":"m9gate","label":"real-run next","fromSide":"bottom","toSide":"top"}
   ]
 }
 };
