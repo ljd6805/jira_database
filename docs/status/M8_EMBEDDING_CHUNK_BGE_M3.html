@@ -1,17 +1,68 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M8 · Embedding Unit / Chunk + BGE-M3</title><link rel="stylesheet" href="milestone.css"><style>.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.current{border:2px solid var(--blue);background:#edf3ff}.flow3{display:grid;grid-template-columns:1fr 44px 1fr 44px 1fr;gap:8px}.arrow{display:grid;place-items:center;font-size:22px;font-weight:900}.done{color:#0b6d4a;font-weight:900}.pending{color:#9a5b00;font-weight:900}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}@media(max-width:800px){.grid3,.grid4,.flow3{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}}</style></head><body><main class="wrap"><nav class="top"><a href="M7_SQLITE_MATERIALIZATION.html">← M7</a><a href="../index.html">문서 허브</a><a href="../M8_EMBEDDING_CHUNK_BGE_M3.md">상세 Markdown</a><a href="../M8_DECISION_LOG.md">Decision Log</a><a href="jira_knowledge_db_current_status.html">현재 상태</a></nav><header class="hero"><span class="eyebrow">M8 · CURRENT</span><h1>Corpus는 통과,<br>이제 실제 BGE-M3로</h1><p>M7의 active accepted Knowledge 285개를 정확히 corpus로 만들었고, deterministic embedding identity와 OpenAI-compatible BGE-M3 adapter까지 구현했습니다. custom header runtime도 지원하며 남은 것은 실제 사내 endpoint 검증입니다.</p><span class="state">M8-01 PASS · M8-02 IMPLEMENTED · M8-03 NEXT · 2026-08-26</span></header><div class="kpis"><div class="kpi"><b>285</b><span>Corpus rows</span></div><div class="kpi"><b>5</b><span>64+64+64+64+29 batches</span></div><div class="kpi"><b>1024</b><span>Dense dimension</span></div><div class="kpi"><b>200</b><span>API requests/min contract</span></div></div><section><h2>1. M8 단계</h2><div class="flow3"><div class="box"><b>M8-01 · PASS</b><p>Knowledge Item 1개 = Embedding Unit 1개. statement_v1, corpus 285.</p></div><div class="arrow">→</div><div class="box"><b>M8-02 · IMPLEMENTED</b><p>ec_/emb_ ID, API adapter, batch/index/dimension/retry, custom header, atomic publish.</p></div><div class="arrow">→</div><div class="box current"><b>M8-03 · NEXT</b><p>실제 사내 BGE-M3 endpoint로 285개 vector 검증.</p></div></div></section><section><h2>2. 왜 기본 Chunk를 쓰지 않는가</h2><div class="grid4"><div class="box"><b>285</b><p>Knowledge Item</p></div><div class="box"><b>114자</b><p>mean</p></div><div class="box"><b>206자</b><p>p95</p></div><div class="box"><b>447자</b><p>max</p></div></div><div class="callout good"><strong>Baseline</strong> 현재 Item은 이미 atomic statement이므로 선제 Chunk하지 않습니다. tokenizer 또는 Retrieval 품질 근거가 생길 때만 추가합니다.</div></section><section><h2>3. Identity</h2><div class="flow">Knowledge identity
-jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M8 Embedding Unit / Chunk + BGE-M3 현재 구현 상태와 custom header runtime을 초보자도 이해할 수 있게 설명"><title>M8 · Embedding Unit / Chunk + BGE-M3 · 쉬운 상세판</title><link rel="stylesheet" href="milestone.css"></head>
+<body><main class="wrap"><nav class="top"><a href="M7_SQLITE_MATERIALIZATION.html">← M7</a><a href="../index.html">문서 허브</a><a href="../M8_EMBEDDING_CHUNK_BGE_M3.md">상세 설계</a><a href="../M8_DECISION_LOG.md">Decision Log</a><a href="jira_knowledge_db_current_status.html">현재 상태</a></nav>
+<header class="hero"><span class="eyebrow">M8 · CURRENT</span><h1>285개의 Knowledge Item을<br>BGE-M3 검색 벡터로 안전하게 바꾸기</h1><p>M8-01에서 Embedding corpus 285개를 확정했고, M8-02에서 deterministic embedding identity와 OpenAI-compatible adapter를 구현했습니다. 사내 API가 요구할 수 있는 custom HTTP header runtime도 지원합니다. 다음 Gate는 실제 사내 BGE-M3 endpoint에서 285개의 1024차원 vector를 생성·검증하는 M8-03입니다.</p><span class="state">M8-01 PASS · M8-02 IMPLEMENTED · M8-03 REAL API VALIDATION NEXT · 2026-08-26</span><div class="breadcrumb">M7 active Knowledge → corpus → BGE-M3 vectors → M9 FAISS</div></header>
+<div class="kpis"><div class="kpi"><b>285</b><span>Corpus row</span></div><div class="kpi"><b>5</b><span>64+64+64+64+29 batches</span></div><div class="kpi"><b>1024</b><span>Dense vector dimension</span></div><div class="kpi"><b>200</b><span>API requests/min contract</span></div></div>
+<section class="beginner"><span class="badge">현재 Milestone</span><h2>M8을 아주 쉽게 말하면</h2><div class="grid3"><div class="easy-card"><div class="emoji">📝</div><b>검색할 문장 285개</b><p>M7의 active accepted Knowledge Item 285개가 현재 검색 후보입니다. 과거 실패 Attempt는 기본 corpus에 넣지 않습니다.</p></div><div class="easy-card"><div class="emoji">🔢</div><b>문장을 숫자로</b><p>BGE-M3는 각 Knowledge 문장을 의미를 나타내는 1024개의 숫자 vector로 변환합니다.</p></div><div class="easy-card"><div class="emoji">🔎</div><b>검색은 다음 단계</b><p>M8은 vector를 정확히 만드는 단계입니다. 그 vector를 FAISS에 넣어 Top-K를 찾는 것은 M9입니다.</p></div></div><div class="analogy"><strong>Embedding 비유</strong> 문장을 “의미 좌표”로 바꾸는 일입니다. “부팅 중 timeout”과 “기동 시 응답 지연”처럼 단어가 달라도 의미가 가까우면 좌표상 가까워질 수 있습니다. M8은 좌표를 만드는 단계이고 M9는 가까운 좌표를 빨리 찾는 색인을 만드는 단계입니다.</div></section>
+<section><h2>1. M8의 입력은 DB 전체가 아니다</h2><div class="flow">knowledge_generation.state = active
+AND accepted_attempt_id IS NOT NULL
+    ↓
+accepted knowledge_attempt
+AND content_available = 1
+    ↓
+knowledge_item
+    ↓
+285 active accepted items</div><p class="plain"><strong>왜?</strong> DB에는 History 보존을 위해 과거 Version과 실패 Attempt도 들어 있습니다. 기본 검색 corpus에는 현재 승인된 Knowledge만 넣어 오래되거나 실패한 결과가 섞이지 않게 합니다.</p></section>
+<section><h2>2. M8-01 — 왜 Knowledge Item 1개 = Embedding Unit 1개인가?</h2><div class="grid4"><div class="mini"><b>285</b><p>Knowledge Item</p></div><div class="mini"><b>114.01자</b><p>statement mean</p></div><div class="mini"><b>206.4자</b><p>statement p95</p></div><div class="mini"><b>447자</b><p>statement max</p></div></div><p>M5 실측에서 Knowledge Item은 이미 짧고 비교적 독립적인 의미 문장입니다. 그래서 baseline은 복잡한 Chunk를 추가하지 않고 <strong>Knowledge Item 1개 = Embedding Unit 1개</strong>로 시작합니다.</p><div class="wrong-right"><div class="wrong"><b>선제 Chunk</b><p>“RAG니까 무조건 일정 token으로 자른다”고 먼저 쪼개면 이미 atomic한 의미를 다시 인위적으로 분할할 수 있습니다.</p></div><div class="right"><b>현재 Baseline</b><p><code>statement.strip()</code> 자체를 embedding_text로 사용하고, tokenizer/Retrieval 품질이 필요성을 보여줄 때만 Chunk를 추가합니다.</p></div></div><div class="callout warn"><strong>Chunk를 금지한 것이 아닙니다.</strong> 현재 파일럿 데이터에서는 “필요하다는 증거가 아직 없으므로 안 한다”가 정확합니다.</div></section>
+<section><h2>3. Corpus Artifact는 무엇을 저장하나?</h2><div class="flow">corpus_schema_version
+text_profile = statement_v1
+knowledge_item_id
+knowledge_attempt_id
+knowledge_generation_id
+issue_version_id
+jira_id
+category
+ordinal
+embedding_text
+embedding_text_hash</div><div class="terms"><div class="term"><b>text_profile</b><span>어떤 규칙으로 vector에 넣을 문자열을 만들었는지. 현재는 <code>statement_v1</code>.</span></div><div class="term"><b>embedding_text_hash</b><span>실제 embedding_text의 SHA-256 지문.</span></div><div class="term"><b>knowledge_item_id</b><span>Embedding이 어느 Knowledge Item에서 왔는지 되돌아가기 위한 mapping key.</span></div></div><div class="callout good"><strong>M8-01 PASS</strong> M7 active accepted Knowledge Item 285 → corpus 285, 누락/중복 없음이 실 DB에서 확인됐습니다.</div></section>
+<section><h2>4. Knowledge ID와 Embedding ID를 왜 따로 두나?</h2><div class="flow">Knowledge identity
+ki_ = knowledge_item_id
 
-Embedding identity
-ki_ + text hash + ec_ → emb_
-
+Embedding Contract
 ec_ = model + model_profile + text_profile + dimension + contract version
 
-Endpoint / API key / custom header / FAISS position
-≠ embedding identity</div></section><section><h2>4. BGE-M3 Contract</h2><div class="grid3"><div class="box"><b>Request</b><p><code>{model, input[]}</code> OpenAI-compatible.</p></div><div class="box"><b>Mapping</b><p><code>data[].index</code>로 request input 위치 복원.</p></div><div class="box"><b>Validation</b><p>누락/중복 index 차단, 모든 vector=1024-dim.</p></div></div><div class="callout warn"><strong>Runtime secret 분리</strong> 실제 endpoint/API key/custom header는 <code>.env</code>의 <code>BGE_M3_ENDPOINT</code>, <code>BGE_M3_API_KEY</code>, <code>BGE_M3_HEADERS_JSON</code>으로만 입력합니다. 실제 header 이름/값은 문서나 artifact에 남기지 않습니다.</div></section><section><h2>5. Custom Header</h2><div class="flow"># Bearer 인증을 쓰지 않는 경우 API key는 비워도 됨
-BGE_M3_API_KEY=
+Embedding Artifact
+emb_ = H(knowledge_item_id, embedding_text_hash, ec_)</div><p>Knowledge의 의미 identity와 “어떤 모델/텍스트 규칙으로 만든 vector인가”는 다른 개념입니다. 같은 Knowledge Item을 다른 모델이나 text profile로 재임베딩할 수 있기 때문입니다.</p><div class="callout"><strong>중요:</strong> <code>FAISS position ≠ embedding_id ≠ knowledge_item_id</code>. Endpoint, API key, custom header도 embedding identity material이 아닙니다.</div></section>
+<section><h2>5. BGE-M3 API 계약</h2><table><thead><tr><th>항목</th><th>현재 계약</th><th>쉬운 뜻</th></tr></thead><tbody><tr><td>Model</td><td><code>BAAI/bge-m3</code></td><td>문장을 의미 vector로 바꾸는 모델</td></tr><tr><td>Serving</td><td>TEI / OpenAI-compatible embeddings API</td><td>OpenAI-compatible request/response 구조</td></tr><tr><td>Request max batch</td><td>64</td><td>HTTP 한 번에 최대 64개 문장</td></tr><tr><td>Dense dimension</td><td>1024</td><td>문장 하나 → 1024 숫자</td></tr><tr><td>Usage limit</td><td>200 requests/min</td><td>HTTP request 횟수 기준 계약</td></tr></tbody></table><div class="flow light">{
+  "model": "BAAI/bge-m3",
+  "input": ["text1", "text2", "..."]
+}</div></section>
+<section><h2>6. Runtime Secret과 Custom Header</h2><p>사내 API가 표준 Bearer API key만 쓰지 않고 별도 HTTP header를 요구할 수 있어 M8-02 runtime에 custom header 전달 기능이 추가됐습니다.</p><div class="flow"># OpenAI-compatible endpoint
+BGE_M3_ENDPOINT=&lt;internal embeddings endpoint&gt;
 
-# 여러 custom header를 JSON object 하나로 전달
-BGE_M3_HEADERS_JSON='{"X-Custom-Header-1":"value1","X-Custom-Header-2":"value2"}'</div><p>Header는 HTTP request에만 사용되며 <code>ec_</code>/<code>emb_</code> identity, stdout, embedding JSONL에 포함하지 않습니다.</p></section><section><h2>6. Retry / Publish</h2><table><thead><tr><th>상황</th><th>처리</th></tr></thead><tbody><tr><td>network / timeout / 429 / 500 / 502 / 503 / 504</td><td>최대 총 3회 시도</td></tr><tr><td>400 / 401 / 403 / 404</td><td>즉시 실패</td></tr><tr><td>response schema/index/dimension 오류</td><td>즉시 실패</td></tr><tr><td>모든 5 batch 성공</td><td>temp JSONL → atomic replace → final publish</td></tr><tr><td>중간 batch 실패</td><td>final artifact publish 금지</td></tr></tbody></table></section><section><h2>7. 구현</h2><div class="flow">src/jira_collector/embedding/
+# Bearer 인증을 쓰는 경우만
+BGE_M3_API_KEY=&lt;secret&gt;
+
+# 여러 custom header를 JSON object로 전달
+BGE_M3_HEADERS_JSON='{"X-Custom-Header-1":"value1","X-Custom-Header-2":"value2"}'</div><div class="grid2"><div class="mini"><b>HTTP request에는 사용</b><p><code>BGE_M3_HEADERS_JSON</code>의 key/value는 실제 embeddings HTTP 요청 header에 forwarding됩니다.</p></div><div class="mini"><b>Identity / Artifact에는 미포함</b><p>Header 이름/값은 <code>ec_</code>, <code>emb_</code>, stdout, embedding JSONL의 identity/content로 넣지 않습니다.</p></div></div><div class="callout warn"><strong>보안 경계</strong> 실제 사내 header 이름과 값은 문서나 Git artifact에 기록하지 않습니다. runtime secret/config로만 주입합니다.</div></section>
+<section><h2>7. 285개가 왜 5 request인가?</h2><div class="flow">285 corpus rows
+Batch 1 = 64
+Batch 2 = 64
+Batch 3 = 64
+Batch 4 = 64
+Batch 5 = 29
+────────────
+Total   = 285</div><p>64를 초과한 batch 설정은 시작 전에 거부합니다. 응답은 배열의 물리 순서를 맹신하지 않고 OpenAI-compatible <code>data[].index</code>를 authoritative mapping으로 사용합니다.</p><div class="checks"><div class="check">✓ index 누락 없음</div><div class="check">✓ index 중복 없음</div><div class="check">✓ index 범위 오류 없음</div><div class="check">✓ response count = request count</div><div class="check">✓ vector dimension = 1024</div><div class="check">✓ 285 corpus → 285 embeddings</div></div></section>
+<section><h2>8. Retry는 언제 하고 언제 바로 실패하나?</h2><table><thead><tr><th>상황</th><th>처리</th><th>이유</th></tr></thead><tbody><tr><td>network / timeout</td><td>재시도</td><td>일시 장애 가능</td></tr><tr><td>429</td><td>재시도</td><td>일시 rate limit</td></tr><tr><td>500 / 502 / 503 / 504</td><td>재시도</td><td>서버 일시 오류 가능</td></tr><tr><td>400 / 401 / 403 / 404</td><td>즉시 실패</td><td>request/auth/config 수정 필요</td></tr><tr><td>schema/index mapping 오류</td><td>즉시 실패</td><td>잘못된 응답을 반복해도 신뢰 불가</td></tr><tr><td>dimension ≠ 1024</td><td>즉시 실패</td><td>vector contract 파손</td></tr></tbody></table><p>기본 총 시도 횟수는 3회입니다.</p></section>
+<section><h2>9. Atomic Publish — 4 batch만 성공하면?</h2><div class="flow">Batch 1~4 성공 + Batch 5 실패
+→ final artifact publish 금지
+
+모든 5 batch 성공
+→ count/index/dimension 검증
+→ temp JSONL
+→ atomic replace
+→ final embedding artifact</div><div class="analogy"><strong>비유</strong> 285명 명단 중 256명만 처리하고 “전체 완료”라고 이름 붙이지 않는 것입니다.</div></section>
+<section><h2>10. M8-02 구현 범위</h2><div class="flow">src/jira_collector/embedding/
 ├─ corpus.py
 ├─ contract.py
 ├─ client.py
@@ -21,12 +72,11 @@ BGE_M3_HEADERS_JSON='{"X-Custom-Header-1":"value1","X-Custom-Header-2":"value2"}
 
 tools/jira_knowledge/
 ├─ export_embedding_corpus.py
-└─ embed_bge_m3.py</div><div class="callout good"><strong>CI 계약</strong> deterministic IDs, 285→5 batch, response index mapping, dimension, retry, custom header forwarding, atomic publish, independent embedding config를 테스트합니다.</div></section><section><h2>8. M8-03 실행</h2><div class="flow">.env
-BGE_M3_ENDPOINT=&lt;사내 OpenAI-compatible embeddings endpoint&gt;
-BGE_M3_API_KEY=&lt;Bearer 인증일 때만&gt;
-BGE_M3_HEADERS_JSON='{"X-Custom-Header":"value"}'
-
-python tools/jira_knowledge/embed_bge_m3.py \
-  --corpus data/embedding/runs/20260804T043628Z/corpus.statement_v1.jsonl \
-  --output data/embedding/runs/20260804T043628Z/embeddings.statement_v1.bge_m3.jsonl \
-  --expected-count 285</div><p>성공 기대값: <code>corpus_rows=285</code>, <code>embedding_rows=285</code>, <code>batch_count=5</code>, <code>embedding_dimension=1024</code>.</p></section><section><h2>9. M9 경계</h2><div class="callout"><strong>M8에서는 FAISS를 만들지 않습니다.</strong> 실제 embedding Gate를 통과한 validated JSONL만 M9의 입력이 됩니다.</div></section><footer>M8 · Embedding Unit / Chunk + BGE-M3 · M8-03 REAL API VALIDATION NEXT</footer></main></body></html>
+└─ embed_bge_m3.py</div><div class="callout good"><strong>M8-02 IMPLEMENTED</strong> deterministic IDs, 285→5 batch, response index mapping, 1024 dimension, retry 분리, custom header forwarding, atomic publish, independent embedding config가 테스트됩니다.</div></section>
+<section><h2>11. M8-03에서 실제로 할 일</h2><div class="steps"><div class="step-row"><div><b>Runtime endpoint/secret/header 설정</b><p><code>BGE_M3_ENDPOINT</code>, 필요한 인증 방식에 따라 <code>BGE_M3_API_KEY</code> 또는 <code>BGE_M3_HEADERS_JSON</code>을 제공합니다.</p></div></div><div class="step-row"><div><b>285 corpus 실제 API 실행</b><p>64+64+64+64+29로 총 5 request를 수행합니다.</p></div></div><div class="step-row"><div><b>응답 Gate 검증</b><p>285 rows, 285 vectors, 5 batches, 1024 dimension을 확인합니다.</p></div></div><div class="step-row"><div><b>Validated JSONL publish</b><p>모든 batch 성공 시에만 final artifact를 원자적으로 게시합니다.</p></div></div></div><div class="flow">성공 기대값
+corpus_rows         = 285
+embedding_rows      = 285
+batch_count         = 5
+embedding_dimension = 1024</div></section>
+<section><h2>12. M9 경계 — 여기서 멈추는 이유</h2><div class="wrong-right"><div class="right"><b>M8 책임</b><p>Embedding Unit, text/identity/model contract, runtime API, vector artifact validation.</p></div><div class="right"><b>M9 책임</b><p>Validated vector를 FAISS에 적재해 active Knowledge Top-K와 mapping을 검증.</p></div></div><div class="callout warn"><strong>M8에서는 FAISS를 만들지 않습니다.</strong> 단계 경계를 지켜야 vector 생성 문제와 retrieval 문제를 분리해 디버깅할 수 있습니다.</div><div class="quiz"><div class="qa"><b>Q. M8은 완료인가?</b><span>아직 아닙니다. M8 전체는 CURRENT이며 M8-03 REAL API VALIDATION이 NEXT Gate입니다.</span></div><div class="qa"><b>Q. custom header가 바뀌면 embedding ID도 바뀌나?</b><span>아니요. Header는 transport/runtime secret이며 logical embedding identity material이 아닙니다.</span></div></div><p class="source">현재 상세 기준: <a href="../M8_EMBEDDING_CHUNK_BGE_M3.md">M8 Embedding Unit / Chunk + BGE-M3</a> · <a href="../M8_DECISION_LOG.md">M8 Decision Log</a>. Custom header runtime 계약은 최신 Decision Log/구현을 반영합니다.</p></section>
+<footer>M8 · Embedding Unit / Chunk + BGE-M3 · CURRENT · M8-03 REAL API VALIDATION NEXT</footer></main></body></html>

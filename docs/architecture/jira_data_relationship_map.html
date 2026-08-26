@@ -1,118 +1,23 @@
 <!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Jira Knowledge Pipeline M0~M8의 Source, Version, Generation, Attempt, Knowledge, Evidence, Review, Embedding 관계 맵">
-  <title>Jira Knowledge Relationship Map · M8</title>
-  <link rel="stylesheet" href="jira_data_relationship_map.css">
-</head>
-<body>
-<div class="wrap">
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px"><a href="../index.html" style="display:inline-block;padding:7px 10px;border-radius:9px;background:#24345f;color:#edf3ff;text-decoration:none;font-size:12px;font-weight:800">← Documentation Hub</a><a href="../status/jira_knowledge_db_current_status.html" style="display:inline-block;padding:7px 10px;border-radius:9px;background:#1a2744;color:#edf3ff;text-decoration:none;font-size:12px;font-weight:800">Current Status</a></div>
-  <section class="hero">
-    <div class="eyebrow">CURRENT ARCHITECTURE · M0~M7 DONE · M8 CURRENT · 2026-08-26</div>
-    <h1>Jira Knowledge Relationship Map</h1>
-    <p>
-      Jira 원문에서 <strong>RAW → ANALYSIS → KNOWLEDGE INPUT → KNOWLEDGE / REVIEW → SQLite → Embedding</strong>으로 이어지는 현재 구조입니다.
-      M7 real-run Gate가 PASS했고, 현재는 active accepted Knowledge를 M8의 Embedding Unit / Chunk + BGE-M3로 연결하는 단계입니다.
-    </p>
-    <div class="pill-row">
-      <div class="pill">Issue 30</div>
-      <div class="pill">Knowledge Item 285</div>
-      <div class="pill">M5 Raw Evidence 503</div>
-      <div class="pill">M7 Canonical Evidence 502</div>
-      <div class="pill current-pill">M8 · CURRENT</div>
-    </div>
-  </section>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge Pipeline M0~M8의 Source, Version, Generation, Attempt, Knowledge, Evidence, Review, Embedding 관계를 초보자도 이해할 수 있게 설명하는 인터랙티브 맵"><title>Jira Knowledge Relationship Map · 쉬운 상세판</title><link rel="stylesheet" href="jira_data_relationship_map.css"><style>.explain{margin:16px 0;padding:18px;border-radius:20px;background:var(--panel);border:1px solid rgba(255,255,255,.07);box-shadow:var(--shadow)}.explain h2{margin:0 0 8px}.explain p{color:var(--muted)}.explain-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.explain-card{padding:14px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.035)}.explain-card b{display:block;margin-bottom:5px}.explain-card span{font-size:12px;color:var(--muted)}.reading{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.readstep{padding:12px;border-radius:13px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}.readstep em{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;font-style:normal;font-weight:900;background:#3157d5}.readstep b{display:block;margin-top:7px}.readstep span{font-size:11px;color:var(--muted)}.simple{white-space:pre-wrap;padding:14px;border-radius:13px;background:#0a1324;border:1px solid rgba(255,255,255,.07);color:#dff2ff;font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.notice{padding:14px;border-left:5px solid var(--db);border-radius:12px;background:rgba(100,211,255,.08);color:var(--muted)}.notice strong{color:var(--text)}@media(max-width:1000px){.explain-grid{grid-template-columns:repeat(2,1fr)}.reading{grid-template-columns:1fr 1fr}}@media(max-width:620px){.explain-grid,.reading{grid-template-columns:1fr}}</style></head>
+<body><div class="wrap"><div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px"><a href="../index.html" style="display:inline-block;padding:7px 10px;border-radius:9px;background:#24345f;color:#edf3ff;text-decoration:none;font-size:12px;font-weight:800">← Documentation Hub</a><a href="../status/jira_knowledge_db_current_status.html" style="display:inline-block;padding:7px 10px;border-radius:9px;background:#1a2744;color:#edf3ff;text-decoration:none;font-size:12px;font-weight:800">Current Status</a><a href="../status/M6_DB_LOGICAL_SCHEMA_COMPLETION.html" style="display:inline-block;padding:7px 10px;border-radius:9px;background:#1a2744;color:#edf3ff;text-decoration:none;font-size:12px;font-weight:800">M6 쉬운 설명</a><a href="../status/M8_EMBEDDING_CHUNK_BGE_M3.html" style="display:inline-block;padding:7px 10px;border-radius:9px;background:#1a2744;color:#edf3ff;text-decoration:none;font-size:12px;font-weight:800">M8 CURRENT</a></div>
+<section class="hero"><div class="eyebrow">CURRENT ARCHITECTURE · M0~M7 DONE · M7 PASS · M8 CURRENT / M8-03 · 2026-08-26</div><h1>Jira Knowledge Relationship Map</h1><p>Jira 원문에서 <strong>RAW → ANALYSIS → KNOWLEDGE INPUT → KNOWLEDGE / REVIEW → SQLite → Embedding</strong>으로 이어지는 현재 구조를 보여줍니다. 관계가 많아 처음 보면 “면 요리”처럼 보일 수 있으니, 바로 아래 읽는 순서를 먼저 보고 맵을 사용하십시오.</p><div class="pill-row"><div class="pill">Issue 30</div><div class="pill">Knowledge Item 285</div><div class="pill">M5 Raw Evidence 503</div><div class="pill">M7 Canonical Evidence 502</div><div class="pill current-pill">M8-03 · CURRENT</div></div></section>
+<section class="explain"><h2>0. 관계도를 보기 전에 네 줄만</h2><div class="explain-grid"><div class="explain-card"><b>① Jira Issue는 계속 변한다</b><span><code class="mono">jira_id</code>는 같은 업무의 장기 identity, <code class="mono">issue_version</code>은 내용이 바뀐 의미 상태입니다.</span></div><div class="explain-card"><b>② Knowledge도 재생성될 수 있다</b><span>Generation은 lineage, Attempt는 실제 1차/2차/3차 생성 시도입니다.</span></div><div class="explain-card"><b>③ 검색 문장은 근거가 있어야 한다</b><span>Knowledge Item은 Evidence를 통해 Comment/Description 등 실제 Source로 돌아갈 수 있어야 합니다.</span></div><div class="explain-card"><b>④ Embedding은 위 구조를 대체하지 않는다</b><span>Vector는 <code class="mono">knowledge_item_id</code>에 매핑되는 검색 artifact일 뿐입니다.</span></div></div><div class="notice" style="margin-top:12px"><strong>현재 Gate:</strong> M7 SQLite real-run PASS → M8-01 corpus PASS → M8-02 adapter 구현 완료 → <strong>M8-03 실제 BGE-M3 285 vector 검증</strong>.</div></section>
+<section class="explain"><h2>1. 추천 읽는 순서</h2><div class="reading"><div class="readstep"><em>1</em><b>Milestone Pipeline</b><span>먼저 M0~M8의 큰 흐름을 봅니다.</span></div><div class="readstep"><em>2</em><b>Current Entity Map</b><span>Issue/Version/Knowledge의 전체 관계를 봅니다.</span></div><div class="readstep"><em>3</em><b>Evidence Round-trip</b><span>Knowledge가 실제 원문으로 돌아가는 길을 추적합니다.</span></div><div class="readstep"><em>4</em><b>SQLite + M8 Boundary</b><span>DB와 Embedding의 경계를 확인합니다.</span></div><div class="readstep"><em>5</em><b>Hover 한 노드</b><span>복잡하면 하나의 노드에 마우스를 올려 연결 경로만 강조합니다.</span></div></div><div class="simple" style="margin-top:12px">가장 중요한 경로
+jira_id
+  ↓
+issue_version (iv_)
+  ↓
+knowledge_generation (kg_)
+  ↓
+knowledge_attempt (ka_ + attempt_no)
+  ├─ knowledge_item (ki_)
+  │    └─ knowledge_evidence (ke_) → Source
+  └─ knowledge_review → review_finding
 
-  <section class="panel">
-    <div class="toolbar">
-      <div class="tabs">
-        <button class="tab active" data-view="entity">1. Current Entity Map</button>
-        <button class="tab" data-view="pipeline">2. Milestone Pipeline</button>
-        <button class="tab" data-view="issue">3. Evidence Round-trip</button>
-        <button class="tab" data-view="schema">4. SQLite + M8 Boundary</button>
-      </div>
-      <div class="toggles">
-        <button class="toggle on" data-group="issue">Issue</button>
-        <button class="toggle on" data-group="comment">Comment</button>
-        <button class="toggle on" data-group="attach">Attachment</button>
-        <button class="toggle on" data-group="rel">Relationship</button>
-        <button class="toggle on" data-group="custom">Custom Field</button>
-        <button class="toggle on" data-group="knowledge">Generation / Attempt / Item</button>
-        <button class="toggle on" data-group="evidence">Evidence</button>
-        <button class="toggle on" data-group="review">Review</button>
-        <button class="toggle on" data-group="db">DB / Embedding</button>
-      </div>
-    </div>
-
-    <h2 id="viewTitle"></h2>
-    <div class="help" id="viewHelp"></div>
-    <div class="help">연결선은 노드 외곽으로 자동 우회합니다. 복잡한 구간은 노드에 마우스를 올려 직접 연결된 경로만 강조해서 볼 수 있습니다.</div>
-
-    <div class="map-grid">
-      <div class="svg-box">
-        <svg viewBox="0 0 1320 920" id="networkSvg" aria-label="Jira Knowledge relationship map"></svg>
-      </div>
-      <div class="side">
-        <div class="card">
-          <h3>범례</h3>
-          <div class="legend">
-            <div class="legend-item"><span class="swatch" style="background:var(--issue)"></span>Issue / Version</div>
-            <div class="legend-item"><span class="swatch" style="background:var(--comment)"></span>Comment</div>
-            <div class="legend-item"><span class="swatch" style="background:var(--attach)"></span>Attachment</div>
-            <div class="legend-item"><span class="swatch" style="background:var(--rel)"></span>Relationship</div>
-            <div class="legend-item"><span class="swatch" style="background:var(--custom)"></span>Custom Field</div>
-            <div class="legend-item"><span class="swatch" style="background:var(--knowledge)"></span>Knowledge lineage</div>
-            <div class="legend-item"><span class="swatch" style="background:var(--evidence)"></span>Evidence</div>
-            <div class="legend-item"><span class="swatch" style="background:var(--review)"></span>Review / Audit</div>
-            <div class="legend-item"><span class="swatch" style="background:var(--db)"></span>SQLite / Embedding</div>
-          </div>
-        </div>
-
-        <div class="card" id="infoPanel"></div>
-
-        <div class="card">
-          <h3>현재 authoritative 구조</h3>
-          <ul>
-            <li><strong>jira_id</strong>가 Issue identity, <span class="mono">issue_key</span>는 locator입니다.</li>
-            <li><strong>Issue Version</strong>은 <span class="mono">source_hash</span> 기반 immutable state입니다.</li>
-            <li><strong>Knowledge Generation</strong>은 Version + Contract lineage입니다.</li>
-            <li><strong>Knowledge Attempt</strong>가 실제 재생성 회차이며 각각 <span class="mono">ka_</span> ID를 가집니다.</li>
-            <li><strong>Knowledge Item / Review</strong>는 Attempt에 연결됩니다.</li>
-            <li><strong>Evidence</strong>는 exact ref를 보존하고 Source까지 round-trip 해야 합니다.</li>
-            <li><strong>기본 M8 입력</strong>은 active Generation의 accepted Attempt Knowledge입니다.</li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <h3>ID Ladder</h3>
-          <div class="mono">jira_id → iv_ → kc_ → kg_ → ka_ → ki_ → ke_</div>
-          <p>Embedding/vector identity는 이 Knowledge identity를 대체하지 않고 mapping 계층으로 둡니다.</p>
-        </div>
-
-        <div class="card">
-          <h3>현재 Gate</h3>
-          <ul>
-            <li>M6: DONE</li>
-            <li>M7 real-run materialization: PASS</li>
-            <li>M0~M7: DONE</li>
-            <li>M8: CURRENT / READY TO START</li>
-            <li>M9 FAISS: PLAN</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div class="footer-note">
-    Current Source of Truth: README.md · docs/PIPELINE_OVERVIEW.md · docs/status/jira_knowledge_db_current_status.html · docs/M7_SQLITE_MATERIALIZATION.md
-  </div>
-</div>
-<script src="jira_data_relationship_map.data_a.js"></script>
-<script src="jira_data_relationship_map.data_b.js"></script>
-<script src="jira_data_relationship_router.js"></script>
-<script src="jira_data_relationship_map.js"></script>
-</body>
-</html>
+M8
+active + accepted ki_ → embedding corpus → ec_ / emb_</div></section>
+<section class="explain"><h2>2. 화살표를 읽는 법</h2><div class="explain-grid"><div class="explain-card"><b>1 → N</b><span>왼쪽 하나에 오른쪽 여러 개가 붙을 수 있다는 뜻입니다. 예: Attempt 하나 → 여러 Knowledge Item.</span></div><div class="explain-card"><b>Observation</b><span>Run과 Version을 연결해 “이 실행에서 이 상태를 보았다”를 기록합니다.</span></div><div class="explain-card"><b>Accepted pointer</b><span>여러 Attempt 중 실제로 승인된 Attempt가 무엇인지 Generation이 가리킵니다.</span></div><div class="explain-card"><b>Evidence resolver</b><span><code class="mono">comment:id</code> 같은 exact ref를 실제 source row로 해석합니다.</span></div></div></section>
+<section class="panel"><div class="toolbar"><div class="tabs"><button class="tab active" data-view="entity">1. Current Entity Map</button><button class="tab" data-view="pipeline">2. Milestone Pipeline</button><button class="tab" data-view="issue">3. Evidence Round-trip</button><button class="tab" data-view="schema">4. SQLite + M8 Boundary</button></div><div class="toggles"><button class="toggle on" data-group="issue">Issue</button><button class="toggle on" data-group="comment">Comment</button><button class="toggle on" data-group="attach">Attachment</button><button class="toggle on" data-group="rel">Relationship</button><button class="toggle on" data-group="custom">Custom Field</button><button class="toggle on" data-group="knowledge">Generation / Attempt / Item</button><button class="toggle on" data-group="evidence">Evidence</button><button class="toggle on" data-group="review">Review</button><button class="toggle on" data-group="db">DB / Embedding</button></div></div><h2 id="viewTitle"></h2><div class="help" id="viewHelp"></div><div class="help">토글로 관심 없는 그룹을 흐리게 하고, 노드에 마우스를 올리면 직접 연결된 경로만 강조됩니다. 모바일에서는 관계도를 억지로 축소하지 않고 가로 스크롤합니다.</div><div class="map-grid"><div class="svg-box"><svg viewBox="0 0 1320 920" id="networkSvg" aria-label="Jira Knowledge relationship map"></svg></div><div class="side"><div class="card"><h3>범례</h3><div class="legend"><div class="legend-item"><span class="swatch" style="background:var(--issue)"></span>Issue / Version</div><div class="legend-item"><span class="swatch" style="background:var(--comment)"></span>Comment</div><div class="legend-item"><span class="swatch" style="background:var(--attach)"></span>Attachment</div><div class="legend-item"><span class="swatch" style="background:var(--rel)"></span>Relationship</div><div class="legend-item"><span class="swatch" style="background:var(--custom)"></span>Custom Field</div><div class="legend-item"><span class="swatch" style="background:var(--knowledge)"></span>Knowledge lineage</div><div class="legend-item"><span class="swatch" style="background:var(--evidence)"></span>Evidence</div><div class="legend-item"><span class="swatch" style="background:var(--review)"></span>Review / Audit</div><div class="legend-item"><span class="swatch" style="background:var(--db)"></span>SQLite / Embedding</div></div></div><div class="card" id="infoPanel"></div><div class="card"><h3>Authoritative 구조</h3><ul><li><strong>jira_id</strong>가 Issue identity, <span class="mono">issue_key</span>는 사람이 읽는 locator입니다.</li><li><strong>Issue Version</strong>은 <span class="mono">source_hash</span> 기반 immutable state입니다.</li><li><strong>Knowledge Generation</strong>은 Version + Contract lineage입니다.</li><li><strong>Knowledge Attempt</strong>가 실제 재생성 회차이며 <span class="mono">ka_</span> + <span class="mono">attempt_no</span>를 가집니다.</li><li><strong>Knowledge Item / Review</strong>는 Attempt에 연결됩니다.</li><li><strong>Evidence</strong>는 exact ref를 보존하고 Source까지 round-trip 해야 합니다.</li><li><strong>M8 기본 입력</strong>은 active Generation의 accepted Attempt Knowledge입니다.</li></ul></div><div class="card"><h3>ID Ladder</h3><div class="mono">jira_id → iv_ → kc_ → kg_ → ka_ → ki_ → ke_</div><p>Embedding identity는 이 Knowledge identity를 대체하지 않고 <span class="mono">ec_ / emb_</span> mapping 계층으로 추가됩니다.</p></div><div class="card"><h3>현재 Gate</h3><ul><li>M0~M7: DONE</li><li>M7 real-run materialization: PASS</li><li>M8-01 corpus: PASS</li><li>M8-02 embedding adapter: IMPLEMENTED</li><li>M8-03 real API validation: CURRENT</li><li>M9 FAISS: PLAN</li></ul></div></div></div></section>
+<section class="explain"><h2>3. 가장 자주 헷갈리는 세 가지</h2><div class="explain-grid"><div class="explain-card"><b>Run ≠ Version</b><span>파이프라인을 다시 실행했다고 Issue 내용이 바뀐 것은 아닙니다. 같은 source_hash면 같은 Version입니다.</span></div><div class="explain-card"><b>Generation ≠ Attempt</b><span>Generation은 retry lineage, Attempt는 실제 생성 회차입니다.</span></div><div class="explain-card"><b>History ≠ Retrieval</b><span>DB는 과거를 보존하지만 기본 검색에는 active accepted Knowledge만 사용합니다.</span></div><div class="explain-card"><b>Vector ≠ Knowledge</b><span>Embedding은 Knowledge Item의 파생 검색 표현이며 원문/근거를 대체하지 않습니다.</span></div></div></section>
+<div class="footer-note">Current Source of Truth: README.md · docs/PIPELINE_OVERVIEW.md · docs/status/jira_knowledge_db_current_status.html · docs/M8_EMBEDDING_CHUNK_BGE_M3.md</div></div><script src="jira_data_relationship_map.data_a.js"></script><script src="jira_data_relationship_map.data_b.js"></script><script src="jira_data_relationship_router.js"></script><script src="jira_data_relationship_map.js"></script></body></html>
