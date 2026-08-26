@@ -1,7 +1,7 @@
 window.JIRA_MAP_VIEWS={
 "entity":{
-  "title":"Current Knowledge Entity Map · M9 CURRENT",
-  "help":"M6 Logical Schema를 M7 SQLite로 검증하고, M8에서 active accepted Knowledge 285개를 BGE-M3 embedding으로 검증했습니다. M9는 이 emb_를 exact FAISS retrieval artifact(rc_/fi_)로 연결합니다. Knowledge Item과 Review는 Generation이 아니라 Attempt에 연결됩니다.",
+  "title":"Current Knowledge Entity Map · M9 DONE / M10 NEXT",
+  "help":"M7 SQLite, M8 BGE-M3 embedding, M9 FAISS retrieval까지 실데이터 검증을 완료했습니다. M10은 ki_ → ke_ → Source를 Evidence package와 MCP로 연결하는 다음 단계입니다.",
   "nodes":[
     {"id":"run","type":"store","kind":"store","shape":"pill","x":120,"y":70,"w":180,"h":60,"label":"Pipeline Run","sub":"observation scope"},
     {"id":"issue","type":"issue","kind":"issue","shape":"pill","x":400,"y":70,"w":200,"h":60,"label":"Issue","sub":"jira_id authoritative"},
@@ -20,7 +20,7 @@ window.JIRA_MAP_VIEWS={
     {"id":"finding","type":"review","kind":"review","shape":"rect","x":660,"y":760,"w":220,"h":82,"label":"Review Finding","sub":"audit / critical / major"},
     {"id":"sqlite","type":"db","kind":"db","shape":"rect","x":930,"y":760,"w":260,"h":88,"label":"M7 SQLite Schema v1","sub":"DONE · real-run PASS"},
     {"id":"embedding","type":"db","kind":"db","shape":"rect","x":1040,"y":880,"w":260,"h":55,"label":"M8 Embedding · emb_","sub":"DONE · 285 × 1024 PASS"},
-    {"id":"retrieval","type":"db","kind":"db","shape":"rect","x":740,"y":880,"w":260,"h":55,"label":"M9 Retrieval · rc_ / fi_","sub":"IndexFlatIP · Top-3 · IMPLEMENTED"}
+    {"id":"retrieval","type":"db","kind":"db","shape":"rect","x":740,"y":880,"w":260,"h":55,"label":"M9 Retrieval · rc_ / fi_","sub":"DONE · real-run PASS"}
   ],
   "edges":[
     {"from":"run","to":"obs","label":"records","fromSide":"bottom","toSide":"top"},
@@ -49,7 +49,7 @@ window.JIRA_MAP_VIEWS={
 },
 "pipeline":{
   "title":"Milestone Pipeline · M0~M10",
-  "help":"M0~M8은 완료했습니다. M9-01 검색 계약은 확정됐고 M9-02 FAISS build/search 구현과 CI도 PASS했습니다. 현재 다음 Gate는 실제 285개 index와 BGE-M3 query를 검증하는 M9-03입니다.",
+  "help":"M0~M9는 완료했습니다. M10 Evidence Builder + MCP는 다음 단계이며 새 세션에서 DESIGN부터 시작합니다.",
   "nodes":[
     {"id":"m0","type":"store","kind":"store","shape":"rect","x":110,"y":120,"w":175,"h":80,"label":"M0 DONE","sub":"RAW + ANALYSIS"},
     {"id":"m1","type":"store","kind":"store","shape":"rect","x":325,"y":120,"w":175,"h":80,"label":"M1 DONE","sub":"Knowledge Input"},
@@ -60,11 +60,11 @@ window.JIRA_MAP_VIEWS={
     {"id":"m6","type":"db","kind":"db","shape":"rect","x":1100,"y":340,"w":190,"h":84,"label":"M6 DONE","sub":"Version · ID · Attempt"},
     {"id":"m7","type":"db","kind":"db","shape":"rect","x":850,"y":340,"w":220,"h":92,"label":"M7 DONE","sub":"real-run PASS · evidence 502"},
     {"id":"m8","type":"db","kind":"db","shape":"rect","x":590,"y":340,"w":190,"h":84,"label":"M8 DONE","sub":"285 × 1024 · PASS"},
-    {"id":"m9","type":"db","kind":"db","shape":"rect","x":350,"y":340,"w":190,"h":84,"label":"M9 CURRENT","sub":"M9-02 CI PASS · M9-03 NEXT"},
-    {"id":"m10","type":"plan","kind":"store","shape":"rect","x":110,"y":340,"w":190,"h":84,"label":"M10 GATE","sub":"Evidence · MCP"},
+    {"id":"m9","type":"db","kind":"db","shape":"rect","x":350,"y":340,"w":190,"h":84,"label":"M9 DONE","sub":"FAISS real-run PASS"},
+    {"id":"m10","type":"plan","kind":"store","shape":"rect","x":110,"y":340,"w":190,"h":84,"label":"M10 NEXT","sub":"Evidence + MCP design"},
     {"id":"gate","type":"issue","kind":"issue","shape":"rect","x":850,"y":600,"w":330,"h":100,"label":"M7 Real-run PASS","sub":"30 issue · 37 attempt · 285 item · 502 evidence"},
     {"id":"m8gate","type":"issue","kind":"issue","shape":"rect","x":500,"y":600,"w":300,"h":100,"label":"M8 Real-run PASS","sub":"285 embedding · 1024 dim · integrity PASS"},
-    {"id":"m9gate","type":"issue","kind":"issue","shape":"rect","x":150,"y":600,"w":300,"h":100,"label":"M9-03 Real Gate · NEXT","sub":"285 index · Top-3 query · reproducibility"}
+    {"id":"m9gate","type":"issue","kind":"issue","shape":"rect","x":150,"y":600,"w":300,"h":100,"label":"M9 Real-run PASS","sub":"285 index · real query · reproducibility PASS"}
   ],
   "edges":[
     {"from":"m0","to":"m1","label":"facts","fromSide":"right","toSide":"left"},
@@ -79,7 +79,7 @@ window.JIRA_MAP_VIEWS={
     {"from":"m9","to":"m10","label":"retrieval candidates","fromSide":"left","toSide":"right"},
     {"from":"m7","to":"gate","label":"validated","fromSide":"bottom","toSide":"top"},
     {"from":"m8","to":"m8gate","label":"validated","fromSide":"bottom","toSide":"top"},
-    {"from":"m9","to":"m9gate","label":"real-run next","fromSide":"bottom","toSide":"top"}
+    {"from":"m9","to":"m9gate","label":"validated","fromSide":"bottom","toSide":"top"}
   ]
 }
 };
