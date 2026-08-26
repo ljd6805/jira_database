@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Jira Knowledge DB HTML 다이어그램 시인성 감사와 재발 방지 규칙">
+  <title>HTML Diagram Visual QA · 2026-08-26</title>
+  <style>
+    :root{--bg:#f4f7fb;--surface:#fff;--text:#182135;--muted:#63728a;--line:#dbe3ef;--blue:#3157d5;--green:#13845e;--amber:#a86500;--red:#b83a3a;--shadow:0 10px 28px rgba(31,49,84,.08)}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 8% 0%,rgba(49,87,213,.11),transparent 32rem),var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.65}.wrap{max-width:1180px;margin:auto;padding:42px 22px 80px}.hero{padding:38px;border-radius:25px;color:#fff;background:linear-gradient(130deg,#17284d,#3157d5 64%,#6786ed);box-shadow:var(--shadow)}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;opacity:.86}.hero h1{margin:10px 0 8px;font-size:clamp(32px,5vw,50px);line-height:1.12}.hero p{max-width:920px;margin:0;color:rgba(255,255,255,.88)}.metrics,.grid2,.grid3{display:grid;gap:13px}.metrics{grid-template-columns:repeat(4,1fr);margin-top:20px}.metric,.card{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:0 5px 16px rgba(31,49,84,.04)}.metric b{display:block;font-size:27px}.metric span,.small{color:var(--muted);font-size:12px}section{margin-top:40px}h2{margin:0 0 7px;font-size:27px}h3{margin:18px 0 8px}.lead{margin:0 0 16px;color:var(--muted)}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:12px}th{background:#eef2f7}tr:last-child td{border-bottom:0}.status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.pass{background:#e5f7ef;color:#0b6d4a}.warn{background:#fff1dc;color:#965900}.fixed{background:#e9eeff;color:#2548b5}.callout{margin-top:15px;padding:15px 17px;border-left:5px solid var(--blue);border-radius:0 13px 13px 0;background:#edf3ff}.good{border-color:var(--green);background:#eaf8f3}.bad{border-color:var(--red);background:#fff0f0}.rule{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border:1px solid var(--line);border-radius:13px;background:#fff}.rule b{flex:0 0 34px;width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:#edf3ff;color:#2448b1}.rule p{margin:0}.rules{display:grid;gap:9px}.flow-demo{display:grid;grid-template-columns:1fr 80px 1fr;gap:12px;align-items:center}.node{padding:16px;text-align:center;border:2px solid #3157d5;border-radius:14px;background:#edf3ff;font-weight:850}.connector{text-align:center;color:#61708a;font-weight:900}.label{display:block;margin:6px auto 0;width:max-content;max-width:100%;padding:4px 9px;border:1px solid #cfd9ea;border-radius:999px;background:#fff;font-size:11px;color:#4f5e76}.code{white-space:pre-wrap;padding:15px;border-radius:13px;background:#101827;color:#dce9ff;font:12px/1.6 "Cascadia Code","D2Coding",Consolas,monospace}.footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;text-align:center}@media(max-width:800px){.metrics,.grid2,.grid3{grid-template-columns:1fr 1fr}.flow-demo{grid-template-columns:1fr}.connector{transform:rotate(90deg)}}@media(max-width:560px){.metrics,.grid2,.grid3{grid-template-columns:1fr}.hero{padding:27px}}
+  </style>
+</head>
+<body><main class="wrap">
+  <header class="hero">
+    <div class="eyebrow">VISUAL QA · 2026-08-26</div>
+    <h1>HTML Diagram<br>시인성 감사와 수정 기록</h1>
+    <p>화살표가 노드를 관통하고, edge label이 다른 박스 위에 올라가던 문제를 저장소 전체 HTML 기준으로 검수했습니다. 좌표를 수동 보정하는 대신 관계 맵의 공통 라우터를 수정해 재발 가능성까지 줄였습니다.</p>
+    <div class="metrics">
+      <div class="metric"><b>4</b><span>Relationship Map view</span></div>
+      <div class="metric"><b>62</b><span>검증한 connector</span></div>
+      <div class="metric"><b>0 / 62</b><span>수정 후 node 관통</span></div>
+      <div class="metric"><b>62 / 62</b><span>충돌 없이 배치된 label</span></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>1. 감사 결론</h2>
+    <p class="lead">문제는 “화살표 색”이 아니라 렌더링 알고리즘이었습니다.</p>
+    <div class="grid2">
+      <div class="card"><h3>Before</h3><p>모든 edge를 cubic Bézier로 만들고, label을 곡선의 t=0.5 지점에 기계적으로 배치했습니다. 주변 노드를 보지 않으므로 조밀한 view에서는 충돌이 필연적이었습니다.</p></div>
+      <div class="card"><h3>After</h3><p>노드 바깥의 grid corridor를 탐색해 직교 경로를 선택하고, label은 node/다른 label과 겹치지 않는 후보 위치를 찾습니다. 필요한 경우 짧은 leader line으로 원래 edge와 연결합니다.</p></div>
+    </div>
+    <div class="callout bad"><strong>수정 전 정적 geometry check</strong><br>62개 connector 중 16개가 다른 node 영역을 통과했고, 32개 edge label이 node와 겹쳤습니다. 특히 Entity Map과 SQLite Boundary view가 가장 조밀했습니다.</div>
+    <div class="callout good"><strong>수정 후 정적 geometry check</strong><br>4개 view의 62개 connector 모두 node 관통 0건, 62개 label 모두 node/label 상호 충돌 없이 배치되었습니다. 선과 선의 교차는 복잡한 관계도 특성상 일부 남을 수 있으므로 halo와 hover focus로 구분 가능하게 했습니다.</div>
+  </section>
+
+  <section>
+    <h2>2. HTML 전체 검수 결과</h2>
+    <table><thead><tr><th>문서/영역</th><th>판정</th><th>관찰</th><th>조치</th></tr></thead><tbody>
+      <tr><td>architecture/jira_data_relationship_map.html</td><td><span class="status fixed">FIXED</span></td><td>4개 view가 공통 Bézier + midpoint-label renderer 사용. 다수 node/label 충돌.</td><td>Obstacle-aware orthogonal router, label collision avoidance, halo, hover focus, mobile scroll 적용.</td></tr>
+      <tr><td>M6_DB_LOGICAL_SCHEMA_COMPLETION.html</td><td><span class="status pass">PASS</span></td><td>화살표가 CSS Grid의 전용 열에 있어 box를 관통하지 않음. 복잡하지만 실제 겹침은 없음.</td><td>현재 구조 유지. 향후 node 수가 늘면 relationship-map router 사용 권장.</td></tr>
+      <tr><td>M7_SQLITE_MATERIALIZATION.html</td><td><span class="status pass">PASS</span></td><td>3단 flow가 별도 arrow column을 사용하며 단순함.</td><td>변경 없음.</td></tr>
+      <tr><td>M0~M5 / M8 Milestone HTML</td><td><span class="status pass">PASS</span></td><td>대부분 preformatted text flow 또는 card/grid. connector overlay 자체가 없음.</td><td>변경 없음.</td></tr>
+      <tr><td>Current Status / docs index</td><td><span class="status pass">PASS</span></td><td>Roadmap/card 중심. node 위를 지나는 SVG edge 없음.</td><td>변경 없음.</td></tr>
+      <tr><td>status/archive/*</td><td><span class="status warn">ARCHIVE</span></td><td>과거 상태 보존 문서.</td><td>Historical artifact 보존 원칙에 따라 소급 수정하지 않음.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section>
+    <h2>3. 재발 방지 규칙</h2>
+    <div class="rules">
+      <div class="rule"><b>1</b><p><strong>단순 flow는 CSS Grid/Flex.</strong> 2~5개의 직선 흐름에 SVG network를 쓰지 않습니다. 화살표 전용 열/행을 두면 box 관통 문제가 원천적으로 사라집니다.</p></div>
+      <div class="rule"><b>2</b><p><strong>복잡한 관계도는 직교 routing.</strong> connector는 node bounding box + clearance 영역을 지나가지 않습니다. 곡선이 예뻐 보여도 장애물 회피가 없으면 사용하지 않습니다.</p></div>
+      <div class="rule"><b>3</b><p><strong>label은 midpoint 금지.</strong> edge의 기하학적 중간점이 아니라 node/기존 label과 겹치지 않는 위치를 선택합니다. 공간이 없으면 annotation lane으로 이동하고 leader line을 사용합니다.</p></div>
+      <div class="rule"><b>4</b><p><strong>교차선에는 halo.</strong> 선끼리 교차할 수밖에 없는 dense graph에서는 배경색 halo를 먼저 그린 뒤 실제 edge를 그려 교차점을 분리합니다.</p></div>
+      <div class="rule"><b>5</b><p><strong>node focus 제공.</strong> hover 시 직접 연결된 node/edge만 강조해 큰 관계도에서 한 경로를 추적할 수 있게 합니다.</p></div>
+      <div class="rule"><b>6</b><p><strong>모바일에서 억지 축소 금지.</strong> network SVG에는 최소 너비를 두고 horizontal scroll을 허용합니다. 모든 내용을 360px에 눌러 넣는 것은 “반응형”이 아니라 “미니어처”입니다.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>4. 구현 구조</h2>
+    <div class="flow-demo"><div class="node">Node geometry</div><div class="connector">→<span class="label">clearance</span></div><div class="node">Grid corridor</div></div>
+    <div class="flow-demo" style="margin-top:12px"><div class="node">Shortest safe route</div><div class="connector">→<span class="label">collision check</span></div><div class="node">Label placement</div></div>
+    <h3>파일 책임</h3>
+    <div class="code">jira_data_relationship_router.js
+  - geometry / grid routing / obstacle avoidance
+  - edge crossing penalty
+  - label collision avoidance
+
+jira_data_relationship_map.js
+  - SVG rendering / tab / toggle / focus interaction
+
+jira_data_relationship_map.css
+  - edge halo / label tag / leader / mobile scroll
+
+.opencode/skills/html-diagram-visual-qa/SKILL.md
+  - 이후 HTML 생성·수정 시 적용할 시각 QA 규칙</div>
+  </section>
+
+  <section>
+    <h2>5. 완료 기준</h2>
+    <div class="grid3">
+      <div class="card"><h3>Geometry</h3><p>모든 current Relationship Map view에서 connector가 제3의 node 내부를 지나지 않는다.</p></div>
+      <div class="card"><h3>Label</h3><p>모든 edge label이 node 또는 다른 edge label과 겹치지 않고 텍스트가 읽힌다.</p></div>
+      <div class="card"><h3>Interaction</h3><p>hover focus와 mobile horizontal scroll로 복잡한 view를 추적할 수 있다.</p></div>
+    </div>
+  </section>
+  <footer class="footer">Jira Knowledge DB · HTML Diagram Visual QA · 2026-08-26 · current documents only · historical archive preserved</footer>
+</main></body></html>
