@@ -8,7 +8,7 @@ Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 
 
 ```text
 M0~M8   DONE
-M9      CURRENT / DESIGN · IMPLEMENTATION NEXT
+M9      CURRENT / M9-01 DESIGN FROZEN / M9-02 IMPLEMENTED / M9-03 REAL-RUN NEXT
 M10     Functional MVP Gate
 ```
 
@@ -38,8 +38,10 @@ M8  Embedding Unit / Chunk + BGE-M3         DONE · REAL-RUN PASS
     ├─ M8-02 contract/adapter              PASS
     └─ M8-03 real embedding                PASS
     ↓
-M9  FAISS + Active Retrieval                CURRENT · DESIGN
-    └─ implementation                      NEXT
+M9  FAISS + Active Retrieval                CURRENT
+    ├─ M9-01 retrieval contract            DESIGN FROZEN
+    ├─ M9-02 FAISS build/search            IMPLEMENTED · CI PASS
+    └─ M9-03 real index/retrieval           NEXT
     ↓
 M10 Evidence Builder + MCP                  Functional MVP Gate
 ```
@@ -207,26 +209,78 @@ M8 상세 근거(사람용 HTML):
 - [M8 Visual](docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html)
 - [M8 Troubleshooting](docs/status/M8_REAL_EMBEDDING_TROUBLESHOOTING.html)
 
-원본 실행/결정 로그 Markdown은 내부 이력·호환 목적으로 남길 수 있지만 Documentation Hub에서는 HTML companion을 연결합니다.
+## 7. M9 FAISS + Active Retrieval — CURRENT
 
-## 7. M9 — CURRENT / DESIGN
-
-M9는 설계 단계이며 구현은 아직 시작하지 않았습니다. M8의 validated embedding artifact를 입력으로 사용합니다.
-
-현재 설계 축:
+### M9-01 · DESIGN FROZEN
 
 ```text
-FAISS index type / metric / normalization
-embedding_id ↔ knowledge_item_id mapping
-active-only index policy
-Top-k baseline
-query embedding contract
-index rebuild / reproducibility
-search sanity / quality Gate
-향후 ANN scaling path
+Index       IndexFlatIP
+Metric      cosine = L2 normalize + inner product
+Normalize   database/query 모두 L2
+Order       embedding_id ascending
+Top-k       3
+Threshold   none
+Reranker    none
+Update      full rebuild
+Mapping     FAISS position → emb_ → ki_
+Publish     index + mapping + manifest-last
 ```
 
-**M9 구현은 설계 계약을 고정한 뒤 시작합니다.**
+`IndexFlatIP`는 Pilot exact baseline/test oracle입니다. 규모가 커지면 p95 latency, RAM, QPS, rebuild 시간, recall@k를 측정해 `IndexHNSWFlat`/`IndexIVFFlat` 등 ANN으로 전환할 수 있게 계약을 열어둡니다.
+
+### M9-02 · IMPLEMENTED / CI PASS
+
+구현:
+
+```text
+src/jira_collector/retrieval/
+├─ contract.py      rc_ / fi_ deterministic identity
+├─ source.py        M8 embedding loader / source SHA-256
+├─ artifact.py      L2 normalize / IndexFlatIP / mapping / manifest-last publish
+├─ validation.py    hash / mapping / dimension / normalization Gate
+├─ search.py        exact cosine Top-k search
+└─ query.py         동일 BGE-M3 contract의 query embedding
+
+tools/jira_knowledge/
+├─ build_faiss_index.py
+├─ validate_m9_retrieval_artifact.py
+└─ search_faiss.py
+```
+
+의존성:
+
+```text
+numpy >= 1.26, < 3.0
+faiss-cpu >= 1.15, < 2.0
+```
+
+Synthetic CI에서 다음을 확인합니다.
+
+```text
+canonical embedding_id order
+L2-normalized IndexFlatIP build
+exact cosine Top-k
+rc_ / fi_ deterministic identity
+rebuild mapping idempotency
+index/mapping SHA corruption detection
+M8 source ↔ mapping round-trip
+query model/profile/dimension mismatch 차단
+```
+
+### M9-03 · REAL-RUN NEXT
+
+실제 M8 Pilot artifact 285개로 FAISS index를 만들고 다음을 확인합니다.
+
+```text
+vector_count = 285
+dimension = 1024
+mapping_rows = 285
+unique emb_ = 285
+unique ki_ = 285
+hash/mapping/dimension/normalization failure = 0
+same source rebuild → same rc_ / fi_ / mapping
+실제 BGE-M3 query → Top-3 semantic sanity
+```
 
 ## 8. 주요 문서
 
@@ -256,9 +310,9 @@ python -m pip install -e ".[dev]"
 ```text
 M8 DONE
   ↓
-M9 DESIGN · CURRENT
+M9-01 DESIGN FROZEN
   ↓
-M9 설계 계약 고정
+M9-02 IMPLEMENTED / CI PASS
   ↓
-M9 IMPLEMENTATION · NEXT
+M9-03 실제 285 FAISS build + real query Gate
 ```
