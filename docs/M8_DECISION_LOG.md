@@ -120,7 +120,7 @@ embedding_dimension        = 1024
 
 `embedding_model_profile`은 같은 model name 아래 serving revision/deployment 차이를 표현한다. revision metadata를 알 수 없는 Pilot에서는 `internal-bge-m3-unversioned`를 사용한다.
 
-Endpoint URL은 배포 위치이므로 logical identity에 넣지 않는다.
+Endpoint URL과 인증/라우팅 header는 실행 환경 정보이므로 logical identity에 넣지 않는다.
 
 ### 2. Deterministic ID
 
@@ -132,16 +132,17 @@ ec_ = H(contract version, text profile, model, model profile, dimension)
 emb_ = H(knowledge_item_id, embedding_text_hash, ec_)
 ```
 
-Vector 값과 API endpoint, FAISS position은 `embedding_id` material이 아니다.
+Vector 값, API endpoint, custom header, FAISS position은 `embedding_id` material이 아니다.
 
 ### 3. Runtime 설정 분리
 
-실제 사내 endpoint/API key는 Git에 기록하지 않는다.
+실제 사내 endpoint/API key/custom header는 Git에 기록하지 않는다.
 
 ```text
 .env
 BGE_M3_ENDPOINT
 BGE_M3_API_KEY
+BGE_M3_HEADERS_JSON
 ```
 
 일반 설정은 `config/settings.yaml`에서 관리한다.
@@ -158,7 +159,29 @@ max_attempts = 3
 
 Embedding 설정 loader는 Jira ID/Password 없이 독립 실행된다.
 
-### 4. Request / Batch
+### 4. Custom Header Contract
+
+사내 API가 표준 Bearer token 대신 custom header를 요구할 수 있으므로 generic header injection을 지원한다.
+
+`.env` 예시:
+
+```dotenv
+BGE_M3_ENDPOINT=https://.../v1/embeddings
+BGE_M3_API_KEY=
+BGE_M3_HEADERS_JSON='{"X-Custom-Header-1":"value1","X-Custom-Header-2":"value2"}'
+```
+
+규칙:
+
+- `BGE_M3_HEADERS_JSON`은 JSON object이며 key/value 모두 문자열이다.
+- header가 여러 개여도 하나의 JSON object로 전달한다.
+- 표준 Bearer 인증을 사용하지 않으면 `BGE_M3_API_KEY`는 비운다.
+- API key와 custom header를 둘 다 사용하는 배포도 지원한다.
+- custom header는 HTTP request에만 사용한다.
+- header 이름/값은 embedding identity, vector artifact, stdout, 공개 문서에 기록하지 않는다.
+- 실제 header 이름/값은 `.env`에만 저장한다.
+
+### 5. Request / Batch
 
 OpenAI-compatible baseline:
 
@@ -179,7 +202,7 @@ OpenAI-compatible baseline:
 
 64 초과 설정은 HTTP 호출 전에 거부한다.
 
-### 5. Response Mapping
+### 6. Response Mapping
 
 응답 배열의 물리 순서가 아니라 `data[].index`를 authoritative mapping으로 사용한다.
 
@@ -193,7 +216,7 @@ response count = request count
 각 vector dimension = 1024
 ```
 
-### 6. Retry / Failure
+### 7. Retry / Failure
 
 재시도:
 
@@ -214,7 +237,7 @@ index mapping 오류
 dimension 오류
 ```
 
-### 7. Publish
+### 8. Publish
 
 Pilot에서는 partial vector artifact를 final 결과로 publish하지 않는다.
 
@@ -231,7 +254,7 @@ Pilot에서는 partial vector artifact를 final 결과로 publish하지 않는�
 
 Resume/checkpoint는 후속 orchestration 단계에서 다룬다.
 
-### 8. Embedding Artifact v0.1
+### 9. Embedding Artifact v0.1
 
 ```text
 embedding_schema_version
@@ -255,7 +278,7 @@ vector
 
 M9는 `embedding_id ↔ knowledge_item_id` mapping을 유지한 채 FAISS를 만든다.
 
-### 9. 구현
+### 10. 구현
 
 ```text
 src/jira_collector/embedding/
@@ -279,6 +302,7 @@ index 중복/누락 차단
 dimension mismatch 차단
 429/5xx retry
 400 즉시 실패
+custom header JSON validation / HTTP forwarding
 corpus JSONL hash 재검증
 atomic publish
 Jira credential 없이 embedding config load
@@ -293,6 +317,7 @@ GitHub Actions pytest: **PASS**
 [x] response index mapping
 [x] 1024 dimension contract
 [x] retry/non-retry test
+[x] custom header runtime support
 [x] atomic publish
 [x] independent runtime config
 [x] CI PASS
@@ -318,7 +343,7 @@ M8-02 = IMPLEMENTED
 [ ] 작은 quality sanity check
 ```
 
-실행 전 `.env`에 실제 endpoint와 필요한 경우 API key를 입력한다. 실제 값은 Git/public 문서에 기록하지 않는다.
+실행 전 `.env`에 실제 endpoint와 필요한 인증 정보를 입력한다. Bearer 방식이면 `BGE_M3_API_KEY`, custom header 방식이면 `BGE_M3_HEADERS_JSON`, 둘 다 필요한 환경이면 둘 다 사용한다. 실제 값은 Git/public 문서에 기록하지 않는다.
 
 ---
 
