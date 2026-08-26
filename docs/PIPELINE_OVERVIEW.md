@@ -1,7 +1,7 @@
 # Jira Knowledge Pipeline 전체 아키텍처
 
 기준일: 2026-08-26  
-현재 단계: **M8 DONE / M9 NEXT · DESIGN NOT STARTED**
+현재 단계: **M9 · FAISS + Active Retrieval — M9-01 DESIGN FROZEN / M9-02 IMPLEMENTED / M9-03 REAL-RUN NEXT**
 
 ## 1. 전체 흐름
 
@@ -28,7 +28,11 @@ Embedding Contract / Adapter           M8-02 DONE · PASS
     ↓
 Real BGE-M3 Validation                 M8-03 DONE · PASS
     ↓
-FAISS + Active Retrieval               M9 NEXT · DESIGN NOT STARTED
+Retrieval Contract                     M9-01 DESIGN FROZEN
+    ↓
+FAISS Build / Search                   M9-02 IMPLEMENTED · CI PASS
+    ↓
+Real Index / Query Validation          M9-03 CURRENT / NEXT
     ↓
 Evidence Builder + MCP                 M10 Functional MVP Gate
 ```
@@ -38,7 +42,7 @@ Evidence Builder + MCP                 M10 Functional MVP Gate
 ### RAW가 Source of Truth
 
 ```text
-RAW → ANALYSIS → KNOWLEDGE INPUT → KNOWLEDGE → DB → EMBEDDING → VECTOR
+RAW → ANALYSIS → KNOWLEDGE INPUT → KNOWLEDGE → DB → EMBEDDING → RETRIEVAL
 ```
 
 뒤 계층은 앞 계층에서 다시 만들 수 있는 파생물이어야 한다.
@@ -61,18 +65,29 @@ jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 
 `knowledge_attempt_id(ka_)`는 `knowledge_generation_id + attempt_no`로 결정되며 실제 재생성 회차 identity를 보존한다.
 
-Embedding은 별도 artifact 계층이다.
+Embedding/FAISS는 별도 artifact 계층이다.
 
 ```text
-Embedding Contract  ec_
-Embedding Artifact  emb_
-
-emb_ = H(knowledge_item_id, embedding_text_hash, ec_)
+Embedding Contract   ec_
+Embedding Artifact   emb_
+Retrieval Contract   rc_
+FAISS Index Artifact fi_
 ```
 
 ```text
 FAISS position ≠ embedding_id ≠ knowledge_item_id
 ```
+
+M9에서도 최종 역참조는 반드시:
+
+```text
+faiss_position
+→ embedding_id (emb_)
+→ knowledge_item_id (ki_)
+→ M10 Evidence resolve
+```
+
+경로를 유지한다.
 
 ## 3. Pilot 근거
 
@@ -85,9 +100,11 @@ Statement max                447 chars
 M5 Raw Evidence Ref          503
 M7 Canonical Evidence Row    502
 Review Attempt                37
+M8 Validated Embedding       285
+Embedding dimension         1024
 ```
 
-이 분포를 근거로 M8 baseline은 **Knowledge Item 1개 = Embedding Unit 1개**, 기본 Chunk 없음으로 결정했다.
+M8는 **Knowledge Item 1개 = Embedding Unit 1개**, 기본 Chunk 없음으로 완료했다.
 
 ## 4. M6/M7 Authoritative DB
 
@@ -125,7 +142,9 @@ Idempotent              true
 M7_REAL_RUN = PASS
 ```
 
-## 5. M8-01 · Active Accepted Corpus — PASS
+## 5. M8 Embedding — DONE / PASS
+
+### M8-01 · Corpus
 
 ```text
 knowledge_generation.state = active
@@ -137,88 +156,24 @@ AND content_available = 1
 knowledge_item
 ```
 
-Baseline:
-
-```text
-Knowledge Item 1개 = Embedding Unit 1개
-text_profile = statement_v1
-embedding_text = statement.strip()
-embedding_text_hash = SHA-256(UTF-8 text)
-```
-
-실데이터 Gate:
-
 ```text
 M7 active accepted Knowledge Item 285
 → M8 corpus_rows: 285
 ```
 
-**M8-01 PASS**
-
-## 6. M8-02 · Embedding Contract / Adapter — PASS
-
-Contract:
+### M8-02 · Contract / Adapter
 
 ```text
-embedding_contract_version = 0.1
-model                       = BAAI/bge-m3
-model_profile               = internal-bge-m3-unversioned
-text_profile                = statement_v1
-dimension                   = 1024
+model              BAAI/bge-m3
+model_profile      internal-bge-m3-unversioned
+text_profile       statement_v1
+dimension          1024
+batch max          64
+API                TEI / OpenAI-compatible
+custom headers     runtime supported
 ```
 
-Identity:
-
-```text
-ec_ = deterministic Embedding Contract ID
-emb_ = deterministic Embedding Artifact ID
-```
-
-API:
-
-```text
-TEI / OpenAI-compatible embeddings
-Request max batch = 64
-Dense dimension = 1024
-Custom header runtime 지원
-```
-
-Batch:
-
-```text
-285 → 64 + 64 + 64 + 64 + 29
-→ 5 requests
-```
-
-Response mapping:
-
-```text
-data[].index
-→ request input 위치와 다시 연결
-```
-
-Failure / publish:
-
-```text
-network / timeout / 429 / 5xx → 제한 재시도
-400 / 401 / 403 / 404        → 즉시 실패
-schema / index / dim 오류     → 즉시 실패
-모든 batch 성공               → atomic final publish
-```
-
-**M8-02 PASS**
-
-## 7. M8-03 · Real Embedding Gate — PASS
-
-Smoke:
-
-```text
-API call: PASS
-vectors : 1
-dimension: 1024
-```
-
-Full Pilot:
+### M8-03 · Real Gate
 
 ```text
 corpus_rows: 285
@@ -230,7 +185,6 @@ embedding_dimension: 1024
 Artifact integrity:
 
 ```text
-validation: PASS
 unique_knowledge_item_ids: 285
 unique_embedding_ids: 285
 contract_count: 1
@@ -245,53 +199,196 @@ temp_artifact_exists: false
 Semantic sanity:
 
 ```text
-Sample 1  PASS
-Sample 2  PASS · 매우 양호
-Sample 3  PASS · 후보 모두 의미상 타당
-```
-
-Sample 3의 Top-3 cosine score는 `0.5918 / 0.5908 / 0.5900`으로 margin이 작았다. 이는 embedding 실패가 아니라 dense semantic neighborhood 관찰로 기록한다.
-
-M9에는 다음 설계 힌트를 넘긴다.
-
-```text
-Top-1 단독 확정 과신 금지
-Top-k 후보군 유지 검토
-Knowledge + Evidence 함께 사용
-threshold / reranking은 실측 후 결정
+Sample 1 PASS
+Sample 2 PASS · 매우 양호
+Sample 3 PASS · dense semantic neighborhood 관찰
 ```
 
 ```text
 M8 = DONE / PASS
 ```
 
-## 8. M9 · FAISS + Active Retrieval — NEXT
+## 6. M9-01 · Retrieval Contract — DESIGN FROZEN
 
-M9는 아직 구현하지 않았다.
-
-M8 출력:
+현재 exact baseline:
 
 ```text
-validated embedding artifact
-+ deterministic emb_ ↔ ki_ mapping
+Index       IndexFlatIP
+Metric      cosine similarity
+Normalize   DB/query 모두 L2
+Order       embedding_id ascending
+Top-k       3
+Threshold   none
+Reranker    none
+Update      full rebuild
+Publish     index + mapping + manifest-last
 ```
 
-M9 설계 대상:
+Cosine은 FAISS에서:
 
 ```text
-FAISS index type
-similarity metric / normalization
-active-only index policy
-embedding_id ↔ knowledge_item_id mapping
-query embedding contract
-Top-k baseline
-index rebuild / reproducibility
-retrieval sanity / quality Gate
+L2 normalize(database vector)
++ L2 normalize(query vector)
++ inner product search
 ```
 
-**M9는 설계 문서를 먼저 확정한 뒤 구현한다.**
+로 구현한다.
 
-## 9. Current Source of Truth
+Query:
+
+```text
+query_text_profile = raw_query_v1
+query_text = user_query.strip()
+model/profile/dimension = M8 source와 동일
+```
+
+### Scaling
+
+`IndexFlatIP`는 영구 고정이 아니라 exact test oracle이다.
+
+```text
+Pilot → Flat exact
+규모 증가 → latency / RAM / QPS / rebuild benchmark
+필요 시 → HNSW / IVF benchmark
+전환 판단 → recall@k + latency + memory
+```
+
+ANN으로 바뀌어도 `emb_ → ki_ → Evidence` 계약은 유지한다.
+
+## 7. M9-02 · FAISS Build / Search — IMPLEMENTED / CI PASS
+
+구현 구조:
+
+```text
+src/jira_collector/retrieval/
+├─ contract.py
+├─ source.py
+├─ artifact.py
+├─ validation.py
+├─ search.py
+└─ query.py
+
+tools/jira_knowledge/
+├─ build_faiss_index.py
+├─ validate_m9_retrieval_artifact.py
+└─ search_faiss.py
+```
+
+Artifact set:
+
+```text
+index.faiss
+index.mapping.jsonl
+index.manifest.json
+```
+
+Build:
+
+```text
+M8 corpus + embedding integrity re-validation
+→ embedding_id ascending canonical sort
+→ float32 copy
+→ L2 normalize
+→ IndexFlatIP.add
+→ temp index / mapping
+→ load + normalization validation
+→ index / mapping replace
+→ manifest LAST publish
+```
+
+Manifest는 다음을 보존한다.
+
+```text
+rc_ / fi_
+source embedding SHA-256
+source embedding contract hash
+mapping SHA-256
+FAISS binary SHA-256
+FAISS version
+vector_count / dimension
+query profile / Top-k policy
+```
+
+Search loader는 manifest/hash/mapping Gate가 실패한 artifact를 거부한다.
+
+Synthetic CI Gate:
+
+```text
+IndexFlatIP exact cosine search
+canonical embedding_id order
+L2 normalization
+rc_ / fi_ deterministic identity
+same source rebuild → same mapping / logical IDs
+mapping corruption → hash/mapping failure
+query model/profile/dimension mismatch → API 전 차단
+```
+
+```text
+M9-02 = IMPLEMENTED / CI PASS
+```
+
+## 8. M9-03 · Real Index / Retrieval Gate — NEXT
+
+실제 M8 Pilot 285 embeddings로 다음을 확인한다.
+
+### Build Gate
+
+```text
+[ ] vector_count = 285
+[ ] dimension = 1024
+[ ] mapping_rows = 285
+[ ] unique embedding_id = 285
+[ ] unique knowledge_item_id = 285
+[ ] contract/hash/mapping failure = 0
+[ ] dimension/normalization failure = 0
+[ ] temp artifact = false
+```
+
+### Rebuild Gate
+
+```text
+[ ] same M8 source → same rc_
+[ ] same M8 source → same fi_
+[ ] same M8 source → same canonical mapping bytes
+```
+
+### Real Query Gate
+
+```text
+[ ] same BGE-M3 query embedding
+[ ] query L2 normalization
+[ ] Top-3 exact cosine retrieval
+[ ] emb_ ↔ ki_ mapping integrity
+[ ] same query ranking reproducibility
+[ ] representative query semantic sanity
+[ ] dense-neighborhood case observation
+```
+
+## 9. M10과의 경계
+
+M9 output은 candidate identity + score까지만 제공한다.
+
+```text
+rank
+score
+faiss_position
+embedding_id
+knowledge_item_id
+category
+```
+
+M10에서:
+
+```text
+ki_ → Knowledge statement
+ke_ → Evidence source
+→ Evidence Builder
+→ MCP
+```
+
+를 구현한다.
+
+## 10. Current Source of Truth
 
 ```text
 README.md
@@ -309,4 +406,12 @@ docs/M8_DECISION_LOG.md
 docs/M8_REAL_EMBEDDING_LOG.md
 docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html
 docs/status/M8_REAL_EMBEDDING_TROUBLESHOOTING.html
+```
+
+M9 current records:
+
+```text
+docs/M9_FAISS_ACTIVE_RETRIEVAL.md
+docs/M9_DECISION_LOG.md
+docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html
 ```
