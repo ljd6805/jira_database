@@ -32,6 +32,7 @@ def _settings() -> EmbeddingRuntimeSettings:
     return EmbeddingRuntimeSettings(
         endpoint="https://embedding.example/v1/embeddings",
         api_key=None,
+        custom_headers={},
         provider="openai_compatible",
         model="BAAI/bge-m3",
         model_profile="test-profile",
