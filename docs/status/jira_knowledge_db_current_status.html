@@ -2,16 +2,16 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Jira Knowledge DB 현재 상태. M0~M8 완료, M8 BGE-M3 real-run PASS, M9 FAISS 설계가 다음 단계.">
+<meta name="description" content="Jira Knowledge DB 현재 상태. M0~M8 완료, M8 BGE-M3 real-run PASS, M9 FAISS 설계 진행 중.">
 <title>Jira Knowledge DB · Current Status</title>
 <link rel="stylesheet" href="milestone.css">
 <style>.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid2{grid-template-columns:1fr}}</style>
 </head>
 <body><main class="wrap">
-<nav class="top"><a href="../index.html">← 문서 허브</a><a href="../PIPELINE_OVERVIEW.md">Pipeline Overview</a><a href="../architecture/jira_data_relationship_map.html">관계 맵</a><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">M8 Visual</a><a href="M8_REAL_EMBEDDING_TROUBLESHOOTING.html">M8 Troubleshooting</a></nav>
-<header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-26</span><h1>M8까지 완료했습니다.<br>다음은 M9 FAISS 설계입니다.</h1><p>M0~M8을 순서대로 완료했습니다. M7 SQLite real-run PASS에 이어 M8에서는 active accepted Knowledge Item 285개를 실제 사내 BGE-M3로 285개의 1024차원 embedding으로 만들고, deterministic ID·mapping·수치 무결성·semantic sanity까지 검증했습니다. M9는 아직 구현하지 않았으며 먼저 FAISS/검색 계약을 문서로 설계합니다.</p><span class="state">M0~M8 DONE · M8 REAL-RUN PASS · M9 NEXT / DESIGN NOT STARTED</span></header>
+<nav class="top"><a href="../index.html">← 문서 허브</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="../architecture/jira_data_relationship_map.html">관계 맵</a><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">M8 Visual</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Design</a></nav>
+<header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-26</span><h1>M8까지 완료했습니다.<br>현재 M9 FAISS 설계 중입니다.</h1><p>M0~M8을 순서대로 완료했습니다. M7 SQLite real-run PASS에 이어 M8에서는 active accepted Knowledge Item 285개를 실제 사내 BGE-M3로 285개의 1024차원 embedding으로 만들고, deterministic ID·mapping·수치 무결성·semantic sanity까지 검증했습니다. M9는 <strong>설계가 진행 중</strong>이며 구현은 아직 시작하지 않았습니다.</p><span class="state">M0~M8 DONE · M8 REAL-RUN PASS · M9 CURRENT / DESIGN · IMPLEMENTATION NEXT</span></header>
 <div class="kpis"><div class="kpi"><b>285</b><span>Knowledge / Corpus</span></div><div class="kpi"><b>285</b><span>Validated Embeddings</span></div><div class="kpi"><b>5</b><span>64+64+64+64+29 batches</span></div><div class="kpi"><b>1024</b><span>Dense dimension</span></div></div>
-<section><h2>1. Milestone 상태</h2><div class="grid4"><div class="box"><b>M6 · DONE</b><p>Version / Generation / Knowledge Attempt / Evidence logical schema 확정.</p></div><div class="box"><b>M7 · DONE / PASS</b><p>15-table SQLite materialization, real-run integrity/idempotency PASS.</p></div><div class="box good"><b>M8 · DONE / PASS</b><p>Corpus → BGE-M3 → validated embedding artifact까지 실데이터 검증 완료.</p></div><div class="box next"><b>M9 · NEXT</b><p>FAISS + Active Retrieval. 아직 구현 시작 전이며 설계부터 진행.</p></div></div></section>
+<section><h2>1. Milestone 상태</h2><div class="grid4"><div class="box"><b>M6 · DONE</b><p>Version / Generation / Knowledge Attempt / Evidence logical schema 확정.</p></div><div class="box"><b>M7 · DONE / PASS</b><p>15-table SQLite materialization, real-run integrity/idempotency PASS.</p></div><div class="box good"><b>M8 · DONE / PASS</b><p>Corpus → BGE-M3 → validated embedding artifact까지 실데이터 검증 완료.</p></div><div class="box next"><b>M9 · CURRENT / DESIGN</b><p>FAISS + Active Retrieval 설계 진행 중. 구현은 다음 단계.</p></div></div></section>
 <section><h2>2. M6/M7 Identity는 계속 기준입니다</h2><div class="flow">jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 
 knowledge_attempt
@@ -32,10 +32,10 @@ Idempotent            true
 M7_REAL_RUN           PASS</div></section>
 <section><h2>4. M8 완료 근거</h2><table><thead><tr><th>Gate</th><th>결과</th></tr></thead><tbody><tr><td>M8-01 Corpus</td><td>active accepted Knowledge Item 285 → <code>statement_v1</code> corpus 285</td></tr><tr><td>M8-02 Contract</td><td><code>ec_</code>/<code>emb_</code>, OpenAI-compatible adapter, custom header, batch≤64, retry, atomic publish</td></tr><tr><td>M8-03 Full embedding</td><td><code>corpus_rows=285</code>, <code>embedding_rows=285</code>, <code>batch_count=5</code>, <code>dimension=1024</code></td></tr><tr><td>Identity / Mapping</td><td>unique <code>ki_</code> 285, unique <code>emb_</code> 285, mapping failure 0, identity failure 0</td></tr><tr><td>Vector integrity</td><td>dimension failure 0, non-finite 0, zero-norm 0, leftover temp artifact false</td></tr><tr><td>Semantic sanity</td><td>3개 sample 모두 PASS. 한 sample은 Top-3 score margin이 작았지만 후보 모두 의미상 타당</td></tr></tbody></table><div class="callout good"><strong>M8 = DONE / PASS</strong><br>실제 사내 BGE-M3 연결과 285개 전체 artifact 검증까지 완료했습니다.</div></section>
 <section><h2>5. M8 Troubleshooting에서 얻은 운영 지식</h2><div class="grid2"><div class="box"><b>설정/연결</b><p>dotenv multi-line, JSON literal, custom header, endpoint 404를 각각 분리해 진단했습니다.</p></div><div class="box"><b>DB 도구</b><p>legacy SQLite Viewer 오류와 실제 DB integrity 오류를 구분했습니다.</p></div></div><p><a href="M8_REAL_EMBEDDING_TROUBLESHOOTING.html">M8 Real Embedding Troubleshooting 열기</a></p></section>
-<section><h2>6. M9에서 먼저 결정할 것</h2><div class="flow">M8 validated embedding JSONL
+<section><h2>6. M9 현재 설계 축</h2><div class="flow">M8 validated embedding artifact
         ↓
-M9 DESIGN
-  1. FAISS index type
+M9 DESIGN · CURRENT
+  1. FAISS index type / exact baseline
   2. similarity metric / normalization
   3. active-only index policy
   4. emb_ ↔ ki_ mapping persistence
@@ -43,8 +43,9 @@ M9 DESIGN
   6. Top-k baseline
   7. rebuild / reproducibility
   8. retrieval sanity / quality Gate
+  9. 향후 ANN scaling path
         ↓
-M9 IMPLEMENTATION</div><div class="callout warn"><strong>아직 M9를 구현하지 않습니다.</strong> Sample에서 Top-3 score가 촘촘한 사례가 있었으므로 Top-1/Top-k/threshold를 임의로 정하지 않고 설계 단계에서 실측 근거와 함께 결정합니다.</div></section>
-<section><h2>7. 현재 문서 Source of Truth</h2><div class="grid2"><div class="box"><b>전체 상태</b><p><a href="../../README.md">README</a><br><a href="../PIPELINE_OVERVIEW.md">Pipeline Overview</a><br><a href="../index.html">Documentation Hub</a></p></div><div class="box"><b>M8 근거</b><p><a href="../M8_EMBEDDING_CHUNK_BGE_M3.md">M8 Final Contract</a><br><a href="../M8_DECISION_LOG.md">M8 Decision Log</a><br><a href="../M8_REAL_EMBEDDING_LOG.md">M8 Real Embedding Log</a><br><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">M8 Visual</a></p></div></div></section>
-<footer>M8 DONE / PASS · M9 NEXT / DESIGN NOT STARTED · 2026-08-26</footer>
+M9 IMPLEMENTATION · NEXT</div><div class="callout warn"><strong>아직 M9 구현 완료가 아닙니다.</strong> 현재는 검색 계약과 확장 경계를 고정하는 설계 단계입니다.</div><p><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 FAISS + Active Retrieval 설계 HTML 열기</a></p></section>
+<section><h2>7. 사람이 읽는 현재 문서</h2><div class="grid2"><div class="box"><b>전체 상태</b><p><a href="../index.html">Documentation Hub</a><br><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><br><a href="../DOCUMENTATION_POLICY.html">Documentation Policy</a><br><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a></p></div><div class="box"><b>M8 / M9 근거</b><p><a href="../M8_EMBEDDING_CHUNK_BGE_M3.html">M8 Final Contract</a><br><a href="../M8_DECISION_LOG.html">M8 Decision Log</a><br><a href="../M8_REAL_EMBEDDING_LOG.html">M8 Real Embedding Log</a><br><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Design Visual</a></p></div></div></section>
+<footer>M8 DONE / PASS · M9 CURRENT / DESIGN · IMPLEMENTATION NEXT · 2026-08-26</footer>
 </main></body></html>
