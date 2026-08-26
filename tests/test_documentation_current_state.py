@@ -186,7 +186,7 @@ def test_documentation_hub_links_all_milestone_visual_docs() -> None:
 
 
 def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
-    """Current/Completion 문서에는 실제 Jira Issue Key를 남기지 않습니다."""
+    """Current/Completion 문서에는 실제 Pilot Jira Issue Key를 남기지 않습니다."""
 
     public_docs = CURRENT_DOCS + (
         Path("docs/M7_REAL_RUN_LOG.md"),
@@ -194,8 +194,9 @@ def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
         Path("docs/status/M7_SQLITE_MATERIALIZATION_COMPLETION.md"),
         Path("docs/status/M7_SQLITE_MATERIALIZATION.html"),
     )
-    # Jira-like PROJECT-123은 잡되 M6-01/M6-02 같은 Milestone decision label은 제외합니다.
-    issue_key_pattern = re.compile(r"\b(?!M\d+-\d+\b)[A-Z][A-Z0-9_]{1,15}-\d+\b")
+    # Pilot의 Issue 번호 형태에 맞춰 4자리 이상만 감지해 SHA-256, UTF-8,
+    # M6-01 같은 기술/문서 표기를 Jira Key로 오인하지 않습니다.
+    issue_key_pattern = re.compile(r"\b[A-Z][A-Z0-9_]{1,15}-[1-9]\d{3,}\b")
     for path in public_docs:
         text = _read(path)
         matches = issue_key_pattern.findall(text)
