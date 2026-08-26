@@ -1,8 +1,4 @@
-<!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M9 FAISS + Active Retrieval 최종 완료. Real build, rebuild, query, same-query reproducibility PASS"><title>M9 · FAISS + Active Retrieval · DONE</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid3,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}@media(max-width:800px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">← M8 DONE</a><a href="../index.html">문서 허브</a><a href="../M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Contract</a><a href="../M9_REAL_RETRIEVAL_LOG.html">Real Log</a><a href="M10_START_HERE.html">M10 Start Here →</a></nav>
-<header class="hero"><span class="eyebrow">M9 · DONE / PASS · 2026-08-26</span><h1>FAISS Retrieval을<br>실데이터까지 검증 완료했습니다</h1><p>실제 BGE-M3 embedding 285개로 exact cosine FAISS index를 만들고, 동일 source rebuild 재현성, 서로 다른 실제 질문의 semantic sanity, 동일 질문의 vector/ranking/score 재현성까지 모두 확인했습니다.</p><span class="state">M9-01 DESIGN PASS · M9-02 IMPLEMENTATION PASS · M9-03 REAL-RUN PASS · M10 NEXT</span></header>
-<div class="kpis"><div class="kpi"><b>285</b><span>vectors</span></div><div class="kpi"><b>1024</b><span>dimension</span></div><div class="kpi"><b>PASS</b><span>rebuild</span></div><div class="kpi"><b>PASS</b><span>same-query</span></div></div>
-<section><h2>1. 최종 Retrieval 계약</h2><div class="flow">Index       IndexFlatIP
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M9 FAISS + Active Retrieval 최종 완료. Real build, rebuild, query, same-query reproducibility PASS"><title>M9 · FAISS + Active Retrieval · DONE</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid3,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}@media(max-width:800px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">← M8 DONE</a><a href="../index.html">문서 허브</a><a href="../M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Contract</a><a href="../M9_REAL_RETRIEVAL_LOG.html">Real Log</a><a href="M10_START_HERE.html">M10 Start Here →</a></nav><header class="hero"><span class="eyebrow">M9 · DONE / PASS · 2026-08-26</span><h1>FAISS Retrieval을<br>실데이터까지 검증 완료했습니다</h1><p>실제 BGE-M3 embedding 285개로 exact cosine FAISS index를 만들고 build/rebuild/query/same-query reproducibility까지 모두 확인했습니다.</p><span class="state">M9-01 DESIGN PASS · M9-02 IMPLEMENTATION PASS · M9-03 REAL-RUN PASS · M10 NEXT</span></header><div class="kpis"><div class="kpi"><b>285</b><span>vectors</span></div><div class="kpi"><b>1024</b><span>dimension</span></div><div class="kpi"><b>PASS</b><span>rebuild</span></div><div class="kpi"><b>PASS</b><span>same-query</span></div></div><section><h2>1. 최종 Retrieval 계약</h2><div class="flow">Index       IndexFlatIP
 Metric      cosine
 Normalize   DB/query 모두 L2
 Query       raw_query_v1
@@ -10,38 +6,23 @@ Order       embedding_id ascending
 Top-3       exact candidates
 Threshold   none
 Reranker    none
-Mapping     position → emb_ → ki_</div></section>
-<section><h2>2. Real Build / Rebuild</h2><div class="grid2"><div class="box good"><b>Real Build PASS</b><p>285 vectors, 1024 dimensions, mapping/hash/normalization failure 0.</p></div><div class="box good"><b>Rebuild PASS</b><p>같은 source/contract → same rc_ / fi_ / source SHA / mapping SHA.</p></div></div></section>
-<section><h2>3. Real Query 품질 관찰</h2><div class="grid2"><div class="box"><b>Query Case 1</b><p>Rank 1 좋음 · Rank 2 좋음 · Rank 3 어색함</p></div><div class="box"><b>Query Case 2</b><p>Rank 1 좋음 · Rank 2 괜찮음 · Rank 3 어색함</p></div></div><div class="box warn"><b>Top-3 noise</b><p>Rank 3에는 noise가 섞일 수 있습니다. Case 2에서는 Rank 2와 3 score가 가까워 global cosine threshold만으로 relevance를 구분하기 어렵다는 근거가 생겼습니다. 그래서 threshold/reranker는 아직 추가하지 않습니다.</p></div></section>
-<section><h2>4. Same-query Reproducibility</h2><div class="flow">vector_exact_equal = True
+Mapping     position → embedding_id(emb_) → knowledge_item_id(ki_)</div></section><section><h2>2. Real Build / Rebuild</h2><div class="grid2"><div class="box good"><b>Real Build PASS</b><p>285 vectors, 1024 dimensions, mapping/hash/normalization failure 0.</p></div><div class="box good"><b>Rebuild PASS</b><p>같은 source/contract → same rc_ / fi_ / source SHA / mapping SHA.</p></div></div></section><section><h2>3. Real Query 품질</h2><div class="grid2"><div class="box"><b>Case 1</b><p>Rank 1/2 유효 · Rank 3 noise</p></div><div class="box"><b>Case 2</b><p>Rank 1/2 유효 · Rank 3 noise</p></div></div><div class="box warn"><b>관찰</b><p>global cosine threshold/reranker는 아직 임의 추가하지 않습니다.</p></div></section><section><h2>4. Same-query</h2><div class="flow">vector_exact_equal = True
 max_abs_diff       = 0
 cosine             = 1.000000000
 ranking_equal      = True
-scores_exact_equal = True</div><div class="box good"><b>동일 질문 → 동일 vector → 동일 Top-3 → 동일 score</b></div></section>
-<section><h2>5. Pilot vs Production</h2><div class="grid2"><div class="box"><b>Pilot</b><p>full rebuild로 deterministic/integrity/reproducibility를 검증했습니다.</p></div><div class="box"><b>Production</b><p>delta-first. added/changed/removed만 반영하고 full rebuild는 maintenance/recovery/migration에 사용합니다.</p></div></div><div class="flow">Incremental exact 후보
-IndexIDMap2(IndexFlatIP) + stable int64 vector_id
-
-Scaling 후보
-HNSW / IVF
-→ Flat exact 대비 recall@k + latency + memory + QPS로 결정</div></section>
-<section><h2>6. M9 Final Gate</h2><div class="flow">[x] exact baseline contract
-[x] deterministic rc_ / fi_
-[x] real 285-vector build
-[x] mapping/hash/normalization integrity
-[x] same-source rebuild reproducibility
-[x] distinct real query semantic sanity
+scores_exact_equal = True</div></section><section><h2>5. Production 방향</h2><div class="flow">운영 기본 = delta-first
+Incremental exact = IndexIDMap2(IndexFlatIP) + stable int64 vector_id
+Scaling 후보 = HNSW / IVF
+full rebuild = maintenance / recovery / migration</div></section><section><h2>6. Final Gate</h2><div class="flow">[x] build
+[x] rebuild
+[x] semantic sanity
 [x] Top-3 noise observation
-[x] same-query vector reproducibility
-[x] same-query ranking reproducibility
-[x] same-query score reproducibility
+[x] same-query vector/ranking/score reproducibility
 
-M9 = DONE / PASS</div></section>
-<section><h2>7. M10으로 넘기는 경계</h2><div class="flow">M9 output
-rank + score + faiss_position + emb_ + ki_
+M9 = DONE / PASS</div></section><section><h2>7. M10 Boundary</h2><div class="flow">M9 output
+rank + score + faiss_position + embedding_id + knowledge_item_id + category
         ↓
 M10
-ki_ → Knowledge statement
-ke_ → Evidence source
-→ Evidence package
-→ MCP</div><div class="box good"><b>새 세션 시작점</b><p><a href="M10_START_HERE.html">M10 Start Here</a>를 먼저 읽고 Evidence Package / Resolver / MCP Tool Contract를 DESIGN부터 확정합니다.</p></div></section>
-<footer>M9 DONE / PASS · M10 NEXT / DESIGN NOT STARTED · 2026-08-26</footer></main></body></html>
+knowledge_item_id(ki_) → Knowledge statement
+knowledge_evidence(ke_) → Evidence source
+→ Evidence package → MCP</div><div class="box good"><a href="M10_START_HERE.html">새 세션은 M10 Start Here에서 시작</a></div></section><footer>M9 DONE / PASS · M10 NEXT / DESIGN NOT STARTED · 2026-08-26</footer></main></body></html>
