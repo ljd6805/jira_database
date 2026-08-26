@@ -1,6 +1,6 @@
 # Documentation Policy
 
-기준일: 2026-08-25  
+기준일: 2026-08-26  
 상태: **ACTIVE PROJECT RULE**
 
 이 프로젝트는 코드 구현과 문서화를 분리하지 않는다.
@@ -34,9 +34,10 @@ docs/architecture/jira_data_relationship_map.*
 ```text
 docs/DB_LOGICAL_SCHEMA.md
 docs/M7_SQLITE_MATERIALIZATION.md
+docs/M8_EMBEDDING_CHUNK_BGE_M3.md
 ```
 
-Schema/ID/Cardinality/Evidence contract가 변경되면 코드와 같이 갱신한다.
+Schema/ID/Cardinality/Evidence/Embedding contract가 변경되면 코드와 같이 갱신한다.
 
 ### C. Decision Log
 
@@ -69,9 +70,20 @@ docs/status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.html
 docs/status/M5_KNOWLEDGE_PROFILING_COMPLETION.html
 docs/status/M6_DB_LOGICAL_SCHEMA_COMPLETION.html
 docs/status/M7_SQLITE_MATERIALIZATION.html
+docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html
 ```
 
-현재 진행 중인 Milestone은 아직 Completion Record가 아니라도 실행/설계 Markdown을 기준으로 HTML Visual Companion을 둔다. 현재 M7은 `docs/M7_SQLITE_MATERIALIZATION.md`가 상세 기준이고 `docs/status/M7_SQLITE_MATERIALIZATION.html`이 시각본이다.
+현재 진행 중인 Milestone은 아직 Completion Record가 없어도 실행/설계 Markdown을 기준으로 HTML Visual Companion을 둔다.
+
+현재 M8은:
+
+```text
+docs/M8_EMBEDDING_CHUNK_BGE_M3.md
+→ 상세 설계/실행 기준
+
+docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html
+→ 시각 companion
+```
 
 #### HTML 보존 규칙
 
@@ -113,8 +125,8 @@ docs/status/archive/
 예를 들어:
 
 ```text
-M6 DONE
-M7 CURRENT
+M7 DONE
+M8 CURRENT
 ```
 
 으로 상태가 바뀌면 최소 다음을 같은 변경 단위에서 확인한다.
@@ -133,7 +145,7 @@ architecture map
 
 새 Milestone이 `CURRENT`가 되었는데 해당 `M<N>_*.html`이 없다면 Milestone 전환 작업은 미완료다.
 
-`M6 CURRENT`, `M7 NEXT` 같은 오래된 문자열이 Current Source of Truth에 남아 있으면 작업이 끝난 것이 아니다.
+`M7 CURRENT`, `M8 BLOCKED` 같은 오래된 문자열이 Current Source of Truth에 남아 있으면 작업이 끝난 것이 아니다.
 
 ---
 
@@ -167,7 +179,7 @@ Milestone HTML은 당시 완료 시점의 구조를 보존한다. 이후 구조�
 
 ## 4. ID 계약은 문서와 코드가 함께 움직인다
 
-현재 M6-02/M7 ID 계층:
+현재 M6/M7 ID 계층:
 
 ```text
 jira_id
@@ -185,6 +197,8 @@ knowledge_item_id          ki_
 knowledge_evidence_id      ke_
 ```
 
+M8에서 embedding/chunk identity를 추가하더라도 위 Knowledge identity를 대체하지 않고 mapping 계층으로 둔다.
+
 다음 중 하나라도 바뀌면 반드시 문서와 테스트를 함께 갱신한다.
 
 - hash material
@@ -193,6 +207,7 @@ knowledge_evidence_id      ke_
 - Attempt/Generation 의미
 - authoritative identity
 - active/historical lifecycle
+- embedding/chunk identity mapping
 
 ---
 
@@ -225,17 +240,32 @@ DOCUMENTATION SYNC
 
 ## 6. 현재 적용 상태
 
-2026-08-25 기준:
+2026-08-26 기준:
 
 ```text
-M0~M6   DONE
-M7      IMPLEMENTED / REAL-RUN VALIDATION PENDING
-M8      BLOCKED UNTIL M7 REAL-RUN GATE
+M0~M7   DONE
+M8      CURRENT / READY TO START
+M9      PLAN
+M10     Functional MVP Gate
 ```
 
-M6-01~03 결정은 `docs/M6_DECISION_LOG.md`에 보존되고, M6 최종 계약은 `docs/DB_LOGICAL_SCHEMA.md`, M7 구현 계약은 `docs/M7_SQLITE_MATERIALIZATION.md`를 기준으로 한다.
+M7 완료 근거:
 
-M0~M7 HTML Visual Companion은 `docs/status/`에 보존하고 `docs/index.html`에서 연결한다.
+```text
+docs/M7_SQLITE_MATERIALIZATION.md
+docs/M7_REAL_RUN_LOG.md
+docs/status/M7_SQLITE_MATERIALIZATION_COMPLETION.md
+docs/status/M7_SQLITE_MATERIALIZATION.html
+```
+
+M8 현재 계약:
+
+```text
+docs/M8_EMBEDDING_CHUNK_BGE_M3.md
+docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html
+```
+
+M0~M8 HTML Visual Companion은 `docs/status/`에 보존하고 `docs/index.html`에서 연결한다.
 
 ---
 
@@ -247,6 +277,7 @@ M0~M7 HTML Visual Companion은 `docs/status/`에 보존하고 `docs/index.html`�
 - [ ] ID 계층과 hash material이 현재 코드와 같은가?
 - [ ] Attempt/Generation 관계가 유실되지 않았는가?
 - [ ] Evidence round-trip 경로가 최신인가?
+- [ ] Historical artifact 정보가 public 문서에 과도하게 노출되지 않았는가?
 - [ ] Decision Log에 변경 이유가 남아 있는가?
 - [ ] 이전 Milestone Completion Record가 존재하는가?
 - [ ] M0부터 현재 Milestone까지 HTML Visual Companion이 존재하는가?
