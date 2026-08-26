@@ -2,6 +2,9 @@
 
 Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 보존 → 결정적 정규화 → Issue 단위 Knowledge Input → Knowledge 추출/검토 → Profiling → Versioned SQLite Knowledge DB → Embedding → Vector Retrieval → MCP**로 발전시키는 프로젝트입니다.
 
+> 📚 **프로젝트 문서는 [Documentation Hub](docs/index.html)에서 시작하세요.**  
+> 초기 구상부터 M0~M8 현재 상태, 관계 맵, M9/M10 향후 단계까지 한 흐름으로 연결되어 있습니다.
+
 현재 기준:
 
 ```text
@@ -211,12 +214,16 @@ FAISS는 M9 책임이며 M8에 섞지 않습니다.
 
 ## 8. 주요 문서
 
+**공식 단일 진입점:**
+
+- [Documentation Hub](docs/index.html) — Baseline → M0~M8 → M9/M10 전체 여정
+- [Baseline Jira → BGE-M3 RAG → MCP 최소 구현 계획](docs/planning/jira_rag_mcp_minimum_implementation_plan.html)
+
 Current Source of Truth:
 
 - [현재 상태와 향후 계획](docs/status/jira_knowledge_db_current_status.html)
 - [Pipeline 전체 아키텍처](docs/PIPELINE_OVERVIEW.md)
 - [Jira Knowledge 관계 맵](docs/architecture/jira_data_relationship_map.html)
-- [HTML 문서 허브](docs/index.html)
 - [Documentation Policy](docs/DOCUMENTATION_POLICY.md)
 
 설계/완료 기록:
