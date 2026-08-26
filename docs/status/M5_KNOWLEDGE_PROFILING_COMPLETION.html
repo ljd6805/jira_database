@@ -4,6 +4,15 @@
 <header class="hero"><span class="eyebrow">M5 · PROFILING</span><h1>감으로 DB를 설계하지 않고<br>실제 Knowledge 분포부터 재기</h1><p>M5는 M4에서 만들어진 실제 Knowledge/Review 30건을 deterministic Python으로 측정해, M6 DB Logical Schema와 M8 Embedding Unit 판단에 사용할 근거를 만든 단계입니다.</p><span class="state">PASS / DONE · Run 20260804T043628Z</span><div class="breadcrumb">M4 actual artifacts → deterministic profile → M6 schema evidence</div></header>
 <div class="kpis"><div class="kpi"><b>285</b><span>Knowledge Item</span></div><div class="kpi"><b>503</b><span>Raw Evidence Ref</span></div><div class="kpi"><b>37</b><span>Review JSON</span></div><div class="kpi"><b>9.5</b><span>Item / Issue mean</span></div></div>
 <section class="beginner"><span class="badge">1분 요약</span><h2>M5를 아주 쉽게 말하면</h2><div class="grid3"><div class="easy-card"><div class="emoji">📏</div><b>재는 단계</b><p>Knowledge를 더 만들거나 Skill을 바꾸지 않고, 이미 만들어진 산출물이 실제로 얼마나 큰지 숫자로 측정했습니다.</p></div><div class="easy-card"><div class="emoji">📊</div><b>왜 재나?</b><p>DB 테이블 관계, Evidence 저장 방식, Embedding Unit을 “대충 이럴 것”이 아니라 실제 분포에 근거해 정하기 위해서입니다.</p></div><div class="easy-card"><div class="emoji">🧭</div><b>주의</b><p>30건 파일럿의 최대값을 전체 Jira의 영구 제한으로 쓰지 않습니다. 분포는 설계 근거이지 절대 상한이 아닙니다.</p></div></div><div class="analogy"><strong>비유</strong> 창고 선반을 만들기 전에 실제 박스 30개의 크기와 무게를 재는 단계입니다. 가장 큰 박스가 19개 칸을 썼다고 “앞으로 모든 박스는 19칸 이하”라고 규칙을 박지는 않습니다.</div></section>
+<section><h2>전체 파이프라인에서 M5는 어디인가?</h2><div class="flow">[M4] 실제 Jira 30건에서 Knowledge 생성 성공
+  ↓
+[M5] 만들어진 결과의 크기·분포·Evidence·Attempt를 측정  ← 지금 여기
+  ↓
+[M6] 측정값을 근거로 DB의 Entity와 관계를 설계
+  ↓
+[M7] 그 설계를 실제 SQLite로 구현
+  ↓
+[M8~M10] Vector 검색 + Evidence + MCP</div><div class="grid3"><div class="mini"><b>M4와 차이</b><p>M4는 “파이프라인이 성공했는가?”, M5는 “성공한 결과가 실제로 어떻게 생겼는가?”를 봅니다.</p></div><div class="mini"><b>M6와 차이</b><p>M5는 설계하지 않고 측정합니다. M6가 그 측정값을 보고 DB 구조를 결정합니다.</p></div><div class="mini"><b>M5 완료 후</b><p>Knowledge Item 수, Evidence 1:N, retry 분포처럼 DB 설계에 필요한 실제 근거가 생겼습니다.</p></div></div><div class="callout good"><strong>M5의 핵심 역할</strong> “아마 이 정도겠지”를 버리고, <strong>실제 데이터를 재서 다음 설계의 근거를 만드는 단계</strong>입니다.</div></section>
 <section><h2>1. M5가 측정한 것</h2><div class="flow">M4 Knowledge / Review 30건
         ↓
 profile_knowledge_run.py
