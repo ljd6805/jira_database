@@ -1,0 +1,38 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · Documentation Policy</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1080px;margin:auto;padding:38px 22px 80px}.hero{padding:36px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:7px 0;font-size:clamp(32px,5vw,52px);line-height:1.12}.back{display:inline-block;margin-bottom:14px;color:var(--blue);font-weight:800;text-decoration:none}section{margin-top:38px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card h3{margin:0 0 6px}.card p{margin:0;color:var(--muted);font-size:14px}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.good{border-color:var(--green);background:#eaf8f3}.warn{border-color:var(--amber);background:#fff6e9}.danger{border-color:var(--red);background:#fff0f0}pre{white-space:pre-wrap;overflow:auto;padding:17px;border-radius:13px;background:var(--code);color:#dce8ff;font:13px/1.65 "Cascadia Code","D2Coding",Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line)}th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style></head><body><main class="wrap"><a class="back" href="index.html">← Documentation Hub</a><header class="hero"><strong>ACTIVE PROJECT RULE · 2026-08-26</strong><h1>Documentation Policy</h1><p>이 프로젝트의 문서는 결과 보고서가 아니라 사람과 Agent가 같은 상태를 복원하기 위한 프로젝트 상태 저장소입니다. 2026-08-26부터 <strong>Documentation Hub가 연결하는 사람용 문서는 HTML로 통일</strong>합니다.</p></header>
+<section><h2>1. 새 기본 규칙 · Hub는 HTML Only</h2><div class="callout good"><strong>강제 규칙</strong><br><code>docs/index.html</code>의 로컬 문서 링크는 모두 <code>.html</code>이어야 합니다. Hub에서 <code>.md</code>로 직접 이동하는 링크를 만들지 않습니다.</div><div class="grid"><article class="card"><h3>사람이 읽는 문서</h3><p>Overview, Design, Policy, Status, Completion, Troubleshooting, Decision Log의 Hub 노출본은 HTML.</p></article><article class="card"><h3>Markdown 허용</h3><p>README/AGENTS/Skill 같은 운영 파일과 raw 실행 로그·CHANGELOG 등 기록용 소스는 유지 가능.</p></article><article class="card"><h3>Log도 Hub에서는 HTML</h3><p>원본 로그를 .md로 남기더라도 Hub에서 읽게 할 경우 HTML companion을 만들고 HTML에 연결.</p></article></div></section>
+<section><h2>2. 왜 이렇게 바꾸는가</h2><p>이 프로젝트는 설계 구조, 데이터 관계, Gate와 실환경 검증 수치를 반복해서 되짚어야 합니다. Markdown은 원시 기록에는 편하지만, 사람용 학습/복기 문서의 가독성과 시각적 구조를 일정하게 유지하기 어렵습니다. 따라서 역할을 분리합니다.</p><table><thead><tr><th>용도</th><th>기본 형식</th><th>비고</th></tr></thead><tbody><tr><td>Documentation Hub</td><td>HTML</td><td>허브 자체와 연결 대상 모두 HTML</td></tr><tr><td>현재 상태 / 아키텍처 / 설계 / 정책</td><td>HTML</td><td>사람이 바로 이해할 수 있는 설명·표·흐름 포함</td></tr><tr><td>Milestone Visual / Completion</td><td>HTML</td><td>M0부터 현재까지 보존</td></tr><tr><td>Decision / Real-run Log 원본</td><td>Markdown 허용</td><td>Hub 노출 시 HTML companion 필수</td></tr><tr><td>README / AGENTS / Skill 지침</td><td>Markdown 허용</td><td>GitHub/도구 동작을 위한 운영 파일</td></tr></tbody></table></section>
+<section><h2>3. 기존 Markdown 처리 원칙</h2><div class="callout warn"><strong>한 번에 전부 삭제하지 않습니다.</strong><br>기존 테스트, Agent 지침, 과거 링크가 특정 MD 경로를 참조할 수 있으므로 legacy Markdown은 내부 호환/기록 목적으로 일시 보존할 수 있습니다. 다만 Documentation Hub에서는 연결하지 않습니다.</div><pre>사람용 진입점
+  docs/index.html
+      ↓
+  *.html only
+
+내부/기록 계층
+  README.md / AGENTS.md
+  *_LOG.md / CHANGELOG.md
+  legacy contract *.md (migration 중에만 임시 보존 가능)</pre><p>새로 만드는 사람용 문서는 HTML-first로 작성합니다. legacy non-log MD를 장기간 유지할 이유가 사라지면 별도 migration 작업에서 참조·테스트를 정리한 뒤 제거합니다.</p></section>
+<section><h2>4. Current Source of Truth</h2><pre>README.md                              # repository entrypoint
+AGENTS.md                              # agent runtime rule
+docs/index.html                        # human documentation hub
+docs/PIPELINE_OVERVIEW.html            # human architecture overview
+docs/DOCUMENTATION_POLICY.html         # authoritative documentation policy
+docs/status/jira_knowledge_db_current_status.html
+docs/architecture/jira_data_relationship_map.html</pre><p>현재 Milestone의 상세 사람용 설계 문서는 해당 <code>docs/status/M&lt;N&gt;_*.html</code> 또는 명시된 HTML contract를 사용합니다.</p></section>
+<section><h2>5. Milestone HTML 보존 규칙</h2><ol><li>Milestone이 CURRENT가 되는 시점부터 <code>docs/status/M&lt;N&gt;_*.html</code>을 둡니다.</li><li>DONE 이후에도 HTML을 삭제하지 않습니다.</li><li>코드/Schema/Gate/검증 결과가 바뀌면 관련 HTML도 같은 작업 단위에서 갱신합니다.</li><li>핵심 본문은 HTML 파일 자체에 정적으로 포함합니다.</li><li>외부 CDN이나 원격 payload가 없어도 핵심 내용을 읽을 수 있어야 합니다.</li><li><code>fetch()</code> + <code>DecompressionStream</code> 방식의 압축 fragment loader를 Milestone 문서에 사용하지 않습니다.</li><li>HTML이 실제 코드/검증보다 더 강한 사실을 새로 만들지 않습니다.</li></ol></section>
+<section><h2>6. 삭제 / 이동 승인 규칙</h2><div class="callout danger"><strong>사용자 승인 없이 Milestone HTML 삭제 금지</strong><br><code>docs/status/M*.html</code>의 삭제, 이름 변경, 다른 형식으로 대체, archive 이동은 일반 정리 작업으로 보지 않습니다. 삭제하기 전에 이유와 영향 범위를 사용자에게 설명하고 명시적 승인을 받아야 합니다.</div><p>승인이 없으면 삭제 대신 보존 + superseded/historical 표기를 우선합니다. Agent는 이 규칙이나 관련 회귀 테스트를 사용자 승인 없이 약화해서는 안 됩니다.</p></section>
+<section><h2>7. 변경 단위 규칙</h2><p>방향을 바꾸는 결정, 데이터 계약 변경, Milestone 상태 변경은 코드만 바꾸고 끝내지 않습니다.</p><pre>DESIGN
+→ 계약 합의 / 문서화
+
+IMPLEMENTATION
+→ 코드 / DDL / Tool 구현
+
+VALIDATION
+→ unit / integration / real-data 검증
+
+DOCUMENTATION SYNC
+→ Current Source와 실제 상태 일치
+→ Hub local links = HTML only
+→ 관련 HTML 갱신</pre></section>
+<section><h2>8. 자동 회귀 방지</h2><div class="callout"><strong>새 테스트</strong><br><code>tests/test_documentation_hub_html_only.py</code>가 Hub의 로컬 anchor가 모두 .html인지, 실제 파일이 존재하는지 검사합니다.</div><pre>pytest tests/test_documentation_hub_html_only.py
+pytest tests/test_documentation_current_state.py</pre><p>Hub에 <code>.md</code> 링크가 다시 추가되거나 존재하지 않는 HTML을 연결하면 문서 Gate가 실패해야 합니다.</p></section>
+<section><h2>9. 작업 종료 체크</h2><ul><li>Current Milestone과 Next Action이 실제 상태와 같은가?</li><li>Entity/Cardinality/ID 계층이 현재 코드와 같은가?</li><li>Decision 이유가 HTML 또는 raw log에 보존되는가?</li><li>M0부터 현재 Milestone까지 HTML이 존재하는가?</li><li>Documentation Hub의 로컬 링크가 전부 <code>.html</code>인가?</li><li>새 사람용 문서를 MD로만 추가하지 않았는가?</li><li>Log MD를 Hub에서 읽혀야 한다면 HTML companion을 만들었는가?</li><li>HTML 삭제/이동이 있다면 사전 사용자 승인을 받았는가?</li></ul></section>
+</main></body></html>

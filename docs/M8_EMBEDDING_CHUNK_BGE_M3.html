@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M8 · Embedding Unit / Chunk + BGE-M3</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1080px;margin:auto;padding:38px 22px 80px}.hero{padding:36px;border-radius:24px;color:white;background:linear-gradient(130deg,#17284e,#3157d5 68%,#6c87e8)}h1{margin:7px 0;font-size:clamp(32px,5vw,52px);line-height:1.12}.back{display:inline-block;margin-bottom:14px;color:var(--blue);font-weight:800;text-decoration:none}section{margin-top:38px}.lead{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card h3{margin:0 0 6px}.card p{margin:0;color:var(--muted);font-size:14px}pre{white-space:pre-wrap;overflow:auto;padding:17px;border-radius:13px;background:var(--code);color:#dce8ff;font:13px/1.65 "Cascadia Code","D2Coding",Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.good{border-color:var(--green);background:#eaf8f3}.warn{border-color:var(--amber);background:#fff6e9}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line)}th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style></head><body><main class="wrap"><a class="back" href="index.html">← Documentation Hub</a><header class="hero"><div><strong>M8 FINAL CONTRACT · 2026-08-26</strong></div><h1>Embedding Unit / Chunk<br>+ BGE-M3</h1><p>M7 SQLite의 active accepted Knowledge를 검증된 embedding artifact로 바꾸는 M8의 최종 계약입니다. 상태는 <strong>DONE / REAL-RUN PASS</strong>입니다.</p></header>
+<section><h2>1. M8의 경계</h2><div class="callout"><strong>M8에서 하는 일</strong><br>active accepted Knowledge를 corpus로 고정하고 BGE-M3로 1024차원 embedding을 만들며 deterministic identity와 artifact integrity를 검증합니다.</div><div class="callout warn"><strong>M8에서 하지 않는 일</strong><br>FAISS index와 실제 Active Retrieval은 M9의 책임입니다.</div><pre>knowledge_generation.state = active
+AND accepted_attempt_id IS NOT NULL
+    ↓
+accepted knowledge_attempt
+AND content_available = 1
+    ↓
+knowledge_item</pre></section>
+<section><h2>2. Embedding Unit · Chunk 결정</h2><div class="grid"><article class="card"><h3>Knowledge Item</h3><p>285개</p></article><article class="card"><h3>Statement 길이</h3><p>mean 114.01 / p95 206.4 / max 447 chars</p></article><article class="card"><h3>결론</h3><p>Knowledge Item 1개 = Embedding Unit 1개, baseline Chunk 없음</p></article></div><pre>text_profile = statement_v1
+embedding_text = knowledge_item.statement.strip()
+embedding_text_hash = SHA-256(UTF-8 embedding_text)</pre><p class="lead">Chunk는 tokenizer 길이 문제나 Retrieval 품질 개선의 실측 근거가 생길 때만 다시 검토합니다.</p></section>
+<section><h2>3. Deterministic Embedding Contract</h2><pre>Knowledge Item       ki_
+Embedding Contract   ec_
+Embedding Artifact   emb_
+
+embedding_contract_version = 0.1
+text_profile               = statement_v1
+embedding_model            = BAAI/bge-m3
+embedding_model_profile    = internal-bge-m3-unversioned
+embedding_dimension        = 1024
+
+ec_  = H(contract version, text profile, model, model profile, dimension)
+emb_ = H(knowledge_item_id, embedding_text_hash, ec_)</pre><div class="callout good"><strong>Identity에서 제외</strong><br>Endpoint URL, API key, custom header, 실제 vector 값, FAISS position은 logical embedding identity material이 아닙니다.</div></section>
+<section><h2>4. 사내 BGE-M3 API 계약</h2><table><thead><tr><th>항목</th><th>검증된 계약</th></tr></thead><tbody><tr><td>Model</td><td>BAAI/bge-m3</td></tr><tr><td>Serving</td><td>TEI / OpenAI-compatible embeddings API</td></tr><tr><td>Request max batch</td><td>64</td></tr><tr><td>Dense dimension</td><td>1024</td></tr><tr><td>Usage limit</td><td>200 requests/min</td></tr><tr><td>Custom header</td><td>runtime에서 generic하게 지원</td></tr></tbody></table><pre>{
+  "model": "BAAI/bge-m3",
+  "input": ["text1", "text2"]
+}
+
+BGE_M3_ENDPOINT      required
+BGE_M3_API_KEY       optional
+BGE_M3_HEADERS_JSON  optional</pre><p class="lead">Secret/header 실제 값은 Git, stdout, embedding artifact, 공개 문서에 남기지 않습니다.</p></section>
+<section><h2>5. Batch / Mapping / Failure</h2><div class="grid"><article class="card"><h3>Batch</h3><p>285 → 64 + 64 + 64 + 64 + 29 = 5 HTTP requests</p></article><article class="card"><h3>Mapping</h3><p>응답 배열 물리 순서가 아니라 data[].index를 authoritative input mapping으로 사용</p></article><article class="card"><h3>Publish</h3><p>모든 batch 성공 후에만 최종 JSONL atomic publish</p></article></div><table><thead><tr><th>분류</th><th>처리</th></tr></thead><tbody><tr><td>network / timeout / 429 / 500 / 502 / 503 / 504</td><td>제한 재시도</td></tr><tr><td>400 / 401 / 403 / 404</td><td>즉시 실패</td></tr><tr><td>response schema / index mapping / dimension 오류</td><td>즉시 실패</td></tr></tbody></table></section>
+<section><h2>6. Embedding Artifact v0.1</h2><pre>embedding_schema_version
+embedding_contract_version
+embedding_contract_hash
+embedding_id
+knowledge_item_id
+knowledge_attempt_id
+knowledge_generation_id
+issue_version_id
+jira_id
+category
+ordinal
+text_profile
+embedding_text_hash
+embedding_model
+embedding_model_profile
+embedding_dimension
+vector</pre><p class="lead">M9는 embedding_id ↔ knowledge_item_id mapping을 유지한 채 FAISS index를 구성합니다.</p></section>
+<section><h2>7. Real Embedding Gate · PASS</h2><div class="callout good"><strong>전체 Pilot 성공</strong><br>corpus_rows 285 · embedding_rows 285 · batch_count 5 · dimension 1024.</div><pre>validation: PASS
+unique_knowledge_item_ids: 285
+unique_embedding_ids: 285
+contract_count: 1
+mapping_failure_count: 0
+identity_failure_count: 0
+dimension_failure_count: 0
+non_finite_vector_count: 0
+zero_norm_vector_count: 0
+temp_artifact_exists: false</pre><div class="callout warn"><strong>Semantic sanity</strong><br>3개 샘플 모두 PASS. 한 샘플의 Top-3 cosine은 0.5918 / 0.5908 / 0.5900으로 촘촘했지만 후보가 모두 의미상 타당했습니다. 이는 M9에서 Top-k 후보군을 유지할 근거입니다.</div></section>
+<section><h2>8. 실환경 Troubleshooting 요약</h2><table><thead><tr><th>ID</th><th>관찰</th></tr></thead><tbody><tr><td>T01</td><td>legacy SQLite Viewer query 오류</td></tr><tr><td>T02</td><td>python-dotenv multi-line parse 오류</td></tr><tr><td>T03</td><td>JSON 안의 Python 표현식 오류</td></tr><tr><td>T04</td><td>사내 custom header 지원 필요</td></tr><tr><td>T05</td><td>endpoint path 오류로 HTTP 404</td></tr><tr><td>T06</td><td>corpus_rows 28 전달 오류</td></tr></tbody></table><p><a href="status/M8_REAL_EMBEDDING_TROUBLESHOOTING.html">상세 Troubleshooting HTML →</a></p></section>
+<section><h2>9. Final Gate</h2><pre>[x] active accepted corpus = 285
+[x] Knowledge Item = Embedding Unit
+[x] baseline no-chunk / statement_v1
+[x] deterministic ec_ / emb_
+[x] OpenAI-compatible BGE-M3 adapter
+[x] custom header runtime support
+[x] batch <= 64
+[x] full real embedding = 285
+[x] batch_count = 5
+[x] dimension = 1024
+[x] unique ki_ = 285 / unique emb_ = 285
+[x] mapping / identity / dimension failure = 0
+[x] invalid vector = 0
+[x] atomic publish verified
+[x] semantic quality sanity PASS
+
+M8 = DONE / PASS</pre></section>
+</main></body></html>

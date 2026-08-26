@@ -2,13 +2,13 @@
 
 Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 보존 → 결정적 정규화 → Issue 단위 Knowledge Input → Knowledge 추출/검토 → Profiling → Versioned SQLite Knowledge DB → Embedding → Vector Retrieval → MCP**로 발전시키는 프로젝트입니다.
 
-> 📚 프로젝트 문서는 [Documentation Hub](docs/index.html)에서 시작하세요.
+> 📚 사람이 읽는 프로젝트 문서는 [Documentation Hub](docs/index.html)에서 시작하세요. Hub가 연결하는 로컬 문서는 모두 HTML입니다.
 
 현재 기준:
 
 ```text
 M0~M8   DONE
-M9      NEXT / DESIGN NOT STARTED
+M9      CURRENT / DESIGN · IMPLEMENTATION NEXT
 M10     Functional MVP Gate
 ```
 
@@ -38,7 +38,8 @@ M8  Embedding Unit / Chunk + BGE-M3         DONE · REAL-RUN PASS
     ├─ M8-02 contract/adapter              PASS
     └─ M8-03 real embedding                PASS
     ↓
-M9  FAISS + Active Retrieval                NEXT · DESIGN NOT STARTED
+M9  FAISS + Active Retrieval                CURRENT · DESIGN
+    └─ implementation                      NEXT
     ↓
 M10 Evidence Builder + MCP                  Functional MVP Gate
 ```
@@ -53,8 +54,9 @@ M10 Evidence Builder + MCP                  Functional MVP Gate
 6. Generation과 Retry Attempt를 구분합니다.
 7. `knowledge_attempt_id = ka_`는 `knowledge_generation_id + attempt_no`에서 결정적으로 생성됩니다.
 8. 설계/코드/Milestone 상태 변경은 Current 문서와 같은 작업 단위에서 갱신합니다.
+9. Documentation Hub의 로컬 문서 링크는 `.html`만 허용합니다.
 
-문서 동기화 규칙: [`docs/DOCUMENTATION_POLICY.md`](docs/DOCUMENTATION_POLICY.md)
+문서 정책: [Documentation Policy HTML](docs/DOCUMENTATION_POLICY.html)
 
 ## 3. 실제 Pilot 근거
 
@@ -197,19 +199,21 @@ Sample 3은 cosine score가 `0.5918 / 0.5908 / 0.5900`으로 촘촘했습니다.
 
 **M8 = DONE / PASS**
 
-M8 상세 근거:
+M8 상세 근거(사람용 HTML):
 
-- [M8 Design / Final Contract](docs/M8_EMBEDDING_CHUNK_BGE_M3.md)
-- [M8 Decision Log](docs/M8_DECISION_LOG.md)
-- [M8 Real Embedding Log](docs/M8_REAL_EMBEDDING_LOG.md)
+- [M8 Final Contract](docs/M8_EMBEDDING_CHUNK_BGE_M3.html)
+- [M8 Decision Log](docs/M8_DECISION_LOG.html)
+- [M8 Real Embedding Log](docs/M8_REAL_EMBEDDING_LOG.html)
 - [M8 Visual](docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html)
 - [M8 Troubleshooting](docs/status/M8_REAL_EMBEDDING_TROUBLESHOOTING.html)
 
-## 7. M9 — NEXT
+원본 실행/결정 로그 Markdown은 내부 이력·호환 목적으로 남길 수 있지만 Documentation Hub에서는 HTML companion을 연결합니다.
 
-M9는 아직 구현을 시작하지 않았습니다. M8의 validated embedding artifact를 입력으로 사용합니다.
+## 7. M9 — CURRENT / DESIGN
 
-다음 설계 항목을 먼저 합의합니다.
+M9는 설계 단계이며 구현은 아직 시작하지 않았습니다. M8의 validated embedding artifact를 입력으로 사용합니다.
+
+현재 설계 축:
 
 ```text
 FAISS index type / metric / normalization
@@ -219,18 +223,21 @@ Top-k baseline
 query embedding contract
 index rebuild / reproducibility
 search sanity / quality Gate
+향후 ANN scaling path
 ```
 
-**M9 구현은 설계 문서를 먼저 확정한 뒤 시작합니다.**
+**M9 구현은 설계 계약을 고정한 뒤 시작합니다.**
 
 ## 8. 주요 문서
 
 - [Documentation Hub](docs/index.html)
 - [현재 상태](docs/status/jira_knowledge_db_current_status.html)
-- [Pipeline 전체 아키텍처](docs/PIPELINE_OVERVIEW.md)
+- [Pipeline 전체 아키텍처](docs/PIPELINE_OVERVIEW.html)
 - [Jira Knowledge 관계 맵](docs/architecture/jira_data_relationship_map.html)
-- [M8 최종 계약](docs/M8_EMBEDDING_CHUNK_BGE_M3.md)
-- [M8 실환경 검증 로그](docs/M8_REAL_EMBEDDING_LOG.md)
+- [Documentation Policy](docs/DOCUMENTATION_POLICY.html)
+- [M8 최종 계약](docs/M8_EMBEDDING_CHUNK_BGE_M3.html)
+- [M8 실환경 검증 로그](docs/M8_REAL_EMBEDDING_LOG.html)
+- [M9 FAISS 설계 Visual](docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html)
 
 ## 9. 설치
 
@@ -249,9 +256,9 @@ python -m pip install -e ".[dev]"
 ```text
 M8 DONE
   ↓
-M9 설계 문서 작성
+M9 DESIGN · CURRENT
   ↓
-FAISS index / mapping / active-only policy / Top-k Gate 합의
+M9 설계 계약 고정
   ↓
-M9 구현
+M9 IMPLEMENTATION · NEXT
 ```
