@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M8 완료, M9-02 IMPLEMENTED, M9-03 실제 FAISS build PASS, rebuild 재현성과 real query 검증 예정."><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.current{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid2{grid-template-columns:1fr}}</style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M8 완료, M9-02 IMPLEMENTED, M9-03 실제 FAISS build와 rebuild reproducibility PASS, real query 검증 예정."><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.current{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid2{grid-template-columns:1fr}}</style>
 </head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="../architecture/jira_data_relationship_map.html">관계 맵</a><a href="M8_EMBEDDING_CHUNK_BGE_M3.html">M8 Visual</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Visual</a><a href="../M9_REAL_RETRIEVAL_LOG.html">M9 Real Run</a></nav>
-<header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-26</span><h1>실제 FAISS build까지 PASS.<br>이제 재현성과 real query를 닫습니다.</h1><p>M0~M8은 DONE입니다. M9-01 retrieval contract를 확정하고 M9-02 FAISS build/search를 <strong>IMPLEMENTED / CI PASS</strong> 상태로 완료했습니다. M9-03에서는 실제 M8 embedding 285개를 <strong>IndexFlatIP</strong>로 build해 validation PASS를 확인했고, 다음은 같은 source rebuild 재현성과 실제 BGE-M3 질문 Top-3 검색입니다.</p><span class="state">M0~M8 DONE · M9 CURRENT · M9-02 IMPLEMENTED · M9-03 REAL BUILD PASS · REBUILD / REAL QUERY NEXT</span></header>
-<div class="kpis"><div class="kpi"><b>285</b><span>FAISS vectors</span></div><div class="kpi"><b>1024</b><span>Dimension</span></div><div class="kpi"><b>0</b><span>mapping/hash failures</span></div><div class="kpi"><b>0</b><span>normalization failures</span></div></div>
-<section><h2>1. Milestone 상태</h2><div class="grid4"><div class="box"><b>M7 · DONE / PASS</b><p>SQLite materialization, identity, Evidence round-trip, idempotency PASS.</p></div><div class="box good"><b>M8 · DONE / PASS</b><p>285 corpus → 실제 BGE-M3 285×1024 embedding + integrity/sanity PASS.</p></div><div class="box good"><b>M9-01/02 · FROZEN / IMPLEMENTED</b><p>Retrieval contract freeze + FAISS build/search implementation + CI PASS.</p></div><div class="box current"><b>M9-03 · CURRENT</b><p>Real build PASS. rebuild 재현성과 실제 query Top-3 검증이 남았습니다.</p></div></div></section>
+<header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-26</span><h1>FAISS build와 rebuild까지 PASS.<br>이제 실제 질문 검색만 남았습니다.</h1><p>M0~M8은 DONE입니다. M9-01 retrieval contract를 확정하고 M9-02 FAISS build/search를 <strong>IMPLEMENTED / CI PASS</strong> 상태로 완료했습니다. M9-03에서는 실제 285개 IndexFlatIP build와 같은 source rebuild reproducibility를 모두 PASS했습니다. 다음은 실제 BGE-M3 질문을 넣어 Top-3 검색 품질과 ranking 재현성을 확인하는 단계입니다.</p><span class="state">M0~M8 DONE · M9 CURRENT · M9-02 IMPLEMENTED · M9-03 REAL BUILD PASS · REBUILD PASS · REAL QUERY NEXT</span></header>
+<div class="kpis"><div class="kpi"><b>285</b><span>FAISS vectors</span></div><div class="kpi"><b>1024</b><span>Dimension</span></div><div class="kpi"><b>PASS</b><span>Real Build</span></div><div class="kpi"><b>PASS</b><span>Rebuild</span></div></div>
+<section><h2>1. Milestone 상태</h2><div class="grid4"><div class="box"><b>M7 · DONE / PASS</b><p>SQLite materialization, identity, Evidence round-trip, idempotency PASS.</p></div><div class="box good"><b>M8 · DONE / PASS</b><p>285 corpus → 실제 BGE-M3 285×1024 embedding + integrity/sanity PASS.</p></div><div class="box good"><b>M9-01/02 · FROZEN / IMPLEMENTED</b><p>Retrieval contract freeze + FAISS build/search implementation + CI PASS.</p></div><div class="box current"><b>M9-03 · CURRENT</b><p>Real build/rebuild PASS. 실제 query Top-3와 ranking 재현성이 남았습니다.</p></div></div></section>
 <section><h2>2. Identity는 계속 같은 기준을 씁니다</h2><div class="flow">jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 
 knowledge_attempt
@@ -21,32 +21,36 @@ Retrieval
   fi_ = FAISS index artifact
 
 FAISS position ≠ emb_ ≠ ki_</div><div class="callout">M9에서도 FAISS 내부 position을 Knowledge identity로 사용하지 않습니다. <code>position → emb_ → ki_</code> mapping을 보존해 M10에서 Evidence까지 되돌아갈 수 있게 합니다.</div></section>
-<section><h2>3. 실제 M9 Real Build 결과</h2><div class="flow">validation: PASS
+<section><h2>3. 실제 M9 Build / Rebuild 결과</h2><div class="flow">첫 build
+validation: PASS
 vector_count: 285
 dimension: 1024
-retrieval_contract_hash: rc_6b9fc722...
-faiss_index_id: fi_b544c57a...
-source_embedding_artifact_sha256: 45c36319...
-mapping_sha256: 9e546845...
-faiss_binary_sha256: b54e172b...
-mapping_failure_count: 0
-hash_failure_count: 0
-normalization_failure_count: 0</div><div class="callout good"><strong>M9-03 Real Build = PASS</strong><br>실제 285개 vector가 canonical order + L2 normalization + IndexFlatIP로 build됐고 mapping/hash/normalization Gate가 모두 통과했습니다.</div></section>
-<section><h2>4. M9 baseline</h2><table><thead><tr><th>항목</th><th>현재 계약</th></tr></thead><tbody><tr><td>Index</td><td><code>IndexFlatIP</code> exact baseline</td></tr><tr><td>Metric</td><td>cosine = DB/query L2 normalize + inner product</td></tr><tr><td>Top-k</td><td>3</td></tr><tr><td>Threshold</td><td>none</td></tr><tr><td>Reranker</td><td>none</td></tr><tr><td>Canonical order</td><td><code>embedding_id ascending</code></td></tr><tr><td>Update</td><td>full rebuild</td></tr></tbody></table></section>
-<section><h2>5. Rebuild에서 비교할 값</h2><div class="flow">반드시 동일
-retrieval_contract_hash · rc_
-faiss_index_id · fi_
-source_embedding_artifact_sha256
-mapping_sha256
+mapping/hash/normalization failure: 0 / 0 / 0
 
-보조 관찰
-faiss_binary_sha256</div><p>같은 source와 같은 검색 계약이라면 앞 네 값은 반드시 같아야 합니다. FAISS binary SHA는 같은 환경에서 같으면 좋은 신호지만 serialization 차이 가능성 때문에 logical identity의 절대 조건으로 두지 않습니다.</p></section>
+같은 source rebuild
+retrieval_contract_hash: SAME
+faiss_index_id: SAME
+source_embedding_artifact_sha256: SAME
+mapping_sha256: SAME
+faiss_binary_sha256: SAME · same environment observation</div><div class="callout good"><strong>M9-03 Real Build + Rebuild = PASS</strong><br>같은 source + 같은 contract가 같은 logical retrieval identity와 같은 canonical position↔emb_↔ki_ mapping으로 재현됐습니다.</div></section>
+<section><h2>4. M9 baseline</h2><table><thead><tr><th>항목</th><th>현재 Pilot 계약</th></tr></thead><tbody><tr><td>Index</td><td><code>IndexFlatIP</code> exact baseline</td></tr><tr><td>Metric</td><td>cosine = DB/query L2 normalize + inner product</td></tr><tr><td>Top-k</td><td>3</td></tr><tr><td>Threshold</td><td>none</td></tr><tr><td>Reranker</td><td>none</td></tr><tr><td>Canonical order</td><td><code>embedding_id ascending</code></td></tr><tr><td>Pilot update</td><td>full rebuild for deterministic validation</td></tr><tr><td>Production update</td><td>delta-first; full rebuild는 maintenance/recovery/migration</td></tr></tbody></table></section>
+<section><h2>5. Rebuild PASS가 의미하는 것</h2><div class="flow">same source
++ same retrieval contract
+        ↓
+rebuild
+        ↓
+same rc_
+same fi_
+same source SHA
+same mapping SHA
+        ↓
+deterministic / reproducible PASS</div><p>이 Gate는 정식 서비스에서 매번 전체 rebuild하겠다는 의미가 아닙니다. 파일럿에서 현재 implementation이 시간값, 랜덤 ordering, 숨은 상태에 흔들리지 않는지 확인한 것입니다.</p></section>
 <section><h2>6. 현재 남은 Gate</h2><div class="flow">[x] actual FAISS build
 [x] vector_count = 285
 [x] dimension = 1024
 [x] mapping/hash/normalization failure = 0
 [x] index + mapping + manifest publish
-[ ] same source rebuild → same rc_ / fi_ / mapping SHA
+[x] same source rebuild → same rc_ / fi_ / source SHA / mapping SHA
 [ ] actual BGE-M3 query → Top-3 exact retrieval
 [ ] same query ranking reproducibility
 [ ] representative semantic sanity
@@ -59,5 +63,5 @@ M10
 ki_ → Knowledge statement
 ke_ → Evidence source
 → Evidence package
-→ MCP</div><div class="callout warn"><strong>M9에서는 Evidence Builder/MCP를 구현하지 않습니다.</strong> 검색 후보 identity와 score까지 검증한 뒤 M10으로 넘어갑니다.</div></section>
-<footer>M9 CURRENT · M9-02 IMPLEMENTED · REAL BUILD PASS · REBUILD / REAL QUERY NEXT · 2026-08-26</footer></main></body></html>
+→ MCP</div><div class="callout warn"><strong>M9에서는 Evidence Builder/MCP를 구현하지 않습니다.</strong> 실제 query retrieval과 semantic sanity까지 검증한 뒤 M10으로 넘어갑니다.</div></section>
+<footer>M9 CURRENT · M9-02 IMPLEMENTED · REAL BUILD PASS · REBUILD PASS · REAL QUERY NEXT · 2026-08-26</footer></main></body></html>
