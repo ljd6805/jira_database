@@ -6,7 +6,7 @@ Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 
 
 ```text
 M0~M7   DONE
-M8      CURRENT / READY TO START
+M8      CURRENT / M8-01 CORPUS IMPLEMENTED
 M9      PLAN
 M10     Functional MVP Gate
 ```
@@ -32,7 +32,8 @@ M6  DB Logical Schema                       DONE
     ↓
 M7  SQLite Materialization                  DONE
     ↓
-M8  Chunk / Embedding Unit + BGE-M3         CURRENT
+M8  Embedding Unit / Chunk + BGE-M3         CURRENT
+    └─ M8-01 corpus exporter 구현 완료
     ↓
 M9  FAISS + Active Retrieval                PLAN
     ↓
@@ -174,24 +175,39 @@ History Retrieval
 
 M8은 **Embedding Unit / Chunk 전략 + BGE-M3** 단계입니다.
 
-책임 경계:
+M8-01에서 다음 baseline을 고정하고 구현했습니다.
 
 ```text
-입력
-→ M7 SQLite의 active accepted Knowledge
+Corpus
+→ state=active
+→ accepted_attempt_id 존재
+→ accepted Attempt content_available=1
+→ Knowledge Item만 포함
 
-M8
-→ embedding unit 결정
-→ Knowledge Item 자체를 기본 unit 후보로 검증
-→ 필요할 때만 Chunk 추가
-→ BGE-M3 embedding 생성/검증
+Embedding Unit
+→ Knowledge Item 1개 = Embedding Unit 1개
 
-M9
-→ FAISS index
-→ active corpus retrieval
+Chunk
+→ baseline에서는 없음
+→ tokenizer/검색 품질 근거가 있을 때만 추가
+
+Text Profile
+→ statement_v1
+→ embedding_text = statement.strip()
+→ embedding_text_hash = SHA-256(UTF-8 text)
 ```
 
-FAISS를 M8에 섞지 않습니다.
+구현:
+
+```text
+src/jira_collector/embedding/corpus.py
+tools/jira_knowledge/export_embedding_corpus.py
+tests/embedding/test_corpus.py
+```
+
+Synthetic filtering/order/hash test는 CI PASS입니다. 다음 Gate는 실제 M7 DB에서 corpus가 정확히 **285 row**인지 확인하는 것입니다.
+
+FAISS는 M9 책임이며 M8에 섞지 않습니다.
 
 ## 8. 주요 문서
 
@@ -209,6 +225,8 @@ Current Source of Truth:
 - [M6 Decision Log](docs/M6_DECISION_LOG.md)
 - [M7 SQLite Materialization](docs/M7_SQLITE_MATERIALIZATION.md)
 - [M7 Completion Record](docs/status/M7_SQLITE_MATERIALIZATION_COMPLETION.md)
+- [M8 Design](docs/M8_EMBEDDING_CHUNK_BGE_M3.md)
+- [M8 Decision Log](docs/M8_DECISION_LOG.md)
 
 ## 9. 설치
 
@@ -242,13 +260,17 @@ jira:
 ## 10. 다음 액션
 
 ```text
-M7 DONE
+M8-01 구현 완료
   ↓
-M8 설계
-  1. DB에서 active accepted Knowledge 추출 계약 확인
-  2. Knowledge Item을 embedding unit 기본안으로 검토
-  3. Chunk가 필요한 경우와 불필요한 경우 정의
-  4. BGE-M3 요청/응답/배치/1024-dim 계약 고정
-  5. 작은 실데이터 embedding 검증
-  6. M8 Gate 정의 및 통과
+실제 M7 SQLite에서 active accepted corpus export
+  ↓
+corpus_rows = 285 확인
+  ↓
+M8-01 PASS
+  ↓
+M8-02
+→ deterministic embedding contract / embedding_id
+→ BGE-M3 adapter
+→ batch <= 64
+→ dense dimension = 1024
 ```
