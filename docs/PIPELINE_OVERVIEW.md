@@ -103,8 +103,10 @@ Historical/candidate/review_required는 기본 corpus에 섞지 않는다.
 Knowledge identity:
 
 ```text
-jira_id → iv_ → kc_ → kg_ → ka_ → ki_ → ke_
+jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 ```
+
+`knowledge_attempt_id(ka_)`는 `knowledge_generation_id + attempt_no`로 결정되며 1차/2차/3차 재생성 회차 identity를 보존한다.
 
 Embedding/Vector identity는 별도 계층이며 반드시 `knowledge_item_id`로 역참조 가능해야 한다.
 
