@@ -2,33 +2,52 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="M0~M9 완료 후 M10 Evidence Builder + MCP를 새 세션에서 바로 시작하기 위한 공식 인수인계 문서">
+<meta name="description" content="M0~M9 완료 후 M10 Evidence Builder + MCP 설계를 이어가기 위한 공식 인수인계 문서">
 <title>M10 · Start Here · Evidence Builder + MCP</title>
 <link rel="stylesheet" href="milestone.css">
 <style>.grid2,.grid3,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}.top a{display:inline-block;margin:0 8px 10px 0}.small{font-size:13px;color:var(--muted)}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}</style>
 </head>
 <body><main class="wrap">
-<nav class="top"><a href="../index.html">← 문서 허브</a><a href="jira_knowledge_db_current_status.html">Current Status</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 DONE</a><a href="../M9_REAL_RETRIEVAL_LOG.html">M9 Real Log</a></nav>
-<header class="hero"><span class="eyebrow">NEW SESSION HANDOFF · 2026-08-26</span><h1>M10은 여기서 시작하세요.<br>Evidence Builder + MCP</h1><p>M0~M9는 완료했습니다. 새 세션에서는 과거 구현을 다시 추측하지 말고 이 문서를 먼저 읽은 뒤, <strong>M10을 DESIGN부터</strong> 시작합니다. M10의 목표는 M9가 찾은 Knowledge 후보를 SQLite/Evidence에 정확히 연결하고, Agent가 사용할 수 있는 Evidence package와 MCP 인터페이스로 제공하는 것입니다.</p><span class="state">M0~M9 DONE · M10 NEXT · DESIGN NOT STARTED</span></header>
+<nav class="top"><a href="../index.html">← 문서 허브</a><a href="jira_knowledge_db_current_status.html">Current Status</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 DONE</a><a href="../M10_EVIDENCE_MCP_DESIGN.html">M10 Design →</a></nav>
+<header class="hero"><span class="eyebrow">AUTHORITATIVE HANDOFF · 2026-08-26</span><h1>M10은 여기서 이어갑니다.<br>Evidence Builder + MCP</h1><p>M0~M9는 완료됐고 M10 설계가 시작됐습니다. M10의 역할은 <strong>M9가 찾은 Knowledge 후보에 실제 Jira 원문 Evidence를 붙이고 Agent가 MCP로 사용할 수 있게 만드는 것</strong>입니다.</p><span class="state">M0~M9 DONE · M10 DESIGN IN PROGRESS</span></header>
 
-<section><h2>1. 현재 프로젝트 위치</h2><div class="flow">M0  Jira RAW / ANALYSIS                         DONE
-M1  Knowledge Input                            DONE
-M2  Knowledge Schema + Skill                   DONE
-M3  Worker → Validator → Reviewer             DONE
-M4  Real Knowledge Pilot 30/30 PASS           DONE
-M5  Profiling                                  DONE
-M6  Logical DB / Identity                      DONE
-M7  SQLite Materialization                    DONE · REAL-RUN PASS
-M8  BGE-M3 Embedding                          DONE · REAL-RUN PASS
-M9  FAISS + Active Retrieval                  DONE · REAL-RUN PASS
-    ├─ contract/build/search                  PASS
-    ├─ real 285-vector build                 PASS
-    ├─ rebuild reproducibility               PASS
-    ├─ real query semantic sanity            PASS + Top-3 noise observed
-    └─ same-query reproducibility            PASS
-M10 Evidence Builder + MCP                    NEXT · DESIGN NOT STARTED</div></section>
+<section class="beginner"><span class="badge">30초 요약</span><h2>처음 들어왔다면 이것만 기억하세요</h2><div class="grid3"><div class="easy-card"><div class="emoji">🔎</div><b>M9</b><p>“이 Knowledge가 질문과 관련 있어 보입니다.”까지 찾습니다.</p></div><div class="easy-card"><div class="emoji">📎</div><b>M10</b><p>“그 Knowledge의 실제 Jira 근거는 이 댓글/설명입니다.”를 붙입니다.</p></div><div class="easy-card"><div class="emoji">🤖</div><b>Agent</b><p>Knowledge와 실제 근거를 읽고 최종 자연어 답변을 작성합니다.</p></div></div><div class="analogy"><strong>비유</strong> M9가 관련 책을 찾아주는 도서 검색이라면 M10은 실제 페이지를 열어 근거 문장에 책갈피까지 붙여주는 단계입니다.</div></section>
 
-<section><h2>2. 절대 다시 바꾸면 안 되는 Identity 구조</h2><div class="flow">jira_id
+<section><h2>1. 현재 프로젝트 위치</h2><div class="flow">M0  Jira RAW / ANALYSIS                     DONE
+M1  Knowledge Input                        DONE
+M2  Knowledge Schema + Skill               DONE
+M3  Worker → Validator → Reviewer         DONE
+M4  Real Knowledge Pilot 30/30 PASS       DONE
+M5  Profiling                              DONE
+M6  Logical DB / Identity                  DONE
+M7  SQLite Materialization                DONE / REAL-RUN PASS
+M8  BGE-M3 Embedding                      DONE / REAL-RUN PASS
+M9  FAISS + Active Retrieval              DONE / REAL-RUN PASS
+M10 Evidence Builder + MCP                DESIGN IN PROGRESS  ← 현재</div><div class="box good"><b>가장 자세한 현재 설계</b><p><a href="../M10_EVIDENCE_MCP_DESIGN.html">M10 Evidence Builder + MCP 쉬운 설계안</a>을 먼저 읽습니다.</p></div></section>
+
+<section><h2>2. M0~M10의 흐름을 한 번에</h2><div class="flow">Jira 원본
+  ↓ M0 수집/정규화
+Issue별 사실
+  ↓ M1 한 Package
+Knowledge Input
+  ↓ M2 의미 추출
+Knowledge Item
+  ↓ M3/M4 품질 Loop + 실전 검증
+검증된 Knowledge
+  ↓ M5 측정
+DB 설계 근거
+  ↓ M6/M7 설계 + SQLite
+구조화 Knowledge DB
+  ↓ M8
+BGE-M3 vector
+  ↓ M9
+Top-3 Knowledge 후보
+  ↓ M10
+실제 Jira Evidence가 붙은 Package
+  ↓
+Agent / LLM 최종 답변</div></section>
+
+<section><h2>3. 절대 다시 바꾸면 안 되는 Identity 구조</h2><div class="flow">jira_id
   ↓
 iv_  issue_version · source_hash
   ↓
@@ -42,95 +61,58 @@ ka_  knowledge_attempt · attempt_no
   └─ knowledge_review → review_finding
 
 Embedding
-  ec_  embedding contract
-  emb_ embedding artifact
+ec_  embedding contract
+emb_ embedding artifact
 
 Retrieval
-  rc_  retrieval contract
-  fi_  FAISS index artifact
+rc_  retrieval contract
+fi_  FAISS index artifact
 
-FAISS position ≠ emb_ ≠ ki_</div><div class="box good"><b>중요</b><p><code>knowledge_attempt</code>가 실제 retry 회차입니다. <code>knowledge_attempt_id = ka_</code>와 <code>attempt_no</code>를 유지해야 합니다. Knowledge Item과 Review는 Generation이 아니라 Attempt에 연결됩니다.</p></div></section>
+FAISS position ≠ emb_ ≠ ki_</div><div class="box good"><b>중요</b><p><code>knowledge_attempt</code>가 실제 retry 회차입니다. Knowledge Item과 Review는 Generation이 아니라 Attempt에 연결됩니다. M10은 이 구조를 재설계하지 않습니다.</p></div></section>
 
-<section><h2>3. M7 SQLite · M10의 authoritative structured source</h2><div class="grid4"><div class="box"><b>30</b><p>Issue / Active Generation</p></div><div class="box"><b>37</b><p>Attempt / Review</p></div><div class="box"><b>285</b><p>Knowledge Item</p></div><div class="box"><b>502</b><p>Canonical Evidence</p></div></div><div class="flow">Issue / Generation       30 / 30
-Attempt / Review         37 / 37
-Knowledge Item          285
-M5 raw Evidence refs    503
-M7 canonical Evidence   502
-Evidence Failure          0
-FK Failure                0
-Integrity                OK
-Idempotent               true</div><p class="small">M5 raw Evidence 503 중 historical duplicate 1회가 M7에서 canonicalize되어 DB row는 502입니다. 이 차이를 오류로 해석하지 않습니다.</p></section>
+<section><h2>4. M7 · M10이 믿는 구조화 원본</h2><div class="grid4"><div class="box"><b>30</b><p>Issue / Active Generation</p></div><div class="box"><b>37</b><p>Attempt / Review</p></div><div class="box"><b>285</b><p>Knowledge Item</p></div><div class="box"><b>502</b><p>Canonical Evidence</p></div></div><p>M5 raw Evidence 503 중 historical exact duplicate 1회가 M7 canonical DB에서 502 row로 정규화됐습니다. 데이터 유실로 해석하지 않습니다.</p></section>
 
-<section><h2>4. M8 Embedding 계약 · 완료된 것</h2><div class="flow">Knowledge Item 1개 = Embedding Unit 1개
+<section><h2>5. M8 · 검색할 문장을 vector로</h2><div class="flow">Knowledge Item 1개 = Embedding Unit 1개
 text_profile       statement_v1
 chunk baseline     없음
 model              BAAI/bge-m3
 dimension          1024
-batch max          64
 Pilot embeddings   285
-Embedding identity emb_ = H(ki_, text hash, ec_)</div><div class="box good"><b>M8 Final Gate</b><p>285/285 embedding, 5 batches, 1024 dimensions, mapping/identity/dimension/non-finite/zero-norm failure 0, semantic sanity PASS.</p></div></section>
+Embedding identity emb_ = H(ki_, text hash, ec_)</div><div class="box good"><b>M8 Gate</b><p>285/285 embedding · 5 batches · 1024 dimensions · mapping/identity/dimension/invalid vector failure 0.</p></div></section>
 
-<section><h2>5. M9 Retrieval 계약 · 완료된 것</h2><table><thead><tr><th>항목</th><th>Pilot 계약</th></tr></thead><tbody><tr><td>Index</td><td><code>IndexFlatIP</code> exact baseline / test oracle</td></tr><tr><td>Metric</td><td>cosine = DB/query 모두 L2 normalize + inner product</td></tr><tr><td>Query profile</td><td><code>raw_query_v1 = query.strip()</code></td></tr><tr><td>Order</td><td><code>embedding_id ascending</code></td></tr><tr><td>Top-k</td><td>3</td></tr><tr><td>Threshold</td><td>none</td></tr><tr><td>Reranker</td><td>none</td></tr><tr><td>Mapping</td><td>FAISS position → emb_ → ki_</td></tr><tr><td>Artifact</td><td>index.faiss + index.mapping.jsonl + index.manifest.json</td></tr></tbody></table><div class="flow">M9 output contract
-rank
+<section><h2>6. M9 · 질문과 가까운 Knowledge 찾기</h2><table><thead><tr><th>항목</th><th>Pilot 계약</th></tr></thead><tbody><tr><td>Index</td><td><code>IndexFlatIP</code> exact baseline</td></tr><tr><td>Metric</td><td>cosine · DB/query 모두 L2 normalize</td></tr><tr><td>Query profile</td><td><code>raw_query_v1 = query.strip()</code></td></tr><tr><td>Top-k</td><td>3</td></tr><tr><td>Threshold</td><td>none</td></tr><tr><td>Reranker</td><td>none</td></tr><tr><td>Mapping</td><td>FAISS position → emb_ → ki_</td></tr></tbody></table><div class="box warn"><b>M9 실측 관찰</b><p>두 실제 Query에서 Rank 1/2는 유효했고 Rank 3에는 noise가 있었습니다. 점수가 가깝다고 의미 품질도 같은 것은 아니므로 M10에서 실제 Evidence와 함께 평가합니다.</p></div></section>
+
+<section><h2>7. M10이 받는 입력과 만들어야 하는 출력</h2><div class="grid2"><div class="box"><h3>M9가 넘김</h3><div class="flow">rank
 score
 faiss_position
-embedding_id
-knowledge_item_id
-category</div></section>
+embedding_id (emb_)
+knowledge_item_id (ki_)
+category</div></div><div class="box good"><h3>M10이 만들어야 함</h3><div class="flow">rank / score
+Knowledge statement
+Issue provenance
+Evidence[]
+  - summary
+  - description
+  - comment
+  - attachment
+  - relationship
+  - custom_field
+Warnings / typed error</div></div></div></section>
 
-<section><h2>6. M9 실제 검증 결과</h2><div class="grid3"><div class="box good"><b>Real Build PASS</b><p>285 vectors · 1024 dimensions · mapping/hash/normalization failure 0.</p></div><div class="box good"><b>Rebuild PASS</b><p>같은 source/contract → same rc_ / fi_ / source SHA / mapping SHA.</p></div><div class="box good"><b>Same-query PASS</b><p>동일 질문 → 동일 vector / ranking / score.</p></div></div><div class="flow">same-query diagnostic
-vector_exact_equal = True
-max_abs_diff       = 0
-cosine             = 1.000000000
-ranking_equal      = True
-scores_exact_equal = True</div></section>
+<section><h2>8. 현재 M10 추천 설계</h2><div class="grid2"><div class="box next"><b>① 후보 중심 Evidence Package</b><p>rank/score + Knowledge + Evidence를 candidate 한 덩어리로 반환합니다.</p></div><div class="box next"><b>② M7 6종 Resolver 재사용</b><p>새 Evidence 문법을 만들지 않고 기존 round-trip 계약 위에 source read 기능을 추가합니다.</p></div><div class="box next"><b>③ candidate 단위 Runtime 격리</b><p>깨진 candidate는 제외+warning, 정상 candidate는 계속 반환합니다. Offline Gate는 missing 0을 강제합니다.</p></div><div class="box next"><b>④ Top-3 + canonical Evidence 우선 전부</b><p>근거 없는 threshold나 Evidence 제한은 아직 추가하지 않습니다.</p></div><div class="box next"><b>⑤ MCP 2 tools</b><p><code>search_jira_knowledge</code> + <code>get_jira_issue</code>.</p></div><div class="box next"><b>⑥ stale active 재검증</b><p>M9의 <code>ki_</code>가 여전히 active accepted인지 M10에서 다시 확인합니다.</p></div></div></section>
 
-<section><h2>7. 실제 검색 품질에서 관찰한 것</h2><div class="grid2"><div class="box"><b>Query Case 1</b><p>Rank 1 좋음 · 0.843981<br>Rank 2 좋음 · 0.788863<br>Rank 3 어색함 · 0.601325</p></div><div class="box"><b>Query Case 2</b><p>Rank 1 좋음 · 0.708450<br>Rank 2 괜찮음 · 0.699601<br>Rank 3 어색함 · 0.687829</p></div></div><div class="box warn"><b>M10에서 기억할 점</b><p>Top-3 후보 중 noise가 섞일 수 있습니다. 특히 Case 2는 Rank 2와 Rank 3 score 차이가 작지만 의미 품질은 달랐습니다. 따라서 M10 시작 전에 임의의 global cosine threshold를 만들지 않습니다. Evidence와 함께 사용하는 실제 품질을 먼저 봅니다.</p></div></section>
-
-<section><h2>8. 정식 서비스 Update 방향 · 이미 합의됨</h2><div class="flow">운영 기본 = delta-first
-
-unchanged → 기존 embedding/index 재사용
-added     → cache 확인 → 필요 시 embed → add
-changed   → old remove/tombstone → cache/embed → add
-removed   → remove/tombstone
-
-full rebuild
-→ maintenance / recovery / migration / backfill</div><div class="grid2"><div class="box"><b>Vector cache 후보</b><p><code>H(embedding_text_hash, embedding_contract_hash)</code>. 같은 text + 같은 ec_면 vector 재사용 가능.</p></div><div class="box"><b>Incremental exact 후보</b><p><code>IndexIDMap2(IndexFlatIP)</code> + stable int64 vector_id. 현재 Pilot 구현에는 아직 적용하지 않았습니다.</p></div></div><p class="small">HNSW/IVF 전환은 실제 latency/RAM/QPS/recall@k benchmark가 필요할 때 별도 production-hardening에서 결정합니다. 이 작업을 M10 Evidence Builder와 섞지 않습니다.</p></section>
-
-<section><h2>9. M10의 책임 경계</h2><div class="flow">사용자 질문
-→ M9 BGE-M3 + FAISS
-→ Top-k candidate
-   rank + score + emb_ + ki_
-        ↓
-M10
-1. ki_로 Knowledge statement 조회
-2. ki_ → ke_ Evidence refs 조회
-3. Evidence type별 source resolve
-4. Agent가 쓰기 쉬운 Evidence package 구성
-5. MCP interface로 제공
-        ↓
-Agent / LLM
-→ Knowledge + 근거를 함께 사용</div><div class="box good"><b>M10의 핵심 목적</b><p>“검색된 문장이 맞아 보인다”에서 끝내지 않고, <strong>왜 그런 답을 할 수 있는지 Jira 원문 근거까지 정확히 round-trip</strong>하게 만드는 것입니다.</p></div></section>
-
-<section><h2>10. M10에서 아직 결정하지 않은 것</h2><div class="grid2"><div class="box next"><b>Evidence Package Schema</b><p>후보별 어떤 필드를 Agent/MCP에 전달할지 아직 확정하지 않았습니다.</p></div><div class="box next"><b>Evidence Resolver Contract</b><p>version/comment/attachment/relationship/custom field 등 type별 resolver의 출력 규격과 failure 정책을 설계해야 합니다.</p></div><div class="box next"><b>MCP Tool Surface</b><p>검색+근거 조회를 하나의 tool로 할지, search와 resolve를 분리할지 아직 결정하지 않았습니다.</p></div><div class="box next"><b>Candidate/Evidence Budget</b><p>Top-3 모두의 Evidence를 어느 정도까지 싣는지, 길이 제한/중복 제거 정책은 아직 결정하지 않았습니다.</p></div><div class="box next"><b>Quality Gate</b><p>Evidence round-trip, missing evidence, stale active snapshot, citation correctness를 어떤 자동 Gate로 막을지 설계해야 합니다.</p></div><div class="box next"><b>API / MCP Error Contract</b><p>no result, partial evidence, resolver failure, DB mismatch 시 반환 형식과 실패 강도를 정해야 합니다.</p></div></div><div class="box warn"><b>중요</b><p>이 항목들은 아직 합의되지 않았습니다. 새 세션에서 먼저 설계 문서를 만들고 사용자와 결정한 뒤 구현합니다.</p></div></section>
-
-<section><h2>11. M10에서 하지 말아야 할 것</h2><div class="flow">하지 말 것
-- M7 DB identity 구조를 다시 설계하지 않기
-- M8 embedding unit/chunk를 임의로 변경하지 않기
-- M9 Top-k/threshold/reranker를 근거 없이 즉시 변경하지 않기
+<section><h2>9. M10에서 하지 말아야 할 것</h2><div class="flow">- M7 DB Identity를 다시 설계하지 않기
+- M8 Embedding Unit/Chunk를 임의 변경하지 않기
+- M9 Top-k/threshold/reranker를 근거 없이 바꾸지 않기
 - FAISS position을 stable Knowledge ID로 사용하지 않기
-- production delta-first 구현을 M10에 몰래 섞지 않기
-- Evidence 없이 LLM 답변만 만들어 MVP 완료로 판단하지 않기
-- Jira 원문/Issue Key/사내 endpoint/header 값을 public 문서에 기록하지 않기
+- MCP 내부에 별도 생성형 LLM을 넣지 않기
+- production delta-first / HNSW / IVF를 M10에 섞지 않기
+- Evidence 없이 LLM 답변만 만들어 완료로 판단하지 않기
 
 반드시 할 것
-- DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC
-- M7 SQLite를 authoritative structured source로 사용
-- M9 candidate identity를 ki_로 resolve
-- ke_를 통해 원문 Evidence까지 round-trip
-- 사람이 읽는 결정/상태 문서는 HTML로 유지</div></section>
+DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC</div></section>
 
-<section><h2>12. 로컬 artifact 위치</h2><div class="flow">M7 validation SQLite
+<section><h2>10. 로컬 Artifact 위치</h2><div class="flow">M7 validation SQLite
 data/knowledge_db/validation/20260804T043628Z.sqlite3
 
 M8 corpus
@@ -143,30 +125,15 @@ M9 retrieval
 data/retrieval/runs/20260804T043628Z/
 ├─ index.faiss
 ├─ index.mapping.jsonl
-└─ index.manifest.json</div><p class="small"><code>data/</code>는 Git에서 제외되는 로컬 artifact입니다. 새 세션은 public GitHub 문서에는 aggregate/hash/relative path만 기록해야 합니다.</p></section>
+└─ index.manifest.json</div><p class="small"><code>data/</code>는 Git에서 제외되는 로컬 artifact입니다. 공개 문서에는 실제 Jira 원문/Issue Key/사내 endpoint/header/secret을 기록하지 않습니다.</p></section>
 
-<section><h2>13. 보안 / 공개 저장소 규칙</h2><div class="flow">공개 문서에 넣지 않음
-- 실제 Jira Issue Key
-- Jira raw body
-- 실제 사내 endpoint
-- token / password
-- custom header 이름/값
-- .env 내용
+<section><h2>11. 다음 작업 순서</h2><div class="flow">1. M10_EVIDENCE_MCP_DESIGN.html 추천안 확정
+2. M10-01 Contract Freeze 문서화
+3. Evidence Repository / 6종 Resolver 구현 + unit tests
+4. Candidate Evidence Builder 구현 + stale/partial failure tests
+5. MCP 2 tools 연결
+6. 실제 질문 → M9 → M10 → source round-trip Real-run Gate
+7. 결과를 HTML Completion 문서와 Hub에 동기화</div><div class="box good"><b>현재 바로 다음 액션</b><p>M10 설계안의 6개 추천 결정을 사용자와 확정한 뒤 코드 구현을 시작합니다.</p></div></section>
 
-허용
-- aggregate count
-- deterministic ID prefix 설명
-- artifact SHA-256
-- 상대 경로
-- generic config 예시</div></section>
-
-<section><h2>14. 새 세션에서 첫 5단계</h2><div class="flow">1. 이 문서(M10_START_HERE.html)를 읽는다.
-2. Current Status / Pipeline Overview / M9 Final Log를 확인한다.
-3. M10 목적과 책임 경계를 다시 확인한다.
-4. Evidence Package / Resolver / MCP Tool Contract를 설계한다.
-5. 사용자와 설계를 확정한 뒤에만 구현한다.</div><div class="box good"><b>권장 첫 대화</b><p>“M10의 목표는 M9 Top-k candidate를 SQLite Knowledge + Evidence로 정확히 resolve하고 MCP로 노출하는 것입니다. 먼저 Evidence Package와 MCP tool contract를 설계하겠습니다.”에서 시작하면 됩니다.</p></div></section>
-
-<section><h2>15. Source of Truth</h2><div class="grid2"><div class="box"><b>현재 상태</b><p><a href="jira_knowledge_db_current_status.html">Current Status</a><br><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><br><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a></p></div><div class="box"><b>M9 완료 근거</b><p><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Visual</a><br><a href="../M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Final Contract</a><br><a href="../M9_DECISION_LOG.html">M9 Decision Log</a><br><a href="../M9_REAL_RETRIEVAL_LOG.html">M9 Real Validation Log</a></p></div></div></section>
-
-<footer>M0~M9 DONE · M10 NEXT / DESIGN NOT STARTED · New-session authoritative handoff · 2026-08-26</footer>
+<footer>M0~M9 DONE · M10 DESIGN IN PROGRESS · authoritative handoff · 2026-08-26</footer>
 </main></body></html>
