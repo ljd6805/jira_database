@@ -69,6 +69,26 @@ def test_response_index_restores_input_order() -> None:
     assert session.calls[0][4] is True
 
 
+def test_custom_headers_are_forwarded_without_rewriting() -> None:
+    session = FakeSession(
+        [FakeResponse(200, {"data": [{"index": 0, "embedding": [1, 2, 3]}]})]
+    )
+    client = OpenAICompatibleEmbeddingClient(
+        "https://example.invalid/v1/embeddings",
+        model="BAAI/bge-m3",
+        dimension=3,
+        headers={"X-User-Id": "tester", "X-Project-Key": "pilot"},
+        session=session,
+    )
+
+    client.embed(["text"])
+
+    sent_headers = session.calls[0][1]
+    assert sent_headers["Content-Type"] == "application/json"
+    assert sent_headers["X-User-Id"] == "tester"
+    assert sent_headers["X-Project-Key"] == "pilot"
+
+
 def test_dimension_mismatch_is_rejected() -> None:
     session = FakeSession(
         [FakeResponse(200, {"data": [{"index": 0, "embedding": [1, 2]}]})]
