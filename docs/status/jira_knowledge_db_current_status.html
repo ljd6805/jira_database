@@ -1,103 +1,14 @@
-<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Jira Knowledge DB 현재 상태. M0~M6 완료, M7 SQLite 구현 완료 및 실제 30건 검증 대기.">
-<title>Jira Knowledge DB — Current Status</title>
-<style>
-:root{--bg:#f4f7fb;--surface:#fff;--text:#182135;--muted:#63728a;--line:#dbe3ef;--blue:#3157d5;--green:#13845e;--amber:#b56b00;--red:#b73d4b;--shadow:0 10px 28px rgba(31,49,84,.08)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 8% 0%,rgba(49,87,213,.11),transparent 32rem),var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.65;word-break:keep-all}.wrap{max-width:1240px;margin:auto;padding:38px 24px 80px}.hero{padding:38px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#17284d,#3157d5 63%,#6786ed);box-shadow:var(--shadow)}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;opacity:.85}.hero h1{margin:12px 0 10px;font-size:clamp(34px,5vw,56px);line-height:1.08;letter-spacing:-.04em}.hero p{max-width:980px;margin:0;color:rgba(255,255,255,.9)}.hero-grid,.grid2,.grid3,.grid4{display:grid;gap:13px}.hero-grid{grid-template-columns:repeat(3,1fr);margin-top:22px}.hero-grid div{padding:14px;border:1px solid rgba(255,255,255,.17);border-radius:15px;background:rgba(10,24,55,.25)}.hero-grid b{display:block}.hero-grid span{font-size:12px;opacity:.8}section{margin-top:42px}h2{margin:0 0 8px;font-size:27px}h3{margin:0 0 8px}.lead{margin:0 0 18px;color:var(--muted)}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:0 5px 16px rgba(31,49,84,.04)}.card p,.card li{color:#4d5a70}.metric{font-size:28px;font-weight:900}.small{font-size:12px;color:var(--muted)}.code{white-space:pre-wrap;overflow:auto;padding:16px;border-radius:13px;background:#101827;color:#dce9ff;font:12px/1.65 "Cascadia Code","D2Coding",Consolas,monospace}.callout{margin-top:16px;padding:15px 17px;border-left:5px solid var(--blue);border-radius:0 13px 13px 0;background:#edf3ff}.good{border-color:var(--green);background:#eaf8f3}.warn{border-color:var(--amber);background:#fff5e7}.status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.done{background:#e5f7ef;color:#0b6d4a}.current{background:#e9eeff;color:#2548b5}.blocked{background:#fff1dc;color:#9a5b00}.track{display:grid;grid-template-columns:repeat(11,minmax(108px,1fr));gap:8px;overflow:auto;padding-bottom:4px}.ms{min-width:108px;padding:11px;border:1px solid var(--line);border-radius:13px;background:#fff}.ms.done{background:#eef9f4;border-color:#b8e1d0}.ms.current{background:#eef2ff;border:2px solid var(--blue)}.ms.blocked{background:#fff8eb}.ms b{display:block;margin:5px 0;font-size:12px}.ms span{font-size:10px;color:var(--muted)}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line)}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:12px;vertical-align:top}th{background:#eef2f7}.links a{display:inline-block;margin:5px 8px 0 0;color:#2448b1;font-weight:800;text-decoration:none}.footer{margin-top:45px;padding-top:20px;border-top:1px solid var(--line);text-align:center;color:var(--muted);font-size:12px}@media(max-width:900px){.hero-grid,.grid4,.grid3,.grid2{grid-template-columns:1fr 1fr}}@media(max-width:620px){.wrap{padding:20px 14px 60px}.hero{padding:26px}.hero-grid,.grid4,.grid3,.grid2{grid-template-columns:1fr}}
-</style>
-</head>
-<body><main class="wrap">
-<header class="hero">
-<div class="eyebrow">MASTER SOURCE OF TRUTH · v19 · 2026-08-25</div>
-<h1>M6를 닫고,<br>M7을 실제 데이터로 검증하는 단계</h1>
-<p>M6-01~03의 Version / ID / Generation-Attempt / Evidence / Active-History 계약을 확정했고, M7 SQLite Schema·Loader·Integrity Test까지 구현했습니다. 현재 멈춘 지점은 <strong>실제 Jira 30건 Run materialization 검증</strong>입니다. 이 Gate가 닫히기 전에는 M8로 이동하지 않습니다.</p>
-<div class="hero-grid"><div><b>M0~M6 · DONE</b><span>설계·품질·Profiling·Logical Schema 완료</span></div><div><b>M7 · CURRENT</b><span>구현 완료 / Real-run Validation Pending</span></div><div><b>M8 · BLOCKED</b><span>M7 actual 30-issue Gate 후 시작</span></div></div>
-</header>
-
-<section id="roadmap"><h2>Phase 1 Roadmap</h2><p class="lead">Functional MVP는 M10입니다. 현재는 M7 Gate만 남아 있습니다.</p><div class="track">
-<div class="ms done"><span>M0</span><b>RAW / ANALYSIS</b><span>DONE</span></div>
-<div class="ms done"><span>M1</span><b>Knowledge Input</b><span>DONE</span></div>
-<div class="ms done"><span>M2</span><b>Schema / Skill</b><span>DONE</span></div>
-<div class="ms done"><span>M3</span><b>Quality Loop</b><span>DONE</span></div>
-<div class="ms done"><span>M4</span><b>Real Pilot</b><span>30/30 PASS</span></div>
-<div class="ms done"><span>M5</span><b>Profiling</b><span>DONE</span></div>
-<div class="ms done"><span>M6</span><b>Logical Schema</b><span>DONE</span></div>
-<div class="ms current"><span>M7</span><b>SQLite</b><span>REAL-RUN PENDING</span></div>
-<div class="ms blocked"><span>M8</span><b>Chunk / BGE-M3</b><span>BLOCKED</span></div>
-<div class="ms"><span>M9</span><b>FAISS</b><span>PLAN</span></div>
-<div class="ms"><span>M10</span><b>Evidence / MCP</b><span>GATE</span></div>
-</div></section>
-
-<section><h2>실제 데이터 근거</h2><div class="grid4"><div class="card"><div class="small">Issue</div><div class="metric">30</div></div><div class="card"><div class="small">Knowledge Item</div><div class="metric">285</div></div><div class="card"><div class="small">Evidence Ref</div><div class="metric">503</div></div><div class="card"><div class="small">Review Attempt</div><div class="metric">37</div></div></div>
-<div class="callout good"><strong>M4/M5 기준</strong> 1차 PASS 24, 2차 PASS 5, 3차 PASS 1입니다. 따라서 DB에서도 30 Generation과 37 Attempt가 기대됩니다.</div></section>
-
-<section id="m6"><h2>M6 Final Contract</h2><p class="lead">M6-01의 Version/History 원칙과 M6-02의 deterministic ID/Attempt 모델, M6-03의 SQLite integrity 표현을 모두 최종 스키마에 반영했습니다.</p>
-<div class="code">Pipeline Run
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M7 완료, M8 Embedding Unit / Chunk + BGE-M3 시작 준비."><title>Jira Knowledge DB — Current Status</title><style>:root{--bg:#f4f7fb;--surface:#fff;--text:#182135;--muted:#63728a;--line:#dbe3ef;--blue:#3157d5;--green:#13845e;--amber:#b56b00;--shadow:0 10px 28px rgba(31,49,84,.08)}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 8% 0%,rgba(49,87,213,.11),transparent 32rem),var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.65}.wrap{max-width:1240px;margin:auto;padding:38px 24px 80px}.hero{padding:38px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#17284d,#3157d5 63%,#6786ed);box-shadow:var(--shadow)}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;opacity:.85}.hero h1{margin:12px 0 10px;font-size:clamp(34px,5vw,56px);line-height:1.08}.hero p{max-width:980px;margin:0;color:rgba(255,255,255,.9)}.hero-grid,.grid2,.grid3,.grid4{display:grid;gap:13px}.hero-grid{grid-template-columns:repeat(3,1fr);margin-top:22px}.hero-grid div{padding:14px;border:1px solid rgba(255,255,255,.17);border-radius:15px;background:rgba(10,24,55,.25)}section{margin-top:42px}h2{margin:0 0 8px;font-size:27px}.lead{margin:0 0 18px;color:var(--muted)}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:0 5px 16px rgba(31,49,84,.04)}.metric{font-size:28px;font-weight:900}.small{font-size:12px;color:var(--muted)}.code{white-space:pre-wrap;overflow:auto;padding:16px;border-radius:13px;background:#101827;color:#dce9ff;font:12px/1.65 "Cascadia Code","D2Coding",Consolas,monospace}.callout{margin-top:16px;padding:15px 17px;border-left:5px solid var(--blue);border-radius:0 13px 13px 0;background:#edf3ff}.good{border-color:var(--green);background:#eaf8f3}.warn{border-color:var(--amber);background:#fff5e7}.status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.done{background:#e5f7ef;color:#0b6d4a}.current{background:#e9eeff;color:#2548b5}.plan{background:#fff1dc;color:#9a5b00}.track{display:grid;grid-template-columns:repeat(11,minmax(108px,1fr));gap:8px;overflow:auto}.ms{min-width:108px;padding:11px;border:1px solid var(--line);border-radius:13px;background:#fff}.ms.done{background:#eef9f4;border-color:#b8e1d0}.ms.current{background:#eef2ff;border:2px solid var(--blue)}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line)}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:12px;vertical-align:top}th{background:#eef2f7}.links a{display:inline-block;margin:5px 8px 0 0;color:#2448b1;font-weight:800;text-decoration:none}.footer{margin-top:45px;padding-top:20px;border-top:1px solid var(--line);text-align:center;color:var(--muted);font-size:12px}@media(max-width:900px){.hero-grid,.grid4,.grid3,.grid2{grid-template-columns:1fr 1fr}}@media(max-width:620px){.wrap{padding:20px 14px 60px}.hero{padding:26px}.hero-grid,.grid4,.grid3,.grid2{grid-template-columns:1fr}}</style></head><body><main class="wrap"><header class="hero"><div class="eyebrow">MASTER SOURCE OF TRUTH · v20 · 2026-08-26</div><h1>M7을 닫고,<br>M8로 이동합니다</h1><p>M6 Logical Schema를 M7 SQLite Schema v1과 loader로 구현했고, 실제 Jira Pilot 30건 real-run Gate가 PASS했습니다. 현재 단계는 <strong>M8 · Embedding Unit / Chunk + BGE-M3</strong>입니다.</p><div class="hero-grid"><div><b>M0~M7 · DONE</b><span>수집부터 SQLite real-run 검증까지 완료</span></div><div><b>M8 · CURRENT</b><span>Embedding Unit / Chunk + BGE-M3</span></div><div><b>M9 · PLAN</b><span>FAISS + Active Retrieval</span></div></div></header><section><h2>Phase 1 Roadmap</h2><p class="lead">Functional MVP는 M10입니다.</p><div class="track"><div class="ms done"><span>M0</span><b>RAW / ANALYSIS</b><span>DONE</span></div><div class="ms done"><span>M1</span><b>Knowledge Input</b><span>DONE</span></div><div class="ms done"><span>M2</span><b>Schema / Skill</b><span>DONE</span></div><div class="ms done"><span>M3</span><b>Quality Loop</b><span>DONE</span></div><div class="ms done"><span>M4</span><b>Real Pilot</b><span>30/30 PASS</span></div><div class="ms done"><span>M5</span><b>Profiling</b><span>DONE</span></div><div class="ms done"><span>M6</span><b>Logical Schema</b><span>DONE</span></div><div class="ms done"><span>M7</span><b>SQLite</b><span>REAL-RUN PASS</span></div><div class="ms current"><span>M8</span><b>Chunk / BGE-M3</b><span>CURRENT</span></div><div class="ms"><span>M9</span><b>FAISS</b><span>PLAN</span></div><div class="ms"><span>M10</span><b>Evidence / MCP</b><span>GATE</span></div></div></section><section><h2>M7 Completion Snapshot</h2><div class="grid4"><div class="card"><div class="small">Issue / Active Generation</div><div class="metric">30</div></div><div class="card"><div class="small">Knowledge Item</div><div class="metric">285</div></div><div class="card"><div class="small">M5 Raw Evidence</div><div class="metric">503</div></div><div class="card"><div class="small">M7 Canonical Evidence</div><div class="metric">502</div></div></div><div class="callout good"><strong>M7_REAL_RUN = PASS</strong><br>Attempt/Review 37, first/second snapshot 동일, active Generation 30, review_required 0, Evidence failure 0, FK failure 0, SQLite integrity OK, failures=[]</div></section><section><h2>raw 503 → canonical 502</h2><div class="grid2"><div class="card"><h3>M5</h3><p>Historical Knowledge JSON에 존재한 raw Evidence ref를 그대로 세어 503을 기록합니다.</p></div><div class="card"><h3>M7</h3><p>한 Item의 duplicate Evidence 1회를 첫 occurrence 기준으로 canonicalize해 502 row를 저장합니다. M6의 UNIQUE 계약은 유지합니다.</p></div></div><div class="callout warn"><strong>보존 원칙</strong> Historical artifact는 사후 수정하지 않습니다. 실제 Jira 식별자와 본문은 공개 문서에 남기지 않고 aggregate만 기록합니다.</div></section><section><h2>M6/M7 Authoritative DB</h2><div class="code">Pipeline Run
   └─ Issue Version Observation
 
 Issue (jira_id authoritative)
-  └─ Issue Version (iv_)
+  └─ Issue Version (iv_ · source_hash)
        └─ Knowledge Generation (kg_)
-            └─ Knowledge Attempt (ka_ + attempt_no)
+            └─ Knowledge Attempt (ka_ · attempt_no)
                  ├─ Knowledge Item (ki_)
                  │    └─ Knowledge Evidence (ke_)
                  └─ Knowledge Review
-                      └─ Review Finding</div>
-<div class="grid3" style="margin-top:13px"><div class="card"><h3>M6-01</h3><p><code>source_hash</code> 변경 시에만 새 Issue Version. History는 보존하고 기본 Retrieval은 Active만 사용합니다.</p></div><div class="card"><h3>M6-02</h3><p>Generation과 Retry Attempt를 분리합니다. Attempt 1/2/3은 각각 고유 <code>ka_</code> ID를 갖습니다.</p></div><div class="card"><h3>M6-03</h3><p>Observation table, Generation state, partial UNIQUE active index, type-specific Evidence resolver를 확정했습니다.</p></div></div></section>
+                      └─ Review Finding
 
-<section id="ids"><h2>Deterministic ID Ladder</h2><p class="lead">“generation 회차까지 ID가 남는가?”에 대한 현재 authoritative 계약입니다.</p>
-<div class="code">jira_id
-  ↓
-iv_ = H(jira_id, source_hash)
-
-kc_ = H(knowledge_schema_version,
-        skill_version,
-        runtime_version,
-        model_profile)
-
-kg_ = H(iv_, kc_)
-  ↓
-ka_ = H(kg_, attempt_no)       ← 1차/2차/3차 회차 ID
-  ↓
-ki_ = H(ka_, category, ordinal)
-  ↓
-ke_ = H(ki_, ordinal, exact evidence_ref)</div>
-<div class="callout"><strong>중요</strong> 같은 Version + 같은 Contract는 같은 <code>kg_</code> lineage를 재사용합니다. 재시도/재생성 회차는 <code>knowledge_attempt_id(ka_)</code>와 <code>attempt_no</code>로 분리됩니다.</div></section>
-
-<section id="m7"><h2>M7 현재 구현</h2><div class="grid3"><div class="card"><h3>SQLite Schema v1</h3><p>Version / Observation / Generation / Attempt / Item / Evidence / Review / Finding을 실제 table로 구현했습니다.</p></div><div class="card"><h3>Idempotent Loader</h3><p>동일 Run 2회 materialize 시 duplicate와 identity drift를 차단합니다.</p></div><div class="card"><h3>Evidence Integrity</h3><p>6종 Evidence가 source까지 round-trip되지 않으면 transaction 전체를 rollback합니다.</p></div></div>
-<div class="code" style="margin-top:13px">src/jira_collector/knowledge_db/
-├─ ids.py
-├─ schema.py
-├─ loader.py
-├─ evidence.py
-└─ models.py
-
-tools/jira_knowledge/materialize_knowledge_db.py</div></section>
-
-<section id="tests"><h2>자동 테스트에서 이미 확인한 것</h2><table><thead><tr><th>검증</th><th>결과</th></tr></thead><tbody>
-<tr><td>동일 Run 2회 materialize</td><td><span class="status done">PASS</span> row 증가 없음</td></tr>
-<tr><td>Generation / Attempt history</td><td><span class="status done">PASS</span> failed Attempt와 accepted Attempt 분리</td></tr>
-<tr><td>6 Evidence type</td><td><span class="status done">PASS</span> summary / description / comment / attachment / relationship / custom_field</td></tr>
-<tr><td>Broken Evidence</td><td><span class="status done">PASS</span> integrity failure + rollback</td></tr>
-<tr><td>Issue당 active Generation 최대 1개</td><td><span class="status done">PASS</span> SQLite partial UNIQUE index</td></tr>
-<tr><td>GitHub Actions pytest</td><td><span class="status done">PASS</span></td></tr>
-</tbody></table></section>
-
-<section id="gate"><h2>M7 Real-run Gate</h2><p class="lead">Git에 실제 Jira 데이터가 없기 때문에 이 부분만 로컬 실데이터 검증이 필요합니다.</p>
-<div class="grid2"><div class="card"><h3>Expected Counts</h3><div class="code">Issue               30
-Generation          30
-Attempt             37
-Knowledge Item     285
-Evidence            503
-Review               37</div></div><div class="card"><h3>Required Checks</h3><ul><li>동일 명령 2회 실행 후 row count 불변</li><li>active Generation = 30</li><li>review_required = 0</li><li>Evidence resolver failure = 0</li></ul></div></div>
-<div class="callout warn"><strong>M8 진입 조건</strong> 위 실데이터 Gate를 통과하기 전에는 Chunk/Embedding 구현으로 넘어가지 않습니다.</div></section>
-
-<section id="docs"><h2>문서 Source of Truth</h2><div class="grid2"><div class="card"><h3>Current</h3><div class="links"><a href="../../README.md">README</a><a href="../PIPELINE_OVERVIEW.md">Pipeline Overview</a><a href="../index.html">Docs Index</a><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a></div></div><div class="card"><h3>M6 / M7 Contract</h3><div class="links"><a href="../DB_LOGICAL_SCHEMA.md">M6 Logical Schema</a><a href="../M6_DECISION_LOG.md">M6 Decision Log</a><a href="M6_DB_LOGICAL_SCHEMA_COMPLETION.md">M6 Completion</a><a href="../M7_SQLITE_MATERIALIZATION.md">M7 Materialization</a><a href="../DOCUMENTATION_POLICY.md">Documentation Policy</a></div></div></div></section>
-
-<section><h2>Phase 2</h2><div class="grid3"><div class="card"><h3>M11~M13</h3><p>Incremental Sync / Orchestration / Rebuild.</p></div><div class="card"><h3>M14</h3><p>Atomic publish, retry/resume, rollback.</p></div><div class="card"><h3>M15~M16</h3><p>Observability와 Production Lifecycle.</p></div></div></section>
-
-<footer class="footer">Jira Knowledge DB · Current Source of Truth · v19 · 2026-08-25 · M0~M6 DONE · M7 IMPLEMENTED / REAL-RUN VALIDATION PENDING</footer>
-</main></body></html>
+ID ladder
+jira_id → iv_ → kc_ → kg_ → ka_ → ki_ → ke_</div></section><section><h2>M8 · 현재 작업</h2><p class="lead">M8은 Retrieval이 아니라 embedding corpus를 제대로 만드는 단계입니다.</p><div class="grid3"><div class="card"><h3>1. Embedding Unit</h3><p>Knowledge Item 자체를 기본 unit 후보로 검토하고 어떤 metadata를 함께 가져갈지 결정합니다.</p></div><div class="card"><h3>2. Chunk Policy</h3><p>모든 Item을 무조건 chunk하지 않고 길이·맥락·검색 가치에 따라 필요 조건을 정의합니다.</p></div><div class="card"><h3>3. BGE-M3</h3><p>OpenAI-compatible API, batch 최대 64, dense 1024-dim 계약을 기반으로 embedding을 생성·검증합니다.</p></div></div><div class="callout"><strong>경계</strong> FAISS index와 Top-k Retrieval은 M9 책임입니다.</div></section><section><h2>M8 Gate 초안</h2><table><thead><tr><th>검증축</th><th>목표</th></tr></thead><tbody><tr><td>Input corpus</td><td>active accepted Knowledge만 사용</td></tr><tr><td>Embedding identity</td><td>DB Knowledge identity와 vector identity를 분리하면서 안정적 mapping 제공</td></tr><tr><td>Chunk policy</td><td>필요 조건과 canonical chunk identity 정의</td></tr><tr><td>BGE-M3</td><td>batch/API/dimension/실패 처리 재현 가능</td></tr><tr><td>Output</td><td>M9가 그대로 index할 수 있는 deterministic embedding artifact</td></tr></tbody></table></section><section><h2>문서 Source of Truth</h2><div class="grid2"><div class="card"><h3>Current</h3><div class="links"><a href="../../README.md">README</a><a href="../PIPELINE_OVERVIEW.md">Pipeline Overview</a><a href="../index.html">Docs Index</a><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a></div></div><div class="card"><h3>M7 Closure</h3><div class="links"><a href="../M7_SQLITE_MATERIALIZATION.md">M7 Contract</a><a href="../M7_REAL_RUN_LOG.md">Real-run Log</a><a href="M7_SQLITE_MATERIALIZATION_COMPLETION.md">Completion Record</a><a href="M7_SQLITE_MATERIALIZATION.html">Visual Completion</a></div></div></div></section><footer class="footer">Jira Knowledge DB · Current Source of Truth · v20 · 2026-08-26 · M0~M7 DONE · M8 CURRENT</footer></main></body></html>
