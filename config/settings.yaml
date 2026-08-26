@@ -40,6 +40,27 @@ jira:
     backoff_initial_seconds: 3
     backoff_max_seconds: 60
 
+embedding:
+  # endpoint/API key는 사내 주소와 인증정보를 노출하지 않도록 .env에서 입력합니다.
+  # BGE_M3_ENDPOINT, BGE_M3_API_KEY
+  provider: "openai_compatible"
+  model: "BAAI/bge-m3"
+  model_profile: "internal-bge-m3-unversioned"
+  text_profile: "statement_v1"
+  dimension: 1024
+  batch_size: 64
+
+  # 현재 확인된 사내 API 기본 사용량 제한입니다.
+  rate_limit:
+    requests_per_minute: 200
+
+  timeout:
+    read_seconds: 60
+
+  retry:
+    max_attempts: 3
+    backoff_initial_seconds: 1
+
 storage:
   data_root: "./data"
   raw_directory: "raw"
