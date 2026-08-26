@@ -1,7 +1,7 @@
 # M9 Real FAISS Retrieval Validation Log
 
 기준일: 2026-08-26  
-상태: **CURRENT / REAL BUILD PASS / REBUILD REPRODUCIBILITY PASS / REAL QUERY QUALITY PARTIAL PASS / QUERY REPRODUCIBILITY INVESTIGATE**
+상태: **CURRENT / REAL BUILD PASS / REBUILD REPRODUCIBILITY PASS / TWO REAL QUERY CASES OBSERVED / SAME-QUERY REPRODUCIBILITY NEXT**
 
 이 문서는 M9-03 실제 Pilot FAISS index 생성과 retrieval 검증 과정을 기록한다. 실제 Jira 본문, Issue Key, 사내 endpoint/header 값은 기록하지 않는다.
 
@@ -168,21 +168,21 @@ Production
 
 ---
 
-## 6. Real Query Semantic Sanity · PARTIAL PASS
+## 6. Real Query Semantic Sanity · TWO DISTINCT CASES
 
-동일 질문을 두 번 실행해 실제 BGE-M3 query embedding → FAISS Top-3를 확인했다.
+사용자는 **서로 다른 두 질문**으로 실제 BGE-M3 query embedding → FAISS Top-3를 확인했다.
 
-실제 query text와 Jira-derived Knowledge text는 공개 문서에 기록하지 않는다.
+따라서 두 실행의 score 차이는 재현성 문제와 무관하다. 실제 query text와 Jira-derived Knowledge text는 공개 문서에 기록하지 않는다.
 
 사용자 의미 판정:
 
 ```text
-Run 1
+Case 1 · Query A
 rank1  좋음    score 0.843981
 rank2  좋음    score 0.788863
 rank3  어색함  score 0.601325
 
-Run 2
+Case 2 · Query B
 rank1  좋음    score 0.708450
 rank2  괜찮음  score 0.699601
 rank3  어색함  score 0.687829
@@ -190,54 +190,31 @@ rank3  어색함  score 0.687829
 
 관찰:
 
-- 두 실행 모두 Rank 1은 의미상 양호했다.
-- Rank 2도 유효 후보였다.
-- Rank 3은 두 실행 모두 어색해 Top-3 baseline에 일부 noise가 섞일 수 있음을 확인했다.
-- 단일 query 사례만으로 Top-k/threshold/reranker 정책을 변경하지 않는다.
-- 점수 자체보다 더 중요한 문제는 동일 질문 실행 간 score/ranking 재현성이다.
+- 서로 다른 두 질문에서 모두 Rank 1은 의미상 양호했다.
+- Rank 2도 두 질문 모두 유효 후보였다.
+- Rank 3은 두 질문 모두 어색해 Top-3 baseline에 일부 noise가 섞일 수 있음을 확인했다.
+- Case 2에서는 Rank 2와 Rank 3의 score 차이가 작음에도 의미 품질 차이가 있었으므로 단순 global cosine threshold만으로 관련/비관련을 나누기 어렵다는 근거가 생겼다.
+- 두 사례만으로 Top-k/threshold/reranker 계약을 즉시 변경하지 않는다. M10에서 Evidence와 함께 활용하고, 필요 시 후속 품질 실험에서 reranker/threshold를 비교한다.
 
 판정:
 
 ```text
-Real Query Semantic Sanity = PARTIAL PASS
-Top-1 / Top-2 quality       = acceptable
-Top-3 noise observation     = recorded
+Real Query Execution         = PASS
+Top-1 quality                = good in 2/2 cases
+Top-2 candidate usefulness   = acceptable in 2/2 cases
+Top-3 noise                  = observed in 2/2 cases
+Same-query reproducibility   = NOT TESTED YET
 ```
 
 ---
 
-## 7. Same-query Reproducibility · INVESTIGATE
+## 7. Same-query Reproducibility · NEXT
 
-동일 질문을 두 번 실행했다는 전제에서 score가 크게 달랐다.
+현재까지 Case 1과 Case 2는 서로 다른 질문이므로 score/ranking을 서로 비교해 재현성을 판단하면 안 된다.
 
-```text
-Run 1: 0.843981 / 0.788863 / 0.601325
-Run 2: 0.708450 / 0.699601 / 0.687829
-```
+다음 Gate에서는 **완전히 동일한 한 질문 문자열**을 반복 사용한다.
 
-이 차이는 단순 float rounding 수준이 아니다.
-
-현재 검색 코드의 구조:
-
-```text
-query text
-→ 매 실행 BGE-M3 API 호출
-→ query vector
-→ float32
-→ L2 normalize
-→ deterministic IndexFlatIP.search()
-```
-
-`IndexFlatIP.search()` 경로에는 random 요소가 없으므로 우선 다음을 분리 진단한다.
-
-```text
-A. 실제 입력 query bytes가 두 실행에서 달랐는가
-B. 같은 query bytes에 사내 BGE-M3 API가 서로 다른 vector를 반환했는가
-```
-
-이를 위해 `tools/jira_knowledge/diagnose_query_reproducibility.py`를 추가했다.
-
-이 도구는 같은 Python 문자열을 한 프로세스 안에서 연속 호출하여 다음만 출력한다.
+수동 복사 차이를 없애기 위해 `tools/jira_knowledge/diagnose_query_reproducibility.py`를 사용할 수 있다. 이 도구는 같은 Python 문자열을 한 프로세스 안에서 연속 2회 이상 BGE-M3 API에 전달하고 다음만 비교한다.
 
 ```text
 query_text_sha256
@@ -252,12 +229,7 @@ ranking equality
 
 실제 query text와 Knowledge text는 출력하지 않는다.
 
-판정:
-
-```text
-Same-query Ranking Reproducibility = NOT YET PASS
-M9 = NOT DONE
-```
+이 검사는 이상이 이미 발견됐다는 뜻이 아니라, **아직 수행하지 않은 same-query reproducibility Gate를 모호함 없이 검증하기 위한 도구**다.
 
 ---
 
@@ -274,13 +246,12 @@ M9 = NOT DONE
 [x] same source rebuild → same source SHA
 [x] same source rebuild → same mapping_sha256
 [x] same environment → same faiss_binary_sha256 · observation
-[x] real BGE-M3 query → Top-3 retrieval 실행
-[x] representative semantic sanity · partial pass
-[x] Top-3 noise observation
-[ ] same query vector reproducibility
-[ ] same query ranking reproducibility
-[ ] root cause diagnosis
+[x] real BGE-M3 query Case 1 실행
+[x] real BGE-M3 query Case 2 실행
+[x] semantic sanity · Top-1/2 useful, Top-3 noise observed
+[ ] same exact query vector reproducibility
+[ ] same exact query ranking reproducibility
 [ ] final documentation sync
 ```
 
-다음 단계는 query vector reproducibility 진단이다.
+다음 단계는 동일한 질문 하나를 반복해 same-query reproducibility를 검증하는 것이다.
