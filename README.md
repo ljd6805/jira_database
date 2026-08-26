@@ -8,7 +8,7 @@ Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 
 
 ```text
 M0~M8   DONE
-M9      CURRENT / M9-01 DESIGN FROZEN / M9-02 IMPLEMENTED / M9-03 REAL-RUN NEXT
+M9      CURRENT / M9-01 DESIGN FROZEN / M9-02 IMPLEMENTED / M9-03 REAL BUILD PASS
 M10     Functional MVP Gate
 ```
 
@@ -41,7 +41,7 @@ M8  Embedding Unit / Chunk + BGE-M3         DONE · REAL-RUN PASS
 M9  FAISS + Active Retrieval                CURRENT
     ├─ M9-01 retrieval contract            DESIGN FROZEN
     ├─ M9-02 FAISS build/search            IMPLEMENTED · CI PASS
-    └─ M9-03 real index/retrieval           NEXT
+    └─ M9-03 real index/retrieval           REAL BUILD PASS · REBUILD/QUERY NEXT
     ↓
 M10 Evidence Builder + MCP                  Functional MVP Gate
 ```
@@ -267,19 +267,32 @@ M8 source ↔ mapping round-trip
 query model/profile/dimension mismatch 차단
 ```
 
-### M9-03 · REAL-RUN NEXT
+### M9-03 · REAL BUILD PASS / REBUILD NEXT
 
-실제 M8 Pilot artifact 285개로 FAISS index를 만들고 다음을 확인합니다.
+실제 M8 Pilot artifact 285개로 첫 FAISS build를 완료했습니다.
 
 ```text
-vector_count = 285
-dimension = 1024
-mapping_rows = 285
-unique emb_ = 285
-unique ki_ = 285
-hash/mapping/dimension/normalization failure = 0
-same source rebuild → same rc_ / fi_ / mapping
-실제 BGE-M3 query → Top-3 semantic sanity
+validation: PASS
+vector_count: 285
+dimension: 1024
+retrieval_contract_hash: rc_6b9fc7222abbf08ff5861fbb73ab31cc37a12cd78585313d05e2645e7603dd77
+faiss_index_id: fi_b544c57a560cec99069be46b6ee8f2047841b522ddf81681d3cd6027baa65b2d
+source_embedding_artifact_sha256: 45c363194defbb0e7095c32ecd462e749c943d4524ec7dd6acda093260abe2f8
+mapping_sha256: 9e546845b97307d095dd1ff3ec3ab3e4262dcf9b0a1444cbcd4391e0837e947b
+mapping_failure_count: 0
+hash_failure_count: 0
+normalization_failure_count: 0
+```
+
+다음 Gate:
+
+```text
+same source rebuild → same rc_
+same source rebuild → same fi_
+same source rebuild → same mapping_sha256
+실제 BGE-M3 query → Top-3 exact retrieval
+same query ranking reproducibility
+semantic sanity
 ```
 
 ## 8. 주요 문서
@@ -291,7 +304,8 @@ same source rebuild → same rc_ / fi_ / mapping
 - [Documentation Policy](docs/DOCUMENTATION_POLICY.html)
 - [M8 최종 계약](docs/M8_EMBEDDING_CHUNK_BGE_M3.html)
 - [M8 실환경 검증 로그](docs/M8_REAL_EMBEDDING_LOG.html)
-- [M9 FAISS 설계 Visual](docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html)
+- [M9 FAISS Visual](docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html)
+- [M9 Real Retrieval Log](docs/M9_REAL_RETRIEVAL_LOG.html)
 
 ## 9. 설치
 
@@ -314,5 +328,9 @@ M9-01 DESIGN FROZEN
   ↓
 M9-02 IMPLEMENTED / CI PASS
   ↓
-M9-03 실제 285 FAISS build + real query Gate
+M9-03 REAL BUILD PASS
+  ↓
+Rebuild reproducibility
+  ↓
+Real BGE-M3 Top-3 query
 ```
