@@ -1,29 +1,46 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M9 실제 FAISS 285개 build PASS와 rebuild reproducibility Gate를 쉽게 설명"><title>M9 · Real FAISS Validation Log</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1080px;margin:auto;padding:36px 22px 80px}.hero{padding:36px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,50px)}section{margin-top:34px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.card{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:16px;border-radius:13px;background:var(--code);color:#dce8ff;font:12px/1.65 "Cascadia Code","D2Coding",Consolas,monospace}.top a{display:inline-block;margin:0 8px 10px 0;color:#3157d5;text-decoration:none;font-weight:800}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}.kpi{padding:14px;border-radius:13px;background:#fff;border:1px solid var(--line)}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--muted)}@media(max-width:760px){.grid3,.kpis{grid-template-columns:1fr 1fr}}@media(max-width:520px){.grid3,.kpis{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="index.html">← 문서 허브</a><a href="status/M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Visual</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Contract</a><a href="M9_DECISION_LOG.html">Decision Log</a></nav><header class="hero"><div>M9 · REAL VALIDATION · 2026-08-26</div><h1>첫 실제 FAISS build<br>285개 전부 PASS</h1><p>M8에서 검증된 285개의 1024차원 BGE-M3 embedding을 실제 Windows 로컬 환경에서 IndexFlatIP로 만들고, mapping/hash/normalization까지 검증했습니다.</p></header><div class="kpis"><div class="kpi"><b>285</b><span>vector_count</span></div><div class="kpi"><b>1024</b><span>dimension</span></div><div class="kpi"><b>0</b><span>mapping failure</span></div><div class="kpi"><b>0</b><span>hash/norm failure</span></div></div><section><h2>1. 결과</h2><div class="flow">validation: PASS
-vector_count: 285
-dimension: 1024
-retrieval_contract_hash: rc_6b9fc7222abbf08ff5861fbb73ab31cc37a12cd78585313d05e2645e7603dd77
-faiss_index_id: fi_b544c57a560cec99069be46b6ee8f2047841b522ddf81681d3cd6027baa65b2d
-source_embedding_artifact_sha256: 45c363194defbb0e7095c32ecd462e749c943d4524ec7dd6acda093260abe2f8
-mapping_sha256: 9e546845b97307d095dd1ff3ec3ab3e4262dcf9b0a1444cbcd4391e0837e947b
-faiss_binary_sha256: b54e172b2a9d302b8ad6003cd3f56680021cc64f6d0e2ea619f537395055cec2
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M9 실제 FAISS 285개 build와 same-source rebuild reproducibility PASS, real query Gate 진행 중"><title>M9 · Real FAISS Validation Log</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1080px;margin:auto;padding:36px 22px 80px}.hero{padding:36px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,50px)}section{margin-top:34px}.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:16px;border-radius:13px;background:var(--code);color:#dce8ff;font:12px/1.65 "Cascadia Code","D2Coding",Consolas,monospace}.top a{display:inline-block;margin:0 8px 10px 0;color:#3157d5;text-decoration:none;font-weight:800}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}.kpi{padding:14px;border-radius:13px;background:#fff;border:1px solid var(--line)}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:var(--muted)}@media(max-width:760px){.grid2,.grid3,.kpis{grid-template-columns:1fr 1fr}}@media(max-width:520px){.grid2,.grid3,.kpis{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="index.html">← 문서 허브</a><a href="status/M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Visual</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 Contract</a><a href="M9_DECISION_LOG.html">Decision Log</a></nav><header class="hero"><div>M9 · REAL VALIDATION · 2026-08-26</div><h1>FAISS build도,<br>같은 입력의 rebuild도 PASS</h1><p>M8에서 검증된 285개의 1024차원 BGE-M3 embedding으로 첫 IndexFlatIP build를 통과한 뒤, 같은 source와 같은 contract로 다시 build해 logical identity와 canonical mapping이 그대로 재현되는지 확인했습니다.</p></header><div class="kpis"><div class="kpi"><b>285</b><span>vector_count</span></div><div class="kpi"><b>1024</b><span>dimension</span></div><div class="kpi"><b>PASS</b><span>Real Build</span></div><div class="kpi"><b>PASS</b><span>Rebuild Reproducibility</span></div></div><section><h2>1. 첫 Build와 Rebuild 비교</h2><div class="flow">첫 Build
+rc_       rc_6b9fc7222abbf08ff5861fbb73ab31cc37a12cd78585313d05e2645e7603dd77
+fi_       fi_b544c57a560cec99069be46b6ee8f2047841b522ddf81681d3cd6027baa65b2d
+source    45c363194defbb0e7095c32ecd462e749c943d4524ec7dd6acda093260abe2f8
+mapping   9e546845b97307d095dd1ff3ec3ab3e4262dcf9b0a1444cbcd4391e0837e947b
+binary    b54e172b2a9d302b8ad6003cd3f56680021cc64f6d0e2ea619f537395055cec2
+
+Rebuild
+rc_       SAME
+fi_       SAME
+source    SAME
+mapping   SAME
+binary    SAME · same environment observation
+
+validation: PASS
 mapping_failure_count: 0
 hash_failure_count: 0
-normalization_failure_count: 0</div><div class="card good"><strong>M9-03 Real Build = PASS</strong><p>실제 285개 source가 canonical order → L2 normalize → IndexFlatIP → mapping/manifest publish까지 문제없이 완료됐습니다.</p></div></section><section><h2>2. 세 파일의 역할</h2><div class="grid3"><div class="card"><b>index.faiss</b><p>실제 normalized vector index.</p></div><div class="card"><b>index.mapping.jsonl</b><p>FAISS position → emb_ → ki_ 연결.</p></div><div class="card"><b>index.manifest.json</b><p>rc_/fi_, SHA-256, count, dimension, FAISS version을 기록하는 완료 marker.</p></div></div></section><section><h2>3. 무엇을 재실행에서 비교하나?</h2><div class="flow">필수 동일
-retrieval_contract_hash (rc_)
-faiss_index_id (fi_)
-source_embedding_artifact_sha256
-mapping_sha256
-
-참고
-faiss_binary_sha256</div><p><code>rc_</code>는 검색 계약, <code>fi_</code>는 source embedding snapshot + index build profile의 logical identity입니다. 같은 source/contract라면 반드시 같아야 합니다.</p><div class="card warn"><b>FAISS binary SHA는 보조 지표</b><p>같은 머신/같은 FAISS version에서는 같을 가능성이 높지만, 라이브러리/플랫폼 serialization 차이를 고려해 logical identity의 절대 조건으로 두지는 않습니다.</p></div></section><section><h2>4. 현재 Gate</h2><div class="flow">[x] real build
+normalization_failure_count: 0</div><div class="card good"><strong>M9-03 Rebuild Reproducibility = PASS</strong><p>같은 source와 같은 contract가 같은 logical retrieval artifact와 같은 position↔emb_↔ki_ mapping으로 재현됐습니다.</p></div></section><section><h2>2. 각각 무엇을 의미하나?</h2><div class="grid3"><div class="card"><b>rc_</b><p>검색 규칙의 logical ID. IndexFlatIP, cosine/L2, query profile, Top-3, model/profile/dimension 계약을 식별합니다.</p></div><div class="card"><b>fi_</b><p>source embedding snapshot + index build profile의 logical FAISS artifact ID입니다.</p></div><div class="card"><b>mapping SHA</b><p>FAISS position → embedding_id → knowledge_item_id 연결표가 같은지 확인합니다.</p></div></div><div class="card warn"><b>FAISS binary SHA</b><p>이번에는 같은 머신/같은 환경에서 두 build가 byte-for-byte 동일했습니다. 좋은 신호지만 library/platform serialization 차이를 고려해 logical identity의 필수 조건으로 두지는 않습니다.</p></div></section><section><h2>3. 왜 Rebuild Test를 했나?</h2><div class="flow">same source
++ same retrieval contract
+        ↓
+rebuild
+        ↓
+same rc_
+same fi_
+same canonical mapping
+        ↓
+deterministic / reproducible PASS</div><p>이 검증은 정식 서비스에서 매번 전체 rebuild하겠다는 의미가 아닙니다. 파일럿에서 현재 구현이 시간값·랜덤 ordering·숨은 상태에 흔들리지 않는지 확인하는 Gate입니다.</p></section><section><h2>4. Pilot vs Production</h2><div class="grid2"><div class="card"><b>Pilot</b><p>full rebuild로 결정성, mapping, 무결성, exact baseline을 확인합니다.</p></div><div class="card"><b>Production</b><p>delta-first로 added/changed/removed Knowledge만 embedding/index에 반영하고, full rebuild는 maintenance/recovery/migration에 사용합니다.</p></div></div></section><section><h2>5. 현재 Gate</h2><div class="flow">[x] real build
 [x] 285 vectors
 [x] 1024 dimensions
 [x] mapping/hash/norm failure = 0
 [x] artifact publish
-[ ] rebuild → same rc_
-[ ] rebuild → same fi_
-[ ] rebuild → same mapping SHA
+[x] rebuild → same rc_
+[x] rebuild → same fi_
+[x] rebuild → same source SHA
+[x] rebuild → same mapping SHA
+[x] same environment → same FAISS binary SHA · observation
 [ ] real BGE-M3 query Top-3
 [ ] same query ranking reproducibility
-[ ] semantic sanity</div></section><section><h2>5. 다음 단계</h2><div class="card good"><b>같은 build 명령을 그대로 한 번 더 실행</b><p>첫 결과와 rc_/fi_/source SHA/mapping SHA를 비교합니다. PASS하면 실제 질문을 BGE-M3로 embedding하여 Top-3 retrieval을 검증합니다.</p></div></section></main></body></html>
+[ ] semantic sanity
+[ ] dense-neighborhood observation</div></section><section><h2>6. 다음 단계 · 실제 질문 검색</h2><div class="flow">사용자 질문
+→ 같은 BGE-M3 1024-d
+→ L2 normalize
+→ IndexFlatIP exact cosine
+→ Top-3
+→ faiss_position → emb_ → ki_</div><div class="card good"><b>이제 실제 검색 품질을 봅니다</b><p>대표 질문을 넣고 Top-3가 의미상 타당한지, 같은 질문을 재실행하면 같은 ranking이 나오는지 확인합니다. 실제 Jira-derived 문장은 로컬 화면에서만 봅니다.</p></div></section></main></body></html>
