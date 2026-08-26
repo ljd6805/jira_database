@@ -3,7 +3,7 @@
   --panel: #121c32;
   --panel-2: #1a2744;
   --line: #30466d;
-  --line-soft: rgba(216,230,255,.42);
+  --line-soft: rgba(216,230,255,.50);
   --text: #edf3ff;
   --muted: #adc0e8;
   --issue: #67b2ff;
@@ -84,12 +84,20 @@ h2 { margin: 2px 8px 10px; font-size: 23px; }
 .map-grid { display: grid; grid-template-columns: 1.5fr .5fr; gap: 16px; align-items: start; }
 .svg-box {
   border-radius: 20px;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid rgba(255,255,255,.06);
   background: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.01));
   min-height: 900px;
+  scrollbar-color: #49618f #111a2d;
+  scrollbar-width: thin;
 }
-svg { display: block; width: 100%; height: 100%; }
+#networkSvg {
+  display: block;
+  width: 100%;
+  min-width: 980px;
+  height: auto;
+  aspect-ratio: 1320 / 920;
+}
 .side { display: flex; flex-direction: column; gap: 14px; }
 .card, .mini { border-radius: 18px; padding: 16px; }
 .card h3, .mini h4 { margin: 0 0 10px; }
@@ -110,25 +118,66 @@ svg { display: block; width: 100%; height: 100%; }
 }
 .footer-note { text-align: center; color: var(--muted); font-size: 13px; margin-top: 14px; }
 
-.node { cursor: pointer; transition: opacity .2s ease; }
-.node.hidden, .edge-group.hidden { opacity: .08; }
-.node rect, .node circle { stroke-width: 1.4; }
+.node, .edge-group, .edge-label-group { transition: opacity .18s ease, filter .18s ease; }
+.node { cursor: pointer; }
+.node.hidden, .edge-group.hidden, .edge-label-group.hidden { opacity: .06; }
+.node.focus-muted, .edge-group.focus-muted, .edge-label-group.focus-muted { opacity: .10; }
+.node.focused, .edge-group.focused, .edge-label-group.focused { opacity: 1; filter: drop-shadow(0 0 4px rgba(183,216,255,.30)); }
+.node rect, .node circle { stroke-width: 1.5; }
 .node text { fill: var(--text); font-size: 14px; font-weight: 700; pointer-events: none; }
 .node .small { font-size: 11px; font-weight: 500; fill: #d8e5ff; }
-.edge { fill: none; stroke: var(--line-soft); stroke-width: 2.3; marker-end: url(#arrow); }
-.label-tag { fill: rgba(10,16,30,.94); stroke: rgba(255,255,255,.07); stroke-width: 1; }
-.edge-label { fill: #dce8ff; font-size: 11px; font-weight: 700; }
+.edge-halo {
+  fill: none;
+  stroke: rgba(9,17,31,.96);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.edge {
+  fill: none;
+  stroke: var(--line-soft);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  marker-end: url(#arrow);
+  vector-effect: non-scaling-stroke;
+}
+.edge-label-layer { pointer-events: none; }
+.edge-label-leader {
+  stroke: rgba(151,176,219,.58);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.label-tag {
+  fill: rgba(8,15,28,.98);
+  stroke: rgba(216,230,255,.26);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+.edge-label {
+  fill: #edf4ff;
+  font-size: 11px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(8,15,28,.98);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
 
 @media (max-width: 1240px) {
   .map-grid { grid-template-columns: 1fr; }
   .grid-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
-  .svg-box { min-height: 760px; }
+  .svg-box { min-height: 0; }
+  #networkSvg { min-width: 1080px; }
 }
 @media (max-width: 760px) {
   .wrap { width: calc(100vw - 18px); }
   .hero { padding: 22px; }
   .hero h1 { font-size: 27px; }
   .grid-4 { grid-template-columns: 1fr; }
-  .svg-box { min-height: 620px; }
+  .svg-box { max-height: 72vh; }
+  #networkSvg { min-width: 1180px; }
   button { padding: 8px 10px; font-size: 12px; }
 }
