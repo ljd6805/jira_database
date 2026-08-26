@@ -21,8 +21,8 @@ class FakeSession:
         self.responses = list(responses)
         self.calls = []
 
-    def post(self, endpoint, *, headers, json, timeout):
-        self.calls.append((endpoint, headers, json, timeout))
+    def post(self, endpoint, *, headers, json, timeout, verify):
+        self.calls.append((endpoint, headers, json, timeout, verify))
         return self.responses.pop(0)
 
 
@@ -66,6 +66,7 @@ def test_response_index_restores_input_order() -> None:
         "model": "BAAI/bge-m3",
         "input": ["first", "second"],
     }
+    assert session.calls[0][4] is True
 
 
 def test_dimension_mismatch_is_rejected() -> None:
