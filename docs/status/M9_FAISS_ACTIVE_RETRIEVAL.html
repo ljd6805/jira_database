@@ -43,14 +43,18 @@ Production  delta-first</div></section>
 → same canonical mapping
 → deterministic / reproducible PASS</div><p>정식 서비스에서 매번 전체 rebuild하겠다는 뜻이 아닙니다. 파일럿 구현에 시간값·랜덤 ordering·숨은 상태가 개입하지 않는지 확인한 테스트입니다.</p></section>
 <section><h2>5. 정식 서비스는 Delta-first</h2><div class="grid2"><div class="box"><b>변경 없음</b><p>아무 작업도 하지 않고 기존 embedding/index를 유지합니다.</p></div><div class="box"><b>추가/변경</b><p>필요한 vector만 생성 또는 재사용하고 index entry만 add/replace합니다.</p></div><div class="box"><b>삭제/비활성</b><p>검색 entry를 remove 또는 tombstone 처리합니다.</p></div><div class="box"><b>Full rebuild</b><p>maintenance, integrity 검증, migration, recovery 용도로 남깁니다.</p></div></div><div class="box warn"><b>운영형 exact 후보</b><p>Incremental mutation에서는 sequential position 이동 문제를 피하기 위해 <code>IndexIDMap2(IndexFlatIP)</code> + stable int64 vector_id 같은 explicit-ID 구조를 후속 production-hardening에서 검토합니다.</p></div></section>
-<section><h2>6. Identity 경로</h2><div class="flow">FAISS position / future vector_id
+<section><h2>6. 규모가 커지면 HNSW / IVF 비교</h2><div class="grid3"><div class="box"><b>IndexFlatIP</b><p>현재 exact test oracle.</p></div><div class="box"><b>HNSW</b><p>빠른 ANN 후보. 높은 recall을 얻기 쉽지만 memory와 remove 정책을 별도 고려합니다.</p></div><div class="box"><b>IVF</b><p>큰 N에서 일부 inverted list만 검색하는 ANN 후보. training과 nprobe tuning이 필요합니다.</p></div></div><div class="flow">Flat exact Top-k
+vs HNSW / IVF Top-k
+→ recall@k + p95 latency + RAM + QPS
+→ 측정값으로 전환 결정</div></section>
+<section><h2>7. Identity 경로</h2><div class="flow">FAISS position / future vector_id
       ↓
 embedding_id · emb_
       ↓
 knowledge_item_id · ki_
       ↓ M10
 Knowledge + Evidence</div><p><code>rc_</code>는 검색 규칙의 ID, <code>fi_</code>는 source embedding snapshot + index build profile의 logical artifact ID입니다.</p></section>
-<section><h2>7. 현재 M9-03 Gate</h2><div class="flow">[x] actual FAISS build
+<section><h2>8. 현재 M9-03 Gate</h2><div class="flow">[x] actual FAISS build
 [x] vector_count = 285
 [x] dimension = 1024
 [x] mapping/hash/normalization failure = 0
@@ -63,7 +67,7 @@ Knowledge + Evidence</div><p><code>rc_</code>는 검색 규칙의 ID, <code>fi_<
 [ ] representative semantic sanity
 [ ] dense-neighborhood observation
 [ ] final documentation sync</div></section>
-<section><h2>8. 다음 단계 · Real Query</h2><div class="flow">사용자 질문
+<section><h2>9. 다음 단계 · Real Query</h2><div class="flow">사용자 질문
 → same BGE-M3 1024-d
 → L2 normalize
 → IndexFlatIP exact cosine
