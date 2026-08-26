@@ -1,7 +1,7 @@
 Object.assign(window.JIRA_MAP_VIEWS,{
 "issue":{
   "title":"Evidence Round-trip · Accepted Attempt",
-  "help":"현재 Retrieval/Embedding 후보에 노출되는 Knowledge Item이 accepted Attempt를 거쳐 exact evidence_ref로 원본 Source까지 돌아가는 경로입니다. M7 real-run에서 502 canonical Evidence row가 integrity Gate를 통과했고, M8 embedding도 이 active accepted Knowledge만 사용했습니다.",
+  "help":"현재 Retrieval/Embedding 후보에 노출되는 Knowledge Item이 accepted Attempt를 거쳐 exact evidence_ref로 원본 Source까지 돌아가는 경로입니다. M7 real-run에서 502 canonical Evidence row가 integrity Gate를 통과했고, M8/M9는 이 active accepted Knowledge snapshot을 검색 artifact로 사용합니다.",
   "nodes":[
     {"id":"issue","type":"issue","kind":"issue","shape":"pill","x":150,"y":80,"w":200,"h":62,"label":"Issue","sub":"jira_id authoritative"},
     {"id":"version","type":"issue","kind":"issue","shape":"rect","x":150,"y":245,"w":220,"h":90,"label":"Issue Version · iv_","sub":"source_hash immutable state"},
@@ -35,8 +35,8 @@ Object.assign(window.JIRA_MAP_VIEWS,{
   ]
 },
 "schema":{
-  "title":"M7 SQLite v1 → M8 Validated Embedding → M9 Boundary",
-  "help":"M7 SQLite real-run PASS 뒤 active accepted Knowledge 285개를 M8에서 BGE-M3로 285×1024 embedding하고 mapping/identity/vector integrity까지 검증했습니다. 다음은 M9 FAISS 설계입니다.",
+  "title":"M7 SQLite v1 → M8 Embedding → M9 Retrieval",
+  "help":"M7 SQLite real-run PASS 뒤 active accepted Knowledge 285개를 M8에서 BGE-M3로 285×1024 embedding했습니다. M9-02는 이를 L2-normalized IndexFlatIP + mapping + manifest로 구현했고, M9-03 실데이터 Gate가 다음입니다.",
   "nodes":[
     {"id":"run","type":"db","kind":"db","shape":"rect","x":115,"y":80,"w":200,"h":82,"label":"pipeline_run","sub":"run_id"},
     {"id":"issue","type":"issue","kind":"issue","shape":"rect","x":365,"y":80,"w":210,"h":82,"label":"issue","sub":"jira_id PK · issue_key locator"},
@@ -54,7 +54,8 @@ Object.assign(window.JIRA_MAP_VIEWS,{
     {"id":"custom","type":"custom","kind":"custom","shape":"rect","x":340,"y":650,"w":220,"h":80,"label":"custom_field_value","sub":"run + issue + field"},
     {"id":"active","type":"db","kind":"db","shape":"rect","x":650,"y":790,"w":300,"h":90,"label":"Active UNIQUE Index","sub":"30 active · one per jira_id"},
     {"id":"gate","type":"store","kind":"store","shape":"rect","x":1010,"y":790,"w":300,"h":90,"label":"M7 Real-run PASS","sub":"idempotent · FK 0 · integrity OK"},
-    {"id":"embedding","type":"db","kind":"db","shape":"rect","x":1120,"y":650,"w":250,"h":80,"label":"M8 Validated Embeddings","sub":"285 emb_ · 1024 dim · PASS"}
+    {"id":"embedding","type":"db","kind":"db","shape":"rect","x":1120,"y":650,"w":250,"h":80,"label":"M8 Validated Embeddings","sub":"285 emb_ · 1024 dim · PASS"},
+    {"id":"retrieval","type":"db","kind":"db","shape":"rect","x":650,"y":650,"w":250,"h":80,"label":"M9 Retrieval Artifact","sub":"rc_ · fi_ · IndexFlatIP · Top-3"}
   ],
   "edges":[
     {"from":"run","to":"obs","label":"1:N","fromSide":"bottom","toSide":"top"},
@@ -73,7 +74,9 @@ Object.assign(window.JIRA_MAP_VIEWS,{
     {"from":"generation","to":"active","label":"partial UNIQUE","fromSide":"bottom","toSide":"top","c1":[650,500],"c2":[650,700]},
     {"from":"evidence","to":"gate","label":"round-trip PASS","fromSide":"bottom","toSide":"top"},
     {"from":"attempt","to":"gate","label":"count / idempotency PASS","fromSide":"bottom","toSide":"top","c1":[950,420],"c2":[1050,700]},
-    {"from":"item","to":"embedding","label":"active accepted → emb_","fromSide":"bottom","toSide":"top"}
+    {"from":"item","to":"embedding","label":"active accepted → emb_","fromSide":"bottom","toSide":"top"},
+    {"from":"embedding","to":"retrieval","label":"L2 normalize + index","fromSide":"left","toSide":"right"},
+    {"from":"retrieval","to":"item","label":"position → emb_ → ki_","fromSide":"top","toSide":"bottom"}
   ]
 }
 });
