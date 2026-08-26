@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import urlparse
@@ -25,7 +26,8 @@ class EmbeddingSettingsError(ValueError):
 @dataclass(frozen=True)
 class EmbeddingRuntimeSettings:
     endpoint: str
-    api_key: str | None
+    api_key: str | None = field(repr=False)
+    custom_headers: Mapping[str, str] = field(repr=False)
     provider: str
     model: str
     model_profile: str
@@ -105,9 +107,11 @@ def load_embedding_settings(
         raise EmbeddingSettingsError("embedding.tls.verify_ssl은 bool이어야 합니다.")
 
     api_key = str(environment.get("BGE_M3_API_KEY", "")).strip() or None
+    custom_headers = _parse_custom_headers(environment.get("BGE_M3_HEADERS_JSON", ""))
     return EmbeddingRuntimeSettings(
         endpoint=endpoint,
         api_key=api_key,
+        custom_headers=custom_headers,
         provider=provider,
         model=_required_text(embedding.get("model", DEFAULT_EMBEDDING_MODEL), "embedding.model"),
         model_profile=_required_text(
@@ -126,6 +130,33 @@ def load_embedding_settings(
         max_attempts=max_attempts,
         backoff_initial_seconds=float(retry.get("backoff_initial_seconds", 1)),
     )
+
+
+def _parse_custom_headers(raw_value: object) -> dict[str, str]:
+    raw = str(raw_value or "").strip()
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise EmbeddingSettingsError("BGE_M3_HEADERS_JSON은 JSON object여야 합니다.") from exc
+    if not isinstance(parsed, dict):
+        raise EmbeddingSettingsError("BGE_M3_HEADERS_JSON은 JSON object여야 합니다.")
+
+    headers: dict[str, str] = {}
+    for raw_name, raw_header_value in parsed.items():
+        if not isinstance(raw_name, str) or not raw_name.strip():
+            raise EmbeddingSettingsError("custom header 이름은 비어 있지 않은 문자열이어야 합니다.")
+        if not isinstance(raw_header_value, str) or not raw_header_value.strip():
+            raise EmbeddingSettingsError(
+                f"custom header 값은 비어 있지 않은 문자열이어야 합니다: {raw_name}"
+            )
+        name = raw_name.strip()
+        value = raw_header_value.strip()
+        if "\r" in name or "\n" in name or "\r" in value or "\n" in value:
+            raise EmbeddingSettingsError("custom header에는 줄바꿈을 사용할 수 없습니다.")
+        headers[name] = value
+    return headers
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
