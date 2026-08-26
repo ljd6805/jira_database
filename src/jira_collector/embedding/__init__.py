@@ -12,6 +12,11 @@ from .client import (
     OpenAICompatibleEmbeddingClient,
     partition_batches,
 )
+from .config import (
+    EmbeddingRuntimeSettings,
+    EmbeddingSettingsError,
+    load_embedding_settings,
+)
 from .contract import (
     DEFAULT_EMBEDDING_DIMENSION,
     DEFAULT_EMBEDDING_MODEL,
@@ -26,7 +31,9 @@ from .corpus import (
     EmbeddingCorpusRow,
     export_embedding_corpus,
     load_active_embedding_corpus,
+    load_embedding_corpus_file,
 )
+from .runner import EmbeddingRunResult, embed_corpus_file, embed_corpus_rows
 
 __all__ = [
     "CORPUS_SCHEMA_VERSION",
@@ -42,12 +49,19 @@ __all__ = [
     "EmbeddingBatchResult",
     "EmbeddingContract",
     "EmbeddingCorpusRow",
+    "EmbeddingRunResult",
+    "EmbeddingRuntimeSettings",
+    "EmbeddingSettingsError",
     "OpenAICompatibleEmbeddingClient",
     "TEXT_PROFILE_STATEMENT_V1",
     "build_embedding_artifact_rows",
+    "embed_corpus_file",
+    "embed_corpus_rows",
     "embedding_id",
     "export_embedding_artifact_atomic",
     "export_embedding_corpus",
     "load_active_embedding_corpus",
+    "load_embedding_corpus_file",
+    "load_embedding_settings",
     "partition_batches",
 ]
