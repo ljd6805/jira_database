@@ -50,6 +50,7 @@ def embed_corpus_rows(
         model=settings.model,
         dimension=settings.dimension,
         api_key=settings.api_key,
+        headers=settings.custom_headers,
         max_batch_size=settings.batch_size,
         max_attempts=settings.max_attempts,
         timeout_seconds=settings.timeout_seconds,
