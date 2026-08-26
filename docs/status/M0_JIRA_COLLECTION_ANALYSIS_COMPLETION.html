@@ -14,6 +14,18 @@
 
 <section class="beginner"><span class="badge">1분 요약</span><h2>M0를 아주 쉽게 말하면</h2><div class="grid3"><div class="easy-card"><div class="emoji">📥</div><b>왜 필요했나?</b><p>Jira 화면은 사람이 읽기 좋지만, 프로그램이 반복 처리하려면 원본을 일정한 형태로 안전하게 저장해야 합니다.</p></div><div class="easy-card"><div class="emoji">🧱</div><b>무엇을 만들었나?</b><p>Jira API 응답을 RAW로 보존하고, 그 RAW를 Issue·Comment·관계·Custom Field 등의 ANALYSIS JSONL로 변환했습니다.</p></div><div class="easy-card"><div class="emoji">➡️</div><b>그래서 무엇이 가능해졌나?</b><p>다음 단계는 Jira 서버를 다시 두드리지 않고 로컬의 검증된 사실 데이터만 사용해 작업할 수 있게 됐습니다.</p></div></div><div class="analogy"><strong>비유</strong> Jira를 도서관이라고 하면, M0는 책을 요약하는 단계가 아닙니다. 먼저 책을 안전하게 복사해 보관하고, 제목·저자·목차처럼 찾기 쉬운 목록을 따로 만드는 단계입니다.</div></section>
 
+<section><h2>전체 파이프라인에서 M0는 어디인가?</h2><div class="flow">Jira 원본
+  ↓
+[M0] 빠짐없이 수집하고 RAW/ANALYSIS로 보존  ← 지금 여기
+  ↓
+[M1] Issue별 완전한 사실 Package
+  ↓
+[M2~M7] Knowledge 생성·검증·DB 저장
+  ↓
+[M8~M9] Vector화·검색
+  ↓
+[M10] 실제 Jira 근거를 붙여 Agent/MCP에 제공</div><div class="grid3"><div class="mini"><b>M0가 답하는 질문</b><p>“Jira의 사실을 손실 없이 안전하게 가져왔는가?”</p></div><div class="mini"><b>M0가 아직 답하지 않는 질문</b><p>“이 Issue의 원인은 무엇인가?”, “어떻게 해결했는가?” 같은 의미 해석은 하지 않습니다.</p></div><div class="mini"><b>M0 완료 후</b><p>후속 단계가 Jira API 대신 검증된 로컬 사실을 반복해서 사용할 수 있습니다.</p></div></div><div class="callout good"><strong>M0의 핵심 역할</strong> 검색 시스템을 만드는 단계가 아니라, 앞으로 모든 단계가 믿고 사용할 <strong>사실의 바닥</strong>을 만드는 단계입니다.</div></section>
+
 <section><h2>1. M0의 입력과 출력</h2><div class="flow">Jira REST API
     ↓ 읽기 전용
 Collector
