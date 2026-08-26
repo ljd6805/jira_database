@@ -4,6 +4,15 @@
 <header class="hero"><span class="eyebrow">M6 · LOGICAL SCHEMA</span><h1>“같은 Jira Issue”의 변화와<br>Knowledge 재생성 이력을 잃지 않는 DB 설계</h1><p>M6는 SQLite 코드를 바로 짜는 단계가 아니라, 무엇을 독립된 Entity로 저장하고 어떤 ID와 관계로 연결해야 사실·History·Evidence를 잃지 않는지 논리적으로 확정한 단계입니다.</p><span class="state">PASS / DONE · Logical Schema v0.3 · 2026-08-25</span><div class="breadcrumb">M5 measured distribution → M6 logical contract → M7 physical SQLite</div></header>
 <div class="kpis"><div class="kpi"><b>15</b><span>최종 Entity</span></div><div class="kpi"><b>6</b><span>Evidence source type</span></div><div class="kpi"><b>SHA-256</b><span>Deterministic ID</span></div><div class="kpi"><b>1</b><span>Active Generation / Issue 최대</span></div></div>
 <section class="beginner"><span class="badge">필독</span><h2>M6를 이해하려면 네 단어만 먼저</h2><div class="grid4"><div class="easy-card"><b>Issue</b><p>Jira에서 장기간 같은 업무를 가리키는 identity. <code>jira_id</code>가 authoritative key입니다.</p></div><div class="easy-card"><b>Version</b><p>그 Issue의 내용이 실제로 달라진 한 시점의 immutable 의미 상태입니다.</p></div><div class="easy-card"><b>Generation</b><p>특정 Version을 특정 Knowledge Contract로 지식화하는 하나의 lineage입니다.</p></div><div class="easy-card"><b>Attempt</b><p>Generation 안에서 실제로 Worker가 생성한 1차·2차·3차 시도입니다.</p></div></div><div class="analogy"><strong>비유</strong> Issue는 “한 문서의 파일명”, Version은 저장된 문서 버전, Generation은 그 버전을 같은 규칙으로 번역하는 작업 묶음, Attempt는 번역 1차/2차/3차 시도입니다. 최종 번역만 남기면 왜 다시 번역했는지 이력이 사라집니다.</div></section>
+<section><h2>M6를 한 문장으로 다시 말하면</h2><div class="flow">[M5] 실제 Knowledge의 크기·Evidence·retry 분포 측정
+  ↓
+[M6] 무엇을 어떤 관계로 DB에 저장할지 “설계도” 확정  ← 지금 여기
+  ↓
+[M7] 설계도를 실제 SQLite 테이블/row로 구현
+  ↓
+[M8] active Knowledge를 BGE-M3 vector로 변환
+  ↓
+[M9~M10] 검색 + 실제 Evidence + MCP</div><div class="grid3"><div class="mini"><b>M5와 차이</b><p>M5는 데이터를 재기만 합니다. M6부터 그 숫자를 보고 저장 구조를 결정합니다.</p></div><div class="mini"><b>M7과 차이</b><p>M6는 “설계도”, M7은 “실제 건물”입니다. M6에서는 SQLite DDL이나 실데이터 적재가 핵심이 아닙니다.</p></div><div class="mini"><b>M6 완료 후</b><p>Issue 변화, retry 이력, Knowledge와 Evidence가 어떤 ID와 관계로 연결돼야 하는지 흔들리지 않는 계약이 생깁니다.</p></div></div><div class="callout good"><strong>M6의 핵심 역할</strong> 검색 DB를 바로 만드는 것이 아니라, 나중에 재수집·재생성·History가 생겨도 꼬이지 않도록 <strong>데이터의 족보와 관계를 먼저 설계</strong>하는 단계입니다.</div></section>
 <section><h2>1. 가장 먼저 분리한 것: Run ≠ Version</h2><div class="flow">월요일 Pipeline Run ─┐
 화요일 Pipeline Run ─┼─ 같은 source_hash → 같은 issue_version 재사용
 수요일 Pipeline Run ─┘
