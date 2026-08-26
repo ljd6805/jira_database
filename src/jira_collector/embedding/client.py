@@ -40,6 +40,7 @@ class OpenAICompatibleEmbeddingClient:
         max_attempts: int = DEFAULT_MAX_ATTEMPTS,
         timeout_seconds: float = 60.0,
         backoff_initial_seconds: float = 1.0,
+        verify_ssl: bool = True,
         session: requests.Session | None = None,
         sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
@@ -51,11 +52,14 @@ class OpenAICompatibleEmbeddingClient:
             raise ValueError(f"max_batch_size는 1~{DEFAULT_MAX_BATCH_SIZE}여야 합니다.")
         if max_attempts < 1:
             raise ValueError("max_attempts는 1 이상이어야 합니다.")
+        if not isinstance(verify_ssl, bool):
+            raise ValueError("verify_ssl은 bool이어야 합니다.")
         self.dimension = dimension
         self.max_batch_size = max_batch_size
         self.max_attempts = max_attempts
         self.timeout_seconds = timeout_seconds
         self.backoff_initial_seconds = backoff_initial_seconds
+        self.verify_ssl = verify_ssl
         self.session = session or requests.Session()
         self.sleeper = sleeper
         self.headers = {"Content-Type": "application/json"}
@@ -89,6 +93,7 @@ class OpenAICompatibleEmbeddingClient:
                     headers=self.headers,
                     json=payload,
                     timeout=self.timeout_seconds,
+                    verify=self.verify_ssl,
                 )
             except requests.RequestException as exc:
                 last_error = exc
