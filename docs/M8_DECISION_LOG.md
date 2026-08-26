@@ -9,7 +9,7 @@ M8 · Embedding Unit / Chunk + BGE-M3 단계에서 합의한 결정을 시간 �
 
 ## M8-01 · Active Accepted Corpus / Embedding Unit Baseline
 
-상태: **DECIDED**
+상태: **DECIDED / REAL DB GATE IN PROGRESS**
 
 ### 1. M8 corpus의 authoritative source
 
@@ -156,13 +156,37 @@ Corpus correctness와 text identity를 먼저 검증한 뒤 BGE-M3 adapter를 �
 ### 7. M8-01 Gate
 
 ```text
-[ ] active accepted corpus exporter 구현
-[ ] synthetic test에서 historical/candidate/review_required 제외 확인
-[ ] accepted Attempt가 아닌 Item 제외 확인
-[ ] deterministic ordering 확인
-[ ] statement_v1 text canonicalization/hash 확인
+[x] active accepted corpus exporter 구현
+[x] synthetic test에서 historical/candidate/review_required 제외 확인
+[x] accepted Attempt가 아닌 Item 제외 확인
+[x] deterministic ordering 확인
+[x] statement_v1 text canonicalization/hash 확인
 [ ] 실제 M7 DB에서 corpus row = 285 확인
 ```
+
+### 8. 첫 Real DB Gate 결과
+
+사용자 로컬 실행에서 다음 결과가 관찰됐다.
+
+```text
+corpus_schema_version: 0.1
+text_profile: statement_v1
+corpus_rows: 28
+```
+
+기대값 285와 크게 다르므로 **M8-01 Gate FAIL / 원인 분석 중**으로 기록한다.
+
+현재 판단:
+
+- M7 Real-run Gate에서는 `knowledge_item = 285`, `active_generation = 30`을 확인했다.
+- M8 corpus SQL은 한 Issue당 1개로 제한하지 않으며 accepted Attempt의 모든 `knowledge_item`을 읽도록 구현돼 있다.
+- 따라서 28은 정상적인 corpus 결과로 해석하지 않는다.
+- 로컬 DB 실제 row count, active/accepted join count, 실행 중인 local code revision을 확인한다.
+- 원인 규명 전에는 M8-02 BGE-M3 adapter로 이동하지 않는다.
+
+추가 단서:
+
+최신 `export_embedding_corpus.py`는 `--expected-count 285`가 전달됐는데 actual이 28이면 `corpus row count 불일치` 오류로 종료한다. 정상 요약 출력만 보였다면 실행 명령 또는 local revision도 함께 점검한다.
 
 M8-01 Gate가 통과한 뒤 BGE-M3 request/response contract(M8-02)로 이동한다.
 
