@@ -2,15 +2,13 @@
 
 Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 보존 → 결정적 정규화 → Issue 단위 Knowledge Input → Knowledge 추출/검토 → Profiling → Versioned SQLite Knowledge DB → Embedding → Vector Retrieval → MCP**로 발전시키는 프로젝트입니다.
 
-> 📚 **프로젝트 문서는 [Documentation Hub](docs/index.html)에서 시작하세요.**  
-> 초기 구상부터 M0~M8 현재 상태, 관계 맵, M9/M10 향후 단계까지 한 흐름으로 연결되어 있습니다.
+> 📚 프로젝트 문서는 [Documentation Hub](docs/index.html)에서 시작하세요.
 
 현재 기준:
 
 ```text
-M0~M7   DONE
-M8      CURRENT / M8-01 PASS / M8-02 IMPLEMENTED / M8-03 REAL API NEXT
-M9      PLAN
+M0~M8   DONE
+M9      NEXT / DESIGN NOT STARTED
 M10     Functional MVP Gate
 ```
 
@@ -33,14 +31,14 @@ M5  Knowledge / Review Profiling            DONE
     ↓
 M6  DB Logical Schema                       DONE
     ↓
-M7  SQLite Materialization                  DONE
+M7  SQLite Materialization                  DONE · REAL-RUN PASS
     ↓
-M8  Embedding Unit / Chunk + BGE-M3         CURRENT
+M8  Embedding Unit / Chunk + BGE-M3         DONE · REAL-RUN PASS
     ├─ M8-01 corpus 285                    PASS
-    ├─ M8-02 contract/adapter              IMPLEMENTED
-    └─ M8-03 real BGE-M3                   NEXT
+    ├─ M8-02 contract/adapter              PASS
+    └─ M8-03 real embedding                PASS
     ↓
-M9  FAISS + Active Retrieval                PLAN
+M9  FAISS + Active Retrieval                NEXT · DESIGN NOT STARTED
     ↓
 M10 Evidence Builder + MCP                  Functional MVP Gate
 ```
@@ -48,12 +46,12 @@ M10 Evidence Builder + MCP                  Functional MVP Gate
 ## 2. 핵심 원칙
 
 1. **RAW가 사실의 최종 기준**입니다.
-2. **결정적 처리와 LLM 해석을 분리**합니다.
-3. Knowledge는 검색용 의미 압축이며 **Evidence로 원문까지 round-trip**할 수 있어야 합니다.
-4. **History Storage와 Active Retrieval을 분리**합니다.
-5. Vector ID를 Knowledge identity로 사용하지 않습니다.
-6. Generation과 Retry Attempt를 구분하고 deterministic ID를 부여합니다.
-7. 과거 artifact의 계약 drift는 사후 수정하지 않고 compatibility layer로 보존합니다.
+2. 결정적 처리와 LLM 해석을 분리합니다.
+3. Knowledge는 검색용 의미 압축이며 Evidence로 원문까지 round-trip할 수 있어야 합니다.
+4. History Storage와 Active Retrieval을 분리합니다.
+5. Vector/FAISS position을 Knowledge identity로 사용하지 않습니다.
+6. Generation과 Retry Attempt를 구분합니다.
+7. `knowledge_attempt_id = ka_`는 `knowledge_generation_id + attempt_no`에서 결정적으로 생성됩니다.
 8. 설계/코드/Milestone 상태 변경은 Current 문서와 같은 작업 단위에서 갱신합니다.
 
 문서 동기화 규칙: [`docs/DOCUMENTATION_POLICY.md`](docs/DOCUMENTATION_POLICY.md)
@@ -84,7 +82,7 @@ Attempt 3 PASS                1
 재생성 Issue                  6
 ```
 
-## 4. M6/M7 최종 DB 구조
+## 4. M6/M7 Authoritative DB 구조
 
 ```text
 Pipeline Run
@@ -109,22 +107,13 @@ jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 ## 5. M7 Real-run Gate — PASS
 
 ```text
-M5 raw expected
 Issue              30
 Generation         30
 Attempt            37
 Knowledge Item    285
 Evidence raw      503
+Evidence canonical 502
 Review             37
-
-M7 canonical DB
-Issue              30
-Generation         30
-Attempt            37
-Knowledge Item    285
-Evidence           502
-Review             37
-
 Active Generation  30
 Review Required      0
 Evidence Failure     0
@@ -134,29 +123,11 @@ Idempotent          true
 Failures            []
 ```
 
-M5의 `503`은 historical JSON raw 관찰값이며 M7은 duplicate Evidence 1회를 canonicalize해 `502` row를 저장합니다.
+M5의 `503`은 historical raw Evidence 관찰값이며 M7은 duplicate 1회를 canonicalize해 `502` row를 저장합니다.
 
-M7 상세 근거:
+## 6. M8 Embedding — DONE / PASS
 
-- [`docs/M7_SQLITE_MATERIALIZATION.md`](docs/M7_SQLITE_MATERIALIZATION.md)
-- [`docs/M7_REAL_RUN_LOG.md`](docs/M7_REAL_RUN_LOG.md)
-- [`docs/status/M7_SQLITE_MATERIALIZATION_COMPLETION.md`](docs/status/M7_SQLITE_MATERIALIZATION_COMPLETION.md)
-
-## 6. Active / Historical 정책
-
-```text
-DB
-→ Current + Historical Version/Generation/Attempt 보존
-
-기본 Retrieval / Embedding corpus
-→ state=active Generation의 accepted Attempt만 사용
-```
-
-새 candidate가 생겨도 PASS 전에는 기존 active를 유지합니다.
-
-## 7. 현재 단계 · M8
-
-### M8-01 · PASS
+### M8-01 · Corpus
 
 ```text
 Knowledge Item 1개 = Embedding Unit 1개
@@ -164,12 +135,10 @@ baseline Chunk 없음
 text_profile = statement_v1
 
 M7 active accepted Knowledge Item 285
-→ corpus_rows: 285
+→ corpus_rows = 285
 ```
 
-### M8-02 · IMPLEMENTED
-
-Embedding identity:
+### M8-02 · Embedding Contract / Adapter
 
 ```text
 Embedding Contract  ec_
@@ -178,57 +147,21 @@ Embedding Artifact  emb_
 emb_ = H(knowledge_item_id, embedding_text_hash, ec_)
 ```
 
-BGE-M3 contract:
+실환경 계약:
 
 ```text
 model               BAAI/bge-m3
-API                 OpenAI-compatible
+API                 TEI / OpenAI-compatible
 batch max           64
-Pilot batch         64 + 64 + 64 + 64 + 29 = 5 requests
+Pilot batch         64 + 64 + 64 + 64 + 29 = 5
 dense dimension     1024
 usage limit         200 requests/min
+custom header       supported at runtime
 ```
 
-검증/실패 정책:
+### M8-03 · Real Embedding Gate
 
-- `data[].index`로 request↔response mapping
-- index 누락/중복/범위 오류 차단
-- 1024-dim이 아니면 실패
-- network/429/5xx만 retry
-- 모든 batch 성공 후에만 atomic final JSONL publish
-
-구현:
-
-```text
-src/jira_collector/embedding/
-├─ corpus.py
-├─ contract.py
-├─ client.py
-├─ config.py
-├─ artifact.py
-└─ runner.py
-
-tools/jira_knowledge/
-├─ export_embedding_corpus.py
-└─ embed_bge_m3.py
-```
-
-GitHub Actions pytest: **PASS**
-
-### M8-03 · NEXT
-
-`.env`에 실제 사내 endpoint를 넣고 real embedding Gate를 수행합니다.
-
-```dotenv
-BGE_M3_ENDPOINT=<사내 OpenAI-compatible embeddings endpoint>
-BGE_M3_API_KEY=<필요한 경우>
-```
-
-```powershell
-python tools/jira_knowledge/embed_bge_m3.py --corpus data/embedding/runs/20260804T043628Z/corpus.statement_v1.jsonl --output data/embedding/runs/20260804T043628Z/embeddings.statement_v1.bge_m3.jsonl --expected-count 285
-```
-
-성공 기대값:
+실제 사내 BGE-M3 전체 Pilot 실행:
 
 ```text
 corpus_rows: 285
@@ -237,16 +170,67 @@ batch_count: 5
 embedding_dimension: 1024
 ```
 
-**M8에서는 FAISS를 구현하지 않습니다.** FAISS와 Top-k Retrieval은 M9 책임입니다.
+Artifact integrity:
+
+```text
+validation: PASS
+unique_knowledge_item_ids: 285
+unique_embedding_ids: 285
+contract_count: 1
+mapping_failure_count: 0
+identity_failure_count: 0
+dimension_failure_count: 0
+non_finite_vector_count: 0
+zero_norm_vector_count: 0
+temp_artifact_exists: false
+```
+
+Semantic sanity:
+
+```text
+Sample 1  PASS
+Sample 2  PASS · 매우 양호
+Sample 3  PASS · Top-3가 모두 의미상 타당
+```
+
+Sample 3은 cosine score가 `0.5918 / 0.5908 / 0.5900`으로 촘촘했습니다. 이는 실패가 아니라 **dense semantic neighborhood**로 기록하며, M9에서 Top-1만 과신하지 않고 Top-k 후보군 + Evidence를 검토하는 근거로 넘깁니다.
+
+**M8 = DONE / PASS**
+
+M8 상세 근거:
+
+- [M8 Design / Final Contract](docs/M8_EMBEDDING_CHUNK_BGE_M3.md)
+- [M8 Decision Log](docs/M8_DECISION_LOG.md)
+- [M8 Real Embedding Log](docs/M8_REAL_EMBEDDING_LOG.md)
+- [M8 Visual](docs/status/M8_EMBEDDING_CHUNK_BGE_M3.html)
+- [M8 Troubleshooting](docs/status/M8_REAL_EMBEDDING_TROUBLESHOOTING.html)
+
+## 7. M9 — NEXT
+
+M9는 아직 구현을 시작하지 않았습니다. M8의 validated embedding artifact를 입력으로 사용합니다.
+
+다음 설계 항목을 먼저 합의합니다.
+
+```text
+FAISS index type / metric / normalization
+embedding_id ↔ knowledge_item_id mapping
+active-only index policy
+Top-k baseline
+query embedding contract
+index rebuild / reproducibility
+search sanity / quality Gate
+```
+
+**M9 구현은 설계 문서를 먼저 확정한 뒤 시작합니다.**
 
 ## 8. 주요 문서
 
 - [Documentation Hub](docs/index.html)
-- [현재 상태와 향후 계획](docs/status/jira_knowledge_db_current_status.html)
+- [현재 상태](docs/status/jira_knowledge_db_current_status.html)
 - [Pipeline 전체 아키텍처](docs/PIPELINE_OVERVIEW.md)
 - [Jira Knowledge 관계 맵](docs/architecture/jira_data_relationship_map.html)
-- [M8 Design](docs/M8_EMBEDDING_CHUNK_BGE_M3.md)
-- [M8 Decision Log](docs/M8_DECISION_LOG.md)
+- [M8 최종 계약](docs/M8_EMBEDDING_CHUNK_BGE_M3.md)
+- [M8 실환경 검증 로그](docs/M8_REAL_EMBEDDING_LOG.md)
 
 ## 9. 설치
 
@@ -263,15 +247,11 @@ python -m pip install -e ".[dev]"
 ## 10. 다음 액션
 
 ```text
-M8-01 PASS
+M8 DONE
   ↓
-M8-02 IMPLEMENTED / CI PASS
+M9 설계 문서 작성
   ↓
-M8-03 실제 BGE-M3 endpoint 검증
+FAISS index / mapping / active-only policy / Top-k Gate 합의
   ↓
-285 vectors / 5 batches / 1024-dim / mapping 확인
-  ↓
-M8 Gate
-  ↓
-M9 FAISS
+M9 구현
 ```
