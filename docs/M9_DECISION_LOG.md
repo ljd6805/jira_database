@@ -26,6 +26,50 @@ Pilot 285개에서는 exact exhaustive search를 baseline으로 사용한다. IV
 - approximate recall 손실 없음
 - 나중에 approximate index를 비교할 exact 기준점 확보
 
+### D1-A. Scaling policy
+
+`IndexFlatIP`는 영구 고정 구조가 아니라 **exact baseline / test oracle**이다.
+
+```text
+현재 285
+→ Flat exact
+
+향후 수만~수십만~수백만
+→ Flat latency / RAM / QPS benchmark
+→ 필요하면 HNSW / IVF 계열 benchmark
+→ recall@k + latency + memory를 보고 전환
+```
+
+고정 개수 threshold만으로 ANN 전환을 결정하지 않는다.
+
+ANN 검토 trigger:
+
+```text
+p95 search latency가 서비스 목표 초과
+index RAM이 운영 budget 초과
+예상 QPS에서 CPU saturation
+rebuild/reload 시간이 운영 목표 초과
+Flat search가 end-to-end query 병목
+```
+
+우선 비교 후보:
+
+- `IndexHNSWFlat`: training 없이 높은 recall/빠른 검색을 얻기 쉽지만 memory overhead와 remove 제약이 있다.
+- `IndexIVFFlat`: 큰 N에서 일부 inverted list만 검색할 수 있지만 training과 `nlist/nprobe` tuning이 필요하다.
+
+FAISS 공식 문서상 IVF의 `nprobe`, HNSW의 `efSearch`는 speed/accuracy trade-off를 조절하는 핵심 파라미터다.
+
+M9의 `index_type`은 `rc_` / `fi_` identity에 포함해 향후 index 교체를 명시적으로 versioning한다.
+
+중요:
+
+```text
+IndexFlatIP → HNSW/IVF로 교체되어도
+embedding_id → knowledge_item_id → Evidence 계약은 유지
+```
+
+즉 상위 M10 인터페이스는 index 구현과 독립적으로 유지한다.
+
 ### D2. Similarity
 
 ```text
@@ -126,11 +170,13 @@ FAISS 공식 문서 기준:
 - `IndexFlatIP`는 exact inner-product search다.
 - database/query vector를 normalize하면 cosine similarity search로 사용할 수 있다.
 - Flat index는 training이 필요 없다.
+- IVF/HNSW는 non-exhaustive search이며 `nprobe` / `efSearch`로 speed-accuracy trade-off를 조절한다.
 
 참고:
 
 - https://github.com/facebookresearch/faiss/wiki/Faiss-indexes
 - https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances
+- https://github.com/facebookresearch/faiss/wiki/FAQ
 
 2026-08-26 확인 기준 PyPI `faiss-cpu 1.15.0`은 Windows x86-64 CPython 3.11/3.12 wheel을 제공한다.
 
@@ -141,7 +187,8 @@ FAISS 공식 문서 기준:
 ## 구현 전 Gate
 
 ```text
-[ ] D1 IndexFlatIP 승인
+[ ] D1 IndexFlatIP exact baseline 승인
+[ ] D1-A 측정 기반 ANN scaling policy 승인
 [ ] D2 cosine/L2 normalize 승인
 [ ] D3 raw_query_v1 승인
 [ ] D4 Top-3 / no threshold / no reranker 승인
