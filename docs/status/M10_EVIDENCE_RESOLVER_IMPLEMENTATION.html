@@ -1,17 +1,11 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M10 Evidence Resolver와 Candidate Package Builder 구현 및 CI 검증 기록"><title>M10 · Evidence Resolver / Package Builder · PASS</title><link rel="stylesheet" href="milestone.css"></head>
-<body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_START_HERE.html">M10 Start Here</a><a href="M10_EVIDENCE_MCP_CONTRACT.html">M10 Contract</a><a href="M10_MCP_IMPLEMENTATION.html">MCP PASS →</a></nav>
-<header class="hero"><span class="eyebrow">M10-02 / M10-03 · IMPLEMENTATION PASS · 2026-08-27</span><h1>검색된 Knowledge에서<br>실제 Jira Evidence까지 복원 성공</h1><p>M9가 반환한 <code>knowledge_item_id</code>를 M7 SQLite의 active accepted Knowledge와 canonical Evidence에 연결하고, 6종 source를 Agent 친화적인 Evidence Package로 만드는 내부 계층을 구현했습니다.</p><span class="state">RESOLVER PASS · PACKAGE BUILDER PASS · MCP까지 전체 CI 133 PASS</span><div class="breadcrumb">M9 candidate → active check → ki_ → ke_ → source → Evidence Package</div></header>
-<div class="kpis"><div class="kpi"><b>6</b><span>Evidence source type</span></div><div class="kpi"><b>Top-3</b><span>M9 candidate contract 유지</span></div><div class="kpi"><b>133</b><span>MCP 포함 CI baseline</span></div><div class="kpi"><b>0</b><span>CI failure</span></div></div>
-<section class="beginner"><span class="badge">1분 요약</span><h2>이번에 정확히 무엇이 생겼나?</h2><div class="grid3"><div class="easy-card"><div class="emoji">🪪</div><b>후보 신분 확인</b><p>M9가 준 <code>ki_</code>를 무조건 믿지 않고 지금도 active + accepted 상태인지 DB에서 다시 확인합니다.</p></div><div class="easy-card"><div class="emoji">📎</div><b>근거 복원</b><p>Knowledge에 연결된 <code>ke_</code>를 따라 summary, description, comment, attachment, relationship, custom field를 실제 source row에서 읽습니다.</p></div><div class="easy-card"><div class="emoji">📦</div><b>Package 구성</b><p>검색 순위/점수 + Knowledge statement + 실제 Evidence를 한 묶음으로 만들어 MCP 계층이 바로 쓸 수 있게 합니다.</p></div></div><div class="analogy"><strong>비유</strong> M9가 검색 결과 목록을 만든다면, 이번 구현은 각 검색 결과 옆에 “원본 자료 확인 완료” 도장을 찍고 실제 증빙 서류를 첨부하는 작업입니다.</div></section>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M10 Evidence Resolver와 Candidate Package Builder 구현 및 최종 완료 연결"><title>M10 · Evidence Resolver / Package Builder · PASS</title><link rel="stylesheet" href="milestone.css"></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_COMPLETION.html">M10 Completion · DONE</a><a href="M10_EVIDENCE_MCP_CONTRACT.html">M10 Contract</a><a href="M10_MCP_IMPLEMENTATION.html">MCP PASS</a></nav><header class="hero"><span class="eyebrow">M10-02 / M10-03 · IMPLEMENTATION CHECKPOINT · 2026-08-27</span><h1>검색된 Knowledge에서<br>실제 Jira Evidence까지 복원 성공</h1><p>M9의 <code>knowledge_item_id</code>를 M7 SQLite의 active accepted Knowledge와 canonical Evidence에 연결하고 6종 source를 Evidence Package로 만드는 내부 계층을 구현한 기록입니다. 이후 MCP와 실제 Real-run까지 모두 PASS했습니다.</p><span class="state">RESOLVER PASS · PACKAGE BUILDER PASS · M10 REAL-RUN PASS</span></header><div class="callout good"><strong>현재 최종 상태:</strong> 실제 환경에서 Top-3 Knowledge에 연결된 Evidence 총 6개를 warning 없이 복원했고 <code>M10_REAL_RUN = PASS</code>했습니다. 최종 상태는 <a href="M10_COMPLETION.html">M10 Completion</a>을 기준으로 합니다.</div>
+<section class="beginner"><span class="badge">1분 요약</span><h2>이번 구현의 역할</h2><div class="grid3"><div class="easy-card"><div class="emoji">🪪</div><b>후보 신분 확인</b><p>M9가 준 <code>ki_</code>를 지금도 active + accepted 상태인지 DB에서 다시 확인합니다.</p></div><div class="easy-card"><div class="emoji">📎</div><b>근거 복원</b><p><code>ke_</code>를 따라 6종 source를 실제 row에서 읽습니다.</p></div><div class="easy-card"><div class="emoji">📦</div><b>Package 구성</b><p>검색 순위/점수 + statement + 실제 Evidence를 한 묶음으로 만듭니다.</p></div></div></section>
 <section><h2>1. 구현 구조</h2><div class="flow">src/jira_collector/evidence/
 ├─ models.py
 ├─ resolver.py
 ├─ builder.py
-└─ __init__.py
-
-tests/evidence/
-└─ test_m10_evidence_resolver.py</div><table><thead><tr><th>모듈</th><th>책임</th></tr></thead><tbody><tr><td><code>models.py</code></td><td>EvidencePackage, ResolvedEvidence, Warning, typed error 정의</td></tr><tr><td><code>resolver.py</code></td><td>active accepted 확인 + 6종 Evidence source 복원</td></tr><tr><td><code>builder.py</code></td><td>여러 M9 candidate를 package로 변환하고 깨진 candidate 격리</td></tr></tbody></table></section>
+└─ __init__.py</div></section>
 <section><h2>2. Active Accepted Guard</h2><div class="flow">M9 candidate ki_
    ↓
 knowledge_item
@@ -23,31 +17,25 @@ knowledge_generation
 PASS 조건
 state = active
 accepted_attempt_id = item.knowledge_attempt_id
-content_available = 1</div><div class="callout good"><strong>효과</strong> M9 index가 과거 snapshot이라도 historical Knowledge가 조용히 최종 답변에 섞이지 않습니다.</div></section>
-<section><h2>3. 6종 Evidence Resolver</h2><table><thead><tr><th>Evidence</th><th>복원 결과</th></tr></thead><tbody><tr><td>summary</td><td>Issue Version의 summary text</td></tr><tr><td>description</td><td>description text + format</td></tr><tr><td>comment</td><td>comment body + author/time/format</td></tr><tr><td>attachment</td><td>filename/mime/size/content availability metadata</td></tr><tr><td>relationship</td><td>relation type/text/source-target endpoint</td></tr><tr><td>custom_field</td><td>field name + display value + 구조화된 JSON value metadata</td></tr></tbody></table><p>로컬 <code>source_path</code>, <code>source_page</code>는 Package에 넣지 않습니다.</p></section>
-<section><h2>4. 오류를 어떻게 다루나?</h2><div class="flow">정상 candidate
-→ EvidencePackage
+content_available = 1</div></section>
+<section><h2>3. 6종 Evidence Resolver</h2><table><thead><tr><th>Evidence</th><th>복원 결과</th></tr></thead><tbody><tr><td>summary</td><td>Issue Version summary</td></tr><tr><td>description</td><td>description text + format</td></tr><tr><td>comment</td><td>comment body + metadata</td></tr><tr><td>attachment</td><td>filename/mime/size/content availability metadata</td></tr><tr><td>relationship</td><td>relation type/text/source-target</td></tr><tr><td>custom_field</td><td>field name + display value</td></tr></tbody></table><p>로컬 <code>source_path</code>, <code>source_page</code>는 Package에 넣지 않습니다.</p></section>
+<section><h2>4. 오류 정책</h2><div class="flow">KNOWLEDGE_NOT_FOUND
+STALE_RETRIEVAL_INDEX
+EVIDENCE_SOURCE_MISSING
+EVIDENCE_REF_INVALID
+CATEGORY_MISMATCH
 
-Knowledge 없음
-→ KNOWLEDGE_NOT_FOUND
+정상 candidate → EvidencePackage
+깨진 candidate → warning으로 격리
+모든 candidate 실패 → typed error</div></section>
+<section><h2>5. 테스트에서 잠근 것</h2><div class="checks"><div class="check">✓ active accepted candidate resolve</div><div class="check">✓ 6종 Evidence round-trip</div><div class="check">✓ stale candidate 차단</div><div class="check">✓ missing / malformed ref typed failure</div><div class="check">✓ valid + broken candidate 동시 처리</div><div class="check">✓ all broken → typed error</div><div class="check">✓ source_path 미노출</div></div></section>
+<section><h2>6. 이후 단계 결과</h2><div class="flow">M10-02 Evidence Resolver           PASS
+M10-03 Candidate Package Builder   PASS
+M10-04 MCP 2 Tools                 PASS
+M10-05 Real-run                    PASS
 
-historical / accepted 불일치
-→ STALE_RETRIEVAL_INDEX
-
-source row 없음
-→ EVIDENCE_SOURCE_MISSING
-
-Evidence ref 문법 손상
-→ EVIDENCE_REF_INVALID
-
-category 불일치
-→ CATEGORY_MISMATCH</div><div class="callout warn"><strong>Candidate 격리</strong> Top-3 중 하나가 깨지면 정상 candidate는 살리고 깨진 후보만 warning으로 격리합니다. 모든 후보가 깨지면 typed error로 실패합니다.</div></section>
-<section><h2>5. 테스트에서 잠근 것</h2><div class="checks"><div class="check">✓ active accepted candidate resolve</div><div class="check">✓ 6종 Evidence 전부 round-trip</div><div class="check">✓ stale candidate 차단</div><div class="check">✓ missing source typed failure</div><div class="check">✓ malformed evidence ref typed failure</div><div class="check">✓ valid + broken candidate 동시 처리</div><div class="check">✓ all broken → typed error</div><div class="check">✓ custom field JSON 구조 유지</div><div class="check">✓ source_path 미노출</div></div></section>
-<section><h2>6. 검증 상태</h2><div class="flow">M10-02 / M10-03 구현 직후 foundation CI
-→ PASS
-
-이후 M10-04 MCP Client boundary test까지 추가된 전체 suite
-→ 133 passed
-→ CI conclusion = success</div><div class="callout good"><strong>M10-02 / M10-03 PASS</strong> Resolver/Builder는 이후 MCP 계층에서도 그대로 재사용됐고 regression 없이 유지되고 있습니다.</div></section>
-<section><h2>7. 다음 연결</h2><div class="box good"><b><a href="M10_MCP_IMPLEMENTATION.html">M10-04 MCP Implementation PASS</a></b><p>이 Resolver/Builder를 <code>search_jira_knowledge</code>와 <code>get_jira_issue</code> 두 MCP tool 뒤에 연결했습니다. 현재 남은 단계는 M10-05 Real-run입니다.</p></div></section>
-<footer>M10-02 Evidence Resolver PASS · M10-03 Package Builder PASS · M10-04 MCP PASS · M10-05 REAL-RUN NEXT · 2026-08-27</footer></main></body></html>
+search_result_count: 3
+evidence_count: 6
+warning_count: 0
+path_leak_count: 0
+M10_REAL_RUN = PASS</div><p><code>evidence_count=6</code>은 Issue 6개가 아니라 검색된 Knowledge 3개를 뒷받침하는 실제 Jira 근거의 총 개수입니다.</p></section><footer>M10-02/03 historical implementation checkpoint · later M10-04/05 PASS · M10 DONE · 2026-08-27</footer></main></body></html>
