@@ -15,8 +15,8 @@
     <div class="pills">
       <span class="pill">M0~M11 MVP DONE / PASS</span>
       <span class="pill">SYNC CONTRACT DECISION = CURRENT</span>
-      <span class="pill">D1~D5 FIXED</span>
-      <span class="pill">D6 REVISED / REVIEW</span>
+      <span class="pill">D1~D6 FIXED</span>
+      <span class="pill">D7 SOURCE COMMIT / PUBLISH NEXT</span>
       <span class="pill">HUB FRAME v1</span>
       <span class="pill">HUB LINKS · HTML ONLY</span>
     </div>
@@ -26,10 +26,11 @@
     <h2>1. 지금 어디부터 읽나?</h2>
     <div class="grid3">
       <div class="card">
-        <span class="tag current">DECIDE NOW</span>
+        <span class="tag current">DECIDE NEXT</span>
         <h3>Sync Contract Decision Draft</h3>
-        <p><strong>D1~D5는 FIXED</strong>입니다. 현재 <strong>D6 Project Registry</strong>를 수정 검토합니다. unavailable Project도 과거 Retrieval을 유지하고, 재접근 시 전체 재수집이 아니라 Watermark 기반 Catch-up Delta를 사용하는 방향입니다.</p>
+        <p><strong>D1~D6는 FIXED</strong>입니다. 다음은 <strong>D7 Source Commit vs Publish</strong>에서 Jira 원본 확보 완료와 Knowledge/Embedding/FAISS 서비스 반영 완료를 분리합니다.</p>
         <a class="btn" href="architecture/jira_sync_contract_decision_draft.html">의사결정 초안</a>
+        <a class="btn alt" href="architecture/jira_sync_contract_decision6_final.html">D6 Final</a>
       </div>
       <div class="card">
         <span class="tag done">LEARNED</span>
@@ -74,19 +75,19 @@ D2 Overlap = 5 minutes + fixed upper + updated,id sort = FIXED
 D3 jira_id + source_hash classification = FIXED
 D4 source_hash semantic_v2 = FIXED
 D5 Checkpoint / Resume = FIXED
-D6 Project Registry / access state = REVISED · REVIEWING
+D6 Project Registry / knowledge retention = FIXED
 D7 Source Commit vs Publish = NEXT
 D8 run status = DRAFT
 
-D6 revised recommendation
+D6 final
 project_id 기반 Registry
 → Discovery 전체 성공 후에만 unavailable 판정
-→ unavailable = Source Sync pause, Retrieval은 유지
-→ last_synced_at / stale 상태 표시
-→ Watermark 보존
+→ unavailable = 해당 Project Source Sync skip
+→ Watermark / RAW / History / Knowledge / Vector 보존
+→ Retrieval 계속 제공
+→ Project/Issue 삭제도 Knowledge 자동 삭제 아님
 → 같은 project_id 재등장 시 Catch-up Delta
-→ 필요 시 lightweight Issue-ID Reconcile
-→ 완전히 새로운 project_id만 Initial Ingest</div>
+→ Reconcile은 선택 기능</div>
   </section>
 
   <section id="hub-service" data-hub-section="3">
@@ -95,6 +96,7 @@ project_id 기반 Registry
       <div class="card"><h3>지속 Jira 업데이트</h3><p>신규/수정 이슈와 댓글·관계·필드 변화가 다음 sync에 반영됩니다.</p></div>
       <div class="card"><h3>Project 추가</h3><p>접근 가능한 프로젝트를 매 sync discovery하여 신규 프로젝트를 자동 편입합니다.</p></div>
       <div class="card"><h3>증분 처리</h3><p>unchanged는 reuse, new/changed만 Version→Knowledge→Embedding→FAISS로 전파합니다.</p></div>
+      <div class="card"><h3>지식 보존</h3><p>Jira에서 Project/Issue가 사라져도 이미 축적된 Knowledge는 자동 삭제하지 않고 계속 Retrieval에 사용합니다.</p></div>
       <div class="card"><h3>중앙 서비스</h3><p>팀원은 Remote MCP를 사용하고 DB/FAISS/.env/BGE secret은 중앙 서버가 소유합니다.</p></div>
     </div>
   </section>
@@ -158,7 +160,7 @@ project_id 기반 Registry
     </div>
   </section>
 
-  <footer class="footer">M0~M11 Functional MVP DONE / PASS · current = Sync Contract Decision 6 Revised Review · Hub Frame v1 · 2026-08-27</footer>
+  <footer class="footer">M0~M11 Functional MVP DONE / PASS · D1~D6 FIXED · next = Sync Contract Decision 7 Source Commit vs Publish · Hub Frame v1 · 2026-08-27</footer>
 </main>
 </body>
 </html>
