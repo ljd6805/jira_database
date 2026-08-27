@@ -15,8 +15,8 @@
     <div class="pills">
       <span class="pill">M0~M11 MVP DONE / PASS</span>
       <span class="pill">SYNC CONTRACT DECISION = CURRENT</span>
-      <span class="pill">D1~D4 FIXED</span>
-      <span class="pill">D5 CHECKPOINT / RESUME REVIEW</span>
+      <span class="pill">D1~D5 FIXED</span>
+      <span class="pill">D6 PROJECT REGISTRY REVIEW</span>
       <span class="pill">HUB FRAME v1</span>
       <span class="pill">HUB LINKS · HTML ONLY</span>
     </div>
@@ -28,7 +28,7 @@
       <div class="card">
         <span class="tag current">DECIDE NOW</span>
         <h3>Sync Contract Decision Draft</h3>
-        <p><strong>D1~D4는 FIXED</strong>입니다. 현재 <strong>D5 Checkpoint / Resume</strong>에서 Source와 downstream을 어디까지 기억하고 어디서 재개할지 검토합니다.</p>
+        <p><strong>D1~D5는 FIXED</strong>입니다. 현재 <strong>D6 Project Registry / 접근 상실</strong>에서 새 Project, 사라진 Project, 재등장 Project를 어떻게 안전하게 다룰지 검토합니다.</p>
         <a class="btn" href="architecture/jira_sync_contract_decision_draft.html">의사결정 초안</a>
       </div>
       <div class="card">
@@ -73,16 +73,18 @@ D1 Project별 committed Watermark = FIXED
 D2 Overlap = 5 minutes + fixed upper + updated,id sort = FIXED
 D3 jira_id + source_hash classification = FIXED
 D4 source_hash semantic_v2 = FIXED
-D5 Checkpoint / Resume = REVIEWING
-D6 Project Registry / access loss = NEXT
-D7~D8 publish / run status = DRAFT
+D5 Checkpoint / Resume = FIXED
+D6 Project Registry / access loss = REVIEWING
+D7 Source Commit vs Publish = NEXT
+D8 run status = DRAFT
 
-D5 recommendation
-same-run resume 우선
-→ completed Source/Stage 재사용
-→ failed/stale-running부터 retry
-→ jira_id + source_hash 단위 downstream 상태 지속
-→ same-run 불가 시 watermark + overlap 새 Run 복구</div>
+D6 recommendation
+project_id 기반 Registry
+→ Discovery 전체 성공 후에만 missing 판정
+→ 새 Project는 전체 Initial Ingest
+→ 안 보이면 unavailable + Retrieval 즉시 차단
+→ RAW / History / Watermark는 보존
+→ 다시 보이면 Catch-up/Reconcile 후 Retrieval 재허용</div>
   </section>
 
   <section id="hub-service" data-hub-section="3">
@@ -154,7 +156,7 @@ same-run resume 우선
     </div>
   </section>
 
-  <footer class="footer">M0~M11 Functional MVP DONE / PASS · current = Sync Contract Decision 5 Checkpoint / Resume Review · Hub Frame v1 · 2026-08-27</footer>
+  <footer class="footer">M0~M11 Functional MVP DONE / PASS · current = Sync Contract Decision 6 Project Registry / Access Loss Review · Hub Frame v1 · 2026-08-27</footer>
 </main>
 </body>
 </html>
