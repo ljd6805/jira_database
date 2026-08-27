@@ -1,70 +1,73 @@
-<!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Continuous Jira Knowledge Service의 공식 2-Loop 운영 아키텍처. Source Sync Loop와 Knowledge Processing/Publish Loop를 durable backlog로 분리한다."><title>Operational Architecture · Two-Loop · FROZEN</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1180px;margin:auto;padding:42px 22px 92px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:48px}h2{font-size:30px}.lead{color:var(--muted);max-width:960px}.grid2,.grid3,.grid5{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid5{grid-template-columns:repeat(5,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:900px){.grid2,.grid3,.grid5{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">Sync Contract</a><a href="jira_sync_state_schema_contract.html">State Schema v2</a><a href="jira_knowledge_pipeline_full_explained.html">전체 Pipeline</a></nav><header class="hero"><div>CONTINUOUS JIRA KNOWLEDGE SERVICE · ARCHITECTURE DECISION · 2026-08-28</div><h1>Source Sync와 Knowledge Publish를<br>두 개의 독립 Loop로 운영한다</h1><p>Jira Download/정제와 OpenCode 기반 지식화/Embedding/Publish를 하나의 직렬 Run으로 묶지 않습니다. 두 Loop 사이에는 durable Work Item backlog를 두고 각 Loop를 독립적으로 스케줄링·재시도·관찰합니다.</p><span class="state">FROZEN · TWO-LOOP ADOPTED · IMPLEMENTATION BASELINE</span></header>
-<section><h2>1. 최종 구조</h2><div class="flow">Loop A · SOURCE SYNC
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Continuous Jira Knowledge Service 공식 2-Loop 운영 아키텍처. Source Sync와 Knowledge Processing/Publish를 durable backlog와 Source Ready Gate로 분리한다."><title>Operational Architecture · Two-Loop · FROZEN</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1180px;margin:auto;padding:42px 22px 92px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:48px}h2{font-size:30px}.grid2,.grid3,.grid5{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid5{grid-template-columns:repeat(5,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:900px){.grid2,.grid3,.grid5{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_contract.html">Sync Contract v2</a> · <a href="jira_sync_state_schema_contract.html">State Schema v2</a></p><header class="hero"><div>CONTINUOUS JIRA KNOWLEDGE SERVICE · ARCHITECTURE DECISION · 2026-08-28</div><h1>Source Sync와 Knowledge Publish를<br>두 개의 독립 Loop로 운영한다</h1><p>Jira Download/정제와 OpenCode 기반 지식화/Embedding/Publish를 하나의 직렬 Run으로 묶지 않습니다. 두 Loop 사이에는 durable Work Item backlog를 두고, <strong>Project Source Commit까지 완료된 Work만 Processing</strong>하도록 Source Ready Gate를 둡니다.</p><span class="state">FROZEN · TWO-LOOP · SOURCE READY GATE · IMPLEMENTATION BASELINE</span></header><section><h2>1. 최종 구조</h2><div class="flow">Loop A · SOURCE SYNC
 Scheduler A
-→ source_sync_run 시작 / fixed upper
+→ source_sync_run / fixed upper
 → Project Discovery
-→ Project별 Delta / Initial / Catch-up
+→ Delta / Initial / Catch-up
 → Jira Download
-→ RAW
-→ ANALYSIS
-→ Knowledge Input
-→ semantic_v2 source_hash
+→ RAW / ANALYSIS / Knowledge Input
+→ semantic_v2 hash
 → NEW / CHANGED / UNCHANGED
-→ NEW/CHANGED durable sync_issue_change UPSERT
+→ NEW/CHANGED Work Item row durable
 → Project SOURCE_COMMITTED
-→ committed_watermark = upper
+→ Watermark advance
+→ Work Item Source Ready Gate open
 → Source Run 종료
 
-                         durable boundary
-                              ↓
-                      sync_issue_change
-                     pending / failed backlog
-                              ↓
+                         ↓ durable boundary
+
+                sync_issue_change backlog
+                only source-ready is claimable
+
+                         ↓
 
 Loop B · KNOWLEDGE PROCESSING / PUBLISH
-Scheduler or Worker B
-→ processing_run 시작
-→ backlog에서 처리 대상 선택
+Scheduler / Worker B
+→ processing_run
+→ source-ready Work Item claim
 → OpenCode Knowledge Generation
 → Review / Evidence
 → Knowledge DB
 → BGE-M3 Embedding
-→ FAISS staging / mapping 검증
+→ FAISS staging / mapping validation
 → Atomic Publish
-→ Work Item PUBLISHED
+→ PUBLISHED
 → Processing Run 종료
 
-상시 서비스
-Published Corpus → FAISS → Evidence/MCP → OpenCode User</div></section>
-<section><h2>2. 왜 두 Loop로 나누는가?</h2><div class="grid3"><div class="card good"><h3>LLM 지연 격리</h3><p>OpenCode가 느려도 Jira Source 최신화는 계속됩니다.</p></div><div class="card good"><h3>독립 Cadence</h3><p>Source Loop와 Processing Loop를 서로 다른 주기와 정책으로 운영할 수 있습니다.</p></div><div class="card good"><h3>Failure Isolation</h3><p>Jira 장애와 OpenCode/Embedding 장애가 서로의 진행을 막지 않습니다.</p></div><div class="card good"><h3>Backlog 가시성</h3><p>Source는 앞서고 Publish가 밀리는 상황을 명시적으로 측정합니다.</p></div><div class="card good"><h3>야간 Catch-up</h3><p>시간대에 따라 OpenCode 처리량이 좋아지면 backlog를 빠르게 소진할 수 있습니다.</p></div><div class="card good"><h3>독립 제어</h3><p>Processing Loop만 정지·재개하거나 concurrency를 바꿔도 Source Loop는 유지됩니다.</p></div></div></section>
-<section><h2>3. 두 Loop 사이의 계약</h2><div class="card good"><div class="flow">SOURCE_COMMITTED
+Always-on Retrieval
+Published Corpus → FAISS → Evidence/MCP → OpenCode User</div></section><section><h2>2. 왜 두 Loop로 나누는가?</h2><div class="grid3"><div class="card good"><h3>LLM 지연 격리</h3><p>OpenCode가 느려도 Jira Source 최신화는 계속됩니다.</p></div><div class="card good"><h3>독립 Cadence</h3><p>Source와 Processing의 실행 주기·중지·재시도를 따로 제어합니다.</p></div><div class="card good"><h3>Failure Isolation</h3><p>Jira 장애와 OpenCode/Embedding 장애가 서로의 진행을 막지 않습니다.</p></div><div class="card good"><h3>Backlog 가시성</h3><p>Source는 최신인데 Publish가 밀리는 상태를 명시적으로 측정합니다.</p></div><div class="card good"><h3>야간 Catch-up</h3><p>시간대별 OpenCode 처리량이 좋아질 때 backlog를 소진할 수 있습니다.</p></div><div class="card good"><h3>독립 운영</h3><p>Processing Loop만 멈춰도 Source Loop와 Retrieval은 유지됩니다.</p></div></div></section><section><h2>3. 두 Loop 사이의 공식 계약</h2><div class="card good"><div class="flow">Project SOURCE_COMMITTED
 +
-durable sync_issue_change Work Item
+durable sync_issue_change
++
+Source Ready Gate OPEN
 =
-Loop A가 Loop B에 넘기는 공식 경계</div><p>Loop B는 Jira를 다시 읽지 않고 Work Item과 Source 산출물을 기준으로 진행합니다. Loop A는 OpenCode/Embedding 완료를 기다리지 않습니다.</p></div><div class="callout"><strong>중요:</strong> Source Commit과 Publish는 이제 단지 논리적으로 분리된 것이 아니라 <strong>서로 다른 실행 Loop</strong>에서 실제로 독립 수행됩니다.</div></section>
-<section><h2>4. Run Identity도 분리합니다</h2><div class="grid2"><div class="card"><h3>source_sync_run</h3><p>Jira Discovery, Delta, Source Commit, Watermark를 책임지는 Loop A 실행 이력입니다.</p><div class="flow">source_run_id = sr_ + UUID4</div></div><div class="card"><h3>processing_run</h3><p>Backlog 소비, OpenCode, Review, Embedding, Publish를 책임지는 Loop B 실행 이력입니다.</p><div class="flow">processing_run_id = pr_ + UUID4</div></div></div><p>한 Source Run과 한 Processing Run은 동일한 사건이 아니며 서로 1:1로 대응할 필요도 없습니다.</p></section>
-<section><h2>5. 운영 State의 현재 Domain Table</h2><div class="grid5"><div class="card"><h3>source_sync_run</h3><p>Loop A Run.</p></div><div class="card"><h3>project_state</h3><p>Project current state / Watermark.</p></div><div class="card"><h3>source_project_run</h3><p>Source Run × Project 이력 / cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>두 Loop 사이 durable Work Item/backlog.</p></div><div class="card"><h3>processing_run</h3><p>Loop B Run / 처리량·실패 관찰.</p></div></div><p>기존 Schema v1의 <code>sync_run</code>과 <code>sync_project_run</code> 단일-Run 의미는 2-Loop 채택으로 대체되었습니다.</p></section>
-<section><h2>6. Work Item은 Durable Queue 역할을 합니다</h2><div class="flow">Loop A
-NEW / CHANGED
-→ deterministic work_item_id
-→ sync_issue_change INSERT / UPSERT
+Loop B가 소비 가능한 공식 경계</div></div><p>Work Item row가 존재한다는 사실만으로는 충분하지 않습니다. Candidate 처리 중 row를 먼저 저장할 수 있기 때문에 현재 Source 관찰이 Project Source Commit까지 확정되었는지 확인해야 합니다.</p><div class="flow">Loop B eligible
+last_source_committed_run_id IS NOT NULL
+AND
+last_source_committed_run_id = last_observed_source_run_id</div></section><section><h2>4. 왜 Ready Gate가 필요한가?</h2><div class="grid2"><div class="card bad"><h3>Gate가 없으면</h3><div class="flow">ABC-1 Work Item row 생성
+ABC-2 Source 실패
+Project 전체 Source Commit 실패
 
-Loop B
-knowledge_status / embedding_status / publish_status 기준 조회
+그 사이 Loop B가 ABC-1 처리
+→ 아직 Commit되지 않은 Source window를 지식화</div></div><div class="card good"><h3>Gate가 있으면</h3><div class="flow">T2 row 생성 / last_observed 갱신
+→ gate closed
+
+T3 Project Source Commit
+→ watermark + last_source_committed same transaction
+→ gate open
+
+그 다음 Loop B claim</div></div></div></section><section><h2>5. Run Identity</h2><div class="grid2"><div class="card"><h3>source_sync_run</h3><p>Jira Discovery, Delta, Source Commit, Watermark를 책임지는 Loop A 실행.</p><div class="flow">source_run_id = sr_ + UUID4</div></div><div class="card"><h3>processing_run</h3><p>Backlog 소비, OpenCode, Embedding, Publish를 책임지는 Loop B 실행.</p><div class="flow">processing_run_id = pr_ + UUID4</div></div></div><p>두 Run은 1:1 대응하지 않습니다.</p></section><section><h2>6. Operational State Domain</h2><div class="grid5"><div class="card"><h3>source_sync_run</h3><p>Loop A Run.</p></div><div class="card"><h3>project_state</h3><p>Project identity / Watermark.</p></div><div class="card"><h3>source_project_run</h3><p>Run×Project / cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>durable backlog + ready/stage state.</p></div><div class="card"><h3>processing_run</h3><p>Loop B Run / 처리량.</p></div></div></section><section><h2>7. Queue는 SQLite State DB로 시작</h2><div class="flow">Loop A producer
+→ Work Item INSERT / UPSERT
+→ Source Ready Gate open after Project Commit
+
+Loop B consumer
+→ ready + pending/failed 대상 조회
 → 처리
-→ 단계별 checkpoint
-→ published</div><p>초기에는 별도 Kafka/RabbitMQ를 도입하지 않습니다. 단일 Processing Worker 기준으로 SQLite State DB를 durable backlog로 사용하고, 실제 병목/동시성 요구가 확인되면 lease 또는 외부 Queue를 추가 검토합니다.</p></section>
-<section><h2>7. 최신성은 하나의 Run 상태로 보지 않습니다</h2><div class="grid3"><div class="card"><h3>Source Lag</h3><p>현재 시각과 Project committed watermark의 차이.</p></div><div class="card"><h3>Publish Lag</h3><p>현재 Source Head와 실제 Published Head의 차이.</p></div><div class="card"><h3>Backlog</h3><p>미처리 Work Item 수와 가장 오래된 대기시간.</p></div></div><div class="callout"><strong>서비스 상태:</strong> Source Loop가 completed여도 Publish는 밀릴 수 있고, Processing Loop가 실패해도 기존 Published Knowledge는 계속 검색됩니다.</div></section>
-<section><h2>8. Loop별 Run 상태</h2><table><thead><tr><th>Loop</th><th>completed</th><th>partial</th><th>failed</th></tr></thead><tbody><tr><td>Source Sync</td><td>Discovery 신뢰 + 모든 visible Project Source Commit</td><td>일부 durable Source progress + 일부 실패</td><td>Discovery 불신뢰 또는 필요한 Source progress 0</td></tr><tr><td>Knowledge Processing</td><td>선택한 Work Item이 모두 원하는 terminal 상태에 도달하거나 선택할 작업이 없음</td><td>일부 진행/Publish + 일부 실패·미완료</td><td>의미 있는 durable processing progress 없이 실행 실패</td></tr></tbody></table><p>더 이상 한 <code>sync_run</code>의 completed 조건에 Source와 Publish를 함께 묶지 않습니다.</p></section>
-<section><h2>9. 반드시 모니터링할 지표</h2><div class="grid3"><div class="card"><h3>Backlog Depth</h3><p>pending/failed Work Item 수.</p></div><div class="card"><h3>Oldest Pending Age</h3><p>가장 오래 기다리는 Work Item의 age.</p></div><div class="card"><h3>Processing Throughput</h3><p>시간당 Published Work Item 수.</p></div><div class="card"><h3>OpenCode Latency</h3><p>시간대별 처리시간 분포.</p></div><div class="card"><h3>Error Rate</h3><p>Knowledge/Embedding/Publish 단계별 실패율.</p></div><div class="card"><h3>Source/Publish Lag</h3><p>Jira 최신성과 검색 최신성을 분리 관찰.</p></div></div></section>
-<section><h2>10. 아직 별도 결정이 필요한 것</h2><div class="card warn"><h3>중간 Version supersede 정책</h3><p>Source Loop가 V2→V3→V4를 빠르게 만들었는데 Processing Loop가 아직 V2를 시작하지 않았다면, 모든 Version을 지식화할지 최신 pending Version만 처리할지는 아직 Freeze하지 않습니다. Source Version은 모두 보존한다는 원칙은 유지합니다.</p></div><div class="card warn"><h3>Multi-worker claim/lease</h3><p>초기 Single Worker에서는 필수가 아닙니다. Processing Worker를 병렬화할 때 lease_owner / lease_until / retry scheduling을 별도 설계합니다.</p></div></section>
-<section><h2>11. 구현 순서</h2><div class="flow">1. State Schema v2 문서/DDL 확정
-2. explicit legacy → v2 Migration 구현
-3. Loop A StateStore / Source Sync 구현
-4. durable Work Item backlog 검증
-5. Loop B Processing Run / Worker 구현
-6. OpenCode → Review → Embedding → Publish 연결
-7. Source Lag / Publish Lag / Backlog 관찰 지표 추가
-8. 중간 Version supersede 정책 결정/구현
-9. 필요 시 worker concurrency 확장</div></section><footer class="footer">Two-Loop Operational Architecture · FROZEN · Source Sync independent from Knowledge Processing/Publish · 2026-08-28</footer></main></body></html>
+→ stage checkpoint
+→ published</div><p>초기 Single Worker에서는 Kafka/RabbitMQ를 도입하지 않습니다. 병렬 처리 요구가 확인되면 claim/lease 또는 외부 Queue를 별도 설계합니다.</p></section><section><h2>8. 최신성은 하나의 Run 상태가 아닙니다</h2><div class="grid3"><div class="card"><h3>Source Lag</h3><p>Project committed watermark 기준 최신성.</p></div><div class="card"><h3>Publish Lag</h3><p>Source Head와 실제 Published Head 차이.</p></div><div class="card"><h3>Backlog</h3><p>source-ready 미처리 Work 수와 oldest age.</p></div></div></section><section><h2>9. 장애 격리</h2><table><thead><tr><th>상황</th><th>계속 가능한 것</th></tr></thead><tbody><tr><td>OpenCode 느림/장애</td><td>Loop A Source Sync + last-known-good Retrieval</td></tr><tr><td>Jira 장애</td><td>Loop B의 이미 source-ready backlog 처리 + Retrieval</td></tr><tr><td>Embedding/Publish 장애</td><td>Loop A + 기존 Published Retrieval</td></tr></tbody></table></section><section><h2>10. Processing Run의 성공 기준</h2><p>Source Run과 별개로 selected Work의 결과를 기준으로 completed/partial/failed를 기록합니다. 시스템 전체는 Source Lag / Publish Lag / Backlog / Throughput으로 봅니다.</p></section><section><h2>11. 아직 남은 별도 결정</h2><div class="card warn"><h3>Intermediate Version supersede</h3><p>V2→V3→V4가 Loop B 시작 전에 쌓이면 모든 semantic Version을 처리할지 미시작 구버전을 supersede할지 아직 Freeze하지 않았습니다.</p></div><div class="card warn"><h3>Multi-worker claim / lease</h3><p>초기 Single Worker 이후 병렬성이 필요할 때 결정합니다.</p></div></section><section><h2>12. 구현 순서</h2><div class="flow">Intermediate Version 정책 Freeze
+→ State Schema v2 explicit Migration
+→ Loop A Source State / Delta Sync
+→ Source Ready Gate / backlog 검증
+→ Loop B processing_run / Single Worker
+→ Knowledge / Embedding / Publish
+→ Source/Publish/Backlog Monitoring
+→ Remote MCP Operations</div></section><footer class="footer">Two-Loop Operational Architecture · FROZEN · Source Ready Gate included · 2026-08-28</footer></main></body></html>
