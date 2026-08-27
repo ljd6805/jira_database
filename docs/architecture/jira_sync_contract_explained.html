@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Jira Knowledge Continuous Sync의 Sync Contract를 Watermark, Overlap, Delta, source_hash, checkpoint/resume 순서로 아주 쉽게 설명하는 학습 문서">
+  <title>Sync Contract 쉽게 이해하기 · Jira Knowledge</title>
+  <style>
+    :root{
+      --bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;
+      --blue:#3157d5;--blue2:#2447b8;--green:#14845f;--amber:#a86500;--red:#b83b3b;
+      --ink:#101827;--soft:#eef3f9;--purple:#6f4bc7;--shadow:0 12px 32px rgba(31,49,84,.08);
+      --radius:18px;--max:1120px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:radial-gradient(circle at 8% 2%,rgba(49,87,213,.10),transparent 25rem),var(--bg);color:var(--text);
+      font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}
+    a{color:var(--blue2)}
+    code,.mono{font-family:"Cascadia Code","D2Coding",Consolas,monospace}
+    .layout{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+    aside{position:sticky;top:0;height:100vh;overflow:auto;padding:24px 18px;background:rgba(255,255,255,.94);border-right:1px solid var(--line)}
+    .brand{padding:12px 10px 20px;border-bottom:1px solid var(--line);margin-bottom:14px}
+    .brand b{display:block;font-size:15px}.brand small{color:var(--muted)}
+    nav a{display:block;padding:8px 10px;margin:2px 0;border-radius:9px;color:#4b5971;text-decoration:none;font-size:13px;font-weight:800}
+    nav a:hover{background:var(--soft);color:var(--blue2)}
+    main{min-width:0}.wrap{max-width:var(--max);margin:auto;padding:46px 34px 90px}
+    .hero{padding:42px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7);box-shadow:var(--shadow)}
+    .hero .eyebrow{display:inline-block;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.14);font-size:12px;font-weight:900}
+    .hero h1{margin:13px 0 12px;font-size:clamp(34px,5vw,56px);line-height:1.12;letter-spacing:-.03em}
+    .hero p{max-width:850px;margin:0;color:rgba(255,255,255,.9);font-size:18px}
+    .hero .notice{margin-top:20px;padding:14px 16px;border-radius:13px;background:rgba(8,17,45,.28);font-size:14px}
+    section{margin-top:58px;scroll-margin-top:22px}
+    h2{font-size:30px;line-height:1.28;letter-spacing:-.02em;margin:0 0 10px}
+    h3{margin:24px 0 8px;font-size:20px}
+    .lead{max-width:900px;color:var(--muted);font-size:16px;margin:0 0 22px}
+    .grid2,.grid3{display:grid;gap:15px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}
+    .card{padding:20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper);box-shadow:0 6px 18px rgba(31,49,84,.04)}
+    .card h3{margin-top:0}.card p:last-child{margin-bottom:0}
+    .badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}
+    .learn{background:#e9eeff;color:#2548b5}.current{background:#e5f7ef;color:#0c6c4a}.proposal{background:#fff1d7;color:#8a5700}
+    .callout{padding:17px 19px;margin:18px 0;border-left:5px solid var(--blue);border-radius:12px;background:#edf3ff}
+    .callout.good{border-color:var(--green);background:#eaf8f3}.callout.warn{border-color:var(--amber);background:#fff6e9}.callout.red{border-color:var(--red);background:#fff0f0}
+    .callout b{display:block;margin-bottom:3px}
+    .flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 "Cascadia Code","D2Coding",Consolas,monospace;overflow:auto}
+    .analogy{display:grid;grid-template-columns:74px 1fr;gap:14px;align-items:start;padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff}
+    .analogy .emoji{width:58px;height:58px;display:grid;place-items:center;border-radius:16px;background:#edf3ff;font-size:29px}
+    .analogy b{font-size:18px}.analogy p{margin:4px 0 0;color:var(--muted)}
+    .timeline{display:flex;align-items:stretch;gap:8px;overflow:auto;padding:8px 0 4px}
+    .timebox{min-width:145px;padding:15px;border:1px solid var(--line);border-radius:14px;background:#fff}
+    .timebox b{display:block}.timebox small{color:var(--muted)}
+    .arrow{display:grid;place-items:center;min-width:24px;font-weight:900;color:var(--blue)}
+    .bookmarks{display:grid;gap:10px}
+    .bookmark{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:13px;background:#fff}
+    .bookmark code{font-size:12px;color:var(--blue2)}
+    table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+    th,td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}tr:last-child td{border-bottom:0}
+    .step-title{display:flex;align-items:center;gap:12px}
+    .num{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;background:var(--blue);color:#fff;font-weight:900;flex:0 0 auto}
+    .compare{display:grid;grid-template-columns:1fr 52px 1fr;gap:10px;align-items:center}
+    .compare .mid{text-align:center;font-weight:900;color:var(--blue)}
+    .mini{padding:14px;border-radius:13px;background:#f8fafc;border:1px dashed #a9b8d1}
+    .quiz{counter-reset:q;display:grid;gap:10px}.quiz div{counter-increment:q;padding:14px 16px;border-radius:13px;border:1px solid var(--line);background:#fff}
+    .quiz div::before{content:"Q" counter(q) ". ";font-weight:900;color:var(--blue)}
+    details{margin:10px 0;border:1px solid var(--line);border-radius:13px;background:#fff}summary{padding:14px 16px;cursor:pointer;font-weight:850}details>div{padding:0 16px 16px;color:var(--muted)}
+    .small{font-size:13px;color:var(--muted)}
+    .footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}aside nav{display:none}.wrap{padding:28px 18px 70px}.hero{padding:30px 24px}.grid2,.grid3,.compare{grid-template-columns:1fr}.compare .mid{transform:rotate(90deg)}}
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <div class="brand"><b>Sync Contract 학습 노트</b><small>아직 FROZEN 아님</small></div>
+    <nav>
+      <a href="#big-picture">0. 전체 그림</a>
+      <a href="#sync-run">1. Sync Run</a>
+      <a href="#project-discovery">2. Project Discovery</a>
+      <a href="#watermark">3. Watermark</a>
+      <a href="#overlap">4. Overlap</a>
+      <a href="#delta">5. Delta</a>
+      <a href="#candidate">6. 변경 후보 vs 실제 변경</a>
+      <a href="#source-hash">7. source_hash</a>
+      <a href="#classify">8. new/changed/unchanged</a>
+      <a href="#project-watermark">9. Project별 Watermark</a>
+      <a href="#checkpoint">10. Checkpoint / Resume</a>
+      <a href="#publish">11. Source Commit / Publish</a>
+      <a href="#missing-project">12. Project가 사라지면?</a>
+      <a href="#initial-ingest">13. 새 Project 초기 수집</a>
+      <a href="#run-status">14. Run 완료 상태</a>
+      <a href="#example">15. 처음부터 끝까지 예</a>
+      <a href="#pending">16. 아직 결정하지 않은 것</a>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="wrap">
+      <header class="hero">
+        <span class="eyebrow">LEARNING DOCUMENT · 2026-08-27</span>
+        <h1>Sync Contract를<br>아주 쉽게 이해해 봅시다</h1>
+        <p>
+          지금 필요한 것은 코드를 쓰는 것이 아니라, <strong>Jira가 계속 바뀔 때 우리 시스템이 무엇을 기억하고,
+          무엇을 다시 읽고, 어디까지 처리할지</strong> 이해하는 것입니다.
+        </p>
+        <div class="notice">
+          이 문서는 <strong>학습용</strong>입니다. Watermark, Overlap 같은 개념을 이해하기 위한 자료이며,
+          구체적인 숫자와 정책은 아직 확정하지 않습니다.
+        </div>
+      </header>
+
+      <section id="big-picture">
+        <span class="badge learn">먼저 이것만</span>
+        <h2>0. 전체 그림 — Sync는 “지난번 이후 바뀐 것만 다시 가져오는 일”</h2>
+        <p class="lead">매번 Jira 전체를 처음부터 다시 읽는 대신, 지난번 이후 바뀐 것만 찾아서 Knowledge DB와 검색 인덱스를 최신으로 만드는 것이 Continuous Sync입니다.</p>
+
+        <div class="analogy">
+          <div class="emoji">📚</div>
+          <div>
+            <b>도서관 비유</b>
+            <p>도서관에 책이 10만 권 있는데 어제 책 7권만 바뀌었다면, 오늘 10만 권을 다시 검사할 필요는 없습니다. “어디까지 확인했는지” 기억하고, 그 이후 바뀐 책만 보면 됩니다.</p>
+          </div>
+        </div>
+
+        <div class="flow">지난 Sync 때까지 확인한 지점
+        ↓
+Jira에서 그 이후 변경 후보를 찾음
+        ↓
+실제로 내용이 바뀌었는지 확인
+        ↓
+바뀐 것만 Knowledge / Embedding / FAISS 갱신
+        ↓
+다음 Sync가 시작할 지점을 저장</div>
+
+        <div class="callout good"><b>한 문장</b>Sync Contract는 “다음 번에 어디서부터 다시 확인하고, 무엇을 변경으로 인정하고, 실패하면 어디서 다시 시작할지” 정하는 약속입니다.</div>
+      </section>
+
+      <section id="sync-run">
+        <div class="step-title"><span class="num">1</span><h2>Sync Run — 동기화 한 번을 하나의 작업으로 묶기</h2></div>
+        <p class="lead">예를 들어 오전 9시에 Jira 업데이트 확인을 시작해서 9시 12분에 끝났다면, 그 한 번의 실행 전체를 하나의 Sync Run이라고 부릅니다.</p>
+
+        <div class="timeline">
+          <div class="timebox"><b>09:00</b><small>Sync Run 시작</small></div><div class="arrow">→</div>
+          <div class="timebox"><b>Project 확인</b><small>A, B, C 발견</small></div><div class="arrow">→</div>
+          <div class="timebox"><b>변경 Issue 확인</b><small>총 6건 후보</small></div><div class="arrow">→</div>
+          <div class="timebox"><b>Knowledge 갱신</b><small>실제 변경 3건</small></div><div class="arrow">→</div>
+          <div class="timebox"><b>09:12</b><small>Sync Run 종료</small></div>
+        </div>
+
+        <div class="callout"><b>현재 프로젝트에도 비슷한 구조가 이미 있습니다.</b><code>state_store.py</code>에는 <code>collection_runs</code>, <code>project_runs</code>, <code>issue_checkpoints</code>가 있어 한 번의 수집 실행 내부 상태를 이미 기록합니다. 앞으로는 이 개념을 “실행과 실행 사이”까지 확장하는 것이 핵심입니다.</div>
+      </section>
+
+      <section id="project-discovery">
+        <div class="step-title"><span class="num">2</span><h2>Project Discovery — 지금 내가 볼 수 있는 프로젝트 목록 확인</h2></div>
+        <p class="lead">Sync가 시작되면 먼저 “현재 서비스 계정이 Jira에서 어떤 프로젝트를 볼 수 있는가?”를 확인합니다.</p>
+
+        <div class="grid3">
+          <div class="card"><h3>기존 Project</h3><p>지난번에도 있었고 이번에도 보입니다. → 변경 Issue만 확인합니다.</p></div>
+          <div class="card"><h3>새 Project</h3><p>지난번에는 없었는데 이번에 처음 보입니다. → 초기 수집 대상입니다.</p></div>
+          <div class="card"><h3>사라진 Project</h3><p>지난번에는 있었는데 이번 목록에는 없습니다. → 삭제인지 권한 상실인지 판단 정책이 필요합니다.</p></div>
+        </div>
+
+        <div class="flow">지난번 Registry:  A  B
+이번 Discovery:   A  B  C
+
+결과
+A = 기존
+B = 기존
+C = 새 프로젝트</div>
+
+        <div class="callout good"><b>현재 코드도 Project Discovery 자체는 이미 합니다.</b><code>project_discovery.py</code>가 접근 가능한 프로젝트 목록을 읽습니다. 아직 없는 것은 “지난번 목록과 비교해서 새 프로젝트인지 판단하는 영구 Registry”입니다.</div>
+      </section>
+
+      <section id="watermark">
+        <div class="step-title"><span class="num">3</span><h2>Watermark — “지난번에 여기까지 봤다”는 책갈피</h2></div>
+        <p class="lead">Watermark가 이번 Sync Contract에서 가장 중요한 개념입니다. 어렵게 들리지만 사실상 <strong>책갈피</strong>입니다.</p>
+
+        <div class="analogy">
+          <div class="emoji">🔖</div>
+          <div>
+            <b>책갈피 비유</b>
+            <p>500페이지짜리 책을 120페이지까지 읽고 책갈피를 꽂았습니다. 다음 날 책을 펼칠 때 1페이지부터 다시 읽지 않고 120페이지 근처에서 시작합니다. Watermark가 바로 그 책갈피입니다.</p>
+          </div>
+        </div>
+
+        <h3>Jira에서는 어떻게 쓰나?</h3>
+        <div class="flow">지난번 성공 Sync가 확인한 마지막 시점 = 10:00
+                         ↑
+                    Watermark
+
+다음 Sync
+→ 10:00 근처 이후에 수정된 Issue를 찾아본다</div>
+
+        <div class="bookmarks">
+          <div class="bookmark"><code>Watermark 없음</code><span>처음 실행입니다. 어디서 시작할지 모르므로 초기 수집이 필요합니다.</span></div>
+          <div class="bookmark"><code>Watermark = 10:00</code><span>지난번에 10:00 부근까지 안전하게 확인했다는 뜻입니다.</span></div>
+          <div class="bookmark"><code>새 Watermark</code><span>이번 Sync가 안전하게 처리된 뒤 다음 시작점을 저장합니다.</span></div>
+        </div>
+
+        <div class="callout warn"><b>중요</b>Watermark는 “마지막으로 본 Jira Issue의 번호”가 아니라, 보통 “여기까지의 변경을 안전하게 처리했다”는 시간/경계 정보를 의미합니다.</div>
+      </section>
+
+      <section id="overlap">
+        <div class="step-title"><span class="num">4</span><h2>Overlap — 책갈피보다 조금 앞에서 다시 읽기</h2></div>
+        <p class="lead">Watermark가 10:00이라도 다음 Sync를 정확히 10:00부터 딱 잘라 시작하지 않고, <strong>조금 이전 시간부터 다시 확인</strong>하는 방법이 Overlap입니다.</p>
+
+        <div class="analogy">
+          <div class="emoji">🎞️</div>
+          <div>
+            <b>동영상 비유</b>
+            <p>영상을 보다가 10분 지점에서 끊겼습니다. 다음에 10:00.000에서 정확히 재생하는 대신 9:55부터 다시 보면 앞뒤 맥락을 놓칠 가능성이 줄어듭니다. 5초를 중복해서 보는 것은 조금 귀찮지만, 장면 하나를 놓치는 것보다 훨씬 안전합니다.</p>
+          </div>
+        </div>
+
+        <h3>왜 굳이 중복해서 읽을까?</h3>
+        <div class="compare">
+          <div class="mini"><b>Overlap 없음</b><p>경계 시점에 있는 Issue가 시간 표현, 처리 지연, 실행 중단 같은 이유로 빠지면 영원히 놓칠 수 있습니다.</p></div>
+          <div class="mid">VS</div>
+          <div class="mini"><b>Overlap 있음</b><p>일부 Issue를 다시 읽을 수 있지만, 같은 데이터인지 확인해서 버리면 됩니다. 중복은 처리할 수 있지만 누락은 복구가 어렵습니다.</p></div>
+        </div>
+
+        <div class="flow">예시 · 아직 확정값 아님
+
+지난 Watermark = 10:00
+Overlap        = 5분
+
+다음 검색 시작 = 09:55
+                 ↑
+        5분을 일부러 다시 확인</div>
+
+        <div class="callout good"><b>핵심 철학</b><strong>중복은 허용하고, 누락을 막습니다.</strong> 중복으로 다시 가져온 데이터는 뒤에서 <code>source_hash</code>로 “내용이 같은가?”를 확인하면 됩니다.</div>
+        <div class="callout warn"><b>아직 확정하지 않은 것</b>Overlap을 정확히 몇 분으로 할지는 나중에 실제 Jira 동작과 운영 주기를 보고 결정합니다. “5분”은 현재 추천 예시일 뿐입니다.</div>
+      </section>
+
+      <section id="delta">
+        <div class="step-title"><span class="num">5</span><h2>Delta — 전체가 아니라 “달라진 부분”</h2></div>
+        <p class="lead"><code>Delta</code>는 수학 냄새가 나지만 여기서는 그냥 <strong>변경분</strong>이라는 뜻입니다.</p>
+
+        <div class="analogy">
+          <div class="emoji">🧾</div>
+          <div>
+            <b>가계부 비유</b>
+            <p>어제 잔액과 오늘 잔액을 비교할 때 통장 개설일부터 모든 거래를 다시 계산하지 않고, 어제 이후 거래만 봅니다. 그 “새 거래 부분”이 Delta입니다.</p>
+          </div>
+        </div>
+
+        <div class="flow">Full Sync
+100,000개 Issue 전부 확인
+
+Delta Sync
+지난 Sync 이후 변경 후보 23개만 확인</div>
+
+        <div class="callout good"><b>운영 기본 방향</b>현재 프로젝트 문서도 운영 단계의 기본을 <strong>delta-first</strong>로 잡고 있습니다. Full rebuild는 장애 복구, 검증, 마이그레이션처럼 특별한 때 남겨두는 방향입니다.</div>
+      </section>
+
+      <section id="candidate">
+        <div class="step-title"><span class="num">6</span><h2>“Jira에서 수정됨”과 “우리 지식이 바뀜”은 같은 말이 아닙니다</h2></div>
+        <p class="lead">Jira의 <code>updated</code> 값은 “이 Issue를 다시 확인해 보세요”라는 <strong>초인종</strong>으로 보는 것이 쉽습니다. 최종 판정은 아닙니다.</p>
+
+        <div class="flow">Jira updated 변경
+      ↓
+"이 Issue 다시 확인해!"
+      ↓
+Issue + Comment + 관계 + Custom Field 수집
+      ↓
+실제 업무 내용 비교
+      ↓
+정말 바뀌었나?</div>
+
+        <div class="grid2">
+          <div class="card"><h3>후보는 맞지만 실제 내용 동일</h3><p>Jira 내부 메타데이터가 바뀌었거나, 우리 Knowledge에 영향을 주지 않는 변화일 수 있습니다. → 기존 Knowledge 재사용 가능.</p></div>
+          <div class="card"><h3>실제 내용 변경</h3><p>Description, 댓글, 상태, 관계 등 우리가 중요하게 보는 정보가 바뀌었습니다. → 새 Version과 Knowledge 처리 필요.</p></div>
+        </div>
+
+        <div class="callout"><b>쉽게 말하면</b><code>updated</code>는 “문을 열어볼 집 주소를 찾는 용도”, <code>source_hash</code>는 “집 안이 실제로 달라졌는지 확인하는 용도”입니다.</div>
+      </section>
+
+      <section id="source-hash">
+        <div class="step-title"><span class="num">7</span><h2>source_hash — Issue 내용의 지문</h2></div>
+        <p class="lead">Hash는 긴 데이터를 짧은 고정 길이 값으로 바꿔 비교하는 방법입니다. 여기서는 한 Issue의 의미 있는 내용을 모아 <strong>지문</strong>처럼 사용합니다.</p>
+
+        <div class="analogy">
+          <div class="emoji">🫆</div>
+          <div>
+            <b>지문 비유</b>
+            <p>두 사람의 이름을 일일이 비교하지 않고 지문이 같은지 보는 것처럼, 긴 Jira 내용 전체를 매번 필드 하나씩 비교하지 않고 안정적인 hash 값을 비교합니다.</p>
+          </div>
+        </div>
+
+        <div class="flow">Issue 내용 A
+→ source_hash = abc123
+
+다음 Sync에서 다시 수집
+→ source_hash = abc123
+→ 내용 동일 → unchanged
+
+다음 Sync
+→ source_hash = xyz999
+→ 내용 변경 → changed</div>
+
+        <h3>현재 프로젝트의 source_hash는 무엇을 보나?</h3>
+        <table>
+          <thead><tr><th>영역</th><th>현재 Knowledge Input에 포함</th><th>의미</th></tr></thead>
+          <tbody>
+            <tr><td>Issue</td><td>summary, description, status, priority 등</td><td>이슈 본문 변화 감지</td></tr>
+            <tr><td>Comments</td><td>댓글 본문과 식별 정보</td><td>추가/수정 논의 감지</td></tr>
+            <tr><td>Attachments</td><td>현재는 메타데이터</td><td>첨부 메타 변화 감지</td></tr>
+            <tr><td>Relationships</td><td>연결 Issue 관계</td><td>관계 변화 감지</td></tr>
+            <tr><td>Custom Fields</td><td>정규화된 값</td><td>업무 필드 변화 감지</td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout warn"><b>검토 포인트 · 아직 결정 아님</b>현재 코드에서는 Issue/Comment의 <code>updated_at</code>도 package에 들어가므로 hash에 영향을 줄 수 있습니다. 운영 단계에서는 “시간만 달라졌지만 실제 지식 내용은 같은 경우”까지 새 Version으로 만들지 검토할 필요가 있습니다. 이 부분은 Sync Contract 확정 때 따로 결정합니다.</div>
+      </section>
+
+      <section id="classify">
+        <div class="step-title"><span class="num">8</span><h2>new / changed / unchanged — 결국 세 가지로 나누기</h2></div>
+        <p class="lead">한 Issue를 다시 읽은 뒤에는 어렵게 생각할 필요 없이 세 통에 나누면 됩니다.</p>
+
+        <div class="grid3">
+          <div class="card"><span class="badge current">NEW</span><h3>처음 보는 Issue</h3><p>우리 DB에 Jira identity가 없습니다.</p><p><strong>처리:</strong> 새 Version → Knowledge → Embedding → FAISS.</p></div>
+          <div class="card"><span class="badge proposal">CHANGED</span><h3>기존 Issue, 내용 변경</h3><p>기존 identity는 있지만 <code>source_hash</code>가 달라졌습니다.</p><p><strong>처리:</strong> 새 Version부터 downstream 갱신.</p></div>
+          <div class="card"><span class="badge learn">UNCHANGED</span><h3>다시 읽었지만 동일</h3><p><code>source_hash</code>가 같습니다.</p><p><strong>처리:</strong> 기존 Version/Knowledge/Embedding 재사용.</p></div>
+        </div>
+
+        <div class="callout good"><b>이 구조가 중요한 이유</b>Overlap 때문에 같은 Issue를 다시 가져오더라도 대부분 <code>unchanged</code>로 판정해 값비싼 Knowledge 생성과 Embedding을 다시 하지 않을 수 있습니다.</div>
+      </section>
+
+      <section id="project-watermark">
+        <div class="step-title"><span class="num">9</span><h2>왜 Watermark를 Project마다 따로 두나?</h2></div>
+        <p class="lead">Project A는 성공했고 Project B는 실패했다면, 둘의 “책갈피”가 같으면 안 됩니다.</p>
+
+        <div class="flow">Project A  ✅ 성공 → watermark = 11:00
+Project B  ❌ 실패 → watermark = 10:00 그대로
+Project C  ✅ 성공 → watermark = 11:00</div>
+
+        <div class="analogy">
+          <div class="emoji">📖</div>
+          <div>
+            <b>여러 권의 책 비유</b>
+            <p>A책은 200페이지까지 읽고, B책은 80페이지에서 잠들었습니다. 다음 날 세 책 모두 200페이지부터 읽으면 B책의 81~199페이지를 통째로 놓칩니다. 그래서 책마다 책갈피가 따로 있어야 합니다.</p>
+          </div>
+        </div>
+
+        <div class="callout good"><b>추천 방향</b>운영 Sync에서는 <strong>Project별 Watermark</strong>를 두는 설계가 안전합니다. 현재 Collector가 이미 Project 단위로 실패를 격리하는 철학과도 잘 맞습니다.</div>
+      </section>
+
+      <section id="checkpoint">
+        <div class="step-title"><span class="num">10</span><h2>Checkpoint / Resume — 중간에 죽어도 처음부터 다시 하지 않기</h2></div>
+        <p class="lead">Checkpoint는 “여기까지는 끝냈다”는 저장점이고, Resume은 거기서 다시 시작하는 것입니다.</p>
+
+        <div class="analogy">
+          <div class="emoji">🎮</div>
+          <div>
+            <b>게임 저장 비유</b>
+            <p>보스 직전까지 갔는데 게임이 꺼졌습니다. 저장 기능이 없으면 처음 마을부터 다시 시작해야 합니다. Checkpoint가 있으면 마지막 세이브 포인트에서 이어서 할 수 있습니다.</p>
+          </div>
+        </div>
+
+        <div class="flow">Project B Delta 20개
+
+1~8  ✅ 완료
+9    처리 중
+      💥 서버 종료
+
+재시작
+1~8  → 다시 하지 않음
+9~20 → 이어서 처리</div>
+
+        <div class="callout"><b>현재 프로젝트에는 이미 기반이 있습니다.</b><code>issue_checkpoints</code>와 <code>issue_is_complete()</code>가 같은 Collection Run 안에서 완료된 Issue를 건너뛸 수 있게 합니다. 운영 단계에서는 이를 cross-run 동기화 상태와 연결해야 합니다.</div>
+      </section>
+
+      <section id="publish">
+        <div class="step-title"><span class="num">11</span><h2>“Jira에서 잘 가져옴”과 “검색 서비스에 반영됨”도 다릅니다</h2></div>
+        <p class="lead">Issue를 안전하게 RAW로 가져오는 데 성공했더라도, 그 뒤 Knowledge 생성이나 Embedding이 실패할 수 있습니다. 그래서 두 단계를 구분하면 장애 복구가 쉬워집니다.</p>
+
+        <div class="flow">Jira
+ ↓
+RAW + 변화 판정
+ ↓
+[SOURCE COMMITTED]
+ ↓
+Knowledge
+ ↓
+Embedding
+ ↓
+FAISS Active 전환
+ ↓
+[PUBLISHED]</div>
+
+        <div class="grid2">
+          <div class="card"><h3>SOURCE COMMITTED</h3><p>Jira 변경분을 안전하게 가져오고 무엇이 바뀌었는지 기록했습니다.</p><p>이후 Knowledge가 실패해도 Jira를 다시 읽을 필요 없이 여기서 이어갈 수 있습니다.</p></div>
+          <div class="card"><h3>PUBLISHED</h3><p>새 Knowledge와 Vector가 실제 Active Retrieval에 반영됐습니다.</p><p>이때 비로소 사용자 검색 결과가 최신 상태라고 볼 수 있습니다.</p></div>
+        </div>
+
+        <div class="callout warn"><b>이 용어도 아직 최종 계약명은 아닙니다.</b>핵심은 이름보다 “수집 완료”와 “서비스 반영 완료”를 서로 다른 상태로 구분해야 한다는 점입니다.</div>
+      </section>
+
+      <section id="missing-project">
+        <div class="step-title"><span class="num">12</span><h2>Project가 갑자기 안 보이면 어떻게 할까?</h2></div>
+        <p class="lead">지난번에는 보였던 Project가 이번 Discovery에 없다고 해서 바로 “삭제됐다”고 단정하면 위험합니다.</p>
+
+        <div class="grid3">
+          <div class="card"><h3>정말 삭제</h3><p>Jira에서 Project 자체가 없어졌을 수 있습니다.</p></div>
+          <div class="card"><h3>권한 상실</h3><p>Project는 있지만 서비스 계정이 더 이상 볼 수 없을 수 있습니다.</p></div>
+          <div class="card"><h3>일시 오류</h3><p>Jira/API 장애 때문에 Discovery 결과가 불완전할 수도 있습니다.</p></div>
+        </div>
+
+        <div class="callout red"><b>그래서 즉시 데이터 삭제는 위험합니다.</b>History/RAW는 보존하면서 Active Retrieval에서 어떻게 처리할지 별도의 보안 정책이 필요합니다.</div>
+
+        <div class="callout warn"><b>아직 확정하지 않은 정책</b>정상 Discovery에서 Project가 사라지면 즉시 Active에서 숨길지, 몇 회 연속 확인 후 숨길지 등은 사용자와 따로 결정해야 합니다.</div>
+      </section>
+
+      <section id="initial-ingest">
+        <div class="step-title"><span class="num">13</span><h2>새 Project가 발견되면 처음에는 어디까지 가져올까?</h2></div>
+        <p class="lead">Watermark가 없는 새 Project는 “지난번 이후 변경분”이라는 기준 자체가 없습니다. 그래서 첫 수집 방식을 정해야 합니다.</p>
+
+        <div class="compare">
+          <div class="mini"><b>MVP 방식</b><p>프로젝트당 최근 30개 Issue.</p><p class="small">기능 검증에는 충분했습니다.</p></div>
+          <div class="mid">→</div>
+          <div class="mini"><b>운영 후보</b><p>새 Project의 전체 접근 가능 Issue를 Initial Ingest.</p><p class="small">그 후 Watermark를 만들고 Delta Sync로 전환.</p></div>
+        </div>
+
+        <div class="flow">새 Project C 발견
+      ↓
+Initial Ingest
+      ↓
+현재 상태를 한 번 기준점으로 만듦
+      ↓
+Watermark 생성
+      ↓
+다음부터 Delta Sync</div>
+
+        <div class="callout warn"><b>이것도 아직 사용자 결정 전</b>“새 Project는 전체 초기 수집”을 현재 추천하지만, 데이터 규모나 운영 시간에 따라 범위를 조절할 수 있습니다.</div>
+      </section>
+
+      <section id="run-status">
+        <div class="step-title"><span class="num">14</span><h2>Sync Run이 성공인지 실패인지 어떻게 말할까?</h2></div>
+        <p class="lead">Project가 여러 개이므로 전체 Run은 단순 성공/실패 두 상태만으로는 부족할 수 있습니다.</p>
+
+        <table>
+          <thead><tr><th>상태</th><th>쉽게 말하면</th><th>예</th></tr></thead>
+          <tbody>
+            <tr><td><strong>completed</strong></td><td>대상 Project가 모두 최신 상태로 Published</td><td>A/B/C 모두 성공</td></tr>
+            <tr><td><strong>partial</strong></td><td>일부는 성공, 일부는 실패</td><td>A/C 성공, B 실패</td></tr>
+            <tr><td><strong>failed</strong></td><td>Sync 자체가 유효하게 진행되지 못함</td><td>초기 Discovery부터 실패</td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout good"><b>포인트</b>Project B가 실패했다고 A/C까지 롤백할 필요는 없습니다. A/C는 자기 Watermark를 전진시키고, B만 다음에 다시 하면 됩니다.</div>
+      </section>
+
+      <section id="example">
+        <div class="step-title"><span class="num">15</span><h2>처음부터 끝까지 하나의 예로 연결해 보기</h2></div>
+        <p class="lead">이제 앞의 개념을 한 번에 연결해 봅시다.</p>
+
+        <div class="flow">[어제]
+Project A watermark = 10:00
+Project B watermark = 10:00
+
+[오늘 11:00 Sync 시작]
+
+1) Project Discovery
+   A, B, C 발견
+   → C는 새 Project
+
+2) A Delta 검색
+   watermark 10:00 근처부터 다시 확인
+   → 후보 4개
+
+3) A 후보 4개 실제 수집
+   Issue 1 → source_hash 동일 → unchanged
+   Issue 2 → hash 변경       → changed
+   Issue 3 → hash 동일       → unchanged
+   Issue 4 → 처음 보는 ID    → new
+
+4) A 처리
+   changed + new 2개만
+   Knowledge → Embedding → FAISS
+
+5) A 성공
+   → A watermark 전진
+
+6) B 처리 중 실패
+   → B watermark 그대로
+   → 다음 Sync에서 B는 이전 지점부터 다시
+
+7) C는 watermark가 없음
+   → Initial Ingest 수행
+   → 성공 후 첫 watermark 생성
+
+8) Run 결과
+   A 성공 / B 실패 / C 성공
+   → 전체 Sync Run = partial</div>
+
+        <div class="callout good"><b>여기까지 이해되면 Sync Contract의 뼈대는 거의 이해한 것입니다.</b>나머지는 “Overlap 몇 분?”, “새 Project 전체 수집?”, “Project 권한 상실 시 Active를 언제 숨김?” 같은 정책값을 하나씩 결정하는 문제입니다.</div>
+      </section>
+
+      <section id="pending">
+        <h2>16. 지금 당장 외울 필요 없는 것 / 아직 결정하지 않은 것</h2>
+        <p class="lead">아래 항목은 개념 이해가 끝난 뒤 하나씩 이야기하면 됩니다. 지금 문서에서는 일부러 Freeze하지 않았습니다.</p>
+
+        <table>
+          <thead><tr><th>항목</th><th>현재 상태</th><th>나중에 결정할 질문</th></tr></thead>
+          <tbody>
+            <tr><td>Overlap 크기</td><td><span class="badge proposal">추천안만 있음</span></td><td>몇 분을 겹쳐 읽을까?</td></tr>
+            <tr><td>Watermark 저장 단위</td><td><span class="badge proposal">Project별 추천</span></td><td>Project별로 둘지 더 세분화할지?</td></tr>
+            <tr><td>source_hash v2</td><td><span class="badge proposal">검토 필요</span></td><td><code>updated_at</code> 같은 시간값을 semantic hash에서 뺄까?</td></tr>
+            <tr><td>새 Project</td><td><span class="badge proposal">전체 Initial Ingest 추천</span></td><td>정말 전체를 처음 수집할까?</td></tr>
+            <tr><td>Project 접근 상실</td><td><span class="badge proposal">미정</span></td><td>Active에서 언제 숨길까?</td></tr>
+            <tr><td>Sync 주기</td><td><span class="badge proposal">미정</span></td><td>10분? 1시간? 하루?</td></tr>
+            <tr><td>DB/FAISS 전환 방식</td><td><span class="badge proposal">미정</span></td><td>어떤 순서로 안전하게 Published 상태를 만들까?</td></tr>
+          </tbody>
+        </table>
+
+        <h3>스스로 확인해 볼 6문제</h3>
+        <div class="quiz">
+          <div>Watermark를 책갈피에 비유한 이유는 무엇인가?</div>
+          <div>왜 Overlap은 일부러 중복 데이터를 다시 읽는가?</div>
+          <div>Jira의 <code>updated</code>와 <code>source_hash</code>는 각각 어떤 역할인가?</div>
+          <div>Project A는 성공하고 B가 실패하면 두 Project의 Watermark는 어떻게 되어야 하는가?</div>
+          <div>Checkpoint가 없으면 장애 후 어떤 낭비가 생기는가?</div>
+          <div>SOURCE COMMITTED와 PUBLISHED를 구분하면 어떤 점이 쉬워지는가?</div>
+        </div>
+
+        <details>
+          <summary>정답 보기</summary>
+          <div>
+            1) 지난번에 안전하게 처리한 지점을 기억하기 위해서입니다.<br>
+            2) 경계에서 Issue를 놓치는 것보다 중복을 다시 검사하는 것이 안전하기 때문입니다.<br>
+            3) updated는 다시 확인할 후보를 찾고, source_hash는 실제 의미 데이터가 달라졌는지 판정합니다.<br>
+            4) A만 전진하고 B는 이전 Watermark를 유지하는 것이 안전합니다.<br>
+            5) 이미 완료한 Issue까지 처음부터 다시 처리해야 합니다.<br>
+            6) Jira 재수집 문제와 Knowledge/Embedding/FAISS 후속 처리 문제를 분리해 복구할 수 있습니다.
+          </div>
+        </details>
+      </section>
+
+      <section>
+        <h2>이 문서를 읽은 다음</h2>
+        <div class="callout good">
+          <b>다음 대화에서는 한 개념만 잡아도 됩니다.</b>
+          예를 들어 “Watermark를 조금 더 자세히 보자”라고 하면 Watermark만 놓고 실제 DB에 어떤 값을 저장할지,
+          실패했을 때 언제 움직이고 언제 움직이면 안 되는지 차근차근 확인하면 됩니다.
+        </div>
+        <p class="small">
+          프로젝트 근거 코드: <code>src/jira_collector/state_store.py</code>,
+          <code>src/jira_collector/collector.py</code>,
+          <code>src/jira_collector/project_discovery.py</code>,
+          <code>src/jira_collector/knowledge_input/builder.py</code>,
+          <code>src/jira_collector/knowledge_db/schema.py</code>.
+          운영 목표 문서: <code>docs/status/POST_MVP_OPERATIONAL_SERVICE_START_HERE.html</code>,
+          <code>docs/architecture/jira_knowledge_operational_service_phase.html</code>.
+        </p>
+      </section>
+
+      <footer class="footer">
+        Sync Contract Learning Note · 설명용 문서 · NOT FROZEN · Jira Knowledge Continuous Operational Service · 2026-08-27
+      </footer>
+    </div>
+  </main>
+</div>
+</body>
+</html>
