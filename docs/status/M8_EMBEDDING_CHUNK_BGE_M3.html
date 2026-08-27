@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="ko">
+<html data-doc-shell="v1" lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="M8 Embedding Unit / Chunk + BGE-M3 완료 기록. 실제 285개 embedding, 1024차원, mapping/identity/semantic sanity PASS.">
 <title>M8 · Embedding Unit / Chunk + BGE-M3 · 쉬운 상세판</title>
 <link rel="stylesheet" href="milestone.css">
 <style>.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid3{grid-template-columns:1fr}}</style>
-</head>
+<link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+<script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head>
 <body><main class="wrap">
 <nav class="top"><a href="M7_SQLITE_MATERIALIZATION.html">← M7</a><a href="../index.html">문서 허브</a><a href="../M8_EMBEDDING_CHUNK_BGE_M3.html">Final Contract</a><a href="../M8_DECISION_LOG.html">Decision Log</a><a href="../M8_REAL_EMBEDDING_LOG.html">Real-run Log</a><a href="M8_REAL_EMBEDDING_TROUBLESHOOTING.html">Troubleshooting</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 →</a></nav>
 <header class="hero"><span class="eyebrow">M8 · DONE / PASS</span><h1>검색할 Knowledge를<br>BGE-M3가 이해하는 숫자 좌표로 바꾸기</h1><p>M8은 M7 SQLite의 active accepted Knowledge 285개를 BGE-M3로 1024차원 vector로 변환하고, 각 vector가 어떤 Knowledge Item에서 왔는지 정확히 연결되는지 검증한 단계입니다.</p><span class="state">M8 DONE · REAL-RUN PASS · M9 DONE · M10 DESIGN IN PROGRESS · 2026-08-26</span><div class="breadcrumb">M7 active Knowledge → corpus 285 → BGE-M3 285×1024 → validated artifact → M9 FAISS</div></header>

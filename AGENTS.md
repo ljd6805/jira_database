@@ -13,6 +13,14 @@
 - README.md, AGENTS.md, Skill 문서는 도구/저장소 동작을 위한 운영 Markdown으로 유지할 수 있다.
 - legacy non-log Markdown은 기존 테스트/참조 호환 때문에 일시 보존할 수 있지만 새 Hub 링크 대상으로 사용하지 않는다.
 
+## 1.1 Document Shell v1 고정 규칙
+
+- `docs/index.html`은 `data-hub-frame="v1"` 구조와 `docs/assets/hub-frame.css`를 사용한다.
+- 모든 일반 HTML은 `data-doc-shell="v1"`과 공통 shell CSS/JS를 포함한다.
+- `이전 문서 / 문서 Hub / 다음 문서` 버튼은 항상 유지한다. 첫/마지막 문서는 숨기지 않고 disabled로 표시한다.
+- 새 HTML 작성 후 `python tools/docs/sync_document_shell.py --write`를 실행하고 `--check`를 통과시킨다.
+- Hub 기본 5개 영역 또는 shell 계약을 바꿀 때는 임의 수정하지 말고 Documentation Policy와 Framework 문서를 함께 갱신한다.
+
 ## 2. Milestone HTML은 필수 산출물이다
 
 - 각 Milestone `M<N>`이 `CURRENT`가 되는 시점부터 `docs/status/M<N>_*.html` 정적 HTML 시각 문서를 유지한다.
