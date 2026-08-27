@@ -23,6 +23,7 @@ window.JIRA_DOCUMENT_REGISTRY = Object.freeze([
   {"path":"architecture/jira_sync_contract_decision_draft.html","title":"Sync Contract · Decision Board · D1~D9"},
   {"path":"architecture/jira_sync_state_project_registry_design_draft.html","title":"Sync State Schema · Revision History · v2"},
   {"path":"architecture/jira_operational_two_loop_architecture_review.html","title":"Operational Architecture · Two-Loop Review · Adopted"},
+  {"path":"status/TWO_LOOP_DOCUMENTATION_REALIGNMENT_2026-08-28.html","title":"Two-Loop Documentation Realignment · 2026-08-28"},
   {"path":"architecture/jira_sync_state_schema_contract_v1_baseline.html","title":"Sync State Schema v1 · Superseded Baseline"},
   {"path":"architecture/jira_data_relationship_map.html","title":"Jira Knowledge Relationship Map · Two-Loop"},
   {"path":"architecture/jira_knowledge_operational_service_phase.html","title":"Jira Knowledge Operational Service Phase · Two-Loop"},
