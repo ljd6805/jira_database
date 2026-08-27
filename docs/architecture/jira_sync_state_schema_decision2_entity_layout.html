@@ -1,0 +1,58 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sync State Schema Decision 2. 5개 논리 Entity를 실제 SQLite 테이블로 어떻게 나눌지 비교하는 설계 검토 문서"><title>Sync State Schema · S2 · Entity Layout</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 84px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px}.lead{color:var(--muted)}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border:2px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e9eeff;color:#2548b5;font-size:11px;font-weight:900}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.footer{margin-top:54px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_state_schema_decision1_storage_location.html">S1 Final</a><a href="jira_sync_state_project_registry_design_draft.html">Schema Draft</a></nav><header class="hero"><div>SYNC STATE / PROJECT REGISTRY · SCHEMA DECISION 2 · 2026-08-27</div><h1>5개 역할을<br>정말 5개 테이블로 만들까?</h1><p>S1에서 기존 <code>collector.db</code>를 명시적 Migration으로 확장하기로 했습니다. S2에서는 Sync Contract의 상태 역할을 실제 SQLite 테이블로 얼마나 분리할지 결정합니다.</p><span class="state">S1 FIXED · S2 REVIEWING · RECOMMENDATION = 4 PHYSICAL TABLES</span></header>
+<section><h2>1. 초안의 5개 논리 역할</h2><div class="grid3"><div class="card"><h3>sync_run</h3><p>한 번의 Sync 실행.</p></div><div class="card"><h3>project_registry</h3><p>Project identity와 visible/unavailable 상태.</p></div><div class="card"><h3>project_sync_state</h3><p>Project별 Watermark와 최근 성공 상태.</p></div><div class="card"><h3>sync_project_run</h3><p>특정 Run에서 특정 Project의 처리 기록.</p></div><div class="card"><h3>sync_issue_change</h3><p>NEW/CHANGED Work Item과 downstream checkpoint.</p></div></div><div class="callout"><strong>중요:</strong> 논리 역할이 다섯 개라는 것과 실제 DB 테이블이 반드시 다섯 개여야 한다는 것은 다른 문제입니다.</div></section>
+<section><h2>2. 두 가지 실질 후보</h2><div class="grid2"><div class="card"><span class="badge">A · 5 TABLES</span><h3>논리 역할 그대로 분리</h3><div class="flow">sync_run
+project_registry
+project_sync_state
+sync_project_run
+sync_issue_change</div><p><strong>장점:</strong> 책임이 매우 명확합니다.</p><p><strong>단점:</strong> <code>project_registry</code>와 <code>project_sync_state</code>는 둘 다 <code>project_id</code>당 1행이며 거의 항상 같이 조회됩니다.</p></div><div class="card good"><span class="badge">B · RECOMMENDED</span><h3>Project 현재 상태를 하나로 합침</h3><div class="flow">sync_run
+project_state
+sync_project_run
+sync_issue_change</div><p><strong>장점:</strong> Project 하나의 현재 identity/visibility/watermark를 한 행에서 이해할 수 있습니다.</p><p><strong>장점:</strong> 1:1 테이블 join과 migration 복잡도를 줄입니다.</p></div></div></section>
+<section><h2>3. 왜 Registry와 Sync State를 합치는가?</h2><div class="flow">Project P100
+
+identity
+project_id = 10000
+current_key = ABC
+current_name = Project Alpha
+
+현재 Source 상태
+visibility = unavailable
+committed_watermark = 2026-08-20 13:00
+last_seen_at = 2026-08-20
+last_source_success_at = 2026-08-20
+
+이 정보는 모두
+“Project P100의 현재 장기 상태”를 설명함</div><p>두 정보군은 수명도 같고 cardinality도 <code>project_id : row = 1 : 1</code>입니다. unavailable이 되어도 Watermark를 같은 row에서 그대로 보존할 수 있어 D6의 의미도 직관적으로 표현됩니다.</p></section>
+<section><h2>4. 추천하는 4개 물리 테이블</h2><table><thead><tr><th>테이블</th><th>질문</th><th>주요 데이터</th></tr></thead><tbody><tr><td><strong>sync_run</strong></td><td>이번 Sync 전체는 어떻게 끝났나?</td><td>run ID, upper, discovery/source/publish/run status, 시간</td></tr><tr><td><strong>project_state</strong></td><td>이 Project는 누구이며 지금 어디까지 읽었나?</td><td>project_id, current key/name, visibility, first/last seen, committed_watermark, 최근 source success/error</td></tr><tr><td><strong>sync_project_run</strong></td><td>이번 Run에서 이 Project를 어떻게 처리했나?</td><td>lower/upper, status, candidate/new/changed/unchanged count, error</td></tr><tr><td><strong>sync_issue_change</strong></td><td>이 Issue 변경분은 어디까지 반영됐나?</td><td>jira_id, source_hash/profile, change_kind, source/knowledge/embedding/publish checkpoint, error</td></tr></tbody></table></section>
+<section><h2>5. 현재 상태와 History를 분리하는 기준</h2><div class="grid2"><div class="card good"><h3>Current State</h3><p><code>project_state</code>는 Project당 한 행으로 현재값만 유지합니다.</p><p>Watermark, visibility, current key/name 같은 “다음 Sync가 바로 읽어야 할 값”입니다.</p></div><div class="card"><h3>History / Audit</h3><p><code>sync_run</code>과 <code>sync_project_run</code>은 실행마다 행을 추가해 과거를 보존합니다.</p><p>따라서 <code>project_state</code>에 과거 Watermark를 모두 쌓을 필요가 없습니다.</p></div></div></section>
+<section><h2>6. sync_issue_change는 왜 별도여야 하나?</h2><p class="lead">Issue 하나의 downstream 처리는 Project Run보다 오래 살아남을 수 있습니다.</p><div class="flow">Run R100
+ABC-42 Source Commit ✓
+Knowledge 실패 ✗
+
+Run R101
+같은 jira_id + source_hash
+→ 기존 Work Item Resume
+→ Knowledge부터 계속</div><p>따라서 Project 수준 행에 JSON 같은 형태로 집어넣지 않고, 안정적인 Work Item row로 독립시켜야 D5 Checkpoint/Resume와 D7 Source Commit/Publish를 제대로 표현할 수 있습니다.</p></section>
+<section><h2>7. Migration 관점</h2><div class="card warn"><h3>S1의 Migration 필수 조건은 그대로 적용</h3><p>S2에서 테이블 수를 4개로 정하더라도 기존 <code>collection_runs</code>, <code>project_runs</code>, <code>issue_checkpoints</code>, <code>artifacts</code>를 즉시 변환하거나 삭제하지 않습니다.</p></div><div class="flow">legacy MVP tables
+→ 그대로 보존
+
+versioned migration
+→ 새 operational tables 추가
+
+새 Sync 구현
+→ 새 테이블 사용
+
+legacy collector/resume
+→ 회귀 검증 후 호환 유지</div><p>운영 전환이 안정화된 뒤에만 legacy table 통합/정리를 별도 Migration으로 검토합니다.</p></section>
+<section><h2>8. S2 추천 결론</h2><div class="card good"><h3>논리 역할은 5개를 기억하되, 물리 테이블은 4개로 만든다.</h3><div class="flow">project_registry
++
+project_sync_state
+        ↓ merge
+project_state
+
+최종 후보
+1. sync_run
+2. project_state
+3. sync_project_run
+4. sync_issue_change</div><p>이 안을 확정하면 다음 S3에서는 각 테이블의 <strong>status enum과 필수 컬럼</strong>을 하나씩 Freeze합니다.</p></div><div class="callout"><strong>아직 S2는 FIXED 아님.</strong> 사용자 승인 후 4-table 구조를 Schema Contract에 반영합니다.</div></section><footer class="footer">S2 REVIEWING · logical roles 5 / recommended physical tables 4 · no implementation yet · 2026-08-27</footer></main></body></html>
