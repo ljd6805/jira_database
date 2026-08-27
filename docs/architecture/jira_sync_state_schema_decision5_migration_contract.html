@@ -1,66 +1,26 @@
-<!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sync State Schema Decision 5 최종 결정. collector.db의 explicit versioned migration, backup, validation, rollback gate를 고정한다."><title>Sync State Schema · S5 Final · Migration Contract</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 86px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:45px}h2{font-size:29px}.lead{color:var(--muted)}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.footer{margin-top:55px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_state_schema_decision4_transaction_boundary.html">← S4 Final</a><a href="jira_sync_state_project_registry_design_draft.html">Schema Board</a></nav><header class="hero"><div>SYNC STATE / PROJECT REGISTRY · SCHEMA DECISION 5 · FINAL · 2026-08-27</div><h1>Migration은 배포 편의 기능이 아니라<br>Schema Contract의 일부입니다.</h1><p>기존 <code>data/state/collector.db</code>를 보존하면서 Operational Sync State Schema v1로 안전하게 확장하는 절차를 고정합니다.</p><span class="state">S5 FIXED · STATE SCHEMA v1 · EXPLICIT MIGRATION REQUIRED</span></header>
-<section><h2>1. Version 기준</h2><div class="card good"><div class="flow">STATE_SCHEMA_VERSION = 1
-PRAGMA user_version = 1</div><p>첫 Operational State Schema를 v1로 정의합니다. 기존 <code>user_version=0</code>은 정식 v0로 가정하지 않고 실제 table fingerprint를 검사합니다.</p></div><table><thead><tr><th>상태</th><th>처리</th></tr></thead><tbody><tr><td>빈 DB + version 0</td><td>v1 새 초기화 가능</td></tr><tr><td>알려진 legacy collector.db + version 0</td><td>명시적 Migration 필수</td></tr><tr><td>version 1</td><td>Schema fingerprint 검증 후 사용</td></tr><tr><td>version 0 + 알 수 없는 구조</td><td>자동 변경 거부</td></tr><tr><td>지원 버전보다 높음</td><td>현재 프로그램의 쓰기 거부</td></tr></tbody></table></section>
-<section><h2>2. Silent Auto-Migration 금지</h2><div class="flow">일반 프로그램 시작
-→ legacy DB 감지
-→ Migration required
-→ Sync/Collector 운영 전환 중단
-
-명시적 migration 절차
-→ backup
-→ fingerprint 확인
-→ migration
-→ validation
-→ regression PASS
-→ cutover</div><div class="callout"><strong>확정:</strong> 기존 DB는 단순히 <code>StateStore()</code>를 열었다는 이유만으로 자동 변경하지 않습니다.</div></section>
-<section><h2>3. Migration 전 Backup 필수</h2><p>WAL 상태까지 일관되게 보존하기 위해 SQLite가 제공하는 consistent backup 방식을 우선 사용합니다. Backup 자체의 읽기/무결성 검증이 끝난 뒤에만 원본 DB를 변경합니다.</p><div class="flow">writer 중지 / migration ownership 확보
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S5 · Migration Contract v2</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1080px;margin:auto;padding:42px 22px 86px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:18px}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line)}th{background:#eef3f9}a{color:var(--blue);font-weight:800}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">Schema v2</a> · <a href="jira_sync_state_schema_contract_v1_baseline.html">v1 history</a></p><header class="hero"><div>S5 · FIXED · REVISED TO STATE SCHEMA v2</div><h1>첫 실제 Operational Migration 목표는 v2입니다.</h1><p>v1은 2-Loop 채택 전에 설계만 완료했고 실제 배포되지 않았습니다. 따라서 legacy collector.db에서 첫 실제 Operational State로 갈 때 목표는 v2입니다.</p></header><section class="card"><h2>Version 모델</h2><div class="flow">STATE_SCHEMA_VERSION = 2
+PRAGMA user_version = 2</div><table><thead><tr><th>DB</th><th>처리</th></tr></thead><tbody><tr><td>빈 DB + version 0</td><td>v2 새 초기화</td></tr><tr><td>known legacy + version 0</td><td>explicit backup → migration → validate</td></tr><tr><td>version 2</td><td>v2 fingerprint 확인 후 사용</td></tr><tr><td>unknown version 0 schema</td><td>fail closed</td></tr><tr><td>version 1</td><td>자동 해석/변환 금지. v1은 never-deployed baseline이므로 명시적 운영자 확인</td></tr><tr><td>version &gt; 2</td><td>현재 프로그램 쓰기 거부</td></tr></tbody></table></section><section class="card"><h2>Migration 절차</h2><div class="flow">writer 중지 / migration ownership
 → SQLite consistent backup
-→ backup quick_check / integrity 확인
-→ 원본 Migration 허용</div></section>
-<section><h2>4. 첫 Migration은 Additive</h2><div class="grid2"><div class="card"><h3>Legacy 보존</h3><div class="flow">collection_runs
-project_runs
-issue_checkpoints
-artifacts</div><p>기존 row와 의미를 변경하거나 삭제하지 않습니다.</p></div><div class="card good"><h3>Operational v1 추가</h3><div class="flow">sync_run
+→ backup integrity verify
+→ known legacy fingerprint verify
+→ v2 tables additive create
+→ migration metadata row
+→ PRAGMA user_version = 2
+→ schema/integrity/regression tests
+→ cutover</div></section><section class="card"><h2>v2 Additive Tables</h2><div class="flow">source_sync_run
 project_state
-sync_project_run
-sync_issue_change</div><p>S1~S4의 새 Control Plane 상태를 추가합니다.</p></div></div><p>Migration 이력용 기술 메타 테이블은 Operational Domain Table 4개와 별도로 둘 수 있습니다.</p></section>
-<section><h2>5. Legacy 데이터로 Watermark를 추측하지 않습니다</h2><div class="card warn"><p>과거 <code>project_runs</code>에는 stable <code>project_id</code>, fixed upper, Source Commit, semantic_v2 계약이 없었습니다. 따라서 마지막 수집 시간이나 마지막 Issue updated를 새 <code>committed_watermark</code>로 추정하여 채우지 않습니다.</p></div><div class="flow">Migration
-→ legacy 기록은 보존만
-→ 새 project_state를 억지로 backfill하지 않음
-
-첫 Operational Sync
-→ 정식 Project Discovery
-→ project_id 기반 상태 생성
-→ Initial Ingest로 baseline 설정
-→ 이후 Delta Sync</div></section>
-<section><h2>6. Idempotent + Fail-Closed</h2><div class="grid2"><div class="card good"><h3>재실행</h3><p>이미 v1이면 fingerprint 검증 후 no-op. 같은 Migration을 반복해도 중복 테이블/데이터를 만들지 않습니다.</p></div><div class="card"><h3>모르는 DB</h3><p>예상하지 못한 table/column 구조라면 수정하지 않고 실패시킵니다.</p></div></div><p>Migration Transaction 중 실패하면 Schema 변경과 <code>user_version</code>은 이전 상태로 rollback되어야 합니다.</p></section>
-<section><h2>7. 완료 Gate</h2><div class="flow">[ ] backup 검증 PASS
-[ ] PRAGMA integrity / quick check PASS
-[ ] user_version = 1
-[ ] 4개 Operational table fingerprint PASS
-[ ] index / constraint 확인 PASS
-[ ] legacy row 보존 확인
-[ ] 기존 StateStore / Resume regression PASS
-[ ] empty DB → v1 PASS
-[ ] known legacy → v1 PASS
-[ ] v1 재실행 no-op PASS
-[ ] unknown schema migration 거부 PASS
-[ ] failure rollback PASS</div><div class="callout"><strong>모두 PASS 전에는 Operational Sync 사용 금지.</strong></div></section>
-<section><h2>8. Rollback</h2><p>첫 v1은 additive migration이므로 복잡한 역 Migration보다 검증된 pre-v1 backup 복원을 기본 복구 경로로 둡니다.</p><div class="flow">서비스/Writer 중지
-→ 문제 DB 별도 보존
-→ verified pre-v1 backup 복원
-→ integrity 확인
-→ legacy Collector / Resume 확인</div></section>
-<section><h2>9. S5 최종 규칙</h2><div class="card good"><div class="flow">1. Operational State Schema = v1
-2. PRAGMA user_version 사용
-3. version 0은 fingerprint로 판별
-4. legacy silent auto-migration 금지
-5. migration 전 consistent backup 필수
-6. known legacy만 자동 migration
-7. legacy tables/data 보존
-8. 새 4개 Operational tables additive 추가
-9. legacy에서 project_id/watermark 추정 금지
-10. migration 재실행 안전
-11. validation/regression Gate 전부 PASS 후 cutover
-12. 초기 rollback = verified backup restore</div></div></section><footer class="footer">S5 FINAL · migration contract FIXED · next = S6 ID / key strategy · 2026-08-27</footer></main></body></html>
+source_project_run
+sync_issue_change
+processing_run
++
+state_schema_migration</div><p>기존 <code>collection_runs / project_runs / issue_checkpoints / artifacts</code>는 첫 Migration에서 삭제·rename·의미 변경하지 않습니다.</p></section><section class="card warn"><h2>No Guess Backfill</h2><p>Legacy 기록에서 stable project_id, committed Watermark, source_run history, processing history를 추정하지 않습니다. 첫 v2 Source Sync / Processing Run에서 새 상태를 정식 생성합니다.</p></section><section class="card"><h2>완료 Gate</h2><div class="flow">backup PASS
+integrity PASS
+user_version = 2
+v2 fingerprint PASS
+legacy rows preserved
+legacy Collector/Resume regression PASS
+empty→v2 PASS
+legacy→v2 PASS
+v2 re-run no-op PASS
+unknown schema reject PASS
+migration failure rollback PASS</div></section><footer>S5 current · explicit migration to State Schema v2 · 2026-08-28</footer></main></body></html>
