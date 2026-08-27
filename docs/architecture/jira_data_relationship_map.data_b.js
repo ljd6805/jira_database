@@ -1,7 +1,7 @@
 Object.assign(window.JIRA_MAP_VIEWS,{
 "issue":{
-  "title":"Evidence Round-trip · Accepted Attempt · M10 IMPLEMENTED",
-  "help":"M7의 502 canonical Evidence row를 기반으로 M10 Resolver가 ki_ → ke_ → 실제 source를 복원하고 Evidence Package로 구성합니다. MCP 2-tool 구현도 PASS했고 실제 환경 Real-run이 다음 단계입니다.",
+  "title":"Evidence Round-trip · Accepted Attempt · M10 DONE / PASS",
+  "help":"M7의 502 canonical Evidence row를 기반으로 M10 Resolver가 ki_ → ke_ → 실제 source를 복원하고 Evidence Package로 구성합니다. 실제 환경 Real-run에서 Top-3 Knowledge와 총 6 Evidence가 warning 없이 복원됐고 MCP Issue round-trip도 PASS했습니다.",
   "nodes":[
     {"id":"issue","type":"issue","kind":"issue","shape":"pill","x":150,"y":80,"w":200,"h":62,"label":"Issue","sub":"jira_id authoritative"},
     {"id":"version","type":"issue","kind":"issue","shape":"rect","x":150,"y":245,"w":220,"h":90,"label":"Issue Version · iv_","sub":"source_hash immutable state"},
@@ -27,8 +27,8 @@ Object.assign(window.JIRA_MAP_VIEWS,{
   ]
 },
 "schema":{
-  "title":"M7 SQLite → M8 Embedding → M9 Retrieval → M10 Evidence/MCP",
-  "help":"M7 SQLite, M8 BGE-M3, M9 FAISS retrieval은 모두 실데이터 PASS했고 M10의 ki_/ke_ Evidence resolve와 MCP 2-tool 구현도 PASS했습니다. M10-05 실제 환경 Real-run이 남았습니다.",
+  "title":"M7 SQLite → M8 Embedding → M9 Retrieval → M10 Evidence/MCP · PASS",
+  "help":"M7 SQLite, M8 BGE-M3, M9 FAISS retrieval, M10 Evidence/MCP가 모두 실데이터 PASS했습니다. M10 Real-run은 tool_count 2, search_result_count 3, evidence_count 6, warning/path leak 0, issue lookup 성공으로 완료됐습니다.",
   "nodes":[
     {"id":"run","type":"db","kind":"db","shape":"rect","x":115,"y":80,"w":200,"h":82,"label":"pipeline_run","sub":"run_id"},
     {"id":"issue","type":"issue","kind":"issue","shape":"rect","x":365,"y":80,"w":210,"h":82,"label":"issue","sub":"jira_id PK · issue_key locator"},
