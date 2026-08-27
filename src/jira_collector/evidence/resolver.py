@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from jira_collector.knowledge_db import parse_evidence_ref
+from jira_collector.knowledge_db import KnowledgeDbError, parse_evidence_ref
 from jira_collector.retrieval import RetrievalCandidate
 
 from .models import (
@@ -111,7 +111,11 @@ class EvidenceResolver:
         row: sqlite3.Row,
         knowledge: sqlite3.Row,
     ) -> ResolvedEvidence:
-        evidence_type, entity_key = parse_evidence_ref(str(row["evidence_ref"]))
+        try:
+            evidence_type, entity_key = parse_evidence_ref(str(row["evidence_ref"]))
+        except KnowledgeDbError as exc:
+            raise self._error(row, "EVIDENCE_REF_INVALID", str(exc)) from exc
+
         if evidence_type != row["evidence_type"] or entity_key != row["source_entity_key"]:
             raise self._error(row, "EVIDENCE_REF_MISMATCH", "Evidence ref와 DB source key가 다릅니다.")
 
