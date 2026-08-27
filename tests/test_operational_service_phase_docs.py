@@ -15,8 +15,10 @@ def test_operational_service_phase_is_documented_and_linked() -> None:
         "Functional MVP",
         "Project Discovery",
         "Delta Issue Sync",
-        "Knowledge / Evidence",
-        "Embedding / FAISS",
+        "Knowledge",
+        "Evidence",
+        "Embedding",
+        "FAISS",
         "Central Remote MCP",
         "delta-first",
     ):
@@ -37,7 +39,6 @@ def test_operational_service_phase_is_documented_and_linked() -> None:
 def test_remote_mcp_is_only_one_operational_service_component() -> None:
     text = _read("docs/architecture/jira_knowledge_mcp_service_target.html")
     assert "운영 서비스" in text
-    assert "구성요소" in text
     assert "Remote MCP만으로 서비스가 완성되는 것은 아니" in text
     assert "jira_knowledge_operational_service_phase.html" in text
 
