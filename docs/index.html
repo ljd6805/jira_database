@@ -12,6 +12,7 @@ M7  SQLite 구현 / 무결성 PASS
 M8  BGE-M3 1024차원 embedding
 M9  FAISS Top-3 Knowledge 검색
 M10 Knowledge에 Jira Evidence를 붙여 MCP 2 tools 제공 · REAL-RUN PASS
+M10_REAL_RUN = PASS
 M11 OpenCode local stdio 소비자 Pilot · M11-01/02 PASS · Tool discovery NEXT
 Post-M11 중앙 Remote MCP 서비스 · 최종 팀 서비스 목표</div></section>
 <section><h2>3. Local Pilot과 최종 서비스</h2><div class="flow">Local Pilot
@@ -29,6 +30,13 @@ Final Service
 OS 환경 변수       = CI / 진단 / 일시 override
 명시적 test env    = 테스트 재현성용
 
+서비스 .env
+JIRA_KNOWLEDGE_DB_PATH
+JIRA_RETRIEVAL_ARTIFACT_DIR
+BGE_M3_ENDPOINT
+BGE_M3_API_KEY       optional
+BGE_M3_HEADERS_JSON  optional
+
 현재 local Pilot  → jira_database 루트 .env
 최종 Remote MCP   → 중앙 서버 배포 디렉터리 .env</div></section>
 <section><h2>5. Milestone Visual Documents</h2><div class="grid3">
@@ -45,4 +53,4 @@ OS 환경 변수       = CI / 진단 / 일시 override
 <div class="card"><span class="tag done">M10</span><h3>Evidence Builder + MCP</h3><a class="btn" href="status/M10_COMPLETION.html">Completion</a><a class="btn alt" href="M10_EVIDENCE_MCP_DESIGN.html">Design</a><a class="btn alt" href="status/M10_EVIDENCE_MCP_CONTRACT.html">Contract</a><a class="btn alt" href="status/M10_MCP_IMPLEMENTATION.html">MCP Implementation</a><a class="btn alt" href="status/M10_REAL_RUN_GATE.html">Real-run</a><a class="btn alt" href="status/M10_START_HERE.html">Start Here</a></div>
 <div class="card"><span class="tag current">M11</span><h3>OpenCode MCP Integration</h3><a class="btn" href="status/M11_OPENCODE_MCP_INTEGRATION.html">M11 Current</a></div>
 </div></section>
-<section><h2>6. Troubleshooting / 관계 / 정책</h2><div class="grid3"><div class="card"><h3>M11 Connection closed</h3><a class="btn" href="status/M11_TROUBLESHOOTING_OPENCODE_CONNECTION_CLOSED.html">M11 Troubleshooting</a></div><div class="card"><h3>Pipeline Overview</h3><a class="btn" href="PIPELINE_OVERVIEW.html">Pipeline Overview</a></div><div class="card"><h3>Relationship Map</h3><a class="btn" href="architecture/jira_data_relationship_map.html">Relationship Map</a></div><div class="card"><h3>Documentation Policy</h3><a class="btn" href="DOCUMENTATION_POLICY.html">Policy</a></div><div class="card"><h3>Current Status</h3><a class="btn" href="status/jira_knowledge_db_current_status.html">Current Status</a></div></div></section><footer class="footer">M0~M10 DONE / PASS · M11-01/02 PASS · M11-03 TOOL DISCOVERY NEXT · final target = team-wide Remote MCP · local links HTML only · 2026-08-27</footer></main></body></html>
+<section><h2>6. Troubleshooting / 관계 / 정책</h2><div class="grid3"><div class="card"><h3>M11 Connection closed</h3><a class="btn" href="status/M11_TROUBLESHOOTING_OPENCODE_CONNECTION_CLOSED.html">M11 Troubleshooting</a></div><div class="card"><h3>M10 MCP Import</h3><a class="btn" href="status/M10_TROUBLESHOOTING_MCP_IMPORT.html">MCP Import</a></div><div class="card"><h3>M10 Query 설정</h3><a class="btn" href="status/M10_TROUBLESHOOTING_REAL_RUN_QUERY.html">Query</a></div><div class="card"><h3>M10 Runtime Settings</h3><a class="btn" href="status/M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html">Runtime Settings</a></div><div class="card"><h3>Pipeline Overview</h3><a class="btn" href="PIPELINE_OVERVIEW.html">Pipeline Overview</a></div><div class="card"><h3>Relationship Map</h3><a class="btn" href="architecture/jira_data_relationship_map.html">Relationship Map</a></div><div class="card"><h3>Documentation Policy</h3><a class="btn" href="DOCUMENTATION_POLICY.html">Policy</a></div><div class="card"><h3>Current Status</h3><a class="btn" href="status/jira_knowledge_db_current_status.html">Current Status</a></div></div></section><footer class="footer">M0~M10 DONE / PASS · M11-01/02 PASS · M11-03 TOOL DISCOVERY NEXT · final target = team-wide Remote MCP · local links HTML only · 2026-08-27</footer></main></body></html>
