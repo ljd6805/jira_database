@@ -1,42 +1,36 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Continuous Jira Knowledge Service 최신 인수인계 문서. M0~M11, Sync Contract, State Schema v1 완료, Two-Loop Architecture 검토 중"><title>Post-MVP · Operational Service · Start Here</title><link rel="stylesheet" href="milestone.css"><style>.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.next{border:2px solid var(--blue);background:#edf3ff}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="jira_knowledge_db_current_status.html">Current Status</a><a href="../architecture/jira_sync_contract.html">Sync Contract</a><a href="../architecture/jira_sync_state_schema_contract.html">Schema Contract</a><a href="../architecture/jira_operational_two_loop_architecture_review.html">Two-Loop Review</a></nav><header class="hero"><span class="eyebrow">LATEST HANDOFF · 2026-08-27</span><h1>새 세션은 여기서 시작합니다.</h1><p>M0~M11 Functional MVP, Sync Contract D1~D8, Operational Sync State Schema S1~S7까지 문서 기준을 확정했습니다. <strong>현재는 구현 직전 Two-Loop Architecture를 검토 중</strong>입니다.</p><span class="state">MVP DONE · SYNC CONTRACT FROZEN · STATE SCHEMA FROZEN BASELINE · TWO-LOOP REVIEW CURRENT</span></header><section><h2>1. 현재 위치</h2><div class="flow">M0~M11 Functional MVP      DONE / PASS
-Sync Contract D1~D8        FROZEN
-Sync State Schema S1~S7    FROZEN BASELINE
-Operational State Schema   v1
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Continuous Jira Knowledge Service 최신 인수인계. 2-Loop 아키텍처, Sync Contract v2, State Schema v2 기준"><title>Post-MVP · Two-Loop Operational Service · Start Here</title><link rel="stylesheet" href="milestone.css"><style>.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.next{border:2px solid var(--blue);background:#edf3ff}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}@media(max-width:800px){.grid2{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="jira_knowledge_db_current_status.html">Current Status</a><a href="../architecture/jira_operational_two_loop_architecture.html">2-Loop Architecture</a><a href="../architecture/jira_sync_contract.html">Sync Contract v2</a><a href="../architecture/jira_sync_state_schema_contract.html">State Schema v2</a></nav><header class="hero"><span class="eyebrow">LATEST HANDOFF · 2026-08-28</span><h1>새 세션은 여기서 시작합니다.</h1><p>M0~M11 Functional MVP는 완료했고, Continuous Service의 운영 아키텍처는 <strong>2-Loop</strong>로 확정했습니다. 현재 구현 기준은 <strong>Sync Contract v2 + State Schema v2</strong>입니다.</p><span class="state">MVP DONE · TWO-LOOP FROZEN · CONTRACT v2 · STATE SCHEMA v2</span></header><section><h2>1. 지금 위치</h2><div class="flow">M0~M11 Functional MVP           DONE / PASS
+Sync Contract D1~D7             FIXED
+D8 aggregate Run semantics      REVISED BY D9
+D9 Two-Loop Architecture        FIXED
+State Schema v1                 SUPERSEDED BEFORE DEPLOYMENT
+State Schema v2                 FROZEN
 
 CURRENT
-Two-Loop Architecture Review
-→ Source Sync Loop
-→ Knowledge Publish Loop
-→ Run identity / backlog / supersede 정책 검토
+→ 모든 주요 문서 2-Loop 기준 동기화
+→ Intermediate Version 처리 정책 결정
+→ State Schema v2 Migration / Implementation</div></section><section><h2>2. 반드시 먼저 읽을 문서</h2><div class="grid2"><div class="box good"><b>1. 공식 운영 아키텍처</b><p><code>docs/architecture/jira_operational_two_loop_architecture.html</code></p></div><div class="box good"><b>2. Sync Contract v2</b><p><code>docs/architecture/jira_sync_contract.html</code></p></div><div class="box good"><b>3. State Schema v2</b><p><code>docs/architecture/jira_sync_state_schema_contract.html</code></p></div><div class="box"><b>4. 전체 Pipeline</b><p><code>docs/architecture/jira_knowledge_pipeline_full_explained.html</code></p></div></div></section><section><h2>3. 핵심 운영 구조</h2><div class="flow">Loop A · SOURCE SYNC
+source_sync_run
+→ Jira / RAW / ANALYSIS / Knowledge Input
+→ semantic_v2
+→ NEW / CHANGED / UNCHANGED
+→ SOURCE_COMMITTED / Watermark
+→ sync_issue_change backlog 생산
 
-IMPLEMENTATION
-→ 아직 시작하지 않음</div></section><section><h2>2. 먼저 읽을 문서</h2><div class="grid2"><div class="box good"><b>1. Sync 운영 규칙</b><p><code>docs/architecture/jira_sync_contract.html</code></p></div><div class="box good"><b>2. State Schema 구현 기준</b><p><code>docs/architecture/jira_sync_state_schema_contract.html</code></p></div><div class="box next"><b>3. 현재 검토</b><p><code>docs/architecture/jira_operational_two_loop_architecture_review.html</code></p></div><div class="box"><b>4. 전체 Pipeline</b><p><code>docs/architecture/jira_knowledge_pipeline_full_explained.html</code></p></div></div></section><section><h2>3. State Schema 확정 내용</h2><div class="flow">Storage
-→ existing data/state/collector.db
-→ explicit versioned migration required
+Loop B · KNOWLEDGE PROCESSING / PUBLISH
+processing_run
+→ backlog 소비
+→ OpenCode / Review / Knowledge DB
+→ Embedding / FAISS
+→ Atomic Publish
 
-Domain Tables
-sync_run
+상시 서비스
+Published Corpus → MCP → OpenCode User</div></section><section><h2>4. 다시 뒤집지 않을 원칙</h2><div class="grid2"><div class="box good"><b>Source Loop ≠ Processing Loop</b><p>서로 독립 Scheduler/Run/실패 경계를 가집니다.</p></div><div class="box good"><b>SOURCE_COMMITTED ≠ PUBLISHED</b><p>Source Commit은 Loop A, Publish는 Loop B.</p></div><div class="box good"><b>Jira Lifecycle ≠ Knowledge Lifecycle</b><p>Jira 비노출/삭제가 Knowledge 삭제를 뜻하지 않습니다.</p></div><div class="box good"><b>Last-known-good Retrieval</b><p>새 Publish 전까지 기존 Published Knowledge를 계속 제공합니다.</p></div><div class="box good"><b>Delta-first</b><p>5분 overlap + fixed upper + semantic_v2로 실제 변경만 downstream.</p></div><div class="box good"><b>Fail Forward</b><p>완료 결과는 유지하고 실패한 Loop/Stage만 재시도합니다.</p></div></div></section><section><h2>5. State Schema v2</h2><div class="flow">source_sync_run
 project_state
-sync_project_run
+source_project_run
 sync_issue_change
+processing_run
 
-Technical Metadata
+Technical metadata
 state_schema_migration
 
-Crash Safety
-→ actual durable result first
-→ State second
-→ source_committed + Watermark same transaction
-
-Identity
-→ project_id / jira_id = Jira identity
-→ sr_ + UUID4
-→ sw_ + deterministic SHA-256</div></section><section><h2>4. 현재 Two-Loop 제안</h2><div class="grid2"><div class="box next"><b>Loop A · Source Sync</b><p>Jira Project Discovery → Delta Download → RAW/ANALYSIS → semantic hash → SOURCE_COMMITTED → Watermark → Work Item.</p></div><div class="box next"><b>Loop B · Knowledge Publish</b><p>Work Item → OpenCode/Review → Knowledge DB → BGE-M3 → FAISS → Atomic Publish.</p></div></div><div class="box warn"><b>주의</b><p>두 Loop를 채택하면 현재 <code>sync_run</code>의 Source/Publish 결합 의미와 <code>last_attempt_run_id</code>를 revision할 가능성이 높습니다. 구현 전에 이 상위 결정을 먼저 Freeze합니다.</p></div></section><section><h2>5. Two-Loop에서 반드시 결정할 세 항목</h2><table><thead><tr><th>순서</th><th>결정</th></tr></thead><tbody><tr><td>1</td><td>Two-Loop 자체를 채택할지</td></tr><tr><td>2</td><td>Source Run과 Processing Run을 별도 identity/table로 둘지</td></tr><tr><td>3</td><td>V2/V3/V4가 밀릴 때 오래된 pending Knowledge Work를 supersede할지</td></tr></tbody></table></section><section><h2>6. 이후 구현 순서</h2><div class="flow">Two-Loop Decision FROZEN
-→ 필요한 Schema revision
-→ Implementation Milestone / Gate
-→ collector.db Migration
-→ StateStore repository methods
-→ Source Sync Loop
-→ Knowledge Processing Loop
-→ Incremental Publish
-→ Remote MCP / Operations</div></section><section><h2>7. 다음 세션 첫 요청 예시</h2><div class="box next"><p><strong>“Start Here, Sync Contract, Sync State Schema Contract, Two-Loop Review를 읽고 맥락을 파악해. 구현은 아직 하지 말고 Two-Loop 채택 여부와 Source Run/Processing Run 모델부터 이어서 결정하자.”</strong></p></div></section><footer>Latest handoff · M0~M11 DONE · Sync Contract FROZEN · State Schema v1 FROZEN baseline · current = Two-Loop Architecture Review · 2026-08-27</footer></main></body></html>
+STATE_SCHEMA_VERSION = 2</div><p>기존 v1은 구현되지 않은 역사적 baseline이며 실제 Migration 목표는 v2입니다.</p></section><section><h2>6. 운영 지표</h2><div class="grid2"><div class="box"><b>Source Lag</b><p>Project committed watermark 기준.</p></div><div class="box"><b>Publish Lag</b><p>Source Head와 Published Head 차이.</p></div><div class="box"><b>Backlog</b><p>pending/failed Work Item count + oldest age.</p></div><div class="box"><b>Processing Performance</b><p>OpenCode latency/error + throughput.</p></div></div></section><section><h2>7. 다음에 반드시 결정할 것</h2><div class="box next"><b>Intermediate Version supersede</b><p>V2→V3→V4가 Loop B 처리 전에 쌓인 경우 모든 semantic Version을 OpenCode로 처리할지, 아직 시작하지 않은 구버전 Work를 supersede하고 최신 pending을 처리할지 결정해야 합니다.</p></div><div class="box warn"><b>아직 결정하지 말 것</b><p>Multi-worker lease, 외부 MQ, 정확한 시간대별 cadence/concurrency는 실제 Single Worker 데이터와 backlog를 측정한 뒤 결정합니다.</p></div></section><section><h2>8. 구현 권장 순서</h2><table><thead><tr><th>순서</th><th>작업</th></tr></thead><tbody><tr><td>1</td><td>Intermediate Version policy Freeze</td></tr><tr><td>2</td><td>State Schema v2 explicit Migration</td></tr><tr><td>3</td><td>Loop A StateStore + Delta Source Sync</td></tr><tr><td>4</td><td>Durable Work backlog producer</td></tr><tr><td>5</td><td>Loop B processing_run + Single Worker</td></tr><tr><td>6</td><td>OpenCode / Review / Embedding / Publish 연결</td></tr><tr><td>7</td><td>Lag/Backlog Monitoring</td></tr><tr><td>8</td><td>Central Remote MCP / Operations / Team Pilot</td></tr></tbody></table></section><section><h2>9. 새 세션 첫 요청 예시</h2><div class="box next"><p><strong>“<code>POST_MVP_OPERATIONAL_SERVICE_START_HERE.html</code>, <code>jira_operational_two_loop_architecture.html</code>, <code>jira_sync_state_schema_contract.html</code>을 기준으로 맥락을 파악해. 2-Loop는 FROZEN이므로 다시 논의하지 말고 Intermediate Version supersede 정책부터 나와 함께 결정하자.”</strong></p></div></section><footer>Latest handoff · Two-Loop FROZEN · Contract v2 · State Schema v2 · 2026-08-28</footer></main></body></html>
