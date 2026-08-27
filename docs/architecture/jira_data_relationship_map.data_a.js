@@ -1,7 +1,7 @@
 window.JIRA_MAP_VIEWS={
 "entity":{
-  "title":"Current Knowledge Entity Map · M10 IMPLEMENTATION PASS",
-  "help":"M7 SQLite, M8 BGE-M3 embedding, M9 FAISS retrieval의 실데이터 Gate를 통과했고, M10의 ki_ → ke_ → Source → Evidence Package → MCP 구현도 완료했습니다. 현재는 실제 환경 Real-run이 남았습니다.",
+  "title":"Current Knowledge Entity Map · M10 DONE / PASS",
+  "help":"M7 SQLite, M8 BGE-M3 embedding, M9 FAISS retrieval, M10 Evidence/MCP가 모두 실데이터 Gate를 통과했습니다. M10은 실제 환경에서 ki_ → ke_ → Source → Evidence Package → MCP round-trip까지 PASS했습니다.",
   "nodes":[
     {"id":"run","type":"store","kind":"store","shape":"pill","x":120,"y":70,"w":180,"h":60,"label":"Pipeline Run","sub":"observation scope"},
     {"id":"issue","type":"issue","kind":"issue","shape":"pill","x":400,"y":70,"w":200,"h":60,"label":"Issue","sub":"jira_id authoritative"},
@@ -48,8 +48,8 @@ window.JIRA_MAP_VIEWS={
   ]
 },
 "pipeline":{
-  "title":"Milestone Pipeline · M0~M10",
-  "help":"M0~M9는 완료했고 M10-01~04 Contract/Evidence/MCP 구현과 CI도 PASS했습니다. 현재 M10-05 실제 환경 Real-run이 마지막 Gate입니다.",
+  "title":"Milestone Pipeline · M0~M10 DONE / PASS",
+  "help":"M0~M10이 모두 완료됐습니다. M10-05는 실제 BGE-M3 + FAISS + SQLite + MCP end-to-end에서 tool 2 / search 3 / Evidence 6 / warning 0 / path leak 0 / Issue lookup 성공으로 PASS했습니다.",
   "nodes":[
     {"id":"m0","type":"store","kind":"store","shape":"rect","x":110,"y":120,"w":175,"h":80,"label":"M0 DONE","sub":"RAW + ANALYSIS"},
     {"id":"m1","type":"store","kind":"store","shape":"rect","x":325,"y":120,"w":175,"h":80,"label":"M1 DONE","sub":"Knowledge Input"},
@@ -61,10 +61,11 @@ window.JIRA_MAP_VIEWS={
     {"id":"m7","type":"db","kind":"db","shape":"rect","x":850,"y":340,"w":220,"h":92,"label":"M7 DONE","sub":"real-run PASS · evidence 502"},
     {"id":"m8","type":"db","kind":"db","shape":"rect","x":590,"y":340,"w":190,"h":84,"label":"M8 DONE","sub":"285 × 1024 · PASS"},
     {"id":"m9","type":"db","kind":"db","shape":"rect","x":350,"y":340,"w":190,"h":84,"label":"M9 DONE","sub":"FAISS real-run PASS"},
-    {"id":"m10","type":"plan","kind":"store","shape":"rect","x":110,"y":340,"w":190,"h":84,"label":"M10 IMPL PASS","sub":"Evidence + MCP · real-run next"},
+    {"id":"m10","type":"plan","kind":"store","shape":"rect","x":110,"y":340,"w":190,"h":84,"label":"M10 DONE","sub":"Evidence + MCP · real-run PASS"},
     {"id":"gate","type":"issue","kind":"issue","shape":"rect","x":850,"y":600,"w":330,"h":100,"label":"M7 Real-run PASS","sub":"30 issue · 37 attempt · 285 item · 502 evidence"},
     {"id":"m8gate","type":"issue","kind":"issue","shape":"rect","x":500,"y":600,"w":300,"h":100,"label":"M8 Real-run PASS","sub":"285 embedding · 1024 dim · integrity PASS"},
-    {"id":"m9gate","type":"issue","kind":"issue","shape":"rect","x":150,"y":600,"w":300,"h":100,"label":"M9 Real-run PASS","sub":"285 index · real query · reproducibility PASS"}
+    {"id":"m9gate","type":"issue","kind":"issue","shape":"rect","x":150,"y":600,"w":300,"h":100,"label":"M9 Real-run PASS","sub":"285 index · real query · reproducibility PASS"},
+    {"id":"m10gate","type":"issue","kind":"issue","shape":"rect","x":470,"y":760,"w":380,"h":100,"label":"M10 Real-run PASS","sub":"2 tools · 3 results · 6 evidence · 0 warning/leak"}
   ],
   "edges":[
     {"from":"m0","to":"m1","label":"facts","fromSide":"right","toSide":"left"},
@@ -79,7 +80,8 @@ window.JIRA_MAP_VIEWS={
     {"from":"m9","to":"m10","label":"retrieval candidates","fromSide":"left","toSide":"right"},
     {"from":"m7","to":"gate","label":"validated","fromSide":"bottom","toSide":"top"},
     {"from":"m8","to":"m8gate","label":"validated","fromSide":"bottom","toSide":"top"},
-    {"from":"m9","to":"m9gate","label":"validated","fromSide":"bottom","toSide":"top"}
+    {"from":"m9","to":"m9gate","label":"validated","fromSide":"bottom","toSide":"top"},
+    {"from":"m10","to":"m10gate","label":"validated","fromSide":"bottom","toSide":"top"}
   ]
 }
 };
