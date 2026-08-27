@@ -1,0 +1,79 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Sync Contract Decision 6 최종 결정. Jira Project/Issue 비노출·삭제와 Knowledge 보존/검색을 분리하는 정책">
+<title>Sync Contract · Decision 6 Final</title>
+<style>
+:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1040px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,54px);line-height:1.12}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:42px}h2{font-size:28px}.lead{color:var(--muted)}.flow{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}
+</style>
+<link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+<script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
+</head>
+<body><main class="wrap">
+<nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract_decision_draft.html">Decision Draft</a><a href="jira_sync_contract_explained.html">Sync Contract 학습</a></nav>
+<header class="hero"><div>SYNC CONTRACT · DECISION 6 · FINAL · 2026-08-27</div><h1>Jira의 현재 상태와<br>축적된 Knowledge를 분리한다</h1><p>Project나 Issue가 Jira에서 더 이상 보이지 않거나 삭제되더라도, 이미 축적된 업무지식의 가치가 사라지는 것은 아닙니다. Decision 6은 Source Sync 상태와 Knowledge 보존/검색 정책을 분리합니다.</p><span class="state">FIXED · KNOWLEDGE RETENTION FIRST</span></header>
+
+<section><h2>1. 가장 중요한 원칙</h2><div class="callout"><strong>Knowledge DB는 Jira Mirror가 아닙니다.</strong> Jira는 현재 원본 상태를 제공하고, Knowledge DB는 과거부터 축적된 업무지식을 보존합니다. 따라서 Jira에서의 삭제·비노출은 Knowledge 삭제 이벤트가 아닙니다.</div><div class="flow">Jira 현재 상태
+= 지금 Source Sync가 가능한가?
+
+Knowledge DB
+= 지금까지 축적한 업무지식은 무엇인가?
+
+두 질문을 분리한다.</div></section>
+
+<section><h2>2. Project가 안 보일 때</h2><div class="flow">Project Discovery 전체 SUCCESS
+기존 project_id가 이번 목록에 없음
+        ↓
+visibility_state = unavailable
+        ↓
+이번 Sync에서는 그 Project를 건너뜀
+        ↓
+committed_watermark 유지
+        ↓
+기존 Knowledge / Embedding / FAISS 그대로 유지
+        ↓
+Retrieval 계속 제공</div><div class="card good"><strong>확정:</strong> <code>unavailable</code>은 Sync 상태입니다. Retrieval 차단 상태가 아닙니다.</div></section>
+
+<section><h2>3. Project나 Issue가 실제로 삭제되었더라도</h2><p class="lead">삭제 사실을 알게 되더라도 과거 Knowledge를 자동 삭제하거나 검색에서 제외하지 않습니다.</p><div class="grid3"><div class="card"><h3>RAW</h3><p>보존</p></div><div class="card"><h3>Issue Version / Knowledge</h3><p>보존</p></div><div class="card"><h3>Embedding / Retrieval</h3><p>기본적으로 계속 사용</p></div></div><div class="callout"><strong>이유:</strong> 해결 이력, 장애 원인, 과거 설계 판단, 운영 경험은 Jira Issue가 삭제된 뒤에도 업무지식으로 가치가 있습니다.</div></section>
+
+<section><h2>4. 다시 접근 가능해지면</h2><div class="flow">기존 project_id가 다시 visible
+        ↓
+Initial Ingest 하지 않음
+        ↓
+보존한 committed_watermark 사용
+        ↓
+lower = watermark - 5분 overlap
+upper = 이번 Sync 고정 상한
+        ↓
+Catch-up Delta Sync
+        ↓
+NEW / CHANGED / UNCHANGED
+        ↓
+필요한 변경만 downstream 갱신</div><div class="card good"><strong>확정:</strong> 같은 <code>project_id</code>의 재등장은 전체 재수집이 아니라 Catch-up Delta Sync입니다.</div></section>
+
+<section><h2>5. Reconcile은 필수 경로가 아닙니다</h2><p class="lead">삭제된 Issue를 찾아내더라도 Knowledge를 제거하지 않을 것이므로, 삭제 탐지를 위해 Full Reconcile을 Sync의 필수 단계로 둘 필요가 없습니다.</p><div class="flow">기본 Sync
+Project Discovery
+→ visible Project만 Delta Sync
+→ unavailable Project는 skip
+
+선택 기능
+Reconcile
+→ "현재 Jira에도 존재하는가?" 같은 메타데이터가 실제로 필요할 때만 추가</div></section>
+
+<section><h2>6. Registry와 Retrieval의 역할 분리</h2><div class="grid2"><div class="card"><h3>Project Registry</h3><p><code>project_id</code>, current key/name, visible/unavailable, last_seen, last_synced, watermark 등을 관리합니다.</p><p><strong>질문:</strong> 지금 Jira Source와 동기화할 수 있는가?</p></div><div class="card"><h3>Knowledge Retrieval</h3><p>축적된 active Knowledge와 Evidence를 검색합니다.</p><p><strong>질문:</strong> 지금까지 축적된 업무지식 중 무엇이 질문에 도움이 되는가?</p></div></div></section>
+
+<section><h2>7. Decision 6 최종 규칙</h2><div class="flow">1. Project identity = project_id
+2. 처음 보는 project_id = Initial Ingest
+3. 기존 Project not visible = unavailable
+4. unavailable Project = 이번 Sync에서 skip
+5. Watermark / RAW / History / Knowledge / Vector = 보존
+6. Retrieval = 그대로 유지
+7. Project/Issue 삭제 = Knowledge 자동 삭제 아님
+8. 같은 project_id 재등장 = Watermark 기반 Catch-up Delta
+9. Reconcile = 선택 기능, 필수 Sync 경로 아님
+10. Retrieval 차단이 필요하면 Jira visibility와 별도의 명시적 정책으로만 수행</div></section>
+
+<footer class="footer">Decision 6 FINAL · Jira source lifecycle ≠ Knowledge lifecycle · 2026-08-27</footer>
+</main></body></html>
