@@ -1,38 +1,46 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M11 DONE, Sync Contract v2, Two-Loop Architecture, State Schema v2 FROZEN"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../architecture/jira_operational_two_loop_architecture.html">2-Loop Architecture</a><a href="../architecture/jira_sync_contract.html">Sync Contract v2</a><a href="../architecture/jira_sync_state_schema_contract.html">State Schema v2</a><a href="POST_MVP_OPERATIONAL_SERVICE_START_HERE.html">Handoff</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-28</span><h1>M0~M11 완료.<br>운영 아키텍처는 2-Loop로 확정했습니다.</h1><p>Functional MVP는 검증 완료됐고, Continuous Service는 <strong>Source Sync Loop와 Knowledge Processing/Publish Loop를 독립 실행</strong>하는 구조로 확정했습니다. Sync Contract와 State Schema도 이 구조에 맞춰 v2로 revision했습니다.</p><span class="state">M0~M11 DONE · TWO-LOOP FROZEN · SYNC CONTRACT v2 · STATE SCHEMA v2</span></header><div class="kpis"><div class="kpi"><b>285</b><span>MVP Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>2</b><span>Independent Operational Loops</span></div><div class="kpi"><b>5</b><span>Operational State Domain Tables</span></div><div class="kpi"><b>NEXT</b><span>Policy → Implementation</span></div></div><section><h2>1. 완료된 큰 단계</h2><div class="grid4"><div class="box good"><b>M0~M11</b><p>Jira → Knowledge → BGE-M3 → FAISS → Evidence/MCP → OpenCode 실제 검증.</p></div><div class="box good"><b>Sync Contract v2</b><p>D1~D9. D9 Two-Loop FIXED, D8 Run 의미 Loop-local로 revision.</p></div><div class="box good"><b>State Schema v2</b><p>Source Run / Processing Run 분리, explicit migration, v2 DDL.</p></div><div class="box good"><b>Full Pipeline</b><p>Loop A → backlog → Loop B → 상시 Retrieval 구조로 문서 동기화.</p></div></div></section><section><h2>2. 현재 운영 구조</h2><div class="flow">Loop A · SOURCE SYNC
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M11 DONE, Two-Loop, Sync Contract v2, State Schema v2, Source Ready Gate"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../architecture/jira_operational_two_loop_architecture.html">2-Loop Architecture</a><a href="../architecture/jira_sync_contract.html">Sync Contract v2</a><a href="../architecture/jira_sync_state_schema_contract.html">State Schema v2</a><a href="POST_MVP_OPERATIONAL_SERVICE_START_HERE.html">Handoff</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-28</span><h1>M0~M11 완료.<br>운영 아키텍처는 2-Loop로 확정했습니다.</h1><p>Functional MVP는 검증 완료됐고, Continuous Service는 <strong>Source Sync Loop와 Knowledge Processing/Publish Loop를 독립 실행</strong>합니다. Sync Contract와 State Schema는 v2이며 Source Ready Gate까지 구현 계약에 포함했습니다.</p><span class="state">M0~M11 DONE · TWO-LOOP FROZEN · CONTRACT v2 · STATE SCHEMA v2 · SOURCE READY GATE</span></header><div class="kpis"><div class="kpi"><b>285</b><span>MVP Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>2</b><span>Independent Operational Loops</span></div><div class="kpi"><b>5</b><span>Operational State Domain Tables</span></div><div class="kpi"><b>NEXT</b><span>Intermediate Version Policy</span></div></div><section><h2>1. 완료된 큰 단계</h2><div class="grid4"><div class="box good"><b>M0~M11</b><p>Jira → Knowledge → BGE-M3 → FAISS → Evidence/MCP → OpenCode 실제 검증.</p></div><div class="box good"><b>Sync Contract v2</b><p>D1~D9. D9 Two-Loop FIXED, D8 Run 의미 Loop-local revision.</p></div><div class="box good"><b>State Schema v2</b><p>Source/Processing Run 분리, explicit migration, Source Ready Gate, v2 DDL.</p></div><div class="box good"><b>Docs Realigned</b><p>Hub/README/Handoff/Full Pipeline/Decision/Schema 문서가 2-Loop 기준으로 동기화됨.</p></div></div></section><section><h2>2. 현재 운영 구조</h2><div class="flow">Loop A · SOURCE SYNC
 source_sync_run
 → Project Discovery
 → Delta / Initial / Catch-up
 → RAW / ANALYSIS / Knowledge Input
 → semantic_v2
 → NEW / CHANGED / UNCHANGED
-→ sync_issue_change backlog
-→ SOURCE_COMMITTED / Watermark
+→ Work Item row durable
+→ Project SOURCE_COMMITTED
+→ Watermark + Source Ready Gate open
 
-          ↓ durable backlog
+        ↓ source-ready durable backlog
 
 Loop B · KNOWLEDGE PROCESSING / PUBLISH
 processing_run
-→ OpenCode Knowledge
-→ Review / Evidence
+→ source-ready Work Item
+→ OpenCode / Review / Evidence
 → Knowledge DB
-→ BGE-M3
-→ FAISS staging
+→ BGE-M3 / FAISS staging
 → Atomic Publish
 
-상시 Retrieval
-Published Corpus → MCP → OpenCode User</div></section><section><h2>3. State Schema v2</h2><div class="grid2"><div class="box"><b>source_sync_run</b><p>Loop A 실행 / fixed upper / Discovery / Source 상태.</p></div><div class="box"><b>project_state</b><p>Project identity / visibility / committed Watermark.</p></div><div class="box"><b>source_project_run</b><p>Source Run×Project lower/upper/count/cursor.</p></div><div class="box"><b>sync_issue_change</b><p>두 Loop 사이 durable backlog + Knowledge/Embedding/Publish checkpoint.</p></div><div class="box"><b>processing_run</b><p>Loop B 실행 / selected/published/failed 처리량.</p></div><div class="box"><b>state_schema_migration</b><p>Domain 밖의 Migration 감사 메타데이터.</p></div></div></section><section><h2>4. 가장 중요한 안전 규칙</h2><div class="flow">Source
-actual files durable
-→ Work/count/cursor State commit
-→ source_committed + Watermark SAME transaction
+Always-on
+Published Corpus → MCP → OpenCode User</div></section><section><h2>3. Source Ready Gate</h2><div class="box good"><b>Work Item row 존재 ≠ Processing 가능</b><div class="flow">Loop B eligible iff
+last_source_committed_run_id IS NOT NULL
+AND
+last_source_committed_run_id = last_observed_source_run_id</div><p>Project 전체 Source window가 Commit된 관찰만 Loop B가 처리합니다.</p></div><div class="flow">T2 Candidate
+→ Source file durable
+→ Work row / last_observed / cursor commit
+→ gate closed
 
-Processing
-actual Knowledge / Embedding durable
-→ State completed second
+T3 Project Source Commit · SAME transaction
+→ source_committed
+→ committed_watermark = upper
+→ last_source_committed_run_id = current
+→ gate open</div></section><section><h2>4. State Schema v2</h2><div class="grid2"><div class="box"><b>source_sync_run</b><p>Loop A Run / fixed upper / Discovery / Source status.</p></div><div class="box"><b>project_state</b><p>Project identity / visibility / committed Watermark.</p></div><div class="box"><b>source_project_run</b><p>Run×Project lower/upper/count/cursor.</p></div><div class="box"><b>sync_issue_change</b><p>두 Loop 사이 backlog + Source readiness + downstream checkpoint.</p></div><div class="box"><b>processing_run</b><p>Loop B Run / selected/published/failed 처리량.</p></div><div class="box"><b>state_schema_migration</b><p>Domain 밖 Migration audit metadata.</p></div></div><p><code>STATE_SCHEMA_VERSION = 2</code>, <code>PRAGMA user_version = 2</code>. v1은 never-deployed historical baseline입니다.</p></section><section><h2>5. 안전 규칙</h2><div class="flow">Loop A
+actual Source durable → candidate State second
+source_committed + Watermark + Work Ready Gate SAME transaction
 
-Publish
-actual Retrieval active switch first
-→ State published second
+Loop B
+actual Knowledge / Embedding durable → State completed second
+actual Retrieval atomic switch → State published second
 
-두 Loop
-→ 서로 기다리지 않음
-→ 실패도 서로 격리</div></section><section><h2>5. 운영 상태는 이 지표로 봅니다</h2><div class="grid4"><div class="box"><b>Source Lag</b><p>Jira Source 최신성.</p></div><div class="box"><b>Publish Lag</b><p>검색 최신성.</p></div><div class="box"><b>Backlog Depth</b><p>미처리 Work Item 수.</p></div><div class="box"><b>Oldest Pending Age</b><p>최장 대기 Work.</p></div></div><p>Loop B는 Processing Throughput, OpenCode latency/error를 시간대별로 추가 관찰합니다.</p></section><section><h2>6. 구현 전에 남은 아키텍처 정책</h2><div class="grid2"><div class="box warn"><b>Intermediate Version supersede</b><p>V2→V3→V4가 Processing 전에 쌓였을 때 미시작 구버전 Work를 모두 처리할지, 최신 pending을 우선하고 구버전을 supersede할지 결정해야 합니다.</p></div><div class="box warn"><b>Multi-worker claim / lease</b><p>초기 Single Worker. 병렬 Processing이 실제로 필요해질 때 별도 결정합니다.</p></div></div><div class="box next"><b>현재 가장 가까운 다음 결정</b><p><strong>Intermediate Version supersede 정책</strong>을 먼저 결정한 뒤 State Schema v2 Migration/StateStore 구현으로 들어가는 것이 좋습니다.</p></div></section><section><h2>7. 구현 순서</h2><table><thead><tr><th>순서</th><th>작업</th><th>상태</th></tr></thead><tbody><tr><td>1</td><td>Intermediate Version 처리 정책 확정</td><td><strong>NEXT DECISION</strong></td></tr><tr><td>2</td><td>State Schema v2 explicit Migration + StateStore</td><td>계획</td></tr><tr><td>3</td><td>Loop A Delta Source Sync</td><td>계획</td></tr><tr><td>4</td><td>Durable backlog producer/validation</td><td>계획</td></tr><tr><td>5</td><td>Loop B Processing Worker</td><td>계획</td></tr><tr><td>6</td><td>Knowledge/Embedding/Publish 연결</td><td>계획</td></tr><tr><td>7</td><td>Lag/Backlog Monitoring + Remote MCP Operations</td><td>계획</td></tr></tbody></table></section><footer>M0~M11 DONE · Two-Loop FROZEN · Sync Contract v2 · State Schema v2 · 2026-08-28</footer></main></body></html>
+Failure Isolation
+Loop A 실패 ≠ Loop B 중단
+Loop B 실패 ≠ Loop A 중단
+둘 다 last-known-good Retrieval을 자동 중단하지 않음</div></section><section><h2>6. 운영 상태</h2><div class="grid4"><div class="box"><b>Source Lag</b><p>Project watermark 최신성.</p></div><div class="box"><b>Publish Lag</b><p>Source Head와 Published Head 차이.</p></div><div class="box"><b>Backlog Depth</b><p>source-ready 미처리 Work 수.</p></div><div class="box"><b>Oldest Pending</b><p>가장 오래 기다린 Work age.</p></div></div><p>Loop B는 Processing Throughput, OpenCode latency/error를 시간대별로 추가 관찰합니다.</p></section><section><h2>7. 현재 다음 결정</h2><div class="box next"><b>Intermediate Version supersede policy</b><p>Source Loop가 V2→V3→V4를 만들었는데 Loop B가 아직 V2를 시작하지 않은 경우, 모두 지식화할지 미시작 구버전을 supersede할지 결정합니다. Source Version은 모두 보존합니다.</p></div><div class="box warn"><b>아직 보류</b><p>Multi-worker lease, 외부 MQ, 정확한 cadence/concurrency는 Single Worker 실제 데이터 측정 후 결정합니다.</p></div></section><section><h2>8. 그 다음 구현</h2><table><thead><tr><th>순서</th><th>작업</th><th>상태</th></tr></thead><tbody><tr><td>1</td><td>Intermediate Version policy Freeze</td><td><strong>NEXT</strong></td></tr><tr><td>2</td><td>State Schema v2 explicit Migration + StateStore</td><td>계획</td></tr><tr><td>3</td><td>Loop A Delta Source Sync + Ready Gate</td><td>계획</td></tr><tr><td>4</td><td>Loop B processing_run + Single Worker</td><td>계획</td></tr><tr><td>5</td><td>Knowledge / Embedding / Publish</td><td>계획</td></tr><tr><td>6</td><td>Lag / Backlog Monitoring + MCP Operations</td><td>계획</td></tr></tbody></table></section><footer>M0~M11 DONE · Two-Loop FROZEN · Contract v2 · State Schema v2 · Source Ready Gate · 2026-08-28</footer></main></body></html>
