@@ -1,64 +1,47 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="2-Loop Continuous Jira Knowledge Service 공식 Sync Contract v2. D1~D9 최종 운영 규칙을 정의한다."><title>Jira Knowledge Service · Sync Contract v2 · FROZEN</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.76;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 90px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:47px}h2{font-size:29px}.lead{color:var(--muted);max-width:950px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e5f7ef;color:#0c6c4a;font-size:11px;font-weight:900}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:860px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a><a href="jira_sync_contract_easy_guide.html">쉬운 가이드</a><a href="jira_sync_state_schema_contract.html">State Schema v2</a></nav><header class="hero"><div>CONTINUOUS JIRA KNOWLEDGE SERVICE · SYNC CONTRACT REVISION · 2026-08-28</div><h1>Sync Contract v2<br>FROZEN</h1><p>D1~D7의 Source/Knowledge 원칙을 유지하고, D8의 단일 Run 완료 의미를 2-Loop에 맞게 수정하며 D9 Two-Loop Operational Architecture를 추가합니다.</p><span class="state">CURRENT SOURCE OF TRUTH · D1~D9 · TWO-LOOP</span></header>
-<section><h2>1. 전체 계약 한 장 요약</h2><div class="flow">Loop A · SOURCE SYNC
-Project Discovery
-→ Project별 Watermark + 5분 Overlap
-→ fixed upper
-→ Jira Delta Download
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="2-Loop Continuous Jira Knowledge Service 공식 Sync Contract v2. D1~D9와 Source Ready Gate를 정의한다."><title>Jira Knowledge Service · Sync Contract v2 · FROZEN</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.76;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 90px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:47px}h2{font-size:29px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e5f7ef;color:#0c6c4a;font-size:11px;font-weight:900}a{color:var(--blue);font-weight:800}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:860px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a> · <a href="jira_sync_contract_easy_guide.html">쉬운 가이드</a> · <a href="jira_sync_state_schema_contract.html">State Schema v2</a></p><header class="hero"><div>CONTINUOUS JIRA KNOWLEDGE SERVICE · 2026-08-28</div><h1>Sync Contract v2<br>FROZEN</h1><p>D1~D7의 핵심을 유지하고, D8을 Loop-local Run 의미로 revision하며, D9 Two-Loop와 Source Ready Gate를 현재 구현 계약으로 고정합니다.</p><span class="state">CURRENT SOURCE OF TRUTH · D1~D9 · TWO-LOOP · SOURCE READY GATE</span></header><section><h2>1. 전체 계약</h2><div class="flow">Loop A · SOURCE SYNC
+source_sync_run
+→ Project Discovery
+→ Watermark + 5m Overlap + fixed upper
+→ Jira Delta / Initial / Catch-up
 → RAW / ANALYSIS / Knowledge Input
-→ semantic_v2 source_hash
+→ semantic_v2
 → NEW / CHANGED / UNCHANGED
-→ NEW/CHANGED durable Work Item
-→ SOURCE_COMMITTED
-→ Watermark advance
+→ NEW/CHANGED Work Item row durable
+→ Project SOURCE_COMMITTED
+→ Watermark advance + Source Ready Gate open
 
-               durable backlog
-               sync_issue_change
-                      ↓
+                    ↓
+              sync_issue_change
+          source-ready durable backlog
+                    ↓
 
 Loop B · KNOWLEDGE PROCESSING / PUBLISH
-pending Work Item
+processing_run
+→ source-ready Work Item
 → OpenCode Knowledge
 → Review / Evidence
 → Knowledge DB
-→ BGE-M3
-→ FAISS staging
+→ BGE-M3 / FAISS staging
 → Atomic Publish
 → PUBLISHED
 
-상시 Retrieval
-last known-good Published Knowledge → MCP → OpenCode User</div></section>
-<section><h2>D1 · Project별 committed Watermark</h2><span class="badge">FIXED</span><p>각 Project는 독립적인 <code>committed_watermark</code>를 가집니다. 해당 Project의 Source window 전체가 안전하게 Source Commit된 경우에만 Watermark를 전진합니다.</p><div class="flow">Project A success → watermark advance
-Project B failure → watermark keep
-Project C success → watermark advance</div></section>
-<section><h2>D2 · 5분 Overlap + fixed upper + stable order</h2><span class="badge">FIXED</span><div class="flow">lower = committed_watermark - 5 minutes
+Always-on
+last-known-good Published Corpus → MCP → OpenCode User</div></section><section><h2>D1 · Project별 committed Watermark</h2><span class="badge">FIXED</span><p>Project별 독립 Watermark를 유지합니다. Project Source window 전체가 안전하게 Commit된 경우에만 전진합니다.</p></section><section><h2>D2 · 5분 Overlap + fixed upper + stable order</h2><span class="badge">FIXED</span><div class="flow">lower = committed_watermark - 5m
 upper = source_sync_run 시작 시 고정
+updated &gt;= lower
+updated &lt; upper
+ORDER BY updated ASC, id ASC</div><p>같은 Source Run Resume은 동일 lower/upper를 재사용합니다.</p></section><section><h2>D3 · NEW / CHANGED / UNCHANGED</h2><span class="badge">FIXED</span><table><thead><tr><th>종류</th><th>조건</th><th>처리</th></tr></thead><tbody><tr><td>NEW</td><td>jira_id 미존재</td><td>Work Item 생성</td></tr><tr><td>CHANGED</td><td>같은 jira_id + 다른 hash</td><td>Work Item 생성/기존 semantic row 재활성화</td></tr><tr><td>UNCHANGED</td><td>같은 jira_id + 같은 hash</td><td>새 Work Item 없음</td></tr></tbody></table><p>Jira updated는 candidate trigger이고 semantic identity가 아닙니다.</p></section><section><h2>D4 · semantic_v2</h2><span class="badge">FIXED</span><p><code>source_hash_profile = semantic_v2</code>. 실제 업무 의미를 포함하고 경로 metadata와 Issue/Comment updated_at은 hash에서 제외합니다. updated_at은 Delta 탐색에는 계속 사용합니다.</p></section><section><h2>D5 · Checkpoint / Resume</h2><span class="badge">FIXED · TWO-LOOP</span><div class="grid2"><div class="card"><h3>Loop A</h3><p>fixed upper, Project lower/upper, candidate count, stable cursor, Source Commit/Watermark를 durable하게 기록합니다.</p></div><div class="card"><h3>Loop B</h3><p>Work Item Knowledge / Embedding / Publish checkpoint를 별도로 기록하고 실패 Stage부터 이어갑니다.</p></div></div><p>Loop B 실패가 Loop A 다음 Source Run을 막지 않습니다.</p></section><section><h2>D6 · Project Registry / Knowledge Retention</h2><span class="badge">FIXED</span><p><code>project_id</code>가 authoritative identity입니다. 완전한 Discovery 성공 후에만 visible/unavailable을 판단합니다. unavailable/삭제는 Knowledge 자동 삭제나 Retrieval disable이 아닙니다.</p><div class="callout"><strong>Jira Source Lifecycle ≠ Knowledge Lifecycle</strong></div></section><section><h2>D7 · SOURCE_COMMITTED ≠ PUBLISHED</h2><span class="badge">FIXED · PHYSICAL LOOP BOUNDARY</span><div class="grid2"><div class="card good"><h3>Loop A · SOURCE_COMMITTED</h3><p>Source 산출물, semantic hash/classification, durable Work Item이 안전하고 Project Source window 책임이 완료된 상태.</p></div><div class="card good"><h3>Loop B · PUBLISHED</h3><p>Knowledge/Evidence, Embedding, FAISS/Mapping이 검증되고 실제 Retrieval active view가 전환된 상태.</p></div></div><div class="callout"><strong>Loop B 소비 조건</strong><div class="flow">SOURCE_COMMITTED
++ durable Work Item
++ Source Ready Gate open
 
-updated >= lower
-updated < upper
-ORDER BY updated ASC, id ASC</div><p>경계 누락보다 안전한 중복을 선택합니다. Source Run Resume은 같은 lower/upper를 재사용합니다.</p></section>
-<section><h2>D3 · NEW / CHANGED / UNCHANGED</h2><span class="badge">FIXED</span><table><thead><tr><th>판정</th><th>조건</th><th>처리</th></tr></thead><tbody><tr><td>NEW</td><td><code>jira_id</code> 미존재</td><td>새 semantic Work Item 생성</td></tr><tr><td>CHANGED</td><td>같은 jira_id + 다른 source_hash</td><td>새 semantic Work Item 생성</td></tr><tr><td>UNCHANGED</td><td>같은 jira_id + 같은 source_hash</td><td>기존 Version/Knowledge/Embedding 재사용, 새 Work Item 없음</td></tr></tbody></table><p>Jira <code>updated</code>는 후보 탐색 신호일 뿐 실제 semantic identity가 아닙니다.</p></section>
-<section><h2>D4 · source_hash semantic_v2</h2><span class="badge">FIXED</span><p>Knowledge 의미에 영향을 주는 Issue/Comment/Attachment/Relationship/Custom Field 값은 포함하고, 위치성 metadata와 <code>issue.updated_at</code>, <code>comment.updated_at</code>는 제외합니다.</p><div class="flow">source_hash_profile = semantic_v2</div><p>updated_at은 Delta 탐색에는 계속 사용하지만 semantic hash에는 넣지 않습니다.</p></section>
-<section><h2>D5 · Checkpoint / Resume</h2><span class="badge">FIXED</span><div class="grid2"><div class="card"><h3>Loop A Checkpoint</h3><p>Project lower/upper, candidate count, stable cursor, Source Commit, Watermark를 durable하게 기록합니다.</p></div><div class="card"><h3>Loop B Checkpoint</h3><p>Work Item별 Knowledge / Embedding / Publish 상태를 독립적으로 기록합니다.</p></div></div><div class="callout"><strong>2-Loop 효과:</strong> Loop B가 느리거나 실패해도 Loop A Resume/다음 Source Sync를 막지 않습니다. 반대로 Jira 장애 중에도 이미 쌓인 Loop B backlog는 계속 처리할 수 있습니다.</div></section>
-<section><h2>D6 · Project Registry / Knowledge Retention</h2><span class="badge">FIXED</span><p><code>project_id</code>가 authoritative identity이며 key/name은 mutable metadata입니다. 완전한 Project Discovery가 성공한 경우에만 visible/unavailable 상태를 갱신합니다.</p><table><thead><tr><th>상황</th><th>Source Loop</th><th>Retrieval</th></tr></thead><tbody><tr><td>새 project_id</td><td>Initial Ingest</td><td>새 Knowledge 구축</td></tr><tr><td>기존 visible</td><td>Delta</td><td>기존 + 변경분</td></tr><tr><td>unavailable</td><td>skip / watermark 유지</td><td>기존 Knowledge 계속 제공</td></tr><tr><td>재등장</td><td>retained watermark + overlap Catch-up</td><td>기존 유지 + 변경분 반영</td></tr><tr><td>삭제 확인</td><td>Source lifecycle 종료 가능</td><td>Knowledge 자동 삭제 아님</td></tr></tbody></table><div class="callout"><strong>원칙:</strong> Jira Source Lifecycle ≠ Knowledge Lifecycle.</div></section>
-<section><h2>D7 · SOURCE_COMMITTED ≠ PUBLISHED</h2><span class="badge">FIXED · TWO-LOOP BOUNDARY</span><div class="grid2"><div class="card good"><h3>SOURCE_COMMITTED · Loop A</h3><p>Source 산출물, semantic hash, change classification, durable Work Item이 안전하게 기록된 상태. Project 전체 Source 책임 완료 시 Watermark 전진.</p></div><div class="card good"><h3>PUBLISHED · Loop B</h3><p>Knowledge/Review/Evidence, Embedding, FAISS/Mapping이 일치하고 실제 Retrieval active 전환까지 끝난 상태.</p></div></div><div class="flow">Source Head V2
+last_source_committed_run_id = last_observed_source_run_id</div></div><p>Candidate 단계에서 Work Item row를 먼저 저장해도 Project Source Commit 전에는 Processing할 수 없습니다.</p><div class="flow">Source Head V2
 Published Head V1
-
-Loop A는 완료 가능
-Loop B는 V2 처리 pending
-사용자는 V1 계속 검색
-
-V2 actual Publish 성공
-→ Published Head V2</div><p>Half-Publish는 금지하며 새 결과가 준비되기 전 기존 Published Knowledge를 제거하지 않습니다.</p></section>
-<section><h2>D8 · Run 상태는 Loop-local</h2><span class="badge">REVISED BY D9</span><p>2026-08-27의 v1 D8은 하나의 Sync Run이 Source와 Publish를 함께 집계했습니다. 2-Loop 채택으로 이 집계 의미는 폐기합니다.</p><table><thead><tr><th>Run</th><th>completed</th><th>partial</th><th>failed</th></tr></thead><tbody><tr><td><strong>source_sync_run</strong></td><td>Discovery 신뢰 + 모든 visible Project Source 책임 완료</td><td>일부 durable Source progress + 일부 실패/미완료</td><td>Discovery 불신뢰 또는 필요한 Source progress 0</td></tr><tr><td><strong>processing_run</strong></td><td>선택한 Work Item이 모두 terminal 상태에 도달하거나 처리할 Work 0</td><td>일부 durable processing progress + 일부 실패/미완료</td><td>의미 있는 processing progress 없이 실행 실패</td></tr></tbody></table><p>unavailable Project는 Source Run 실패로 세지 않습니다. 어떤 Run이 실패해도 기존 Published Retrieval이 자동 중단되는 것은 아닙니다.</p></section>
-<section><h2>D9 · Two-Loop Operational Architecture</h2><span class="badge">NEW · FIXED 2026-08-28</span><div class="flow">Loop A
-source_sync_run
-→ source_project_run
-→ project_state / watermark
-→ sync_issue_change backlog 생산
+→ 정상 eventual-consistency 구간
+→ 사용자 Retrieval = V1
+→ V2 actual Publish 후 Published Head = V2</div><p>Half-Publish는 금지합니다.</p></section><section><h2>D8 · Run 상태는 Loop-local</h2><span class="badge">REVISED BY D9</span><table><thead><tr><th>Run</th><th>completed</th><th>partial</th><th>failed</th></tr></thead><tbody><tr><td>source_sync_run</td><td>Discovery 신뢰 + visible Project Source 책임 완료</td><td>일부 Source progress + 일부 실패</td><td>Discovery 불신뢰 또는 필요한 Source progress 없음</td></tr><tr><td>processing_run</td><td>선택 Work 모두 완료 또는 Work 0</td><td>일부 Processing progress + 일부 실패</td><td>의미 있는 Processing progress 없이 실패</td></tr></tbody></table><p>시스템 전체에 하나의 run_status를 두지 않습니다.</p></section><section><h2>D9 · Two-Loop Operational Architecture</h2><span class="badge">FIXED</span><div class="flow">Loop A
+source_sync_run → source_project_run → project_state
+→ sync_issue_change producer
 
 Loop B
-processing_run
-→ sync_issue_change backlog 소비
-→ Knowledge / Embedding / Publish</div><div class="grid3"><div class="card"><h3>독립 Scheduler</h3><p>두 Loop의 실행 주기/중지/재시도를 분리합니다.</p></div><div class="card"><h3>Durable Queue</h3><p>초기에는 State DB의 <code>sync_issue_change</code>를 backlog로 사용합니다.</p></div><div class="card"><h3>외부 MQ 지연</h3><p>Kafka/RabbitMQ는 실제 병렬성/처리량 필요가 확인되기 전 도입하지 않습니다.</p></div></div></section>
-<section><h2>10. 시스템 최신성 / 운영 지표</h2><div class="grid3"><div class="card"><h3>Source Lag</h3><p>현재 시각과 Project committed watermark 차이.</p></div><div class="card"><h3>Publish Lag</h3><p>Source Head와 실제 Published Head 차이.</p></div><div class="card"><h3>Backlog Depth</h3><p>미처리 Work Item 수.</p></div><div class="card"><h3>Oldest Pending Age</h3><p>가장 오래된 pending Work 대기시간.</p></div><div class="card"><h3>Processing Throughput</h3><p>시간당 Published Work Item 수.</p></div><div class="card"><h3>OpenCode Latency/Error</h3><p>시간대별 처리시간과 실패율.</p></div></div></section>
-<section><h2>11. 아직 별도 결정</h2><div class="card warn"><h3>중간 semantic Version 처리</h3><p>V2→V3→V4가 Processing 전에 쌓인 경우 모든 Version을 지식화할지, 미시작 구버전을 supersede할지는 아직 Freeze하지 않습니다. Source Version 자체는 모두 보존합니다.</p></div><div class="card warn"><h3>Multi-worker Queue Control</h3><p>초기 Single Worker 기준. 병렬 Worker 도입 시 claim/lease/retry schedule을 별도 설계합니다.</p></div></section><footer class="footer">Sync Contract v2 · D1~D9 · Two-Loop FROZEN · D8 aggregate v1 semantics superseded · 2026-08-28</footer></main></body></html>
+processing_run → source-ready sync_issue_change consumer
+→ Knowledge / Embedding / Publish</div><div class="grid3"><div class="card"><h3>독립 Scheduler</h3><p>cadence/중지/재시도를 분리합니다.</p></div><div class="card"><h3>Durable Queue</h3><p>초기에는 State DB Work Item을 사용합니다.</p></div><div class="card"><h3>외부 MQ 보류</h3><p>실제 병렬/처리량 요구 확인 후 검토합니다.</p></div></div></section><section><h2>10. 운영 상태</h2><div class="grid3"><div class="card"><h3>Source Lag</h3><p>Watermark 기준.</p></div><div class="card"><h3>Publish Lag</h3><p>Source Head vs Published Head.</p></div><div class="card"><h3>Backlog</h3><p>source-ready pending/failed Work 수와 oldest age.</p></div></div><p>Processing Throughput, OpenCode latency/error를 시간대별로 추가 측정합니다.</p></section><section><h2>11. 아직 별도 결정</h2><div class="card warn"><h3>Intermediate Version supersede</h3><p>V2→V3→V4가 Processing 전 쌓인 경우 모든 Version을 지식화할지 미시작 구버전을 supersede할지 아직 Freeze하지 않습니다. Source Version은 모두 보존합니다.</p></div><div class="card warn"><h3>Multi-worker claim/lease</h3><p>초기 Single Worker 이후 실제 병렬 요구가 확인될 때 결정합니다.</p></div></section><footer class="footer">Sync Contract v2 · D1~D9 · Two-Loop FROZEN · Source Ready Gate · 2026-08-28</footer></main></body></html>
