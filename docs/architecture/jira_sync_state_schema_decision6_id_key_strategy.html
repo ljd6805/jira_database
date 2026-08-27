@@ -1,29 +1,25 @@
-<!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sync State Schema Decision 6 최종 결정. sync_run_id, work_item_id, PK/FK/UNIQUE identity 전략을 고정한다."><title>Sync State Schema · S6 Final · ID / Key Strategy</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 86px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:45px}h2{font-size:29px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.footer{margin-top:55px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_state_schema_decision5_migration_contract.html">← S5 Final</a><a href="jira_sync_state_schema_decision7_final_ddl.html">S7 DDL →</a></nav><header class="hero"><div>SYNC STATE / PROJECT REGISTRY · SCHEMA DECISION 6 · FINAL · 2026-08-27</div><h1>외부 ID, 실행 ID, 내용 ID를<br>서로 섞지 않는다</h1><p>Jira 원본 identity는 그대로 사용하고, 실행 사건은 랜덤 ID, semantic change Work Item은 deterministic ID를 사용합니다.</p><span class="state">S6 FIXED · ID / PK / FK / UNIQUE STRATEGY</span></header>
-<section><h2>1. 세 종류의 Identity</h2><div class="grid3"><div class="card good"><h3>외부 Identity</h3><p><code>project_id</code>, <code>jira_id</code>는 Jira 값을 그대로 사용합니다.</p></div><div class="card"><h3>실행 Identity</h3><p><code>sync_run_id = sr_ + UUID4 full hex</code>. 매 Run마다 새 값입니다.</p></div><div class="card"><h3>내용 Identity</h3><p><code>work_item_id</code>는 같은 semantic change면 언제 발견해도 같은 deterministic 값입니다.</p></div></div></section>
-<section><h2>2. 최종 Key</h2><div class="flow">sync_run
-PK = sr_ + UUID4 full hex
-
-project_state
-PK = Jira project_id
-
-sync_project_run
-PK = (sync_run_id, project_id)
-
-sync_issue_change
-PK = sw_ + deterministic SHA-256
-UNIQUE = (jira_id, source_hash, source_hash_profile)</div></section>
-<section><h2>3. Work Item ID Material</h2><div class="flow">STATE_ID_SCHEMA_VERSION = 1
-kind = sync_issue_change
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S6 · ID / Key · Two-Loop</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1050px;margin:auto;padding:42px 22px 86px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:18px}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line)}th{background:#eef3f9}a{color:var(--blue);font-weight:800}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">Schema v2</a></p><header class="hero"><div>S6 · FIXED · REVISED FOR TWO-LOOP</div><h1>실행 Identity도 Source와 Processing으로 분리합니다.</h1></header><section class="card"><h2>ID 세 종류</h2><table><thead><tr><th>종류</th><th>현재 규칙</th></tr></thead><tbody><tr><td>외부 Identity</td><td>Jira <code>project_id</code>, <code>jira_id</code> 그대로</td></tr><tr><td>Source 실행 Identity</td><td><code>source_run_id = sr_ + UUID4.hex</code></td></tr><tr><td>Processing 실행 Identity</td><td><code>processing_run_id = pr_ + UUID4.hex</code></td></tr><tr><td>Semantic Work Identity</td><td><code>work_item_id = sw_ + deterministic full SHA-256</code></td></tr></tbody></table></section><section class="card"><h2>Work Item identity</h2><div class="flow">STATE_ID_SCHEMA_VERSION = 2
 material = {
   jira_id,
   source_hash,
   source_hash_profile
 }
+→ canonical JSON
+→ SHA-256
+→ sw_&lt;64hex&gt;</div><p>Project 이동이나 Source Run 반복 관찰은 Work Item identity를 바꾸지 않습니다.</p></section><section class="card"><h2>PK / FK</h2><div class="flow">source_sync_run PK
+→ source_run_id
 
-canonical JSON
-→ full SHA-256 lowercase hex
-→ sw_ prefix</div><p>Project 이동과 무관하게 같은 <code>jira_id + semantic state</code>면 같은 Work Item을 Resume합니다.</p></section>
-<section><h2>4. FK 원칙</h2><table><thead><tr><th>범위</th><th>규칙</th></tr></thead><tbody><tr><td>State DB 내부</td><td><code>sync_run</code>, <code>project_state</code> 참조는 SQLite physical FK로 강제합니다.</td></tr><tr><td>Knowledge DB</td><td><code>issue_version_id</code>, <code>knowledge_generation_id</code>는 logical ID만 저장하고 cross-DB physical FK는 만들지 않습니다.</td></tr></tbody></table></section>
-<section><h2>5. Key로 사용하지 않는 값</h2><div class="grid2"><div class="card"><h3>Mutable</h3><p><code>project_key</code>, <code>issue_key</code>는 표시값이며 PK/identity로 쓰지 않습니다.</p></div><div class="card"><h3>Operational signal</h3><p><code>started_at</code>, <code>jira_updated_at</code>, FAISS position은 stable identity가 아닙니다.</p></div></div></section>
-<section><h2>6. S6 최종 규칙</h2><div class="callout"><strong>확정:</strong> 외부 원본 identity는 보존, Run은 UUID4 기반 사건 identity, Work Item은 deterministic semantic identity를 사용합니다. State DB 내부 참조만 물리 FK로 연결합니다.</div></section><footer class="footer">S6 FINAL · next = S7 SQLite DDL / INDEX / CHECK / FK · 2026-08-27</footer></main></body></html>
+processing_run PK
+→ processing_run_id
+
+project_state PK
+→ project_id
+
+source_project_run PK
+→ (source_run_id, project_id)
+
+sync_issue_change PK
+→ work_item_id
+UNIQUE(jira_id, source_hash, source_hash_profile)</div></section><section class="card"><h2>Work Item Run references</h2><div class="flow">first_discovered_source_run_id → source_sync_run
+last_observed_source_run_id    → source_sync_run
+last_processing_run_id         → processing_run</div><p>Knowledge DB의 <code>iv_</code>/<code>kg_</code>는 logical reference이며 cross-database SQLite FK를 만들지 않습니다.</p></section><footer>S6 current · sr_ Source / pr_ Processing / sw_ Work · 2026-08-28</footer></main></body></html>
