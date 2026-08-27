@@ -16,6 +16,7 @@ dependencies = [
   "requests>=2.31,<3.0",
   "numpy>=1.26,<3.0",
   "faiss-cpu>=1.15,<2.0",
+  "mcp>=2.0,<3.0",
 ]
 
 [project.optional-dependencies]
@@ -26,6 +27,7 @@ dev = [
 
 [project.scripts]
 jira-collector = "jira_collector.cli:main"
+jira-knowledge-mcp = "jira_collector.mcp_server.server:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
