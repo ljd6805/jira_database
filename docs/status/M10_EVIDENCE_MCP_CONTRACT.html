@@ -1,28 +1,19 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M10 Evidence Builder + MCP 구현 전에 확정한 공식 계약"><title>M10 · Evidence Builder + MCP · Contract Freeze</title><link rel="stylesheet" href="milestone.css"></head>
-<body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_START_HERE.html">M10 Start Here</a><a href="../M10_EVIDENCE_MCP_DESIGN.html">쉬운 설계안</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 DONE</a></nav>
-<header class="hero"><span class="eyebrow">M10-01 · CONTRACT FREEZE · 2026-08-27</span><h1>찾은 Knowledge에<br>실제 Jira 근거를 붙이는 규칙 확정</h1><p>M10 구현 전에 Evidence Package, Resolver, 실패 정책, 검색 후보 범위, MCP Tool Surface, stale index 처리 규칙을 고정했습니다. 이후 구현은 이 계약을 기준으로 검증합니다.</p><span class="state">M10-01 CONTRACT = FROZEN · M10-02 IMPLEMENTATION NEXT</span><div class="breadcrumb">M9 Top-3 candidate → ki_ → ke_ → source → Evidence Package → MCP</div></header>
-<section class="beginner"><span class="badge">30초 요약</span><h2>M10이 하는 일을 다시 아주 쉽게</h2><div class="grid3"><div class="easy-card"><div class="emoji">🔎</div><b>M9가 찾음</b><p>질문과 의미가 가까운 Knowledge Top-3를 찾습니다.</p></div><div class="easy-card"><div class="emoji">📎</div><b>M10이 증명</b><p>각 Knowledge가 실제 Jira의 어느 설명·댓글·관계 등을 근거로 하는지 찾아 붙입니다.</p></div><div class="easy-card"><div class="emoji">🤖</div><b>Agent가 답함</b><p>Knowledge와 실제 Evidence를 읽고 최종 답변을 작성합니다.</p></div></div><div class="analogy"><strong>비유</strong> M9가 관련 책을 찾아주는 검색이라면 M10은 실제 페이지를 열어 근거 문장에 책갈피를 붙여주는 단계입니다.</div></section>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M10 Evidence Builder + MCP 구현 전에 확정한 공식 계약과 최종 완료 연결"><title>M10 · Evidence Builder + MCP · Contract Freeze</title><link rel="stylesheet" href="milestone.css"></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_COMPLETION.html">M10 Completion · DONE</a><a href="M10_START_HERE.html">M10 Start Here</a><a href="../M10_EVIDENCE_MCP_DESIGN.html">쉬운 설계안</a></nav><header class="hero"><span class="eyebrow">M10-01 · CONTRACT FREEZE · 2026-08-27</span><h1>찾은 Knowledge에<br>실제 Jira 근거를 붙이는 규칙 확정</h1><p>이 문서는 M10 구현 전에 Evidence Package, Resolver, 실패 정책, 후보 범위, MCP Tool Surface, stale 처리 규칙을 고정한 역사적 checkpoint입니다. 이후 M10-02~05가 이 계약대로 구현·검증되어 최종 Real-run까지 PASS했습니다.</p><span class="state">M10-01 FROZEN · M10-02~05 PASS · M10 DONE</span></header><div class="callout good"><strong>현재 최종 상태:</strong> 실제 환경에서 <code>M10_REAL_RUN = PASS</code>. tool 2 / search result 3 / Evidence 6 / warning 0 / path leak 0 / Issue lookup 성공. 최종 해설은 <a href="M10_COMPLETION.html">M10 Completion</a>을 기준으로 합니다.</div>
+<section class="beginner"><span class="badge">30초 요약</span><h2>M10이 하는 일</h2><div class="grid3"><div class="easy-card"><div class="emoji">🔎</div><b>M9가 찾음</b><p>질문과 의미가 가까운 Knowledge Top-3를 찾습니다.</p></div><div class="easy-card"><div class="emoji">📎</div><b>M10이 증명</b><p>각 Knowledge가 실제 Jira의 어느 설명·댓글·관계 등을 근거로 하는지 찾아 붙입니다.</p></div><div class="easy-card"><div class="emoji">🤖</div><b>Agent가 답함</b><p>Knowledge와 실제 Evidence를 읽고 최종 답변을 작성합니다.</p></div></div></section>
 <section><h2>1. 확정 결정 6개</h2><div class="checks"><div class="check">✓ 후보 중심 Evidence Package</div><div class="check">✓ M7의 6종 Evidence 계약 재사용</div><div class="check">✓ Runtime candidate 단위 오류 격리</div><div class="check">✓ M9 Top-3 + canonical Evidence 우선 전부</div><div class="check">✓ MCP는 search + get_issue 2 tools</div><div class="check">✓ ki_ active accepted lineage 재검증</div></div></section>
 <section><h2>2. Evidence Package 계약</h2><div class="flow">candidate package
-├─ rank / score
-├─ faiss_position
+├─ rank / score / faiss_position
 ├─ embedding_id (emb_)
 ├─ knowledge_item_id (ki_)
-├─ category
-├─ statement
-├─ issue
-│  ├─ issue_key
-│  ├─ status
-│  └─ issue_type
+├─ category / statement
+├─ issue context
 └─ evidence[]
    ├─ knowledge_evidence_id (ke_)
    ├─ evidence_ref / type
-   ├─ source_issue_key
-   ├─ source_entity_key
-   ├─ text / format
-   └─ type-specific metadata</div><div class="callout good"><strong>외부 응답에 넣지 않음</strong> source_path, source_page, 로컬 DB 경로, 사내 endpoint/header/secret은 Evidence Package나 MCP 응답에 노출하지 않습니다.</div></section>
-<section><h2>3. Resolver 계약</h2><table><thead><tr><th>type</th><th>source</th><th>반환 핵심</th></tr></thead><tbody><tr><td>summary</td><td>issue_version.summary</td><td>text</td></tr><tr><td>description</td><td>issue_version.description</td><td>text, format</td></tr><tr><td>comment</td><td>comment</td><td>comment_id, author, time, body, format</td></tr><tr><td>attachment</td><td>attachment</td><td>id, filename, mime, size, content_available</td></tr><tr><td>relationship</td><td>relationship</td><td>type/text, source/target issue</td></tr><tr><td>custom_field</td><td>custom_field_value + catalog</td><td>field id/name, display value(s)</td></tr></tbody></table><p>M7의 <code>parse_evidence_ref()</code> 규칙과 동일한 source identity를 사용합니다. M10은 새 Evidence 문법을 만들지 않습니다.</p></section>
+   ├─ source identity
+   └─ text / format / type metadata</div><p><code>source_path</code>, <code>source_page</code>, 로컬 DB 경로, 사내 endpoint/header/secret은 외부 응답에 넣지 않습니다.</p></section>
+<section><h2>3. Resolver 계약</h2><table><thead><tr><th>type</th><th>source</th><th>반환 핵심</th></tr></thead><tbody><tr><td>summary</td><td>issue_version.summary</td><td>text</td></tr><tr><td>description</td><td>issue_version.description</td><td>text, format</td></tr><tr><td>comment</td><td>comment</td><td>body + metadata</td></tr><tr><td>attachment</td><td>attachment</td><td>filename/mime/size/content_available</td></tr><tr><td>relationship</td><td>relationship</td><td>type/text/source-target</td></tr><tr><td>custom_field</td><td>custom_field_value + catalog</td><td>field id/name + display value</td></tr></tbody></table></section>
 <section><h2>4. Active / stale 규칙</h2><div class="flow">M9 candidate ki_
   ↓
 knowledge_item → knowledge_attempt → knowledge_generation
@@ -30,17 +21,21 @@ knowledge_item → knowledge_attempt → knowledge_generation
 정상 사용 조건
 - generation.state = active
 - generation.accepted_attempt_id = item.knowledge_attempt_id
-- attempt.content_available = 1</div><div class="callout warn"><strong>stale이면 조용히 사용하지 않습니다.</strong> M9 index와 M7 DB의 snapshot이 어긋난 경우 해당 candidate를 제외하고 구조화된 warning으로 드러냅니다.</div></section>
+- attempt.content_available = 1</div></section>
 <section><h2>5. Runtime 실패 정책</h2><div class="flow">정상 candidate           → results[]
 깨진 Evidence candidate  → 제외 + warnings[]
 stale candidate          → 제외 + warnings[]
 모든 candidate 실패      → typed error
 
-Offline / CI Gate
-accepted Evidence missing > 0 → FAIL
-stale active lineage > 0      → FAIL
-local path leak > 0           → FAIL</div><p>한 candidate가 깨졌다고 정상 candidate까지 버리지는 않지만, 실데이터 Gate에서는 이런 깨짐이 0건이어야 합니다.</p></section>
-<section><h2>6. Candidate / Evidence Budget</h2><div class="callout good"><strong>Pilot 기준:</strong> M9 default Top-3를 유지하고 각 Knowledge Item에 연결된 canonical Evidence를 우선 모두 포함합니다.</div><p>cosine threshold, reranker, Evidence N개 제한을 근거 없이 추가하지 않습니다. 실제 M10 payload와 답변 품질을 본 뒤 필요한 최소 제한만 추가합니다.</p></section>
-<section><h2>7. MCP Surface</h2><div class="grid2"><div class="mini"><b>search_jira_knowledge</b><p>query → M9 retrieval → M10 resolve → Evidence Package. 일반 자연어 질문의 주 도구입니다.</p></div><div class="mini"><b>get_jira_issue</b><p>issue_key를 알고 있거나 검색 결과를 더 깊게 확인할 때 current issue snapshot과 근거 source를 제공합니다.</p></div></div><div class="callout"><strong>MCP 내부 생성형 LLM 없음.</strong> MCP는 검색과 Evidence 복원까지만 담당하고 최종 설명은 Agent의 LLM이 수행합니다.</div></section>
-<section><h2>8. 구현 순서</h2><div class="steps"><div class="step-row"><div><b>M10-02 Evidence Resolver</b><p>active Knowledge 조회와 6종 source read를 구현하고 unit test.</p></div></div><div class="step-row"><div><b>M10-03 Candidate Package Builder</b><p>M9 RetrievalCandidate를 Evidence Package로 변환하고 stale/partial failure test.</p></div></div><div class="step-row"><div><b>M10-04 MCP 2 tools</b><p>검증된 내부 모듈만 얇게 노출.</p></div></div><div class="step-row"><div><b>M10-05 Real-run Gate</b><p>실제 질문 → FAISS → ki_ → ke_ → source round-trip을 검증.</p></div></div></div></section>
-<footer>M10-01 Contract Freeze · 2026-08-27 · M7/M8/M9 계약 재설계 없음 · M10-02 Implementation Next</footer></main></body></html>
+Completion Gate
+warning = 0
+stale/missing = 0
+path leak = 0</div></section>
+<section><h2>6. MCP Surface</h2><div class="grid2"><div class="mini"><b>search_jira_knowledge</b><p>query → M9 retrieval → M10 resolve → Evidence Package.</p></div><div class="mini"><b>get_jira_issue</b><p>Issue key를 알고 있거나 검색 결과를 더 깊게 확인할 때 current snapshot 조회.</p></div></div><p>MCP 내부 생성형 LLM은 없습니다.</p></section>
+<section><h2>7. 계약 이후 실제 진행 결과</h2><div class="flow">M10-01 Contract Freeze             PASS
+M10-02 Evidence Resolver           PASS
+M10-03 Candidate Package Builder   PASS
+M10-04 MCP 2 Tools                 PASS
+M10-05 Real-run                    PASS
+
+M10_REAL_RUN = PASS</div><div class="callout good"><strong>계약이 실제 환경에서 검증됐습니다.</strong> 상세 숫자 의미와 트러블슈팅은 <a href="M10_COMPLETION.html">M10 Completion</a>에 있습니다.</div></section><footer>M10-01 historical Contract Freeze · later M10-02~05 PASS · M10 DONE · 2026-08-27</footer></main></body></html>
