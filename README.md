@@ -11,7 +11,9 @@ M0~M10  DONE / PASS
 M11     OPENCODE MCP INTEGRATION · CURRENT
 M11-01  .env SERVICE CONFIG · PASS
 M11-02  OPENCODE LOCAL STDIO CONNECTION · PASS
-M11-03  TOOL DISCOVERY · NEXT
+M11-03  TOOL DISCOVERY · PASS
+M11-04  EXPLICIT TOOL CALL · PASS
+M11-05  AUTO TOOL SELECTION · NEXT
 ```
 
 M10 최종 완료 기록은 **[M10 Completion](docs/status/M10_COMPLETION.html)**, 현재 M11 계획은 **[M11 OpenCode MCP Integration](docs/status/M11_OPENCODE_MCP_INTEGRATION.html)**, 최종 팀 서비스 방향은 **[Remote MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)** 에서 확인하세요.
@@ -43,7 +45,7 @@ M9  FAISS + Active Retrieval                DONE · REAL-RUN PASS
     ↓
 M10 Evidence Builder + MCP                  DONE · REAL-RUN PASS
     ↓
-M11 OpenCode MCP Integration                CURRENT · M11-01/02 PASS
+M11 OpenCode MCP Integration                CURRENT · M11-01~04 PASS
 ```
 
 ## 2. 핵심 불변 원칙
@@ -255,7 +257,10 @@ M11은 이 저장소 안에 Agent를 구현하는 단계가 아닙니다. M10에
 ```text
 M11-01 .env service configuration   PASS
 M11-02 local stdio OpenCode 연결    PASS
-M11-03 OpenCode Tool 2개 discovery NEXT
+M11-03 OpenCode Tool 2개 discovery PASS
+M11-04 명시적 MCP Tool call        PASS
+M11-05 자동 Tool selection          NEXT
+M11-06 Evidence 기반 답변           NEXT
 ```
 
 Local stdio MCP는 사용자가 별도로 서버를 미리 띄우는 방식이 아닙니다. OpenCode가 `opencode.jsonc`의 `command`를 보고 MCP child process를 직접 실행합니다.
@@ -267,6 +272,8 @@ tool_count: 2
 tools: get_jira_issue, search_jira_knowledge
 M11_STDIO_HANDSHAKE = PASS
 ```
+
+또한 실제 OpenCode Agent가 두 Tool을 발견하고, MCP 사용을 명시적으로 지시한 질문에서 실제 Tool call을 수행하는 것을 확인했습니다. 이 M11-03/04 결과는 사용자 환경 Real-run입니다.
 
 ## 10. 최종 팀 서비스 목표 — CENTRAL REMOTE MCP
 
@@ -293,7 +300,7 @@ BGE-M3 endpoint/key
 
 OpenCode 1.18.12는 Remote MCP 설정을 지원하며 Streamable HTTP를 먼저 시도하고 SSE를 fallback으로 사용합니다. 현재 MCP Python SDK 2.1.1도 `streamable-http`와 `sse` 서버 transport를 지원합니다.
 
-다만 M11에서는 먼저 local 환경에서 Tool discovery/call/answer 활용까지 검증합니다. 그 이후 Remote 서버화, 인증/TLS, logging/health/concurrency를 별도 서비스 단계로 진행합니다.
+다만 M11에서는 먼저 local 환경에서 자동 Tool selection과 Evidence 기반 답변까지 검증합니다. 그 이후 Remote 서버화, 인증/TLS, logging/health/concurrency를 별도 서비스 단계로 진행합니다.
 
 ## 11. 서비스 설정 정책
 
