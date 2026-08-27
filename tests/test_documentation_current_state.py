@@ -28,6 +28,7 @@ MILESTONE_HTML_DOCS = tuple(
         "M8_EMBEDDING_CHUNK_BGE_M3.html",
         "M9_FAISS_ACTIVE_RETRIEVAL.html",
         "M10_COMPLETION.html",
+        "M11_COMPLETION.html",
     )
 )
 
@@ -36,7 +37,8 @@ STALE_STATUS_MARKERS = (
     "M9 CURRENT", "M9-03 NEXT", "REAL QUERY NEXT", "REBUILD NEXT",
     "M10 NEXT / DESIGN NOT STARTED", "M10 DESIGN IN PROGRESS",
     "M10 IMPLEMENTATION PASS · REAL-RUN NEXT", "M10-05 REAL-RUN NEXT",
-    "M10-05 NEXT",
+    "M10-05 NEXT", "M11 CURRENT", "M11-05 AUTO TOOL SELECTION NEXT",
+    "M11-05 NEXT", "M11-06 NEXT",
 )
 
 
@@ -80,6 +82,20 @@ def test_current_docs_record_m10_done_and_real_run_pass() -> None:
         assert "M10" in text and "DONE" in upper
         assert "REAL-RUN" in upper and "PASS" in upper
         assert "M10_REAL_RUN = PASS" in text
+
+
+def test_current_docs_record_m11_done_and_user_real_run_pass() -> None:
+    required = (
+        Path("README.md"),
+        Path("docs/PIPELINE_OVERVIEW.md"),
+        Path("docs/index.html"),
+        Path("docs/status/jira_knowledge_db_current_status.html"),
+    )
+    for path in required:
+        text = _read(path); upper = text.upper()
+        assert "M11" in text and "DONE" in upper and "PASS" in upper
+        assert "M11-05" in text and "M11-06" in text
+        assert "Remote MCP" in text
 
 
 def test_authoritative_docs_keep_generation_attempt_identity() -> None:
@@ -225,7 +241,7 @@ def test_m10_real_run_validator_exists_and_is_privacy_preserving() -> None:
     assert 'print(query' not in text and 'print(issue_key' not in text
 
 
-def test_m0_to_m10_visual_docs_exist_and_are_static() -> None:
+def test_m0_to_m11_visual_docs_exist_and_are_static() -> None:
     for path in MILESTONE_HTML_DOCS:
         assert path.is_file()
         text = _read(path); lower = text.lower()
@@ -249,6 +265,8 @@ def test_documentation_hub_links_milestones_completion_and_troubleshooting() -> 
         "M10_COMPLETION.html", "M10_TROUBLESHOOTING_MCP_IMPORT.html",
         "M10_TROUBLESHOOTING_REAL_RUN_QUERY.html",
         "M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html",
+        "M11_OPENCODE_MCP_INTEGRATION.html", "M11_COMPLETION.html",
+        "M11_TROUBLESHOOTING_OPENCODE_CONNECTION_CLOSED.html",
     ):
         assert name in index
 
@@ -273,6 +291,10 @@ def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
         Path("docs/status/M10_TROUBLESHOOTING_MCP_IMPORT.html"),
         Path("docs/status/M10_TROUBLESHOOTING_REAL_RUN_QUERY.html"),
         Path("docs/status/M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html"),
+        Path("docs/status/M11_OPENCODE_MCP_INTEGRATION.html"),
+        Path("docs/status/M11_COMPLETION.html"),
+        Path("docs/status/M11_TROUBLESHOOTING_OPENCODE_CONNECTION_CLOSED.html"),
+        Path("docs/architecture/jira_knowledge_mcp_service_target.html"),
     )
     pattern = re.compile(r"\b[A-Z][A-Z0-9_]{1,15}-[1-9]\d{3,}\b")
     for path in public_docs:
