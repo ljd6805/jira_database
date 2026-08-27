@@ -5,6 +5,8 @@ import sqlite3
 from collections.abc import Mapping
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from jira_collector.embedding.config import load_embedding_settings
 from jira_collector.retrieval import embed_query_text, load_retrieval_searcher
 
@@ -18,20 +20,35 @@ class McpRuntimeSettingsError(ValueError):
 def load_service_from_environment(
     *,
     env: Mapping[str, str] | None = None,
+    dotenv_path: str | Path | None = ".env",
 ) -> JiraKnowledgeService:
-    """환경 변수와 검증된 M7/M9 artifact로 read-only MCP service를 구성합니다."""
+    """.env/환경 변수와 검증된 M7/M9 artifact로 read-only MCP service를 구성합니다."""
 
-    environment = os.environ if env is None else env
+    environment = _load_runtime_environment(env=env, dotenv_path=dotenv_path)
     db_path = _required_path(environment, "JIRA_KNOWLEDGE_DB_PATH")
     retrieval_dir = _required_path(environment, "JIRA_RETRIEVAL_ARTIFACT_DIR")
     connection = open_knowledge_db_readonly(db_path)
     searcher = load_retrieval_searcher(retrieval_dir)
-    embedding_settings = load_embedding_settings(env=environment)
+    embedding_settings = load_embedding_settings(dotenv_path=None, env=environment)
 
     def query_embedder(query: str) -> tuple[float, ...]:
         return embed_query_text(query, searcher.manifest, embedding_settings)
 
     return JiraKnowledgeService(connection, searcher, query_embedder)
+
+
+def _load_runtime_environment(
+    *,
+    env: Mapping[str, str] | None,
+    dotenv_path: str | Path | None,
+) -> Mapping[str, str]:
+    """서비스 실행은 .env를 기본으로 읽고 기존 OS 환경 변수는 우선 보존합니다."""
+
+    if env is not None:
+        return env
+    if dotenv_path is not None:
+        load_dotenv(Path(dotenv_path), override=False)
+    return os.environ
 
 
 def open_knowledge_db_readonly(path: str | Path) -> sqlite3.Connection:
