@@ -18,14 +18,13 @@
 </head>
 <body><main class="wrap">
 <header class="hero"><strong>DOCUMENT FRAMEWORK v1 · DECIDED · 2026-08-27</strong><h1>문서의 내용은 늘어나도<br>문서의 틀은 흔들리지 않게</h1><p>Documentation Hub와 모든 HTML 문서의 공통 탐색 규칙을 하나의 프레임으로 고정합니다. 앞으로 새 문서를 만들 때마다 내비게이션을 다시 발명하지 않습니다.</p></header>
-<section><h2>1. 이번에 고정한 것</h2><div class="grid"><article class="card"><h3>Hub Frame v1</h3><p>Hub는 6개 기본 영역과 공통 카드/색상/폭을 <code>assets/hub-frame.css</code>에서 관리합니다.</p></article><article class="card"><h3>Document Shell v1</h3><p>모든 일반 HTML 문서는 같은 CSS/JS shell을 포함합니다.</p></article><article class="card"><h3>Navigation Contract</h3><p><strong>이전 문서 / 문서 Hub / 다음 문서</strong>가 항상 같은 위치와 모양으로 존재합니다.</p></article></div></section>
+<section><h2>1. 이번에 고정한 것</h2><div class="grid"><article class="card"><h3>Hub Frame v1</h3><p>Hub는 5개 기본 영역과 공통 카드/색상/폭을 <code>assets/hub-frame.css</code>에서 관리합니다.</p></article><article class="card"><h3>Document Shell v1</h3><p>모든 일반 HTML 문서는 같은 CSS/JS shell을 포함합니다.</p></article><article class="card"><h3>Navigation Contract</h3><p><strong>이전 문서 / 문서 Hub / 다음 문서</strong>가 항상 같은 위치와 모양으로 존재합니다.</p></article></div></section>
 <section><h2>2. 내비게이션 계약</h2><div class="callout"><strong>버튼은 없어지지 않습니다.</strong><br>첫 번째 문서라 이전 문서가 없거나 마지막 문서라 다음 문서가 없더라도 버튼 영역 자체는 유지하고 disabled 상태로 표시합니다.</div><table><thead><tr><th>버튼</th><th>항상 존재?</th><th>동작</th></tr></thead><tbody><tr><td>← 이전 문서</td><td>예</td><td>Registry 기준 이전 문서. 없으면 disabled.</td></tr><tr><td>⌂ 문서 Hub</td><td>예</td><td>항상 <code>docs/index.html</code>로 복귀.</td></tr><tr><td>다음 문서 →</td><td>예</td><td>Registry 기준 다음 문서. 없으면 disabled.</td></tr></tbody></table><p>긴 문서에서도 탐색이 끊기지 않도록 같은 세 버튼을 문서 상단과 하단에 모두 제공합니다.</p></section>
-<section><h2>3. Hub의 고정 골격</h2><pre>1. 지금 어디부터 읽나?       # hub-start
-2. 전체를 한 줄씩만 보면    # hub-roadmap
-3. 운영 서비스 핵심          # hub-service
-4. 서비스 설정 정책          # hub-settings
-5. Milestone Visual Documents # hub-milestones
-6. Troubleshooting / 관계 / 정책 # hub-reference</pre><p>새 문서가 추가되면 알맞은 영역에 카드/링크를 추가합니다. 기본 6개 영역 자체를 매번 재배치하거나 새 스타일을 임의로 만들지 않습니다.</p></section>
+<section><h2>3. Hub의 고정 골격</h2><pre>1. 지금 어디부터 읽나?           # hub-start
+2. 전체를 한 줄씩만 보면        # hub-roadmap
+3. 운영 서비스 핵심              # hub-service
+4. Milestone Visual Documents     # hub-milestones
+5. Architecture / Policy          # hub-reference</pre><p>새 문서가 추가되면 알맞은 영역에 카드/링크를 추가합니다. 기본 5개 영역 자체를 매번 재배치하거나 새 스타일을 임의로 만들지 않습니다.</p></section>
 <section><h2>4. 단일 원본</h2><table><thead><tr><th>파일</th><th>책임</th></tr></thead><tbody><tr><td><code>docs/assets/hub-frame.css</code></td><td>Documentation Hub의 고정 레이아웃/스타일</td></tr><tr><td><code>docs/assets/document-shell.css</code></td><td>모든 일반 문서의 공통 탐색 UI 스타일</td></tr><tr><td><code>docs/assets/document-navigation.js</code></td><td>이전/Hub/다음 버튼 생성과 이동</td></tr><tr><td><code>docs/assets/document-registry.js</code></td><td>문서 순서. 동기화 도구가 자동 생성</td></tr><tr><td><code>tools/docs/sync_document_shell.py</code></td><td>기존/신규 HTML에 shell을 적용하고 Registry를 갱신</td></tr><tr><td><code>tests/test_document_shell_consistency.py</code></td><td>프레임 회귀 방지</td></tr></tbody></table></section>
 <section><h2>5. 새 문서를 만드는 방법</h2><pre>1. docs/templates/STANDARD_DOCUMENT_TEMPLATE.html 복사
 2. 제목 / 본문 / 목적에 맞는 시각 요소 작성

@@ -34,3 +34,5 @@ jobs:
           fi
           git commit -m "docs: migrate all HTML to document shell v1"
           git push
+
+# v2: lock the current five-section Hub frame before migration.

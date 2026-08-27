@@ -15,13 +15,12 @@ POLICY = DOCS / "DOCUMENTATION_POLICY.html"
 AGENTS = ROOT / "AGENTS.md"
 ASSETS = DOCS / "assets"
 REGISTRY = ASSETS / "document-registry.js"
-HUB_SECTION_IDS = (
-    "hub-start",
-    "hub-roadmap",
-    "hub-service",
-    "hub-settings",
-    "hub-milestones",
-    "hub-reference",
+HUB_SECTIONS = (
+    ("hub-start", "지금 어디부터 읽나?"),
+    ("hub-roadmap", "전체를 한 줄씩만 보면"),
+    ("hub-service", "운영 서비스 핵심"),
+    ("hub-milestones", "Milestone Visual Documents"),
+    ("hub-reference", "Architecture / Policy"),
 )
 HREF_PATTERN = re.compile(r'<a\b[^>]*\bhref=["\']([^"\']+)["\']', re.IGNORECASE)
 TITLE_PATTERN = re.compile(r"<title>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -67,12 +66,17 @@ def _ensure_document_shell(text: str, path: Path) -> str:
 
 
 def _assign_hub_section_ids(text: str) -> str:
-    for index, section_id in enumerate(HUB_SECTION_IDS, start=1):
-        pattern = rf'<section(?![^>]*\bid=)[^>]*>\s*<h2>{index}\.'
-        replacement = f'<section id="{section_id}" data-hub-section="{index}"><h2>{index}.'
+    for index, (section_id, heading) in enumerate(HUB_SECTIONS, start=1):
+        if f'id="{section_id}"' in text:
+            continue
+        pattern = rf'<section(?![^>]*\bid=)[^>]*>\s*<h2>{index}\.\s*{re.escape(heading)}</h2>'
+        replacement = (
+            f'<section id="{section_id}" data-hub-section="{index}">'
+            f'<h2>{index}. {heading}</h2>'
+        )
         text, count = re.subn(pattern, replacement, text, count=1, flags=re.IGNORECASE)
-        if count == 0 and f'id="{section_id}"' not in text:
-            raise ValueError(f"Hub section {index} not found")
+        if count == 0:
+            raise ValueError(f"Hub fixed section missing: {index}. {heading}")
     return text
 
 
@@ -81,9 +85,9 @@ def _inject_framework_note(text: str) -> str:
     if href in text:
         return text
     match = re.search(
-        r'(<section id="hub-reference"[^>]*>\s*<h2>6\.[^<]*</h2>)',
+        r'(<section id="hub-reference"[^>]*>\s*<h2>.*?</h2>)',
         text,
-        flags=re.IGNORECASE,
+        flags=re.IGNORECASE | re.DOTALL,
     )
     if not match:
         raise ValueError("Hub reference section heading not found")
@@ -96,7 +100,13 @@ def _inject_framework_note(text: str) -> str:
 
 
 def _ensure_hub_frame(text: str) -> str:
-    text = re.sub(r"<html\b(?![^>]*data-hub-frame)", '<html data-hub-frame="v1"', text, count=1, flags=re.IGNORECASE)
+    text = re.sub(
+        r"<html\b(?![^>]*data-hub-frame)",
+        '<html data-hub-frame="v1"',
+        text,
+        count=1,
+        flags=re.IGNORECASE,
+    )
     text = STYLE_PATTERN.sub("", text, count=1)
     text = re.sub(
         r'<link\b[^>]*data-hub-frame=["\']v1["\'][^>]*>\s*',
@@ -122,7 +132,7 @@ def _ensure_policy_rules(text: str) -> str:
         '<code>assets/document-shell.css</code> + <code>document-navigation.js</code>를 사용합니다.</div>'
         '<ul><li>모든 문서는 <strong>이전 문서 / 문서 Hub / 다음 문서</strong> 세 버튼을 항상 표시합니다.</li>'
         '<li>첫/마지막 문서도 버튼을 숨기지 않고 disabled 상태로 자리를 유지합니다.</li>'
-        '<li>Hub의 6개 기본 영역과 공통 스타일은 임의로 재구성하지 않습니다.</li>'
+        '<li>Hub의 5개 기본 영역과 공통 스타일은 임의로 재구성하지 않습니다.</li>'
         '<li>새 HTML 문서는 템플릿을 복사하고 <code>python tools/docs/sync_document_shell.py --write</code>를 실행합니다.</li>'
         '<li>완료 전 <code>--check</code>와 문서 회귀 테스트를 통과해야 합니다.</li></ul></section>'
     )
@@ -141,7 +151,7 @@ def _ensure_agent_rules(text: str) -> str:
         "- 모든 일반 HTML은 `data-doc-shell=\"v1\"`과 공통 shell CSS/JS를 포함한다.\n"
         "- `이전 문서 / 문서 Hub / 다음 문서` 버튼은 항상 유지한다. 첫/마지막 문서는 숨기지 않고 disabled로 표시한다.\n"
         "- 새 HTML 작성 후 `python tools/docs/sync_document_shell.py --write`를 실행하고 `--check`를 통과시킨다.\n"
-        "- Hub 기본 6개 영역 또는 shell 계약을 바꿀 때는 임의 수정하지 말고 Documentation Policy와 Framework 문서를 함께 갱신한다.\n\n"
+        "- Hub 기본 5개 영역 또는 shell 계약을 바꿀 때는 임의 수정하지 말고 Documentation Policy와 Framework 문서를 함께 갱신한다.\n\n"
     )
     return text.replace(marker, rules + marker, 1)
 
@@ -220,7 +230,7 @@ def check_all() -> int:
         errors.append("docs/index.html: hub frame v1 marker/assets missing")
     if re.search(r"<style\b", hub, flags=re.IGNORECASE):
         errors.append("docs/index.html: inline <style> is forbidden; use assets/hub-frame.css")
-    for section_id in HUB_SECTION_IDS:
+    for section_id, _ in HUB_SECTIONS:
         if f'id="{section_id}"' not in hub:
             errors.append(f"docs/index.html: missing fixed section {section_id}")
     if POLICY_MARKER not in POLICY.read_text(encoding="utf-8"):

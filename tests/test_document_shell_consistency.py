@@ -15,7 +15,6 @@ HUB_SECTION_IDS = (
     "hub-start",
     "hub-roadmap",
     "hub-service",
-    "hub-settings",
     "hub-milestones",
     "hub-reference",
 )
