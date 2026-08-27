@@ -58,3 +58,28 @@ def test_mcp_runtime_loads_dotenv_without_overriding_os_environment() -> None:
     assert 'dotenv_path: str | Path | None = ".env"' in runtime
     assert "override=False" in runtime
     assert "load_embedding_settings(dotenv_path=None, env=environment)" in runtime
+
+
+def test_m11_opencode_real_run_has_discovery_and_explicit_call_pass() -> None:
+    required = (
+        "README.md",
+        "docs/index.html",
+        "docs/PIPELINE_OVERVIEW.html",
+        "docs/status/jira_knowledge_db_current_status.html",
+        "docs/status/M11_OPENCODE_MCP_INTEGRATION.html",
+    )
+    for path in required:
+        text = _read(path)
+        assert "M11-03" in text and "PASS" in text
+        assert "M11-04" in text and "PASS" in text
+        assert "M11-05" in text and "NEXT" in text
+
+    m11 = _read("docs/status/M11_OPENCODE_MCP_INTEGRATION.html")
+    for token in (
+        "get_jira_issue",
+        "search_jira_knowledge",
+        "Tool discovery PASS",
+        "Explicit Tool call PASS",
+        "실제 OpenCode",
+    ):
+        assert token in m11
