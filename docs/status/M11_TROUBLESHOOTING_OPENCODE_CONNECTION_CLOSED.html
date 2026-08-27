@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M11 Troubleshooting · OpenCode MCP Connection closed</title><link rel="stylesheet" href="milestone.css"></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M11_OPENCODE_MCP_INTEGRATION.html">M11 OpenCode MCP Integration</a></nav><header class="hero"><span class="eyebrow">M11 TROUBLESHOOTING · 2026-08-27</span><h1>OpenCode MCP error -32000:<br>Connection closed</h1><p>OpenCode가 local stdio MCP 프로세스를 시작했지만 handshake를 완료하기 전에 연결이 닫힌 경우의 진단 기록입니다.</p><span class="state">M11-02 TROUBLESHOOTING</span></header><section><h2>실제 관찰된 메시지</h2><div class="flow">jira-knowledge failed
+MCP error -32000: Connection closed
+python -m jira_collector.mcp_server.server</div></section><section><h2>직접 실행에서 발견한 RuntimeWarning</h2><div class="flow">&lt;frozen runpy&gt;:128: RuntimeWarning:
+'jira_collector.mcp_server.server' found in sys.modules after import of package
+'jira_collector.mcp_server', but prior to execution of
+'jira_collector.mcp_server.server'; this may result in unpredictable behaviour</div><p>이 메시지는 traceback이 있는 치명적 예외가 아니라 Python의 <code>RuntimeWarning</code>입니다. 따라서 이것만으로 OpenCode의 Connection closed 원인을 확정하지 않습니다. 다만 stdio MCP entrypoint의 import 구조가 잘못됐다는 신호이므로 먼저 제거했습니다.</p></section><section><h2>원인</h2><div class="flow">python -m jira_collector.mcp_server.server
+        ↓
+Python이 먼저 package __init__.py import
+        ↓
+__init__.py가 .server를 eager import
+        ↓
+server 모듈이 sys.modules에 이미 존재
+        ↓
+runpy가 같은 server 모듈을 다시 -m으로 실행
+        ↓
+RuntimeWarning</div></section><section><h2>수정</h2><p><code>jira_collector.mcp_server.__init__</code>에서 <code>server.py</code>를 즉시 import하지 않고 <code>create_mcp_server()</code> 호출 시에만 지연 import하도록 변경했습니다. 기존 public import API는 유지합니다.</p></section><section><h2>재검증 순서 · Windows PowerShell</h2><div class="flow">git pull
+
+python -m jira_collector.mcp_server.server</div><p>정상이라면 RuntimeWarning 없이 프로세스가 종료되지 않고 stdio 요청을 기다립니다. 직접 실행에서는 <code>Ctrl+C</code>로 종료합니다.</p><div class="flow">opencode mcp list</div><p>그 다음 OpenCode 연결을 다시 확인합니다. 여전히 <code>Connection closed</code>라면 다음 원인은 Python executable, cwd, MCP handshake/protocol 순서로 분리해서 조사합니다.</p></section><section><h2>중요한 판단</h2><div class="callout warn"><strong>아직 M11-02 PASS가 아닙니다.</strong> RuntimeWarning 수정은 한 원인을 제거한 것입니다. 실제 <code>opencode mcp list</code>에서 <code>jira-knowledge</code>가 connected 상태가 되어야 OpenCode 등록 Gate를 PASS로 판정합니다.</div></section><footer>M11 troubleshooting · OpenCode local stdio MCP · import-order warning fixed · 2026-08-27</footer></main></body></html>
