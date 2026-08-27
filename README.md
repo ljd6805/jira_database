@@ -7,11 +7,11 @@ Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 
 현재 기준:
 
 ```text
-M0~M9   DONE / PASS
-M10     IMPLEMENTATION PASS / REAL-RUN NEXT
+M0~M10  DONE / PASS
+NEXT    아직 정의하지 않음
 ```
 
-M10의 구현 상태와 다음 Real-run은 **[M10 Start Here](docs/status/M10_START_HERE.html)** 에서 확인하세요.
+M10 최종 완료 기록은 **[M10 Completion](docs/status/M10_COMPLETION.html)** 에서 확인하세요.
 
 ## 1. 전체 흐름
 
@@ -38,7 +38,7 @@ M8  BGE-M3 Embedding                        DONE · REAL-RUN PASS
     ↓
 M9  FAISS + Active Retrieval                DONE · REAL-RUN PASS
     ↓
-M10 Evidence Builder + MCP                  IMPLEMENTATION PASS · REAL-RUN NEXT
+M10 Evidence Builder + MCP                  DONE · REAL-RUN PASS
 ```
 
 ## 2. 핵심 불변 원칙
@@ -124,18 +124,6 @@ embedding_rows      285
 batch_count           5
 ```
 
-Integrity:
-
-```text
-unique ki_          285
-unique emb_         285
-mapping failure       0
-identity failure      0
-dimension failure     0
-non-finite vector     0
-zero-norm vector      0
-```
-
 ## 6. M9 FAISS + Active Retrieval — DONE / PASS
 
 Final Pilot contract:
@@ -188,7 +176,7 @@ incremental exact index
 
 HNSW/IVF 전환은 실제 latency/RAM/QPS/recall@k 측정 후 결정합니다.
 
-## 8. M10 Evidence Builder + MCP — IMPLEMENTATION PASS
+## 8. M10 Evidence Builder + MCP — DONE / PASS
 
 M10 역할:
 
@@ -206,7 +194,7 @@ ki_ active/accepted 재검증
 Agent / LLM 최종 답변
 ```
 
-확정/구현된 계약:
+확정 계약:
 
 ```text
 Evidence Package     candidate 중심
@@ -228,30 +216,35 @@ PRAGMA               query_only=ON
 External payload     source_path/source_page 제외
 ```
 
-검증:
+단계별 검증:
 
 ```text
 M10-01 Contract Freeze             PASS
 M10-02 Evidence Resolver           PASS
 M10-03 Candidate Package Builder   PASS
 M10-04 MCP 2-tool boundary         PASS
-M10-05 Real-run validator/tests    READY
-GitHub Actions pytest              136/136 PASS
+M10-05 Real-run                    PASS
 ```
 
-현재 남은 단계는 **M10-05 Real-run Gate**입니다. Git에 없는 실제 M7 SQLite, M9 FAISS artifact, 사내 BGE-M3 endpoint를 연결해 실제 질문이 `FAISS → ki_ → ke_ → source → MCP response`까지 끝까지 통과하는지 검증해야 M10을 DONE으로 판정합니다.
-
-실환경 검증 도구:
+실제 Real-run 결과:
 
 ```text
-tools/jira_knowledge/validate_m10_real_run.py
+tool_count: 2
+search_result_count: 3
+evidence_count: 6
+warning_count: 0
+path_leak_count: 0
+issue_lookup_ok: true
+failure_count: 0
+M10_REAL_RUN = PASS
 ```
 
-이 도구는 실제 질문/Jira 원문을 출력하지 않고 결과 수, Evidence 수, warning/path leak 여부와 PASS/FAIL만 출력합니다.
+이 결과로 실제 **BGE-M3 → FAISS → ki_ → ke_ → Jira source → MCP response** 경로가 end-to-end로 검증됐습니다.
 
 ## 9. 주요 문서
 
 - [Documentation Hub](docs/index.html)
+- [M10 Completion](docs/status/M10_COMPLETION.html)
 - [M10 Start Here](docs/status/M10_START_HERE.html)
 - [M10 쉬운 확정 설계](docs/M10_EVIDENCE_MCP_DESIGN.html)
 - [M10 Contract Freeze](docs/status/M10_EVIDENCE_MCP_CONTRACT.html)
@@ -261,7 +254,6 @@ tools/jira_knowledge/validate_m10_real_run.py
 - [Current Status](docs/status/jira_knowledge_db_current_status.html)
 - [Pipeline Overview](docs/PIPELINE_OVERVIEW.html)
 - [Relationship Map](docs/architecture/jira_data_relationship_map.html)
-- [M9 Final Visual](docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html)
 - [Documentation Policy](docs/DOCUMENTATION_POLICY.html)
 
 ## 10. 로컬 Pilot Artifact
@@ -284,3 +276,7 @@ data/retrieval/runs/20260804T043628Z/
 ```
 
 `data/`, `.env`, local config, DB는 Git에서 제외합니다. Public repo에는 실제 Jira Issue Key/raw body/사내 endpoint/custom header/token을 기록하지 않습니다.
+
+## 11. 다음 단계
+
+M10까지 완료했습니다. 다음 Milestone은 아직 확정하지 않습니다. 운영화, Agent 연동, retrieval hardening 중 무엇을 다음 경계로 둘지는 별도 의사결정으로 정의합니다.
