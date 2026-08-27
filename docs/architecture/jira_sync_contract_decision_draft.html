@@ -3,87 +3,104 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Continuous Jira Knowledge Service Sync Contract 의사결정 초안. Project별 Watermark와 5분 Overlap은 확정, new/changed/unchanged 판정을 검토 중인 문서">
+<meta name="description" content="Continuous Jira Knowledge Service Sync Contract 의사결정 초안. D1~D3 확정, source_hash v2를 검토 중인 문서">
 <title>Sync Contract · Decision Draft</title>
 <style>
-:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827;--shadow:0 10px 28px rgba(31,49,84,.07)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7);box-shadow:var(--shadow)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px;margin:0 0 10px}.lead{color:var(--muted);max-width:900px}.flow,pre{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card h3{margin-top:0}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.active{border:2px solid var(--blue);background:#edf3ff}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.callout.warn{border-color:var(--amber);background:#fff6e9}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}.draft{background:#fff1d7;color:#8a5700}.review{background:#e9eeff;color:#2548b5}.fixed{background:#e5f7ef;color:#0c6c4a}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.compare{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.case{padding:18px;border-radius:15px;border:1px solid var(--line);background:#fff}.case b{font-size:18px}.footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2,.grid3,.compare{grid-template-columns:1fr}}
+:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827;--shadow:0 10px 28px rgba(31,49,84,.07)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7);box-shadow:var(--shadow)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px;margin:0 0 10px}.lead{color:var(--muted);max-width:900px}.flow,pre{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card h3{margin-top:0}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.active{border:2px solid var(--blue);background:#edf3ff}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.callout.warn{border-color:var(--amber);background:#fff6e9}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}.draft{background:#fff1d7;color:#8a5700}.review{background:#e9eeff;color:#2548b5}.fixed{background:#e5f7ef;color:#0c6c4a}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.compare{display:grid;grid-template-columns:1fr 60px 1fr;gap:12px;align-items:center}.compare .mid{text-align:center;font-weight:900;color:var(--blue)}.footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2,.grid3,.compare{grid-template-columns:1fr}.compare .mid{transform:rotate(90deg)}}
 </style>
 </head>
 <body><main class="wrap">
 <nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_knowledge_pipeline_full_explained.html">전체 Pipeline 학습</a><a href="jira_sync_contract_explained.html">Sync Contract 학습</a><a href="jira_knowledge_operational_service_phase.html">Operational Service Phase</a></nav>
-<header class="hero"><div>SYNC CONTRACT · DECISION DRAFT · 2026-08-27</div><h1>Sync 운영 규칙을<br>하나씩 확정합니다.</h1><p>Continuous Jira Knowledge Service 구현 전에 Watermark, Overlap, 변경 판정, 재개와 Publish 의미를 항목별로 합의하는 문서입니다.</p><span class="state">DRAFT · D1 WATERMARK FIXED · D2 OVERLAP FIXED · D3 CHANGE CLASSIFICATION REVIEWING</span></header>
+<header class="hero"><div>SYNC CONTRACT · DECISION DRAFT · 2026-08-27</div><h1>Sync 운영 규칙을<br>하나씩 확정합니다.</h1><p>Continuous Jira Knowledge Service 구현 전에 Watermark, Overlap, 변경 판정, source hash, 재개와 Publish 의미를 항목별로 합의하는 문서입니다.</p><span class="state">DRAFT · D1/D2/D3 FIXED · D4 SOURCE_HASH V2 REVIEWING</span></header>
+
 <section><h2>1. 진행 상태</h2><div class="flow">1. Project별 committed Watermark     FIXED
 2. Overlap Window = 5분              FIXED
-3. new / changed / unchanged         NOW REVIEWING
-4. source_hash v2                    NEXT
-5. Checkpoint / Resume               DRAFT
+3. new / changed / unchanged         FIXED
+4. source_hash v2                    NOW REVIEWING
+5. Checkpoint / Resume               NEXT
 6. Project Registry / 접근 상실      DRAFT
 7. Source Commit vs Publish          DRAFT
 8. Sync Run 완료 상태                DRAFT</div></section>
-<section><h2>2. 이미 확정한 두 가지</h2><div class="grid2"><div class="card good"><span class="badge fixed">D1 FIXED</span><h3>Project별 Watermark</h3><p>Project마다 “여기까지 안전하게 수집했다”는 책갈피를 따로 둡니다. 한 Project 실패가 다른 Project의 진행을 막지 않습니다.</p></div><div class="card good"><span class="badge fixed">D2 FIXED</span><h3>5분 Overlap + 고정 upper</h3><p><code>lower = watermark - 5분</code>, <code>updated &gt;= lower AND updated &lt; upper</code> 범위로 조회합니다. 정렬은 <code>updated ASC, id ASC</code>를 기본 계약으로 둡니다.</p></div></div></section>
-<section><h2>3. Decision 3 — 후보와 실제 변경은 다릅니다</h2><p class="lead">Jira의 <code>updated</code>는 “이 Issue를 다시 검사해 보라”는 신호입니다. 그것만 보고 Knowledge를 다시 만들지는 않습니다.</p><div class="flow">JQL updated 범위 검색
-       ↓
-변경 후보 Issue 발견
-       ↓
-최신 source snapshot 구성
-       ↓
-source_hash 계산
-       ↓
-기존 상태와 비교
-       ├─ 처음 보는 jira_id        → NEW
-       ├─ 같은 jira_id + hash 다름 → CHANGED
-       └─ 같은 jira_id + hash 같음 → UNCHANGED</div><div class="callout"><strong>핵심:</strong> <code>updated</code>는 후보 탐색용, <code>source_hash</code>는 실제 변경 판정용입니다.</div></section>
-<section><h2>4. 세 가지 상태를 아주 쉽게</h2><div class="compare"><div class="case good"><b>NEW</b><p>우리 시스템이 처음 보는 <code>jira_id</code>입니다.</p><div class="flow">jira_id = 10042
-기존 source 상태에 없음
-→ NEW</div><p>새 Issue Version부터 Knowledge, Embedding, FAISS까지 처리합니다.</p></div><div class="case warn"><b>CHANGED</b><p>같은 Issue인데 실제 업무 내용 묶음의 지문이 달라졌습니다.</p><div class="flow">jira_id = 10042
-old hash = AAA
-new hash = BBB
-→ CHANGED</div><p>새 Issue Version을 만들고 변경분을 downstream에 전달합니다.</p></div><div class="case"><b>UNCHANGED</b><p>Overlap 때문에 다시 발견했지만 실제 내용은 같습니다.</p><div class="flow">jira_id = 10042
-old hash = AAA
-new hash = AAA
-→ UNCHANGED</div><p>기존 Version / Knowledge / Embedding을 재사용합니다.</p></div></div></section>
-<section><h2>5. 왜 issue_key가 아니라 jira_id인가?</h2><p class="lead"><code>ABC-123</code> 같은 Issue Key는 사람이 보기 좋은 이름입니다. Jira 내부 ID는 같은 Issue의 안정적인 identity로 사용합니다.</p><div class="flow">어제
-jira_id = 10042
-issue_key = OLD-123
 
-Key 변경 / Project 이동
+<section><h2>2. 지금까지 확정한 세 가지</h2><div class="grid3"><div class="card good"><span class="badge fixed">D1</span><h3>Project별 Watermark</h3><p>Project마다 독립적인 마지막 안전 수집 시점을 가집니다.</p></div><div class="card good"><span class="badge fixed">D2</span><h3>5분 Overlap</h3><p><code>lower = watermark - 5분</code>, 고정 upper, <code>updated ASC, id ASC</code>를 사용합니다.</p></div><div class="card good"><span class="badge fixed">D3</span><h3>Change Classification</h3><p><code>jira_id + source_hash</code>로 NEW / CHANGED / UNCHANGED를 판정합니다.</p></div></div></section>
 
-오늘
-jira_id = 10042
-issue_key = NEW-987
-
-→ 같은 jira_id
-→ NEW 아님
-→ 현재 key/project metadata는 갱신</div><div class="callout"><strong>현재 DB도 이 원칙입니다.</strong> <code>issue.jira_id</code>가 Primary Key이고 동일 jira_id가 다시 들어오면 현재 issue_key/project_key를 갱신합니다.</div></section>
-<section><h2>6. 왜 source_hash를 쓰나?</h2><p class="lead">source_hash는 Issue 하나의 “업무 내용 묶음 지문”입니다. 현재 코드도 Issue, Comment, Attachment metadata, Relationship, Custom Field를 한 묶음으로 canonicalize해서 SHA-256을 계산합니다.</p><div class="flow">Issue 핵심 내용
-+ Comments
-+ Attachment metadata
-+ Relationships
-+ Custom Fields
-        ↓ canonical JSON
-SHA-256
+<section><h2>3. Decision 4 — source_hash는 무엇을 뜻해야 하나?</h2><p class="lead">source_hash는 “이 Issue의 업무 지식 재료가 실제로 달라졌는가?”를 판단하는 지문입니다. 따라서 단순한 시스템 시간 변화 때문에 지문이 달라지면 안 됩니다.</p><div class="flow">source_hash가 달라짐
         ↓
-source_hash</div><p>Description은 그대로여도 댓글이 새로 추가되거나 관계/Custom Field가 달라지면 hash가 달라질 수 있습니다.</p><div class="callout warn"><strong>단, hash에 정확히 어떤 필드를 넣을지는 Decision 4에서 다시 봅니다.</strong> 특히 <code>updated_at</code> 같은 시간 정보가 “실제 지식 변화”인지 따로 판단합니다.</div></section>
-<section><h2>7. Overlap이 있어도 비싼 재처리를 막을 수 있습니다</h2><div class="flow">Watermark 10:30
-Overlap 5분
-→ 10:25~ 구간 다시 조회
+CHANGED 판정
+        ↓
+새 Issue Version
+        ↓
+Knowledge 재생성
+        ↓
+Embedding / FAISS 갱신
 
-ABC-1 다시 발견 → hash 같음 → UNCHANGED → downstream 없음
-ABC-2 다시 발견 → hash 같음 → UNCHANGED → downstream 없음
-ABC-3 댓글 추가   → hash 다름 → CHANGED → downstream 실행</div><p>Overlap 때문에 Jira 후보를 조금 더 확인하더라도 Knowledge 생성이나 BGE-M3 embedding 같은 비싼 작업은 실제 new/changed에만 수행합니다.</p></section>
-<section><h2>8. 처리 규칙 초안</h2><table><thead><tr><th>판정</th><th>조건</th><th>Issue Version</th><th>Knowledge / Embedding / FAISS</th></tr></thead><tbody><tr><td><strong>NEW</strong></td><td>jira_id가 기존 source 상태에 없음</td><td>새 Version</td><td>전체 downstream</td></tr><tr><td><strong>CHANGED</strong></td><td>jira_id 존재 + source_hash 변경</td><td>새 Version</td><td>변경분 downstream</td></tr><tr><td><strong>UNCHANGED</strong></td><td>jira_id 존재 + source_hash 동일</td><td>기존 Version 재사용</td><td>재사용, 새 생성 없음</td></tr></tbody></table></section>
-<section><h2>9. 중요한 경계 — source 변경과 Publish 성공은 다릅니다</h2><p class="lead">Jira source 수집과 CHANGED 판정은 성공했지만 Knowledge 생성이 실패할 수도 있습니다.</p><div class="flow">Jira source 수집       SUCCESS
-source_hash 판정        CHANGED
-Knowledge 생성          FAILED
+즉 hash에 무엇을 넣는지가
+곧 "무엇을 진짜 변경으로 볼 것인가"를 결정함</div></section>
 
-다음 Sync에서
-"Jira 내용이 그대로니까 UNCHANGED, 끝"
-으로 처리하면 안 됨
+<section><h2>4. 현재 구현은 어떻게 되어 있나?</h2><p class="lead">현재 builder는 Issue, Comment, Attachment metadata, Relationship, Custom Field를 한 묶음으로 만들고 경로만 제외한 뒤 SHA-256을 계산합니다.</p><div class="flow">Issue
+  summary / description / status / priority
+  created_at / updated_at
 
-→ source 변경 사실은 durable하게 기억
-→ 실패한 downstream은 다시 수행</div><div class="callout"><strong>정확한 checkpoint와 publish 상태는 Decision 5와 7에서 확정합니다.</strong> Decision 3에서는 source 변경 판정과 서비스 반영 완료를 같은 것으로 보지 않는다는 경계만 둡니다.</div></section>
-<section><h2>10. Decision 3 추천 결론</h2><div class="card active"><span class="badge review">PROPOSED</span><h3><code>jira_id + source_hash</code>로 NEW / CHANGED / UNCHANGED를 판정한다.</h3><div class="flow">jira_id 없음                 → NEW
-jira_id 있음 + hash 다름     → CHANGED
-jira_id 있음 + hash 같음     → UNCHANGED</div><p>Jira <code>updated</code>는 Delta 후보 탐색에만 사용합니다. Issue Key가 바뀌어도 같은 jira_id라면 새로운 Issue로 보지 않습니다.</p></div><div class="callout warn"><strong>아직 D3는 FROZEN 아님.</strong> 승인하면 FIXED로 올리고 Decision 4 source_hash v2로 넘어갑니다.</div></section>
-<footer class="footer">Sync Contract Decision Draft · D1/D2 FIXED · D3 under review · no implementation yet · 2026-08-27</footer>
+Comments
+  comment_id / sequence / author
+  created_at / updated_at / body
+
+Attachments / Relationships / Custom Fields
+        ↓
+source_path / source_page만 제거
+        ↓
+canonical JSON
+        ↓
+SHA-256 source_hash</div><div class="callout warn"><strong>문제 후보:</strong> 현재는 Issue의 <code>updated_at</code>과 Comment의 <code>updated_at</code>도 hash에 포함됩니다. 본문은 그대로인데 Jira가 timestamp만 바꾸면 새 Version으로 판정될 수 있습니다.</div></section>
+
+<section><h2>5. 쉬운 예 — 내용은 같은데 시간만 바뀌었다면?</h2><div class="compare"><div class="card"><h3>어제</h3><div class="flow">description = "retry 3회 적용"
+status = Resolved
+updated_at = 10:30
+
+hash = AAA</div></div><div class="mid">→</div><div class="card warn"><h3>오늘</h3><div class="flow">description = "retry 3회 적용"
+status = Resolved
+updated_at = 10:35
+
+현재 방식이면
+hash = BBB 가능</div></div></div><p>업무 내용은 하나도 달라지지 않았는데 새 Issue Version과 Knowledge를 만들 수 있습니다. 운영에서는 이런 재처리를 피하는 편이 좋습니다.</p></section>
+
+<section><h2>6. 그렇다고 모든 시간을 빼면 안 됩니다</h2><div class="grid2"><div class="card good"><h3><code>created_at</code>은 유지</h3><p>Issue나 Comment가 언제 생성됐는지는 실제 사실의 일부일 수 있습니다. 잘못된 시간이 정정되었다면 그것도 데이터 변화로 볼 가치가 있습니다.</p></div><div class="card warn"><h3><code>updated_at</code>은 제외 추천</h3><p>이 값은 “Jira가 마지막으로 수정됐다고 기록한 시각”입니다. 실제 지식 내용은 별도로 hash에 이미 포함되므로 변경 탐지 지문에는 중복 신호가 됩니다.</p></div></div><div class="callout"><strong>핵심 구분:</strong> <code>updated_at</code>은 Delta 후보를 찾는 데는 중요하지만, 최종 semantic change를 판단하는 source_hash에는 넣지 않는 방향입니다.</div></section>
+
+<section><h2>7. source_hash v2 추천 구성</h2><table><thead><tr><th>영역</th><th>포함</th><th>제외</th></tr></thead><tbody>
+<tr><td>Issue</td><td>jira_id, summary, description, format, type, status, priority, created_at</td><td><strong>updated_at</strong>, source_path</td></tr>
+<tr><td>Comment</td><td>comment_id, sequence, author, created_at, body, format</td><td><strong>updated_at</strong>, source_path, source_page</td></tr>
+<tr><td>Attachment</td><td>ID, filename, author, created_at, size, mime, content_available</td><td>source_path</td></tr>
+<tr><td>Relationship</td><td>관계 ID/type/direction/상대 Issue 정보 등 현재 Knowledge Input에 보이는 값</td><td>source_path</td></tr>
+<tr><td>Custom Field</td><td>field ID/name/schema + 실제 display/value 정보</td><td>source_path</td></tr>
+</tbody></table><div class="callout"><strong>보수적 원칙:</strong> 이번 v2에서는 불필요하다고 확신할 수 있는 <code>updated_at</code>만 추가로 제외합니다. 작성자, 생성 시각, 관계 상태, Custom Field 등 Knowledge 결과에 영향을 줄 수 있는 값은 섣불리 빼지 않습니다.</div></section>
+
+<section><h2>8. 실제 내용이 바뀌면 당연히 hash도 바뀝니다</h2><div class="grid3"><div class="card"><h3>Description 수정</h3><p>원인/해결 내용이 달라짐 → hash 변경 → CHANGED.</p></div><div class="card"><h3>댓글 추가/수정</h3><p>comment_id/body가 달라짐 → hash 변경 → CHANGED.</p></div><div class="card"><h3>Status / Custom Field / 관계 변경</h3><p>업무 상태나 관계 지식이 달라짐 → hash 변경 → CHANGED.</p></div></div></section>
+
+<section><h2>9. hash 규칙 자체에도 Version이 필요합니다</h2><p class="lead">중요한 부분입니다. v1에서 v2로 계산 규칙을 바꾸면 같은 Jira 내용도 hash 문자열이 달라질 수 있습니다. 따라서 hash 규칙 자체의 버전을 명시해야 합니다.</p><div class="flow">source_hash_profile = semantic_v2
+
+semantic_v1
+  path 제외
+  updated_at 포함
+
+semantic_v2
+  path 제외
+  issue.updated_at 제외
+  comment.updated_at 제외</div><div class="callout"><strong>추천:</strong> package/manifest 또는 DB가 어떤 hash profile로 계산됐는지 알 수 있게 기록합니다. 그래야 향후 v3가 생겨도 “내용이 바뀐 것”과 “hash 알고리즘이 바뀐 것”을 구분할 수 있습니다.</div></section>
+
+<section><h2>10. Decision 4 추천 결론</h2><div class="card active"><span class="badge review">PROPOSED</span><h3>source_hash v2는 업무 내용 중심의 semantic hash로 만든다.</h3><div class="flow">계속 포함
+→ Issue 실제 내용/상태
+→ Comment 내용/작성자/생성시각
+→ Attachment metadata
+→ Relationship
+→ Custom Field
+
+추가 제외
+→ issue.updated_at
+→ comment.updated_at
+→ 기존 source_path / source_page
+
+그리고
+→ source_hash_profile = semantic_v2 기록</div><p><code>updated_at</code>은 Delta 후보 조회용으로 보존하지만 semantic Version 생성의 직접 재료에서는 제외합니다.</p></div><div class="callout warn"><strong>아직 D4는 FROZEN 아님.</strong> 승인하면 FIXED로 올리고 Decision 5 Checkpoint / Resume로 넘어갑니다.</div></section>
+
+<footer class="footer">Sync Contract Decision Draft · D1/D2/D3 FIXED · D4 source_hash v2 under review · no implementation yet · 2026-08-27</footer>
 </main></body></html>
