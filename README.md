@@ -1,6 +1,6 @@
 # Jira Knowledge Pipeline
 
-Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 보존 → 결정적 정규화 → Knowledge 추출/검토 → Versioned SQLite Knowledge DB → BGE-M3 Embedding → FAISS Retrieval → Evidence/MCP → OpenCode 실제 소비자 검증**으로 발전시키는 프로젝트입니다.
+Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 보존 → 결정적 정규화 → Knowledge 추출/검토 → Versioned SQLite Knowledge DB → BGE-M3 Embedding → FAISS Retrieval → Evidence/MCP → OpenCode 실제 소비자 검증**까지 발전시킨 프로젝트입니다.
 
 > 📚 새 세션/사람이 읽는 문서는 [Documentation Hub](docs/index.html)에서 시작하세요. Hub가 연결하는 로컬 문서는 모두 HTML입니다.
 
@@ -8,13 +8,18 @@ Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 
 
 ```text
 M0~M11  DONE / PASS
+        = Functional MVP 완료
+
+Next Phase
+Continuous Jira Knowledge Service
 ```
 
-M10 최종 완료 기록은 **[M10 Completion](docs/status/M10_COMPLETION.html)**, M11 최종 완료 기록은 **[M11 Completion](docs/status/M11_COMPLETION.html)**, 최종 팀 서비스 방향은 **[Remote MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)** 에서 확인하세요.
+MVP 완료는 **[M11 Completion](docs/status/M11_COMPLETION.html)**, 이후 운영 서비스 전체 목표는 **[Operational Service Phase](docs/architecture/jira_knowledge_operational_service_phase.html)**, 중앙 MCP 구성요소는 **[Remote MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)** 에서 확인하세요.
 
 ## 1. 전체 흐름
 
 ```text
+Functional MVP
 Jira REST API
     ↓
 M0  RAW → ANALYSIS                          DONE
@@ -29,17 +34,26 @@ M4  실제 Knowledge Pilot 30/30             DONE
     ↓
 M5  Knowledge / Review Profiling           DONE
     ↓
-M6  DB Logical Schema / Identity            DONE
+M6  DB Logical Schema / Identity           DONE
     ↓
-M7  SQLite Materialization                  DONE · REAL-RUN PASS
+M7  SQLite Materialization                 DONE · REAL-RUN PASS
     ↓
-M8  BGE-M3 Embedding                        DONE · REAL-RUN PASS
+M8  BGE-M3 Embedding                       DONE · REAL-RUN PASS
     ↓
-M9  FAISS + Active Retrieval                DONE · REAL-RUN PASS
+M9  FAISS + Active Retrieval               DONE · REAL-RUN PASS
     ↓
-M10 Evidence Builder + MCP                  DONE · REAL-RUN PASS
+M10 Evidence Builder + MCP                 DONE · REAL-RUN PASS
     ↓
-M11 OpenCode MCP Integration                DONE · USER REAL-RUN PASS
+M11 OpenCode MCP Integration               DONE · USER REAL-RUN PASS
+
+Operational Service · NEXT
+Project Discovery
+→ Delta Issue Sync
+→ RAW / Issue Version update
+→ changed Knowledge / Evidence only
+→ changed Embedding / FAISS only
+→ Central Remote MCP
+→ scheduling / retry / health / monitoring
 ```
 
 ## 2. 핵심 불변 원칙
@@ -52,21 +66,25 @@ M11 OpenCode MCP Integration                DONE · USER REAL-RUN PASS
 6. FAISS position을 Knowledge identity로 사용하지 않습니다.
 7. Knowledge는 `ke_` Evidence를 통해 원문까지 round-trip할 수 있어야 합니다.
 8. MCP는 검색/근거 복원만 담당하고 생성형 LLM을 포함하지 않습니다.
-9. 설계/코드/Milestone 상태 변경은 문서와 같은 작업 단위에서 동기화합니다.
-10. Documentation Hub의 로컬 링크는 HTML만 사용합니다.
+9. 운영 기본은 **delta-first**이며 full rebuild는 복구/마이그레이션/검증 경로입니다.
+10. 설계/코드/Milestone 상태 변경은 문서와 같은 작업 단위에서 동기화합니다.
+11. Documentation Hub의 로컬 링크는 HTML만 사용합니다.
 
 Identity ladder:
 
 ```text
 jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 
+knowledge_attempt = ka_ + attempt_no
 Embedding Contract   ec_
 Embedding Artifact   emb_
 Retrieval Contract   rc_
 FAISS Index Artifact fi_
+
+FAISS position ≠ emb_ ≠ ki_
 ```
 
-## 3. Pilot 핵심 숫자
+## 3. MVP 핵심 숫자
 
 ```text
 Issue                         30
@@ -111,6 +129,8 @@ Issue
          └─ Knowledge Review
 ```
 
+이 Version/Generation/Attempt/Active 구분은 MVP 편의용이 아니라 이후 **지속 업데이트와 History 보존**을 위한 기반입니다.
+
 ## 5. M8 BGE-M3 Embedding — DONE / PASS
 
 ```text
@@ -127,13 +147,10 @@ batch_count           5
 
 ## 6. M9 FAISS + Active Retrieval — DONE / PASS
 
-Final Pilot contract:
-
 ```text
 Index       IndexFlatIP
 Metric      cosine = L2 normalize + inner product
 Query       raw_query_v1 = query.strip()
-Order       embedding_id ascending
 Top-k       3
 Threshold   none
 Reranker    none
@@ -152,84 +169,49 @@ same-query ranking             PASS
 same-query scores              PASS
 ```
 
-서로 다른 실제 query 2개에서 Rank 1/2는 유효했고 Rank 3에는 noise가 관찰됐습니다. 따라서 global cosine threshold나 reranker는 아직 근거 없이 추가하지 않습니다.
-
-## 7. 정식 서비스 Retrieval 방향 — DELTA FIRST
-
-Pilot의 full rebuild는 운영 기본 정책이 아닙니다.
+## 7. Production Retrieval 방향 — DELTA FIRST
 
 ```text
 unchanged → reuse
 added     → cache 확인 → 필요 시 embed → add
 changed   → old remove/tombstone → cache/embed → add
-removed   → remove/tombstone
+removed / no access → 정책 확정 후 active 처리
 ```
 
-후속 production-hardening 후보:
+후속 후보:
 
 ```text
-vector cache key
-= H(embedding_text_hash, embedding_contract_hash)
-
-incremental exact index
-= IndexIDMap2(IndexFlatIP) + stable int64 vector_id
+vector cache key = H(embedding_text_hash, embedding_contract_hash)
+incremental exact index = IndexIDMap2(IndexFlatIP) + stable int64 vector_id
 ```
 
-HNSW/IVF 전환은 실제 latency/RAM/QPS/recall@k 측정 후 결정합니다.
+HNSW/IVF는 실제 latency/RAM/QPS/recall@k 측정 후 결정합니다.
 
 ## 8. M10 Evidence Builder + MCP — DONE / PASS
 
-M10 역할:
-
 ```text
-M9
-질문 → Top-3 Knowledge candidate
-        ↓
-M10
-ki_ active/accepted 재검증
+질문 → BGE-M3 → FAISS Top-3 Knowledge
+→ ki_ active/accepted 재검증
 → ke_ Evidence resolve
 → 실제 Jira source 복원
 → Evidence Package
 → MCP
-        ↓
-Agent / LLM 최종 답변
 ```
-
-**FAISS는 Jira 원문을 직접 검색하지 않습니다.** FAISS는 Knowledge vector를 검색하고, 실제 Jira 근거는 SQLite에서 `ki_ → ke_ → source`로 복원합니다.
 
 확정 계약:
 
 ```text
-Evidence Package     candidate 중심
-Evidence Type        summary / description / comment / attachment / relationship / custom_field
-Runtime Failure      broken candidate 격리 + warning
-Candidate Budget     M9 Top-3 유지
-MCP Tool             search_jira_knowledge
-                     get_jira_issue
-Stale Guard          active + accepted + content_available 재검증
-MCP Generative LLM   없음
+Evidence Type      summary / description / comment / attachment / relationship / custom_field
+Candidate Budget   Top-3
+Stale Guard        active + accepted + content_available
+MCP Tool           search_jira_knowledge
+                   get_jira_issue
+MCP Generative LLM 없음
+SQLite             mode=ro + PRAGMA query_only=ON
+External payload   source_path/source_page 제외
 ```
 
-보안 경계:
-
-```text
-MCP annotation       read_only_hint=true
-SQLite               mode=ro
-PRAGMA               query_only=ON
-External payload     source_path/source_page 제외
-```
-
-단계별 검증:
-
-```text
-M10-01 Contract Freeze             PASS
-M10-02 Evidence Resolver           PASS
-M10-03 Candidate Package Builder   PASS
-M10-04 MCP 2-tool boundary         PASS
-M10-05 Real-run                    PASS
-```
-
-실제 Real-run 결과:
+실제 Real-run:
 
 ```text
 tool_count: 2
@@ -244,10 +226,6 @@ M10_REAL_RUN = PASS
 
 ## 9. M11 OpenCode MCP Integration — DONE / PASS
 
-M11은 이 저장소 안에 Agent를 구현하는 단계가 아니라, M10 MCP를 외부 OpenCode Agent가 실제로 소비할 수 있는지 검증하는 단계였습니다.
-
-최종 결과:
-
 ```text
 M11-01 .env service configuration                PASS
 M11-02 local stdio OpenCode 연결                 PASS
@@ -259,11 +237,7 @@ M11-06 근거 요청에서 description/comment 추적   PASS
 M11 = DONE / PASS
 ```
 
-실제 사용자 흐름에서는 MCP/Tool 이름을 말하지 않은 일반적인 과거 유사 문제 탐색 질문에서 OpenCode가 스스로 Jira MCP를 호출했습니다. 이어서 근거를 요구하는 후속 질문에서는 실제 Jira `description` 또는 `comment` Evidence를 가져와 제시했습니다.
-
-공개 저장소에는 실제 업무 질문, Issue key, Jira 원문을 기록하지 않고 동작 형태와 Evidence type만 남깁니다.
-
-별도 stdio subprocess validator에서도 다음을 확인했습니다.
+실제 OpenCode에서 일반 업무 질문만으로 Jira MCP가 자동 호출됐고, 근거 요청에서는 Jira `description` 또는 `comment` Evidence까지 추적했습니다. 공개 저장소에는 실제 업무 질문, Issue key, Jira 원문을 기록하지 않습니다.
 
 ```text
 tool_count: 2
@@ -271,11 +245,43 @@ tools: get_jira_issue, search_jira_knowledge
 M11_STDIO_HANDSHAKE = PASS
 ```
 
-자세한 완료 기록은 [M11 Completion](docs/status/M11_COMPLETION.html)을 봅니다.
+여기까지가 **Functional MVP**입니다.
 
-## 10. 최종 팀 서비스 목표 — CENTRAL REMOTE MCP
+## 10. 최종 서비스 목표 — CONTINUOUS JIRA KNOWLEDGE SERVICE
 
-Local stdio는 개발/호환성 Pilot용입니다. 최종 목표는 팀원 모두가 중앙 MCP 서버를 공용으로 사용하는 구조입니다.
+최종 서비스는 Remote MCP 하나가 아닙니다. Jira의 변화가 자동으로 전체 지식 파이프라인에 반영돼야 합니다.
+
+```text
+Jira
+ ↓ Project Discovery
+신규/기존/접근 상태 확인
+ ↓
+Delta Issue Sync
+신규·수정 Issue / comment / relationship / field
+ ↓
+RAW / Issue Version
+source_hash 동일 → reuse
+source_hash 변경 → 새 Version
+ ↓ 변경분만
+Knowledge / Evidence
+ ↓ 변경분만
+Embedding / FAISS
+ ↓ latest Active corpus
+Central Remote MCP / HTTPS
+ ↓
+팀원 OpenCode
+```
+
+### 서비스해야 하는 네 축
+
+1. **지속적인 Jira 업데이트** — 마지막 성공 sync 이후 변경분을 반복 수집하고 실패 후 재개합니다.
+2. **Project 추가/변화** — 접근 가능한 프로젝트 전체를 매 sync discovery하여 새 프로젝트를 자동 편입합니다.
+3. **변경사항 하위 파이프라인 전파** — 변경된 Version만 Knowledge→Embedding→FAISS까지 갱신합니다.
+4. **중앙 MCP 서비스** — 팀원 PC에 DB/FAISS/.env를 복제하지 않고 중앙 Remote MCP를 사용합니다.
+
+상세: [Operational Service Phase](docs/architecture/jira_knowledge_operational_service_phase.html)
+
+## 11. 중앙 Remote MCP — 서비스의 조회 경계
 
 ```text
 팀원 A OpenCode ─┐
@@ -286,19 +292,9 @@ Local stdio는 개발/호환성 Pilot용입니다. 최종 목표는 팀원 모�
                                            └─ BGE-M3 API
 ```
 
-최종 서비스에서는 팀원 PC가 다음을 가질 필요가 없도록 합니다.
+OpenCode 1.18.12 Remote MCP와 MCP Python SDK 2.1.1의 Streamable HTTP/SSE 지원을 활용할 수 있습니다. 다만 **Remote MCP 서버화만 먼저 해서는 운영 서비스가 완성되지 않습니다.** Background sync가 최신 Active corpus를 유지해야 합니다.
 
-```text
-jira_database clone
-SQLite Knowledge DB
-FAISS artifact
-BGE-M3 endpoint/key
-서버용 .env
-```
-
-OpenCode 1.18.12는 Remote MCP 설정을 지원하며 Streamable HTTP를 먼저 시도하고 SSE를 fallback으로 사용합니다. 현재 MCP Python SDK 2.1.1도 `streamable-http`와 `sse` 서버 transport를 지원합니다.
-
-## 11. 서비스 설정 정책
+## 12. 서비스 설정 정책
 
 ```text
 기본 서비스 설정   .env
@@ -306,9 +302,7 @@ OS 환경 변수       .env보다 우선 · CI/진단/일시 override
 명시적 test env    .env를 읽지 않음
 ```
 
-최종 Remote 서비스에서는 중앙 서버 배포 디렉터리의 `.env`를 사용합니다.
-
-서비스 `.env`에는 다음을 둡니다.
+서비스 `.env`:
 
 ```text
 JIRA_KNOWLEDGE_DB_PATH
@@ -318,29 +312,44 @@ BGE_M3_API_KEY       optional
 BGE_M3_HEADERS_JSON  optional
 ```
 
-`M10_REAL_RUN_QUERY`는 검증 전용이므로 실제 서비스 `.env`에는 기본적으로 넣지 않습니다.
+`M10_REAL_RUN_QUERY`는 검증 전용이며 서비스 `.env`에는 넣지 않습니다.
 
-## 12. 다음 목표
+## 13. 운영 서비스에서 아직 결정해야 할 것
 
-다음 목적은 **중앙 Remote MCP 서비스화**입니다.
+- sync 주기와 scheduling 방식
+- 마지막 성공 sync / 안전 overlap / watermark 상세 계약
+- Jira 삭제와 서비스 계정 권한 상실의 구분 및 active 비활성화 정책
+- 팀원별 Jira 접근권한 재현 필요 여부
+- Knowledge/Embedding/FAISS delta update의 원자적 전환 방식
+- Remote MCP 인증/TLS/접근 제어
+- retry/timeout/concurrency
+- sync/MCP health, 로그, 운영 모니터링
+
+특히 **사용자별 Jira 권한 재현은 MVP에서 제외했던 항목**이므로 팀 공용 중앙 서비스 전에 반드시 정책을 확정해야 합니다.
+
+## 14. 다음 단계
+
+다음 단계는 **Continuous Jira Knowledge Service**를 어떤 Milestone으로 나눌지 설계하는 것입니다.
 
 ```text
-Streamable HTTP
-→ 서버 실행 방식
-→ TLS / 인증 / 접근 제어
-→ logging / health
-→ 동시 사용 검증
-→ 팀원 OpenCode Remote MCP Pilot
+Project Discovery / Sync State
+→ Delta Jira Collection
+→ Incremental Knowledge Update
+→ Incremental Embedding / FAISS
+→ Central Remote MCP
+→ Scheduling / Retry / Observability
+→ Team Pilot
 ```
 
-다음 Milestone 번호는 목표와 Completion Gate를 먼저 합의한 뒤 확정합니다.
+다음 Milestone 번호는 각 단계의 목적과 Completion Gate를 먼저 합의한 뒤 확정합니다.
 
-## 13. 주요 문서
+## 15. 주요 문서
 
 - [Documentation Hub](docs/index.html)
+- [Operational Service Phase](docs/architecture/jira_knowledge_operational_service_phase.html)
+- [Remote MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)
 - [M11 Completion](docs/status/M11_COMPLETION.html)
 - [M11 OpenCode MCP Integration](docs/status/M11_OPENCODE_MCP_INTEGRATION.html)
-- [Remote MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)
 - [M11 Connection Closed Troubleshooting](docs/status/M11_TROUBLESHOOTING_OPENCODE_CONNECTION_CLOSED.html)
 - [M10 Completion](docs/status/M10_COMPLETION.html)
 - [Current Status](docs/status/jira_knowledge_db_current_status.html)
@@ -348,7 +357,7 @@ Streamable HTTP
 - [Relationship Map](docs/architecture/jira_data_relationship_map.html)
 - [Documentation Policy](docs/DOCUMENTATION_POLICY.html)
 
-## 14. 로컬 Pilot Artifact
+## 16. 로컬 MVP Artifact
 
 ```text
 M7 SQLite
