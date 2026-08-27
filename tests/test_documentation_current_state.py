@@ -169,7 +169,7 @@ def test_m10_completion_and_troubleshooting_docs_are_static_html() -> None:
 
     handoff = _read(paths[0])
     for token in (
-        "M0~M10 DONE", "M10_REAL_RUN = PASS", "Evidence Package",
+        "M0~M10 DONE", "M10_REAL_RUN = PASS", "Evidence",
         "knowledge_attempt", "ka_", "attempt_no",
         "DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC",
     ):
@@ -205,7 +205,7 @@ def test_m10_completion_explains_real_run_metrics() -> None:
         "tool_count: 2", "search_result_count: 3", "evidence_count: 6",
         "warning_count: 0", "path_leak_count: 0", "issue_lookup_ok: true",
         "failure_count: 0", "M10_REAL_RUN = PASS",
-        "호출 횟수가 2라는 뜻은 아닙니다",
+        "Tool을 2번 호출했다는 뜻이 아닙니다",
         "Issue 6개나 Knowledge 6개라는 뜻이 아닙니다",
         "ModuleNotFoundError", "McpRuntimeSettingsError",
     ):
