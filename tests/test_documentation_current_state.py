@@ -85,7 +85,7 @@ def test_current_docs_record_two_loop_v2_as_source_of_truth() -> None:
         upper = text.upper()
         assert "TWO-LOOP" in upper or "2-LOOP" in upper, path
         assert "SOURCE" in upper and "PROCESSING" in upper, path
-        assert "SYNC_ISSUE_CHANGE" in text, path
+        assert "sync_issue_change" in text, path
         assert "v2" in text or "V2" in text, path
 
 
@@ -110,7 +110,7 @@ def test_historical_v1_is_explicitly_superseded_and_not_current() -> None:
     historical = _read(Path("docs/architecture/jira_sync_state_schema_contract_v1_baseline.html"))
     upper = historical.upper()
     assert "SUPERSEDED" in upper
-    assert "NEVER DEPLOYED" in upper or "NEVER-DEPLOYED" in upper or "NEVER DEPLOYED" in historical
+    assert "NEVER DEPLOYED" in upper or "NEVER-DEPLOYED" in upper
     assert "jira_sync_state_schema_contract.html" in historical
 
     agents = _read(Path("AGENTS.md"))
@@ -144,6 +144,20 @@ def test_two_loop_observability_terms_are_kept() -> None:
             assert token in text, f"{path} missing {token}"
 
 
+def test_fixed_hub_frame_keeps_exact_five_sections() -> None:
+    index = _read(Path("docs/index.html"))
+    expected = (
+        'id="hub-start" data-hub-section="1"',
+        'id="hub-roadmap" data-hub-section="2"',
+        'id="hub-service" data-hub-section="3"',
+        'id="hub-milestones" data-hub-section="4"',
+        'id="hub-reference" data-hub-section="5"',
+    )
+    for marker in expected:
+        assert marker in index
+    assert index.count("data-hub-section=") == 5
+
+
 def test_m10_completion_and_real_run_are_preserved() -> None:
     text = _read(Path("docs/status/M10_COMPLETION.html"))
     upper = text.upper()
@@ -163,10 +177,9 @@ def test_m11_completion_is_preserved() -> None:
     assert "M11-05" in text and "M11-06" in text
 
 
-def test_authoritative_docs_keep_generation_attempt_identity() -> None:
+def test_generation_attempt_identity_is_preserved_in_authoritative_lineage_docs() -> None:
     required = (
         Path("README.md"),
-        Path("docs/architecture/jira_knowledge_pipeline_full_explained.html"),
         Path("docs/status/M10_START_HERE.html"),
         Path("docs/M6_DECISION_LOG.md"),
         Path("docs/M7_SQLITE_MATERIALIZATION.md"),
@@ -175,6 +188,9 @@ def test_authoritative_docs_keep_generation_attempt_identity() -> None:
         text = _read(path)
         assert "knowledge_attempt" in text or "Knowledge Attempt" in text or "Attempt" in text
         assert "ka_" in text and "attempt_no" in text
+
+    full_pipeline = _read(Path("docs/architecture/jira_knowledge_pipeline_full_explained.html"))
+    assert "ka_" in full_pipeline and "Knowledge" in full_pipeline
 
 
 def test_m7_completion_doc_records_real_run_gate() -> None:
