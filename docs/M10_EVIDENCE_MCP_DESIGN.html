@@ -1,7 +1,6 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M10 Evidence Builder + MCP의 확정 설계를 초보자도 이해할 수 있게 설명한 문서"><title>M10 · Evidence Builder + MCP · 쉬운 확정 설계</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83d3d;--code:#101827;--shadow:0 10px 28px rgba(31,49,84,.07)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.72;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:38px 22px 86px}.top a{display:inline-block;margin:0 10px 12px 0;color:var(--blue);font-weight:800;text-decoration:none}.hero{padding:38px;border-radius:25px;color:#fff;background:linear-gradient(130deg,#17284e,#3157d5 67%,#6f89e8);box-shadow:var(--shadow)}.hero h1{margin:7px 0;font-size:clamp(33px,5vw,54px);line-height:1.1}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:10px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:42px}h2{margin-bottom:8px}.lead{color:var(--muted)}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:19px;border:1px solid var(--line);border-radius:15px;background:var(--card);box-shadow:0 5px 14px rgba(31,49,84,.035)}.card h3{margin:0 0 6px}.card p{margin:0;color:var(--muted)}.tag{display:inline-flex;padding:4px 8px;margin-bottom:8px;border-radius:999px;background:#e8eeff;color:#294db9;font-size:10px;font-weight:900}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.callout{padding:16px 18px;margin:18px 0;border-radius:11px;border-left:5px solid var(--blue);background:#edf3ff}.flow,pre{white-space:pre-wrap;overflow:auto;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.7 "Cascadia Code","D2Coding",Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line)}th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.badge{display:inline-flex;padding:4px 8px;border-radius:999px;background:#e5f7ef;color:#0d6d4a;font-size:10px;font-weight:900}.analogy{padding:16px 18px;border-radius:12px;background:#fff6e9;border-left:5px solid var(--amber)}code{font-family:"Cascadia Code","D2Coding",Consolas,monospace}.footer{margin-top:46px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;text-align:center}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style></head>
-<body><main class="wrap"><nav class="top"><a href="index.html">← 문서 허브</a><a href="status/M9_FAISS_ACTIVE_RETRIEVAL.html">← M9 DONE</a><a href="status/M10_START_HERE.html">M10 Start Here</a><a href="status/M10_EVIDENCE_MCP_CONTRACT.html">Contract</a><a href="status/M10_MCP_IMPLEMENTATION.html">Implementation PASS</a></nav>
-<header class="hero"><div><strong>M10 FINAL DESIGN · 2026-08-27</strong></div><h1>검색 후보를<br>“근거가 있는 답변 재료”로 바꾸기</h1><p>이 문서는 M10 설계 검토 당시의 추천안을 현재 확정 계약과 구현 결과에 맞춰 정리한 쉬운 설명서입니다. M10의 핵심은 M9가 찾은 Knowledge에 실제 Jira Evidence를 붙이고, Agent가 MCP로 안전하게 사용할 수 있게 만드는 것입니다.</p><span class="state">DESIGN FROZEN · IMPLEMENTATION PASS · REAL-RUN NEXT</span></header>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M10 Evidence Builder + MCP의 확정 설계와 최종 Real-run 결과"><title>M10 · Evidence Builder + MCP · 쉬운 확정 설계</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827;--shadow:0 10px 28px rgba(31,49,84,.07)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.72;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:38px 22px 86px}.top a{display:inline-block;margin:0 10px 12px 0;color:var(--blue);font-weight:800;text-decoration:none}.hero{padding:38px;border-radius:25px;color:#fff;background:linear-gradient(130deg,#17284e,#3157d5 67%,#6f89e8);box-shadow:var(--shadow)}.hero h1{margin:7px 0;font-size:clamp(33px,5vw,54px);line-height:1.1}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:10px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:42px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:19px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.callout{padding:16px 18px;margin:18px 0;border-radius:11px;border-left:5px solid var(--blue);background:#edf3ff}.flow,pre{white-space:pre-wrap;overflow:auto;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.7 "Cascadia Code","D2Coding",Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line)}th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.footer{margin-top:46px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;text-align:center}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="index.html">← 문서 허브</a><a href="status/M10_COMPLETION.html">M10 Completion · DONE</a><a href="status/M10_EVIDENCE_MCP_CONTRACT.html">Contract</a><a href="status/M10_REAL_RUN_GATE.html">Real-run PASS</a></nav><header class="hero"><div><strong>M10 FINAL DESIGN · 2026-08-27</strong></div><h1>검색 후보를<br>“근거가 있는 답변 재료”로 바꾸기</h1><p>이 문서는 M10 설계의 확정본입니다. M9가 찾은 Knowledge에 실제 Jira Evidence를 붙이고 Agent가 MCP로 안전하게 사용할 수 있게 하는 구조를 설명합니다. 이 설계는 이후 구현과 실제 Real-run까지 모두 PASS했습니다.</p><span class="state">DESIGN FROZEN · IMPLEMENTATION PASS · REAL-RUN PASS · M10 DONE</span></header>
+<div class="callout good"><strong>최종 검증:</strong> tool_count 2, search_result_count 3, evidence_count 6, warning_count 0, path_leak_count 0, issue_lookup_ok true, failure_count 0, <code>M10_REAL_RUN = PASS</code>. 자세한 해설은 <a href="status/M10_COMPLETION.html">M10 Completion</a>을 참조합니다.</div>
 <section><h2>1. 한 문장 역할</h2><div class="callout good"><strong>M10 = “이 Knowledge가 왜 맞는지 실제 Jira 근거를 붙여 Agent에게 주는 단계”</strong></div><div class="flow">M9
 "이 Knowledge가 질문과 비슷합니다."
         ↓
@@ -9,8 +8,8 @@ M10
 "그 Knowledge의 실제 근거는 이 Jira 설명/댓글/관계입니다."
         ↓
 Agent
-"그 근거를 바탕으로 최종 답변하겠습니다."</div><div class="analogy"><strong>도서관 비유</strong> M9가 관련 책을 찾아준다면 M10은 실제 페이지를 열고 근거 문장에 책갈피를 붙여주는 단계입니다.</div></section>
-<section><h2>2. 왜 M9만으로 끝내지 않았나?</h2><div class="grid3"><div class="card"><h3>검색 문장 ≠ 원문</h3><p>M9가 찾는 것은 압축된 Knowledge Item입니다. 실제 Jira 문장과 동일한 것은 아닙니다.</p></div><div class="card"><h3>출처가 필요</h3><p>Agent가 답하려면 어느 설명·댓글·관계가 그 Knowledge를 뒷받침하는지 알아야 합니다.</p></div><div class="card"><h3>오류 추적</h3><p>검색은 맞았는데 답이 틀렸는지, Evidence 자체가 잘못 연결됐는지 분리해야 합니다.</p></div></div></section>
+"그 근거를 바탕으로 최종 답변하겠습니다."</div></section>
+<section><h2>2. M9와 M10의 차이</h2><div class="grid3"><div class="card"><h3>M9 · 검색</h3><p>질문과 가까운 Knowledge Top-3를 FAISS에서 찾습니다.</p></div><div class="card"><h3>M10 · 근거</h3><p><code>ki_ → ke_ → source</code>로 실제 Jira Evidence를 복원합니다.</p></div><div class="card"><h3>Agent · 답변</h3><p>Knowledge + Evidence를 읽고 최종 자연어 답변을 만듭니다.</p></div></div><div class="callout warn"><strong>FAISS는 Jira 원문을 직접 검색하지 않습니다.</strong> FAISS는 Knowledge vector를 찾고 원문은 SQLite에서 복원합니다.</div></section>
 <section><h2>3. 전체 연결</h2><div class="flow">사용자 질문
   ↓
 BGE-M3 query embedding
@@ -29,44 +28,19 @@ summary / description / comment / attachment / relationship / custom_field
 Evidence Package
   ↓ MCP
 Agent / LLM</div></section>
-<section><h2>4. 확정 결정 ① 후보 중심 Evidence Package</h2><pre>{
+<section><h2>4. 확정 결정</h2><table><thead><tr><th>결정</th><th>내용</th></tr></thead><tbody><tr><td>Evidence Package</td><td>후보 중심. rank/score/ki_/statement/issue/evidence[]를 한 묶음으로 반환.</td></tr><tr><td>Evidence Resolver</td><td>M7에서 검증한 6종 Evidence ref 계약 재사용.</td></tr><tr><td>Failure</td><td>깨진 candidate만 typed warning으로 격리. 모두 실패하면 typed error.</td></tr><tr><td>Candidate Budget</td><td>M9 Top-3 유지. threshold/reranker 없음.</td></tr><tr><td>Stale Guard</td><td>active + accepted + content_available 재검증.</td></tr><tr><td>MCP Surface</td><td><code>search_jira_knowledge</code> + <code>get_jira_issue</code> 정확히 2개.</td></tr><tr><td>LLM 경계</td><td>MCP 내부 생성형 LLM 없음. 최종 답변은 Agent 책임.</td></tr></tbody></table></section>
+<section><h2>5. Evidence Package</h2><pre>{
   "rank": 1,
   "score": 0.84,
   "knowledge_item_id": "ki_...",
-  "category": "key_findings",
+  "category": "...",
   "statement": "검색된 의미 문장",
-  "issue": {
-    "issue_key": "...",
-    "status": "..."
-  },
+  "issue": { "issue_key": "..." },
   "evidence": [
-    {
-      "evidence_id": "ke_...",
-      "type": "comment",
-      "text": "실제 원문"
-    }
+    { "evidence_id": "ke_...", "type": "comment", "text": "실제 원문" }
   ]
-}</pre><p>Knowledge와 Evidence를 따로 배열로 나눠 Agent에게 다시 join시키지 않고, 검색 후보 하나를 한 Package로 이해하게 합니다.</p></section>
-<section><h2>5. 확정 결정 ② M7의 6종 Evidence 계약 재사용</h2><table><thead><tr><th>type</th><th>실제 source</th><th>Agent에 필요한 것</th></tr></thead><tbody><tr><td>summary</td><td>issue_version.summary</td><td>text</td></tr><tr><td>description</td><td>issue_version.description</td><td>text + format</td></tr><tr><td>comment</td><td>comment</td><td>body + author/time</td></tr><tr><td>attachment</td><td>attachment</td><td>filename/mime/size metadata</td></tr><tr><td>relationship</td><td>relationship</td><td>type/text/source-target</td></tr><tr><td>custom_field</td><td>custom_field_value + catalog</td><td>field name + display value</td></tr></tbody></table><div class="callout"><strong>새 Evidence 문법을 만들지 않습니다.</strong> M7에서 이미 검증된 <code>summary</code>, <code>comment:&lt;id&gt;</code> 같은 ref 규칙을 그대로 사용합니다.</div></section>
-<section><h2>6. 확정 결정 ③ 깨진 후보는 격리</h2><div class="flow">정상 candidate
-→ results[]
-
-깨진 candidate
-→ 제외 + warnings[]
-
-모든 candidate 실패
-→ typed error</div><p>Top-3 중 하나의 source가 깨졌다고 나머지 정상 결과까지 버리지는 않습니다. 대신 Real-run/CI Gate에서는 warning과 missing Evidence가 0이어야 합니다.</p></section>
-<section><h2>7. 확정 결정 ④ Top-3 유지</h2><p>M9 실데이터에서 Rank 3에 noise가 있기도 했지만 score가 가까운 후보의 의미 품질이 항상 같지는 않았습니다. 그래서 M10이 시작되자마자 global threshold/reranker를 임의 추가하지 않았습니다.</p><div class="callout warn"><strong>Pilot:</strong> M9 Top-3 + 각 Knowledge Item의 canonical Evidence를 우선 모두 사용하고, 실제 Agent 품질/부하를 측정한 뒤 줄입니다.</div></section>
-<section><h2>8. 확정 결정 ⑤ MCP는 2개 Tool</h2><div class="grid2"><div class="card good"><h3>search_jira_knowledge</h3><p>질문 → BGE-M3 → M9 → M10 Evidence Package까지 한 번에 처리하는 일반 검색 도구.</p></div><div class="card good"><h3>get_jira_issue</h3><p>Issue key를 이미 알고 있거나 검색 결과를 더 깊게 확인할 때 current snapshot을 읽는 도구.</p></div></div><p>내부 모듈은 search/resolver/builder로 분리하지만 외부 MCP call은 불필요하게 세분화하지 않습니다.</p></section>
-<section><h2>9. 확정 결정 ⑥ stale Knowledge 재검증</h2><div class="flow">M9 candidate ki_
-  ↓
-knowledge_item → knowledge_attempt → knowledge_generation
-  ↓
-사용 조건
-state = active
-accepted_attempt_id = item.knowledge_attempt_id
-content_available = 1</div><p>M9 index와 DB snapshot이 어긋난 경우 historical Knowledge를 조용히 답변에 섞지 않습니다.</p></section>
-<section><h2>10. Read-only / 보안 설계</h2><div class="flow">MCP annotation
+}</pre><p>Knowledge와 Evidence를 따로 주지 않고 검색 후보 하나를 한 Package로 이해하게 합니다.</p></section>
+<section><h2>6. Read-only / 보안</h2><div class="flow">MCP annotation
 read_only_hint = true
 open_world_hint = false
 
@@ -75,22 +49,15 @@ mode=ro
 PRAGMA query_only=ON
 
 외부 응답에서 제외
-source_path
-source_page
-로컬 DB 경로
-사내 endpoint/header/secret</div><div class="callout good"><strong>중요:</strong> annotation은 힌트이므로 DB 자체도 read-only로 열어 실제 쓰기를 막습니다.</div></section>
-<section><h2>11. MCP 내부 생성형 LLM 없음</h2><div class="flow">MCP
-검색 + Evidence 복원
+source_path / source_page
+로컬 DB 절대경로
+사내 endpoint/header/secret</div></section>
+<section><h2>7. 실제 구현 / 검증 결과</h2><div class="flow">M10-01 Contract Freeze             PASS
+M10-02 Evidence Resolver           PASS
+M10-03 Candidate Package Builder   PASS
+M10-04 MCP 2 Tools                 PASS
+M10-05 Real-run                    PASS
 
-Agent LLM
-근거 비교 + 최종 자연어 답변</div><p>이 경계를 유지하면 Retrieval 문제와 Answering 문제를 따로 테스트할 수 있습니다.</p></section>
-<section><h2>12. 구현 결과</h2><table><thead><tr><th>단계</th><th>상태</th></tr></thead><tbody><tr><td>M10-01 Contract Freeze</td><td>PASS</td></tr><tr><td>M10-02 Evidence Resolver</td><td>PASS</td></tr><tr><td>M10-03 Candidate Package Builder</td><td>PASS</td></tr><tr><td>M10-04 MCP 2 Tools</td><td>PASS · MCP Client boundary test</td></tr><tr><td>M10-05 Real-run</td><td>NEXT</td></tr></tbody></table><div class="callout good"><strong>CI baseline:</strong> MCP implementation까지 전체 suite 133 passed.</div></section>
-<section><h2>13. 다음은 설계가 아니라 시운전</h2><div class="flow">실제 M7 SQLite
-+ 실제 M9 FAISS
-+ 실제 사내 BGE-M3
-+ 실제 질문
-        ↓
-tools/jira_knowledge/validate_m10_real_run.py
-        ↓
-M10_REAL_RUN = PASS / FAIL</div><div class="callout warn"><strong>M10 DONE은 Real-run PASS 뒤입니다.</strong> 지금은 구현이 끝난 상태이지 실환경 완료 상태는 아닙니다.</div></section>
-<footer class="footer">M10 Final Design · FROZEN · IMPLEMENTATION PASS · M10-05 REAL-RUN NEXT · 2026-08-27</footer></main></body></html>
+M10_REAL_RUN = PASS</div><p><code>tool_count=2</code>는 MCP 기능 종류 2개를 뜻하고, <code>evidence_count=6</code>은 검색된 Knowledge 3개를 뒷받침하는 실제 Jira 근거 총 6개를 뜻합니다.</p></section>
+<section><h2>8. 이번 Real-run에서 얻은 운영 메모</h2><div class="grid3"><div class="card"><h3>Python dependency</h3><p><code>No module named mcp</code>는 현재 interpreter dependency 문제였습니다.</p></div><div class="card"><h3>Query 입력</h3><p>Windows PowerShell에서는 <code>Read-Host</code>를 사용했습니다.</p></div><div class="card"><h3>Artifact 경로</h3><p><code>McpRuntimeSettingsError</code>는 SQLite/FAISS 경로 설정 문제였습니다.</p></div></div></section>
+<section><h2>9. 다음 경계</h2><p>M10은 완료됐습니다. 다음 Milestone은 아직 정의하지 않습니다. 운영화·Agent 연동·retrieval hardening 중 우선순위를 별도 의사결정으로 정합니다.</p></section><footer class="footer">M10 Final Design · FROZEN · IMPLEMENTATION PASS · REAL-RUN PASS · DONE · 2026-08-27</footer></main></body></html>
