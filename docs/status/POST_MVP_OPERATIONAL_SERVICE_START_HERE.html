@@ -1,75 +1,34 @@
 <!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M0~M11 Functional MVP 이후 Continuous Jira Knowledge Service를 새 세션에서 이어가기 위한 인수인계 문서"><title>Post-MVP · Operational Service · Start Here</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.next{border:2px solid var(--blue);background:#edf3ff}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}.top a{display:inline-block;margin:0 8px 10px 0}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
-<script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="jira_knowledge_db_current_status.html">Current Status</a><a href="M11_COMPLETION.html">M11 Completion</a><a href="../architecture/jira_knowledge_operational_service_phase.html">Operational Service Phase</a><a href="../architecture/jira_knowledge_mcp_service_target.html">Remote MCP Component</a></nav><header class="hero"><span class="eyebrow">NEXT SESSION HANDOFF · 2026-08-27</span><h1>새 세션은 여기서 시작합니다.</h1><p>M0~M11 Functional MVP는 완료됐습니다. 다음 세션의 목적은 MVP 기능을 더 만드는 것이 아니라, <strong>Jira가 계속 변해도 최신 지식이 자동으로 수집·갱신·검색·서비스되는 Continuous Jira Knowledge Service</strong>를 설계하고 구현하는 것입니다.</p><span class="state">READ THIS FIRST · THEN DESIGN SYNC CONTRACT</span></header>
-<section><h2>1. 현재 프로젝트 위치</h2><div class="flow">M0~M11 = Functional MVP · DONE / PASS
+<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M0~M11 Functional MVP 이후 Continuous Jira Knowledge Service를 이어가기 위한 최신 인수인계 문서. Sync Contract FROZEN, Schema Design current."><title>Post-MVP · Operational Service · Start Here</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.next{border:2px solid var(--blue);background:#edf3ff}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="jira_knowledge_db_current_status.html">Current Status</a><a href="../architecture/jira_sync_contract.html">FROZEN Sync Contract</a><a href="../architecture/jira_sync_contract_easy_guide.html">쉬운 가이드</a><a href="../architecture/jira_sync_state_project_registry_design_draft.html">현재 Schema 설계</a></nav><header class="hero"><span class="eyebrow">LATEST HANDOFF · 2026-08-27</span><h1>새 세션은 여기서 시작합니다.</h1><p>M0~M11 Functional MVP는 완료했고, Continuous Jira Knowledge Service의 <strong>Sync Contract D1~D8도 사용자와 합의해 FROZEN</strong>했습니다. 다음 작업은 계약을 다시 논의하는 것이 아니라 <strong>Sync State / Project Registry DB Schema를 설계·Freeze</strong>한 뒤 구현하는 것입니다.</p><span class="state">MVP DONE · SYNC CONTRACT FROZEN · SCHEMA DESIGN CURRENT</span></header>
+<section><h2>1. 현재 위치</h2><div class="flow">M0~M11 Functional MVP = DONE / PASS
 
-Jira 수집
-→ Knowledge 생성/검토
-→ Versioned SQLite
-→ BGE-M3 Embedding
-→ FAISS Top-3 Retrieval
-→ Evidence round-trip
-→ MCP 2 tools
-→ OpenCode 자동 Tool 선택
-→ Jira description/comment 근거 추적
+Sync Contract learning           DONE
+Sync Contract D1~D8 decisions    DONE
+Official Sync Contract           FROZEN
+Easy Guide                       DONE
 
-여기까지 실제 사용자 환경에서 검증 완료</div><div class="box good"><b>중요한 해석</b><p>이것은 최종 서비스 완료가 아닙니다. 지금까지는 한 번 준비된 Pilot 데이터로 전체 기술 경로가 실제로 동작한다는 것을 증명한 MVP입니다.</p></div></section>
-<section><h2>2. 최종적으로 서비스해야 하는 것</h2><div class="grid2"><div class="box next"><b>A. 지속적인 Jira 업데이트</b><p>신규/수정 이슈와 comment, relationship, custom field 변화가 다음 sync에 반영되어야 합니다.</p></div><div class="box next"><b>B. Project 추가·변화 반영</b><p>매 sync에서 접근 가능한 프로젝트 전체를 discovery하고 새 프로젝트는 자동으로 초기 ingest 대상에 포함합니다.</p></div><div class="box next"><b>C. 변경분만 하위 파이프라인 갱신</b><p>unchanged는 재사용하고 new/changed만 Issue Version → Knowledge → Embedding → FAISS까지 전파합니다.</p></div><div class="box next"><b>D. 중앙 MCP 서비스</b><p>팀원 OpenCode는 Remote MCP endpoint만 사용하고 서버가 SQLite/FAISS/.env/BGE 설정을 소유합니다.</p></div><div class="box next"><b>E. 운영 자동화</b><p>주기 실행, checkpoint/resume, retry, 실패 격리, logging, health, 상태 확인이 필요합니다.</p></div><div class="box warn"><b>F. 접근권한 정책</b><p>프로젝트 권한 상실과 팀원별 Jira 접근권한을 중앙 서비스에서 어떻게 처리할지 반드시 결정해야 합니다.</p></div></div></section>
-<section><h2>3. 목표 운영 흐름</h2><div class="flow">Jira
-  ↓
-Project Discovery
-  ├─ 신규 Project      → Initial Ingest
-  ├─ 기존 Project      → Delta Sync
-  └─ 사라짐/No Access  → 정책 판단
-  ↓
-Issue Delta Detection
-  ├─ unchanged → reuse
-  ├─ new       → 새 Version 생성
-  └─ changed   → 새 Version 생성
-  ↓
-Knowledge Delta
-  ↓
-Embedding Delta
-  ↓
-FAISS Active Update
-  ↓
-Central Remote MCP / HTTPS
-  ↓
-Team OpenCode</div></section>
-<section><h2>4. 이미 합의된 원칙 · 다시 논의하지 않아도 되는 것</h2><table><thead><tr><th>항목</th><th>현재 합의</th></tr></thead><tbody><tr><td>Jira 접근</td><td>읽기 전용 REST API. 인증 계정이 볼 수 있는 프로젝트를 discovery.</td></tr><tr><td>Jira 호출 제한</td><td>보수적 baseline 20 requests/minute, concurrency 1.</td></tr><tr><td>원본 우선</td><td>RAW가 사실의 최종 기준.</td></tr><tr><td>Version 판단</td><td><code>source_hash</code> 동일이면 기존 Issue Version 재사용, 변경이면 새 Version.</td></tr><tr><td>History / Active</td><td>History는 보존하고 Active Retrieval은 최신 accepted Generation만 사용.</td></tr><tr><td>Identity</td><td><code>jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_</code>.</td></tr><tr><td>Embedding</td><td>BAAI/bge-m3, 1024 dimensions. 변경 없는 text는 재사용하는 방향.</td></tr><tr><td>Retrieval</td><td>현재 baseline IndexFlatIP / cosine / Top-3 / no threshold / no reranker.</td></tr><tr><td>운영 갱신</td><td><strong>delta-first</strong>. full rebuild는 복구/검증/마이그레이션 경로.</td></tr><tr><td>MCP 역할</td><td>검색/근거 복원만 담당. 생성형 Agent는 외부 OpenCode.</td></tr><tr><td>MCP 서비스 형태</td><td>local stdio는 MVP 검증용. 최종은 중앙 Remote MCP.</td></tr><tr><td>서비스 설정</td><td><code>.env</code> 기본, OS env가 override. secret은 Git에 커밋하지 않음.</td></tr></tbody></table></section>
-<section><h2>5. 다음 세션에서 가장 먼저 해야 할 일</h2><div class="box next"><b>첫 작업 = Sync Contract 설계</b><p>코드부터 만들지 않습니다. 먼저 “무엇이 바뀌었다고 판단하고, 어디까지 재처리하며, 어떤 상태를 저장하고, 실패 시 어디서 재개하는가”를 문서로 Freeze합니다.</p></div><div class="flow">NEXT SESSION STEP 1
-Sync Contract
+CURRENT
+→ Sync State / Project Registry DB Schema Design
+→ review / freeze
+→ implementation</div></section>
+<section><h2>2. 반드시 먼저 읽을 문서</h2><div class="grid2"><div class="box good"><b>1. 공식 구현 기준</b><p><code>docs/architecture/jira_sync_contract.html</code></p><p>D1~D8 FROZEN Contract.</p></div><div class="box good"><b>2. 이해용 가이드</b><p><code>docs/architecture/jira_sync_contract_easy_guide.html</code></p><p>결정 이유와 비유.</p></div><div class="box next"><b>3. 현재 작업</b><p><code>docs/architecture/jira_sync_state_project_registry_design_draft.html</code></p><p>상태 Entity/필드 설계 초안.</p></div><div class="box"><b>4. 전체 목표</b><p><code>docs/architecture/jira_knowledge_operational_service_phase.html</code></p><p>Continuous Service 전체 그림.</p></div></div></section>
+<section><h2>3. Sync Contract 최종 결정</h2><table><thead><tr><th>Decision</th><th>FROZEN 내용</th></tr></thead><tbody><tr><td>D1</td><td>Project별 독립 committed Watermark.</td></tr><tr><td>D2</td><td>5분 Overlap, 고정 upper, <code>updated ASC, id ASC</code>.</td></tr><tr><td>D3</td><td><code>jira_id + source_hash</code>로 NEW/CHANGED/UNCHANGED. Jira updated는 후보 탐색.</td></tr><tr><td>D4</td><td><code>semantic_v2</code>: Issue/Comment updated_at과 경로를 hash에서 제외.</td></tr><tr><td>D5</td><td>Source/downstream Checkpoint 분리, completed 재사용, 실패 Stage부터 Resume.</td></tr><tr><td>D6</td><td><code>project_id</code> Registry. Project/Issue 삭제·비노출은 Knowledge 삭제 이벤트가 아니며 Retrieval 유지.</td></tr><tr><td>D7</td><td>SOURCE_COMMITTED와 PUBLISHED 분리. 새 Publish 전까지 기존 Published Knowledge 유지.</td></tr><tr><td>D8</td><td>Run = completed/partial/failed. unavailable Project는 skip이며 실패 아님.</td></tr></tbody></table></section>
+<section><h2>4. 특히 다시 뒤집으면 안 되는 원칙</h2><div class="grid2"><div class="box good"><b>Jira Source Lifecycle ≠ Knowledge Lifecycle</b><p>Jira에서 삭제되었다고 Knowledge/Vector를 자동 삭제하지 않습니다.</p></div><div class="box good"><b>Source Commit ≠ Publish</b><p>새 Source를 확보해도 새 Retrieval이 완성될 때까지 기존 Published Knowledge를 제공합니다.</p></div><div class="box good"><b>Delta-first</b><p>중복 후보는 허용하되 실제 new/changed만 비싼 downstream을 수행합니다.</p></div><div class="box good"><b>Fail forward</b><p>성공한 독립 작업은 보존하고 실패한 Stage만 재시도합니다. 전역 rollback을 하지 않습니다.</p></div></div></section>
+<section><h2>5. 현재 Schema Design 초안</h2><div class="flow">sync_run
+= 한 번의 운영 Sync
 
-결정해야 할 것
-1. Sync Run의 identity와 상태
-2. 마지막 성공 sync를 어떻게 기록할지
-3. Project Discovery 결과를 어떻게 비교할지
-4. Jira updated 기준 delta query / overlap 정책
-5. new / changed / unchanged 판정
-6. comment / relationship / custom field 변화 포함 방식
-7. source_hash 계산과 Version 생성 경계
-8. 부분 실패 / checkpoint / resume
-9. Project 삭제 vs 권한 상실 vs 일시 오류 구분
-10. Sync 완료를 언제 확정할지</div></section>
-<section><h2>6. Sync Contract 다음의 권장 진행 순서</h2><table><thead><tr><th>순서</th><th>작업 축</th><th>핵심 결과</th></tr></thead><tbody><tr><td>1</td><td>Sync State / Project Registry</td><td>Project discovery 비교, sync run/watermark/checkpoint 계약</td></tr><tr><td>2</td><td>Delta Jira Collection</td><td>신규/변경 Issue만 안전하게 RAW로 수집</td></tr><tr><td>3</td><td>Incremental Knowledge Update</td><td>변경 Version만 Knowledge/Review/Active 상태 갱신</td></tr><tr><td>4</td><td>Incremental Embedding / FAISS</td><td>변경 Knowledge만 embedding/index 반영, obsolete Active 제거</td></tr><tr><td>5</td><td>Central Remote MCP</td><td>Streamable HTTP 기반 중앙 MCP + 팀원 OpenCode remote 연결</td></tr><tr><td>6</td><td>Operations</td><td>scheduling, retry, health, logging, concurrency, 팀 Pilot</td></tr></tbody></table></section>
-<section><h2>7. Milestone 분할 초안 · 아직 Freeze 아님</h2><div class="grid3"><div class="box"><b>후보 A</b><p>Sync Contract + Project Registry + Watermark.</p></div><div class="box"><b>후보 B</b><p>Jira Delta Collection + checkpoint/resume.</p></div><div class="box"><b>후보 C</b><p>Knowledge Delta Materialization.</p></div><div class="box"><b>후보 D</b><p>Embedding / FAISS Delta Update.</p></div><div class="box"><b>후보 E</b><p>Remote MCP Service.</p></div><div class="box"><b>후보 F</b><p>Scheduling / Observability / Team Pilot.</p></div></div><div class="box warn"><b>주의</b><p>이 분할은 다음 세션 토론용 초안입니다. M12, M13 같은 번호를 아직 확정하지 않았습니다.</p></div></section>
-<section><h2>8. 아직 결정되지 않은 핵심 정책</h2><div class="grid2"><div class="box warn"><b>Project가 사라졌을 때</b><p>Jira에서 삭제된 것인지, 서비스 계정 권한만 회수된 것인지, 일시 장애인지 구분해야 합니다. 기존 Knowledge의 active 비활성화 시점은 아직 미정입니다.</p></div><div class="box warn"><b>팀원별 Jira 권한</b><p>중앙 MCP가 서비스 계정이 볼 수 있는 모든 Jira 지식을 모두에게 제공해도 되는지, 사용자별 필터링이 필요한지 미정입니다.</p></div><div class="box"><b>Sync cadence</b><p>몇 분/몇 시간/몇 일 주기로 돌릴지 아직 미정입니다.</p></div><div class="box"><b>Watermark 전략</b><p>정확한 updated timestamp 경계, overlap window, 중복 재수집 허용 범위를 다음 Sync Contract에서 결정합니다.</p></div><div class="box"><b>Vector atomicity</b><p>DB Active 상태와 FAISS 갱신을 어떤 순서로 안전하게 전환할지 미정입니다.</p></div><div class="box"><b>Remote MCP 운영</b><p>TLS, auth, reverse proxy, 배포 방식, timeout/concurrency는 아직 Freeze하지 않았습니다.</p></div></div></section>
-<section><h2>9. 다음 세션에서 읽을 문서 순서</h2><div class="flow">1. 이 문서
-   POST_MVP_OPERATIONAL_SERVICE_START_HERE.html
+project_registry
+= project_id 기반 장기 Project 주소록
 
-2. 전체 운영 목표
-   ../architecture/jira_knowledge_operational_service_phase.html
+project_sync_state
+= Project별 committed_watermark / 최근 Source 상태
 
-3. 현재 Source of Truth
-   jira_knowledge_db_current_status.html
+sync_project_run
+= 이번 Run에서 Project 하나의 lower/upper/result
 
-4. MVP 마지막 완료 기록
-   M11_COMPLETION.html
-
-5. 필요할 때만 세부 구조 확인
-   ../PIPELINE_OVERVIEW.html
-   ../architecture/jira_data_relationship_map.html
-   ../architecture/jira_knowledge_mcp_service_target.html</div></section>
-<section><h2>10. 새 세션의 첫 요청 예시</h2><div class="box good"><p><strong>“<code>docs/status/POST_MVP_OPERATIONAL_SERVICE_START_HERE.html</code>과 연결된 운영 서비스 문서를 읽고 현재 맥락을 파악해. M0~M11은 MVP로 완료됐고, 이제 Continuous Jira Knowledge Service를 시작할 거야. 구현하지 말고 먼저 Sync Contract의 목적, 범위, 결정해야 할 항목과 권장 설계를 나와 함께 검토하자.”</strong></p></div></section>
-<section><h2>11. 다음 세션의 완료 목표</h2><div class="box next"><b>첫 세션에서 코드를 완성하는 것이 목표가 아닙니다.</b><p>다음 세션의 성공 조건은 <strong>Sync Contract를 이해하고 주요 정책을 사용자와 합의해 HTML 문서로 Freeze</strong>하는 것입니다. 그 뒤에 첫 운영 Milestone 번호와 구현 Gate를 확정합니다.</p></div></section>
-<footer>New-session handoff · M0~M11 Functional MVP complete · next action = design Sync Contract · 2026-08-27</footer></main></body></html>
+sync_issue_change
+= NEW/CHANGED Work Item + Knowledge/Embedding/Publish checkpoint</div><div class="box warn"><b>아직 Freeze하지 않은 것</b><p>물리 DB 위치, status enum 최종명, Work Item ID 형식, Source Commit transaction boundary, Published pointer 방식, migration 전략.</p></div></section>
+<section><h2>6. 권장 다음 순서</h2><table><thead><tr><th>순서</th><th>작업</th></tr></thead><tbody><tr><td>1</td><td><strong>Sync State / Project Registry Schema 검토·Freeze</strong></td></tr><tr><td>2</td><td>Schema / migration / repository layer 구현 및 테스트</td></tr><tr><td>3</td><td>Delta Jira Collection</td></tr><tr><td>4</td><td>Incremental Knowledge Update</td></tr><tr><td>5</td><td>Incremental Embedding / FAISS Publish</td></tr><tr><td>6</td><td>Central Remote MCP</td></tr><tr><td>7</td><td>Scheduling / Retry / Health / Team Pilot</td></tr></tbody></table></section>
+<section><h2>7. 아직 다른 단계에서 결정할 것</h2><div class="grid2"><div class="box warn"><b>팀원별 권한</b><p>Remote MCP auth/authorization 설계에서 결정.</p></div><div class="box warn"><b>Sync cadence</b><p>Operations 단계에서 결정.</p></div><div class="box warn"><b>Remote MCP 배포</b><p>TLS/auth/reverse proxy/concurrency/timeout은 서비스 단계에서 결정.</p></div><div class="box warn"><b>운영 Milestone 번호</b><p>Schema 설계 범위가 정리된 뒤 M12 이후 번호를 Freeze.</p></div></div></section>
+<section><h2>8. 다음 세션 첫 요청 예시</h2><div class="box next"><p><strong>“<code>docs/status/POST_MVP_OPERATIONAL_SERVICE_START_HERE.html</code>과 <code>docs/architecture/jira_sync_contract.html</code>을 기준으로 맥락을 파악해. Sync Contract D1~D8은 FROZEN이므로 다시 설계하지 말고, <code>jira_sync_state_project_registry_design_draft.html</code>의 물리 DB 위치·테이블·상태 enum·transaction boundary부터 나와 함께 검토하자.”</strong></p></div></section>
+<footer>Latest handoff · M0~M11 DONE · Sync Contract FROZEN · current = Sync State / Project Registry Schema Design · 2026-08-27</footer></main></body></html>
