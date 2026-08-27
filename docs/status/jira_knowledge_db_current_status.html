@@ -1,57 +1,47 @@
 <!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M11 MVP 완료, Sync Contract FROZEN, Sync State Schema S1~S5 FIXED, S6 ID/Key Strategy 검토 중"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../architecture/jira_sync_contract.html">FROZEN Sync Contract</a><a href="../architecture/jira_sync_state_project_registry_design_draft.html">Schema Design Board</a><a href="../architecture/jira_sync_state_schema_decision6_id_key_strategy.html">S6 ID / Key</a><a href="POST_MVP_OPERATIONAL_SERVICE_START_HERE.html">Handoff</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-27</span><h1>M0~M11 MVP 완료.<br>Sync State Schema를 Freeze하는 중입니다.</h1><p>Functional MVP와 Sync Contract D1~D8은 완료됐습니다. Operational State Schema는 <strong>S1~S5까지 FIXED</strong>했고 현재 <strong>S6 ID / Key Strategy</strong>를 검토합니다.</p><span class="state">M0~M11 DONE · SYNC CONTRACT FROZEN · SCHEMA S1~S5 FIXED · S6 REVIEWING</span></header>
-<div class="kpis"><div class="kpi"><b>285</b><span>MVP Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>8/8</b><span>Sync Decisions FIXED</span></div><div class="kpi"><b>4</b><span>Operational State Domain Tables</span></div><div class="kpi"><b>S6</b><span>ID / Key Strategy CURRENT</span></div></div>
+<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M11 MVP 완료, Sync Contract FROZEN, Sync State Schema S1~S6 FIXED, S7 Final DDL 검토 중"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../architecture/jira_sync_contract.html">FROZEN Sync Contract</a><a href="../architecture/jira_sync_state_project_registry_design_draft.html">Schema Design Board</a><a href="../architecture/jira_sync_state_schema_decision7_final_ddl.html">S7 DDL</a><a href="POST_MVP_OPERATIONAL_SERVICE_START_HERE.html">Handoff</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-27</span><h1>M0~M11 MVP 완료.<br>Sync State Schema는 마지막 DDL 검토 단계입니다.</h1><p>Functional MVP와 Sync Contract D1~D8은 완료됐습니다. Operational State Schema는 <strong>S1~S6까지 FIXED</strong>했고, 현재 실제 SQLite <strong>S7 Final DDL</strong>을 검토합니다.</p><span class="state">M0~M11 DONE · SYNC CONTRACT FROZEN · SCHEMA S1~S6 FIXED · S7 REVIEWING</span></header>
+<div class="kpis"><div class="kpi"><b>285</b><span>MVP Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>8/8</b><span>Sync Decisions FIXED</span></div><div class="kpi"><b>4</b><span>Operational State Domain Tables</span></div><div class="kpi"><b>S7</b><span>Final SQLite DDL CURRENT</span></div></div>
 <section><h2>1. 완료된 큰 단계</h2><div class="grid4"><div class="box good"><b>M0~M7</b><p>Jira 수집부터 Versioned SQLite까지 완료.</p></div><div class="box good"><b>M8~M9</b><p>BGE-M3 + FAISS Retrieval PASS.</p></div><div class="box good"><b>M10~M11</b><p>Evidence/MCP + OpenCode 실제 소비자 검증 PASS.</p></div><div class="box good"><b>Sync Contract</b><p>D1~D8 FROZEN.</p></div></div></section>
 <section><h2>2. Sync State Schema 결정 상태</h2><div class="flow">S1 Storage Location        FIXED
-→ existing data/state/collector.db
-
 S2 Entity Layout           FIXED
-→ 4 operational domain tables
-
 S3 Columns / Status        FIXED
-→ required columns / enums / source resume cursor
-
 S4 Transaction Boundary   FIXED
-→ source_committed + Watermark atomic
-→ durable output first, State second
-
 S5 Migration Contract     FIXED
-→ State Schema v1
-→ explicit migration / backup / validation / rollback
+S6 ID / Key Strategy      FIXED
 
-S6 ID / Key Strategy      REVIEWING
-→ external Jira IDs
-→ sr_ UUID4 run ID
-→ sw_ deterministic work ID
-→ PK / FK / UNIQUE</div></section>
-<section><h2>3. 확정된 4개 Operational State Table</h2><div class="grid2"><div class="box"><b>sync_run</b><p>전체 Sync 범위, fixed upper, discovery/source/publish/run 상태.</p></div><div class="box"><b>project_state</b><p>Project identity, visibility, committed Watermark.</p></div><div class="box"><b>sync_project_run</b><p>Run × Project lower/upper, counts, stable Source cursor.</p></div><div class="box"><b>sync_issue_change</b><p>NEW/CHANGED Work Item의 Knowledge→Embedding→Publish 상태.</p></div></div></section>
-<section><h2>4. S5 Migration Contract · FIXED</h2><div class="flow">STATE_SCHEMA_VERSION = 1
+CURRENT
+S7 Final SQLite DDL       REVIEWING
+→ CREATE TABLE
+→ PK / FK / UNIQUE / CHECK
+→ minimum operational indexes
+→ constraint vs application validation boundary</div></section>
+<section><h2>3. 최종 구조</h2><div class="grid2"><div class="box"><b>sync_run</b><p>전체 Sync 범위, fixed upper, discovery/source/publish/run 상태.</p></div><div class="box"><b>project_state</b><p>Project identity, visibility, committed Watermark.</p></div><div class="box"><b>sync_project_run</b><p>Run × Project lower/upper, counts, stable Source cursor.</p></div><div class="box"><b>sync_issue_change</b><p>NEW/CHANGED Work Item의 Knowledge→Embedding→Publish 상태.</p></div></div><p><code>state_schema_migration</code>은 4개 Domain Table과 별도의 Migration 기술 메타데이터입니다.</p></section>
+<section><h2>4. 확정된 안전 규칙</h2><div class="flow">State Schema v1
+→ explicit migration only
+→ backup / fingerprint / validation / rollback
 
-legacy DB
-→ silent auto-migration 금지
-→ known fingerprint만 migrate
-→ consistent backup 필수
-→ additive migration
-→ legacy rows 보존
-→ project_id / Watermark guess backfill 금지
-→ validation + regression PASS 후 cutover
-→ rollback = verified backup restore</div></section>
-<section><h2>5. 현재 S6 추천안</h2><div class="box next"><b>ID / Key Strategy</b><p>Identity의 성격에 맞게 외부 ID, 실행 ID, deterministic Work ID를 분리합니다.</p></div><div class="flow">project_state PK
-→ Jira project_id
+Identity
+→ project_id / jira_id = Jira identity
+→ sync_run_id = sr_ + UUID4
+→ work_item_id = sw_ + deterministic SHA-256
 
-sync_run PK
-→ sr_ + UUID4 full hex
+Crash Safety
+→ actual durable output first
+→ State checkpoint second
+→ source_committed + Watermark same transaction
+→ actual Retrieval publish first
+→ State published second</div></section>
+<section><h2>5. 현재 S7 핵심</h2><div class="box next"><b>Final DDL Candidate</b><p>구조적 모순은 SQLite 제약으로 막고, 여러 저장소에 걸친 불변식은 명시적 StateStore transaction/validation 경로로 강제합니다.</p></div><div class="flow">DB에서 강제
+PK / FK / UNIQUE
+status enum CHECK
+count >= 0
+cursor pair consistency
+stage dependency
+semantic Work Item duplicate prevention
 
-sync_project_run PK
-→ (sync_run_id, project_id)
-
-sync_issue_change PK
-→ sw_ + deterministic SHA-256
-→ UNIQUE(jira_id, source_hash, source_hash_profile)
-
-State DB 내부
-→ SQLite physical FK
-
-Knowledge DB 참조
-→ logical ID only</div></section>
-<section><h2>6. 다음 단계</h2><table><thead><tr><th>순서</th><th>작업</th><th>상태</th></tr></thead><tbody><tr><td>1</td><td>S6 ID / Key Strategy</td><td><strong>CURRENT</strong></td></tr><tr><td>2</td><td>S7 actual DDL / CHECK / INDEX</td><td>NEXT</td></tr><tr><td>3</td><td>Sync State Schema Contract Freeze</td><td>계획</td></tr><tr><td>4</td><td>Migration + StateStore 구현/테스트</td><td>계획</td></tr><tr><td>5</td><td>Delta Jira Collection</td><td>계획</td></tr><tr><td>6</td><td>Incremental Knowledge / Embedding / FAISS</td><td>계획</td></tr></tbody></table></section><footer>M0~M11 DONE / PASS · Sync Contract FROZEN · Schema S1~S5 FIXED · current = S6 ID / Key Strategy Review · 2026-08-27</footer></main></body></html>
+Application에서 강제
+source_committed + watermark atomicity
+Knowledge DB logical ID existence
+actual Retrieval active pointer
+Source Head vs Published Head currentness</div></section>
+<section><h2>6. S7 승인 후</h2><table><thead><tr><th>순서</th><th>작업</th><th>상태</th></tr></thead><tbody><tr><td>1</td><td>S7 Final DDL</td><td><strong>CURRENT</strong></td></tr><tr><td>2</td><td>Sync State Schema Contract 통합 / Freeze</td><td>NEXT</td></tr><tr><td>3</td><td>Migration + StateStore 구현/테스트</td><td>계획</td></tr><tr><td>4</td><td>Delta Jira Collection</td><td>계획</td></tr><tr><td>5</td><td>Incremental Knowledge / Embedding / FAISS</td><td>계획</td></tr></tbody></table></section><footer>M0~M11 DONE / PASS · Sync Contract FROZEN · Schema S1~S6 FIXED · current = S7 Final DDL Review · 2026-08-27</footer></main></body></html>
