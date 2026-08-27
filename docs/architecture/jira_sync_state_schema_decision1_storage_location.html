@@ -1,42 +1,10 @@
-<!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sync State Schema Decision 1 최종 결정. 기존 collector.db를 Operational Sync State DB로 확장하고 명시적 migration을 필수 조건으로 한다."><title>Sync State Schema · S1 Final · Storage Location</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1080px;margin:auto;padding:42px 22px 84px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:44px}h2{font-size:29px}.lead{color:var(--muted)}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff}.footer{margin-top:54px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">FROZEN Sync Contract</a><a href="jira_sync_state_project_registry_design_draft.html">Schema Design Draft</a></nav><header class="hero"><div>SYNC STATE / PROJECT REGISTRY · SCHEMA DECISION 1 · FINAL · 2026-08-27</div><h1>기존 State DB를<br>운영 Sync State DB로 확장한다</h1><p>운영 Sync의 Watermark, Project Registry, Run 상태, Checkpoint, downstream 진행 상태는 기존 <code>data/state/collector.db</code>의 책임을 확장해 저장합니다.</p><span class="state">S1 FIXED · OPTION A · MIGRATION REQUIRED</span></header>
-<section><h2>1. 최종 결정</h2><div class="card good"><h3>A안 확정</h3><div class="flow">Control Plane
-기존 data/state/collector.db 재사용
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S1 · Storage Location · Current</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--green:#14845f;--blue:#3157d5;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1000px;margin:auto;padding:42px 22px 84px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}a{color:var(--blue);font-weight:800}.card{margin-top:18px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">현재 Schema v2</a></p><header class="hero"><div>S1 · FIXED · RETAINED BY TWO-LOOP</div><h1>기존 collector.db를 Operational State DB로 확장한다.</h1><p>2-Loop 채택 후에도 S1의 저장소 책임은 그대로 유지됩니다.</p></header><section class="card"><h2>현재 결정</h2><div class="flow">Control Plane
+→ data/state/collector.db
+→ source_sync_run
+→ project_state
+→ source_project_run
+→ sync_issue_change
+→ processing_run
 
-현재
-collection_runs
-project_runs
-issue_checkpoints
-artifacts
-
-운영 확장
-sync_run
-project_registry
-project_sync_state
-sync_project_run
-sync_issue_change</div><p>Knowledge DB는 Issue Version, Generation, Attempt, Knowledge Item, Evidence 등 업무지식 Data Plane에 집중합니다.</p></div></section>
-<section><h2>2. 왜 이 구조인가?</h2><div class="grid2"><div class="card"><h3>State DB</h3><p>“작업이 어디까지 진행됐는가?”를 답합니다. Resume, Watermark, retry, error, Project 상태처럼 자주 바뀌는 Control Plane입니다.</p></div><div class="card"><h3>Knowledge DB</h3><p>“어떤 업무지식과 이력이 만들어졌는가?”를 답합니다. 장기 보존되는 Data Plane입니다.</p></div></div><div class="callout"><strong>책임 경계:</strong> 실행 상태와 업무지식 내용을 섞지 않습니다. 두 DB는 필요할 때 안정적인 ID로 논리적으로 연결하며 SQLite 간 물리 FK를 요구하지 않습니다.</div></section>
-<section><h2>3. Migration은 선택이 아니라 필수입니다</h2><div class="card warn"><h3>MANDATORY MIGRATION</h3><p>기존 <code>collector.db</code> 파일을 재사용한다는 것은 현재 Schema를 그대로 운영에 쓰겠다는 뜻이 아닙니다. Continuous Sync에 필요한 새 상태를 추가하려면 <strong>명시적인 Schema Migration이 반드시 선행</strong>되어야 합니다.</p></div><div class="flow">기존 collector.db
-        ↓
-사전 Backup / 현재 Schema 확인
-        ↓
-Versioned Migration 실행
-        ↓
-기존 collection_runs / project_runs /
-issue_checkpoints / artifacts 보존
-        ↓
-새 Operational Sync 테이블 추가
-        ↓
-Migration 후 무결성 / 기존 Resume 회귀 검증
-        ↓
-운영 Sync 사용 허용</div></section>
-<section><h2>4. Migration 필수 요구사항</h2><div class="grid2"><div class="card"><h3>기존 데이터 보존</h3><p>과거 MVP Run, Artifact, Issue Checkpoint를 삭제하거나 의미 변경하지 않습니다.</p></div><div class="card"><h3>Schema Version 관리</h3><p>현재 DB가 어느 Operational State Schema인지 판별할 수 있어야 합니다.</p></div><div class="card"><h3>반복 실행 안전성</h3><p>이미 Migration된 DB에 다시 실행해도 중복 테이블이나 데이터 손상이 없어야 합니다.</p></div><div class="card"><h3>검증 가능한 전환</h3><p>Migration 전 Backup, 후 무결성 검사와 기존 Collector Resume 회귀 테스트를 Gate로 둡니다.</p></div></div><div class="callout"><strong>금지:</strong> 운영 코드가 실행되면서 암묵적으로 테이블을 몇 개 추가하고 끝내는 방식으로 전환하지 않습니다. Migration 자체를 버전이 있는 명시적 구현/검증 단위로 다룹니다.</div></section>
-<section><h2>5. 파일명은 아직 유지</h2><p class="lead"><code>collector.db</code>라는 이름이 장기적으로 좁아 보이지만 파일 rename은 별도 Migration 범위를 만듭니다.</p><div class="flow">S1에서 확정
-→ 물리 DB = 기존 collector.db
-→ 책임 = Operational Sync State까지 확장
-→ Migration = 필수
-
-아직 미확정
-→ collector.db 이름 유지 여부
-→ operational_state.db 등으로 rename 여부</div><p>파일명 변경은 실제 Migration 설계 시 비용과 호환성을 보고 별도로 결정합니다.</p></section>
-<section><h2>6. 다음 결정</h2><div class="card"><h3>S2 · 5개 Entity 분리</h3><p><code>sync_run</code>, <code>project_registry</code>, <code>project_sync_state</code>, <code>sync_project_run</code>, <code>sync_issue_change</code>를 실제로 5개 테이블로 유지할지, 일부를 합칠지 검토합니다.</p></div></section><footer class="footer">S1 FINAL · existing collector.db reuse · explicit versioned migration REQUIRED · 2026-08-27</footer></main></body></html>
+Data Plane
+→ Knowledge DB</div></section><section class="card"><h2>Migration은 여전히 필수</h2><p>기존 DB를 단순 재사용하는 것이 아니라 explicit versioned migration으로 확장합니다. 2-Loop revision에 따라 실제 목표 버전은 <strong>STATE_SCHEMA_VERSION = 2</strong>입니다.</p></section><section class="card"><h2>왜 새 DB를 만들지 않나?</h2><p>Source cursor, Watermark, Work backlog, Processing checkpoint는 모두 실행 Control Plane의 상태입니다. 기존 Collector Resume State와 같은 책임에 속하므로 하나의 State DB로 유지합니다.</p></section><footer>S1 current · storage location unchanged · schema v2 · 2026-08-28</footer></main></body></html>
