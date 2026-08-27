@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M10 Troubleshooting · McpRuntimeSettingsError</title><link rel="stylesheet" href="milestone.css"></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_COMPLETION.html">M10 Completion</a><a href="M10_REAL_RUN_GATE.html">Real-run Gate</a></nav><header class="hero"><span class="eyebrow">M10 TROUBLESHOOTING · 2026-08-27</span><h1>McpRuntimeSettingsError</h1><p>M10 Real-run에서 SQLite와 FAISS artifact를 열기 전에 필요한 로컬 경로 환경변수가 없거나, 지정한 경로가 실제로 존재하지 않을 때 발생하는 설정 오류입니다.</p><span class="state">RUNTIME SETTINGS ISSUE · FAISS SEARCH 전 단계</span></header><section class="beginner"><span class="badge">먼저 이해하기</span><h2>이 에러가 났을 때 FAISS 검색은 아직 시작되지 않았습니다</h2><div class="flow">M10_REAL_RUN_QUERY
+  ↓
+런타임 설정 로드
+  ├─ JIRA_KNOWLEDGE_DB_PATH 확인
+  └─ JIRA_RETRIEVAL_ARTIFACT_DIR 확인
+        ↓
+     여기까지 성공해야
+        ↓
+BGE-M3 → FAISS → ki_ → ke_ → source</div><p><code>McpRuntimeSettingsError</code>는 위의 경로 준비 단계에서 멈춘 것입니다. FAISS가 Jira 원문을 직접 검색하는 구조도 아닙니다. FAISS는 Knowledge vector를 검색하고, SQLite가 해당 Knowledge의 실제 Evidence source를 복원합니다.</p></section><section><h2>필수 경로 2개</h2><table><thead><tr><th>환경변수</th><th>가리키는 것</th></tr></thead><tbody><tr><td><code>JIRA_KNOWLEDGE_DB_PATH</code></td><td>M7에서 만든 실제 SQLite DB 파일</td></tr><tr><td><code>JIRA_RETRIEVAL_ARTIFACT_DIR</code></td><td>M9의 <code>index.faiss</code>, <code>index.mapping.jsonl</code>, <code>index.manifest.json</code>가 있는 디렉터리</td></tr></tbody></table></section><section><h2>Windows PowerShell 확인</h2><div class="flow">Test-Path ".\data\knowledge_db\validation\20260804T043628Z.sqlite3"
+Test-Path ".\data\retrieval\runs\20260804T043628Z"</div><p>두 명령 모두 <code>True</code>여야 합니다. 실제 artifact 위치가 다르면 자신의 로컬 경로에 맞게 바꿉니다.</p><div class="flow">$env:JIRA_KNOWLEDGE_DB_PATH =
+    (Resolve-Path ".\data\knowledge_db\validation\20260804T043628Z.sqlite3").Path
+
+$env:JIRA_RETRIEVAL_ARTIFACT_DIR =
+    (Resolve-Path ".\data\retrieval\runs\20260804T043628Z").Path
+
+Write-Host "DB:" (Test-Path $env:JIRA_KNOWLEDGE_DB_PATH)
+Write-Host "FAISS:" (Test-Path $env:JIRA_RETRIEVAL_ARTIFACT_DIR)</div><p>정상이면 <code>DB: True</code>, <code>FAISS: True</code>가 출력됩니다.</p></section><section><h2>나중에 Linux로 포팅하면</h2><div class="flow">export JIRA_KNOWLEDGE_DB_PATH="/path/to/knowledge.sqlite3"
+export JIRA_RETRIEVAL_ARTIFACT_DIR="/path/to/retrieval/run"
+
+test -f "$JIRA_KNOWLEDGE_DB_PATH" && echo "DB OK"
+test -d "$JIRA_RETRIEVAL_ARTIFACT_DIR" && echo "FAISS DIR OK"</div></section><section><h2>이번 실전에서 배운 점</h2><div class="checks"><div class="check">✓ Query가 설정돼도 DB/FAISS 경로가 없으면 검색은 시작되지 않는다.</div><div class="check">✓ FAISS는 원문 저장소가 아니라 Knowledge vector 검색기다.</div><div class="check">✓ 원문 Evidence는 FAISS 결과의 <code>ki_</code>를 따라 SQLite의 <code>ke_</code>에서 복원한다.</div><div class="check">✓ 로컬 artifact 경로는 공개 문서에 절대경로로 기록하지 않는다.</div></div></section><footer>M10 troubleshooting · Windows current / Linux future port · runtime paths · 2026-08-27</footer></main></body></html>
