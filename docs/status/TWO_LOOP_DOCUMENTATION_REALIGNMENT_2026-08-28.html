@@ -1,0 +1,68 @@
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="2-Loop 아키텍처 채택 후 Jira Knowledge 프로젝트 전체 문서를 v2 기준으로 재정렬한 작업 기록"><title>Two-Loop Documentation Realignment · 2026-08-28</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.76}.wrap{max-width:1100px;margin:auto;padding:42px 22px 88px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{background:linear-gradient(130deg,#17264a,#3157d5);color:#fff}.card{margin-top:18px}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:48px;color:var(--muted);font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="../architecture/jira_operational_two_loop_architecture.html">2-Loop Architecture</a> · <a href="../architecture/jira_sync_state_schema_contract.html">State Schema v2</a></p><header class="hero"><div>DOCUMENTATION REALIGNMENT REPORT · 2026-08-28</div><h1>2-Loop 채택에 맞춰<br>프로젝트 문서 체계를 재정렬했습니다.</h1><p>이번 작업은 코드 구현이 아니라 상위 운영 아키텍처 변경을 모든 Current/Contract/Guide/Schema/Hub 문서에 일관되게 반영한 문서 동기화 작업입니다.</p></header><section class="card good"><h2>1. 확정한 상위 아키텍처</h2><div class="flow">Loop A · SOURCE SYNC
+→ Jira / RAW / ANALYSIS / Knowledge Input
+→ semantic_v2
+→ NEW / CHANGED / UNCHANGED
+→ SOURCE_COMMITTED / Watermark
+→ durable Work Item backlog
+
+Loop B · KNOWLEDGE PROCESSING / PUBLISH
+→ OpenCode / Review / Knowledge DB
+→ BGE-M3 / FAISS staging
+→ Atomic Publish
+
+Always-on Retrieval
+→ last-known-good Published Corpus → MCP → OpenCode User</div></section><section class="card"><h2>2. v1은 삭제하지 않고 역사로 보존</h2><p>2-Loop 채택 전에 S1~S7로 확정했던 단일 <code>sync_run</code> State Schema v1은 실제 배포 전에 superseded 되었습니다. 결정 이력을 잃지 않기 위해 삭제하지 않고 <code>jira_sync_state_schema_contract_v1_baseline.html</code>로 보존했습니다.</p><div class="flow">v1 · historical / never deployed
+sync_run = Source + Publish aggregate
+
+v2 · current
+source_sync_run
+processing_run
+sync_issue_change durable boundary</div></section><section class="card"><h2>3. Current Source of Truth</h2><table><thead><tr><th>문서</th><th>현재 역할</th></tr></thead><tbody><tr><td><code>jira_operational_two_loop_architecture.html</code></td><td>최상위 운영 구조</td></tr><tr><td><code>jira_sync_contract.html</code></td><td>D1~D9 Sync Contract v2</td></tr><tr><td><code>jira_sync_state_schema_contract.html</code></td><td>Operational State Schema v2</td></tr><tr><td><code>jira_sync_state_schema_decision7_final_ddl.html</code></td><td>실제 v2 SQLite DDL</td></tr><tr><td><code>jira_knowledge_pipeline_full_explained.html</code></td><td>M0~M11 + 2-Loop 전체 학습 지도</td></tr><tr><td><code>jira_knowledge_db_current_status.html</code></td><td>현재 진행 상태</td></tr><tr><td><code>POST_MVP_OPERATIONAL_SERVICE_START_HERE.html</code></td><td>새 세션 인수인계</td></tr></tbody></table></section><section class="card"><h2>4. 주요 문서 변경 범위</h2><div class="flow">Architecture
+→ 2-Loop 공식 문서 신규
+→ Critical Review = ADOPTED history
+→ Sync Contract v2
+→ D7 Source/Publish 경계 수정
+→ D8 historical/revised
+→ D9 Decision Board 반영
+→ Full Pipeline / Relationship Map / Operational Service / MCP Target 수정
+
+State Schema
+→ S1 유지
+→ S2 4→5 Domain Table revision
+→ S3 Source/Processing column 분리
+→ S4 Loop별 Transaction revision
+→ S5 Migration target v1→v2
+→ S6 sr_/pr_/sw_ identity
+→ S7 v2 DDL
+→ Schema v1 historical 보존
+
+Entrypoint
+→ Hub
+→ README
+→ AGENTS
+→ Current Status
+→ Handoff
+→ Pipeline Overview HTML/MD
+→ document registry
+→ documentation regression tests</div></section><section class="card warn"><h2>5. QA 중 발견한 Source Ready Race</h2><p>2-Loop에서 후보 Issue를 처리하는 T2 시점에 Work Item row를 먼저 만들 수 있는데, Project 전체 Source window가 아직 Commit되기 전에 Loop B가 그 row를 소비하는 race가 발견됐습니다.</p><div class="flow">잘못된 가능성
+T2: Work Item row 존재
+→ Loop B claim
+→ 이후 같은 Project의 다른 Source 후보 실패
+→ Project Source Commit 실패
+
+해결
+Loop B eligible iff
+last_source_committed_run_id IS NOT NULL
+AND
+last_source_committed_run_id = last_observed_source_run_id</div><p>T3 Project Commit에서 <code>source_committed + Watermark + Work Item Source Ready Gate</code>를 같은 State DB Transaction으로 확정하도록 Contract/Schema/DDL을 보강했습니다.</p></section><section class="card"><h2>6. Hub Frame / Navigation 보존</h2><p>Hub는 기존 Framework v1의 고정 5개 영역을 유지했습니다. 2-Loop History/Decision 문서는 새 6번째 영역을 만들지 않고 5번 Architecture/Policy 영역 안에 배치했습니다.</p><div class="flow">1. hub-start
+2. hub-roadmap
+3. hub-service
+4. hub-milestones
+5. hub-reference</div><p>새 HTML 문서도 공통 Document Shell v1/Registry 대상으로 등록했습니다.</p></section><section class="card"><h2>7. 구현은 아직 시작하지 않음</h2><p>이번 작업에서 Runtime/StateStore/Delta Collector/Processing Worker 코드는 변경하지 않았습니다. 현재는 구현 전에 상위 아키텍처와 문서 계약을 정렬한 상태입니다.</p></section><section class="card good"><h2>8. 현재 다음 결정</h2><p><strong>Intermediate Version supersede policy</strong>가 다음 의사결정입니다.</p><div class="flow">Source Loop가 빠르게
+V2 → V3 → V4
+
+Processing Loop는 아직 V2 미시작
+
+A. V2 / V3 / V4 모두 지식화
+B. Source Version은 모두 보존하지만
+   미시작 V2 / V3 Work는 supersede하고 V4 처리</div><p>이 정책 확정 후 State Schema v2 Migration/StateStore 구현으로 들어갑니다.</p></section><footer class="footer">Documentation realignment complete · Two-Loop v2 · no implementation yet · 2026-08-28</footer></main></body></html>
