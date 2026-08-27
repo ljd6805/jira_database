@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M10 MCP를 외부 OpenCode Agent에 연결해 실제 소비자 관점에서 검증하는 M11 계획"><title>M11 · OpenCode MCP Integration · CURRENT</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}.top a{display:inline-block;margin:0 8px 10px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_COMPLETION.html">M10 Completion</a><a href="jira_knowledge_db_current_status.html">Current Status</a></nav><header class="hero"><span class="eyebrow">M11 · CURRENT · 2026-08-27</span><h1>M10 MCP를<br>실제 OpenCode Agent에 연결합니다.</h1><p>M11은 프로젝트 내부에 Agent를 구현하는 단계가 아닙니다. M10에서 완성한 read-only MCP 서버를 외부 소비자인 OpenCode Agent에 등록하고, 실제 Agent가 두 Tool을 발견·호출·활용할 수 있는지 검증하는 통합 Pilot입니다.</p><span class="state">M10 DONE / PASS · M11 OPENCODE MCP INTEGRATION CURRENT</span></header>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M10 MCP를 외부 OpenCode Agent에 연결해 실제 소비자 관점에서 검증하는 M11 계획"><title>M11 · OpenCode MCP Integration · CURRENT</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}.top a{display:inline-block;margin:0 8px 10px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_COMPLETION.html">M10 Completion</a><a href="jira_knowledge_db_current_status.html">Current Status</a></nav><header class="hero"><span class="eyebrow">M11 · CURRENT · 2026-08-27</span><h1>M10 MCP를<br>실제 OpenCode Agent에 연결합니다.</h1><p>M11은 프로젝트 내부에 Agent를 구현하는 단계가 아닙니다. M10에서 완성한 read-only MCP 서버를 외부 소비자인 OpenCode Agent에 등록하고, 실제 Agent가 두 Tool을 발견·호출·활용할 수 있는지 검증하는 통합 Pilot입니다.</p><span class="state">M11-01 .ENV SERVICE CONFIG PASS · M11-02 OPENCODE MCP REGISTRATION NEXT</span></header>
 <section class="beginner"><span class="badge">범위</span><h2>무엇을 하고, 무엇을 하지 않나?</h2><div class="grid2"><div class="box good"><b>하는 것</b><p>OpenCode에서 <code>jira-knowledge</code> MCP를 실행하고 <code>search_jira_knowledge</code>, <code>get_jira_issue</code> 두 Tool을 실제 Agent가 사용하는지 확인합니다.</p></div><div class="box warn"><b>하지 않는 것</b><p>이 저장소 안에 Agent framework, planner, sub-agent, memory, loop를 새로 구현하지 않습니다.</p></div></div></section>
 <section><h2>1. 전체 연결</h2><div class="flow">jira_database
 └─ jira-knowledge MCP
@@ -22,10 +22,19 @@
    → CI / 진단 / 긴급 override
 
 3. .env
-   → 실제 서비스의 기본 설정</div><p><code>python-dotenv</code>는 <code>override=false</code>로 읽기 때문에 이미 존재하는 OS 환경 변수를 덮어쓰지 않습니다.</p></section>
+   → 실제 서비스의 기본 설정</div><p><code>python-dotenv</code>는 <code>override=false</code>로 읽기 때문에 이미 존재하는 OS 환경 변수를 덮어쓰지 않습니다.</p><div class="box good"><b>M11-01 구현 완료</b><p>MCP runtime이 먼저 <code>.env</code>를 읽은 뒤 DB / FAISS / BGE 설정을 같은 환경에서 로드하도록 수정했습니다. BGE 설정의 중복 dotenv load도 막았습니다.</p></div></section>
 <section><h2>4. 보안 원칙</h2><div class="grid2"><div class="box good"><b>.env는 Git 제외</b><p>실제 DB 경로, BGE endpoint/header/key 등은 공개 저장소에 커밋하지 않습니다.</p></div><div class="box good"><b>.env.example만 공유</b><p>변수 이름과 설명만 저장소에 남기고 실제 값은 비워둡니다.</p></div></div><p>Windows와 Linux는 경로 값이 달라도 괜찮습니다. 배포 환경별 <code>.env</code>가 그 차이를 흡수합니다.</p></section>
-<section><h2>5. M11 검증 순서</h2><table><thead><tr><th>Gate</th><th>검증</th><th>상태</th></tr></thead><tbody><tr><td>M11-01</td><td>MCP runtime이 .env에서 DB / FAISS / BGE 설정을 읽음</td><td>IMPLEMENTED · CI 확인 예정</td></tr><tr><td>M11-02</td><td>OpenCode에 local stdio MCP 등록</td><td>NEXT</td></tr><tr><td>M11-03</td><td>OpenCode에서 Tool 2개 discovery</td><td>NEXT</td></tr><tr><td>M11-04</td><td>명시적 MCP 사용 지시로 실제 Tool call 성공</td><td>NEXT</td></tr><tr><td>M11-05</td><td>일반 업무 질문에서 Agent가 스스로 검색 Tool 선택</td><td>NEXT</td></tr><tr><td>M11-06</td><td>반환된 Knowledge + Evidence를 근거로 답변하는지 확인</td><td>NEXT</td></tr></tbody></table></section>
-<section><h2>6. 첫 테스트에서 유지할 최소주의</h2><div class="flow">M10 계약 그대로 사용
+<section><h2>5. M11 검증 순서</h2><table><thead><tr><th>Gate</th><th>검증</th><th>상태</th></tr></thead><tbody><tr><td>M11-01</td><td>MCP runtime이 .env에서 DB / FAISS / BGE 설정을 읽음</td><td>PASS · CI 143 passed</td></tr><tr><td>M11-02</td><td>OpenCode에 local stdio MCP 등록</td><td>NEXT</td></tr><tr><td>M11-03</td><td>OpenCode에서 Tool 2개 discovery</td><td>NEXT</td></tr><tr><td>M11-04</td><td>명시적 MCP 사용 지시로 실제 Tool call 성공</td><td>NEXT</td></tr><tr><td>M11-05</td><td>일반 업무 질문에서 Agent가 스스로 검색 Tool 선택</td><td>NEXT</td></tr><tr><td>M11-06</td><td>반환된 Knowledge + Evidence를 근거로 답변하는지 확인</td><td>NEXT</td></tr></tbody></table></section>
+<section><h2>6. M11-01 테스트</h2><div class="flow">.env → runtime load               PASS
+OS env > .env precedence          PASS
+explicit test env → no .env read PASS
+.env.example MCP vars             PASS
+.env gitignore                    PASS
+M11 documentation regression      PASS
+
+GitHub Actions
+143 passed</div></section>
+<section><h2>7. 첫 OpenCode 테스트에서 유지할 최소주의</h2><div class="flow">M10 계약 그대로 사용
 Top-3 그대로
 2 Tools 그대로
 threshold 추가 안 함
@@ -33,5 +42,5 @@ reranker 추가 안 함
 Agent 코드 추가 안 함
 
 먼저 OpenCode가 현재 MCP를 그대로 잘 소비하는지 본다.</div></section>
-<section><h2>7. Windows → Linux</h2><p>현재 Pilot은 Windows에서 진행하지만 서비스 설정 계약은 OS 독립적으로 <code>.env</code>를 사용합니다. Linux 포팅 시 코드는 그대로 두고 경로와 필요한 endpoint 값만 Linux 환경의 <code>.env</code>로 교체하는 방향을 기본으로 합니다.</p></section>
-<footer>M11 OpenCode MCP Integration · external Agent consumer test only · .env service configuration · 2026-08-27</footer></main></body></html>
+<section><h2>8. Windows → Linux</h2><p>현재 Pilot은 Windows에서 진행하지만 서비스 설정 계약은 OS 독립적으로 <code>.env</code>를 사용합니다. Linux 포팅 시 코드는 그대로 두고 경로와 필요한 endpoint 값만 Linux 환경의 <code>.env</code>로 교체하는 방향을 기본으로 합니다.</p></section>
+<footer>M11-01 .env service configuration PASS · M11-02 OpenCode local stdio MCP registration NEXT · 2026-08-27</footer></main></body></html>
