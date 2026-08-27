@@ -1,0 +1,54 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sync State Schema Decision 6. sync_run_id, work_item_id, PK/FK/UNIQUE 기준을 정하는 ID/Key 설계 검토 문서"><title>Sync State Schema · S6 · ID / Key Strategy</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 88px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:47px}h2{font-size:29px}.lead{color:var(--muted)}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e9eeff;color:#2548b5;font-size:11px;font-weight:900}.footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_state_schema_decision5_migration_contract.html">← S5 Final</a><a href="jira_sync_state_project_registry_design_draft.html">Schema Board</a></nav><header class="hero"><div>SYNC STATE / PROJECT REGISTRY · SCHEMA DECISION 6 · 2026-08-27</div><h1>무엇은 Jira ID를 쓰고,<br>무엇은 새 ID를 만들까?</h1><p>Operational State의 identity를 외부 원본 identity, 실행 사건 identity, 내용 기반 Work Item identity로 구분합니다.</p><span class="state">S1~S5 FIXED · S6 REVIEWING · ID / PK / FK / UNIQUE</span></header>
+<section><h2>1. ID를 세 종류로 나눕니다</h2><div class="grid3"><div class="card good"><h3>외부 원본 Identity</h3><p>Jira가 이미 제공하는 <code>project_id</code>, <code>jira_id</code>. 새로 변형하지 않습니다.</p></div><div class="card"><h3>실행 Identity</h3><p>한 번 실행된 Sync Run은 매번 다른 사건이므로 랜덤 고유 ID를 씁니다.</p></div><div class="card"><h3>내용 Identity</h3><p>같은 Jira semantic change는 여러 Run에서 다시 봐도 같은 Work Item이어야 하므로 deterministic ID를 씁니다.</p></div></div></section>
+<section><h2>2. sync_run_id · 랜덤 사건 ID</h2><p class="lead">현재 MVP의 Run ID는 UTC 초 단위 timestamp라 같은 초에 두 실행이 시작되면 충돌 여지가 있습니다. Operational Sync는 이 약점을 제거합니다.</p><div class="card good"><h3>추천</h3><div class="flow">sync_run_id = "sr_" + uuid4.hex
+
+예
+sr_0f4a7f0cd70a48aaabeb4e529c8b71d6</div><p>실행 시각은 <code>started_at</code>에 따로 저장합니다. Run ID 자체에 시간 의미를 넣지 않습니다.</p></div><div class="callout"><strong>왜 UUID4인가?</strong> 시간 정밀도/시계 상태에 의존하지 않고, 별도 coordination 없이 동시에 여러 실행이 생겨도 충돌 위험이 사실상 없습니다. 정렬은 <code>started_at</code> index로 해결합니다.</div></section>
+<section><h2>3. work_item_id · deterministic semantic-change ID</h2><p class="lead">D5에서 downstream Work Item identity는 <code>jira_id + source_hash + source_hash_profile</code>로 이미 고정했습니다.</p><div class="flow">STATE_ID_SCHEMA_VERSION = 1
+kind = "sync_issue_change"
+material = {
+  jira_id,
+  source_hash,
+  source_hash_profile
+}
+
+canonical JSON
+→ SHA-256 full lowercase hex
+→ prefix "sw_"
+
+work_item_id = sw_&lt;64 hex&gt;</div><p>같은 semantic change를 R100에서 발견하고 R101에서 다시 만나도 같은 <code>work_item_id</code>가 나와 기존 Work Item을 Resume합니다.</p><div class="callout"><strong>기존 프로젝트와 일치:</strong> Knowledge ID도 canonical JSON + ID schema version + full SHA-256 + prefix를 사용합니다. State Work Item도 같은 철학을 따르되 별도 State ID namespace를 둡니다.</div></section>
+<section><h2>4. project_state의 PK</h2><div class="flow">PRIMARY KEY = project_id</div><p><code>current_key</code>는 PK나 UNIQUE로 사용하지 않습니다. Project Key는 바뀔 수 있고, 과거 Project가 사라진 뒤 같은 Key가 다른 <code>project_id</code>에서 재사용될 가능성도 열어둡니다.</p><div class="grid2"><div class="card good"><h3>정체성</h3><p><code>project_id</code> = authoritative identity.</p></div><div class="card"><h3>표시값</h3><p><code>current_key</code>, <code>current_name</code> = mutable metadata.</p></div></div></section>
+<section><h2>5. sync_project_run은 복합 PK</h2><div class="flow">PRIMARY KEY (sync_run_id, project_id)</div><p>“한 Run에서 한 Project 작업은 최대 한 행”이라는 실제 관계를 그대로 Key로 사용합니다. 별도 <code>sync_project_run_id</code> surrogate key를 만들 이유가 없습니다.</p></section>
+<section><h2>6. sync_issue_change의 PK + UNIQUE</h2><div class="flow">PRIMARY KEY (work_item_id)
+
+UNIQUE (
+  jira_id,
+  source_hash,
+  source_hash_profile
+)</div><p>PK는 읽기 쉬운 prefixed logical ID를 사용하고, identity material 자체에도 UNIQUE를 걸어 ID 생성 코드 오류가 있어도 DB가 중복 semantic change를 막도록 이중 방어합니다.</p><div class="callout"><strong>project_id를 Work Item identity에 넣지 않음:</strong> D5에서 고정한 identity는 <code>jira_id + source_hash + profile</code>입니다. Issue가 Project를 이동하더라도 같은 Jira identity와 semantic state라면 같은 작업으로 다룹니다.</div></section>
+<section><h2>7. State DB 내부 FK</h2><table><thead><tr><th>자식</th><th>FK</th><th>부모</th></tr></thead><tbody><tr><td>sync_project_run</td><td>sync_run_id</td><td>sync_run</td></tr><tr><td>sync_project_run</td><td>project_id</td><td>project_state</td></tr><tr><td>project_state</td><td>first_seen_run_id</td><td>sync_run</td></tr><tr><td>project_state</td><td>last_seen_run_id</td><td>sync_run</td></tr><tr><td>project_state</td><td>last_source_success_run_id</td><td>sync_run</td></tr><tr><td>sync_issue_change</td><td>project_id</td><td>project_state</td></tr><tr><td>sync_issue_change</td><td>discovered_run_id</td><td>sync_run</td></tr><tr><td>sync_issue_change</td><td>last_attempt_run_id</td><td>sync_run · nullable</td></tr></tbody></table><p>같은 State DB 안에서 참조 무결성을 SQLite FK로 강제합니다.</p></section>
+<section><h2>8. Knowledge DB 참조는 물리 FK를 걸지 않습니다</h2><div class="flow">sync_issue_change.issue_version_id
+sync_issue_change.knowledge_generation_id
+
+→ Knowledge DB의 logical ID를 저장
+→ cross-database SQLite FK 없음</div><p>S1의 Control Plane / Data Plane 분리를 유지합니다. Resume 시 실제 Knowledge DB에 해당 ID가 존재하는지 애플리케이션 검증으로 확인합니다.</p></section>
+<section><h2>9. Key로 쓰지 않을 값</h2><table><thead><tr><th>값</th><th>이유</th></tr></thead><tbody><tr><td>project_key</td><td>mutable / 재사용 가능</td></tr><tr><td>issue_key</td><td>mutable display identity</td></tr><tr><td>started_at</td><td>동시 실행 시 unique 보장 불가</td></tr><tr><td>jira_updated_at</td><td>candidate trigger이지 semantic identity 아님</td></tr><tr><td>FAISS position</td><td>물리 배열 위치이지 stable identity 아님</td></tr></tbody></table></section>
+<section><h2>10. S6 추천 결론</h2><div class="card good"><span class="badge">PROPOSED</span><div class="flow">sync_run
+PK = sr_ + UUID4 full hex
+
+project_state
+PK = Jira project_id
+
+sync_project_run
+PK = (sync_run_id, project_id)
+
+sync_issue_change
+PK = sw_ + deterministic full SHA-256
+UNIQUE = (jira_id, source_hash, source_hash_profile)
+
+State DB 내부 참조
+→ physical FK 사용
+
+Knowledge DB 참조
+→ logical ID only, cross-DB FK 없음</div></div><div class="callout"><strong>다음:</strong> S6가 확정되면 S7에서 이 Key/Column/Enum을 실제 SQLite DDL, CHECK, INDEX로 옮기고 Schema Contract Freeze 후보를 만듭니다.</div></section><footer class="footer">S6 REVIEWING · ID / PK / FK / UNIQUE strategy · no implementation yet · 2026-08-27</footer></main></body></html>
