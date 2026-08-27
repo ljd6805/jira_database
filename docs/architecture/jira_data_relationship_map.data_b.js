@@ -1,7 +1,7 @@
 Object.assign(window.JIRA_MAP_VIEWS,{
 "issue":{
-  "title":"Evidence Round-trip · Accepted Attempt",
-  "help":"M7에서 502 canonical Evidence row가 검증됐고 M8/M9는 active accepted Knowledge snapshot만 사용합니다. M10은 이 round-trip을 Evidence package/MCP로 노출하는 다음 단계입니다.",
+  "title":"Evidence Round-trip · Accepted Attempt · M10 IMPLEMENTED",
+  "help":"M7의 502 canonical Evidence row를 기반으로 M10 Resolver가 ki_ → ke_ → 실제 source를 복원하고 Evidence Package로 구성합니다. MCP 2-tool 구현도 PASS했고 실제 환경 Real-run이 다음 단계입니다.",
   "nodes":[
     {"id":"issue","type":"issue","kind":"issue","shape":"pill","x":150,"y":80,"w":200,"h":62,"label":"Issue","sub":"jira_id authoritative"},
     {"id":"version","type":"issue","kind":"issue","shape":"rect","x":150,"y":245,"w":220,"h":90,"label":"Issue Version · iv_","sub":"source_hash immutable state"},
@@ -9,9 +9,9 @@ Object.assign(window.JIRA_MAP_VIEWS,{
     {"id":"attempt","type":"knowledge","kind":"knowledge","shape":"rect","x":730,"y":245,"w":230,"h":90,"label":"Accepted Attempt · ka_","sub":"attempt_no · PASS"},
     {"id":"item","type":"knowledge","kind":"knowledge","shape":"rect","x":1020,"y":245,"w":230,"h":90,"label":"Knowledge Item · ki_","sub":"statement + evidence refs"},
     {"id":"eref","type":"evidence","kind":"evidence","shape":"rect","x":1150,"y":430,"w":230,"h":90,"label":"Evidence · ke_","sub":"502 canonical exact refs"},
-    {"id":"resolver","type":"db","kind":"db","shape":"rect","x":920,"y":590,"w":250,"h":90,"label":"M10 Resolver · NEXT","sub":"type-specific source lookup"},
+    {"id":"resolver","type":"db","kind":"db","shape":"rect","x":920,"y":590,"w":250,"h":90,"label":"M10 Resolver · PASS","sub":"6-type source lookup"},
     {"id":"source","type":"evidence","kind":"evidence","shape":"rect","x":620,"y":590,"w":250,"h":90,"label":"Resolved Source","sub":"version / comment / attachment / edge / field"},
-    {"id":"raw","type":"store","kind":"store","shape":"rect","x":320,"y":590,"w":240,"h":90,"label":"ANALYSIS → RAW","sub":"source_path round-trip"},
+    {"id":"raw","type":"store","kind":"store","shape":"rect","x":320,"y":590,"w":240,"h":90,"label":"ANALYSIS → RAW","sub":"internal source provenance"},
     {"id":"review","type":"review","kind":"review","shape":"rect","x":1160,"y":760,"w":210,"h":80,"label":"Review Audit","sub":"Attempt별 verdict / finding"}
   ],
   "edges":[
@@ -22,13 +22,13 @@ Object.assign(window.JIRA_MAP_VIEWS,{
     {"from":"item","to":"eref","label":"1:N refs","fromSide":"bottom","toSide":"top"},
     {"from":"eref","to":"resolver","label":"parse type / key","fromSide":"left","toSide":"top"},
     {"from":"resolver","to":"source","label":"exact lookup","fromSide":"left","toSide":"right"},
-    {"from":"source","to":"raw","label":"source_path","fromSide":"left","toSide":"right"},
+    {"from":"source","to":"raw","label":"internal provenance","fromSide":"left","toSide":"right"},
     {"from":"attempt","to":"review","label":"0..1 review","fromSide":"bottom","toSide":"top"}
   ]
 },
 "schema":{
-  "title":"M7 SQLite → M8 Embedding → M9 Retrieval → M10 Boundary",
-  "help":"M7 SQLite, M8 BGE-M3, M9 FAISS retrieval은 모두 PASS했습니다. M10은 ki_/ke_를 resolve하여 Evidence package와 MCP를 설계합니다.",
+  "title":"M7 SQLite → M8 Embedding → M9 Retrieval → M10 Evidence/MCP",
+  "help":"M7 SQLite, M8 BGE-M3, M9 FAISS retrieval은 모두 실데이터 PASS했고 M10의 ki_/ke_ Evidence resolve와 MCP 2-tool 구현도 PASS했습니다. M10-05 실제 환경 Real-run이 남았습니다.",
   "nodes":[
     {"id":"run","type":"db","kind":"db","shape":"rect","x":115,"y":80,"w":200,"h":82,"label":"pipeline_run","sub":"run_id"},
     {"id":"issue","type":"issue","kind":"issue","shape":"rect","x":365,"y":80,"w":210,"h":82,"label":"issue","sub":"jira_id PK · issue_key locator"},
