@@ -1,25 +1,17 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge MCP의 팀 공용 중앙 서비스 목표 아키텍처"><title>Jira Knowledge MCP · 팀 공용 서비스 목표</title><link rel="stylesheet" href="../status/milestone.css"><style>.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../status/M11_OPENCODE_MCP_INTEGRATION.html">M11 OpenCode Integration</a><a href="../status/jira_knowledge_db_current_status.html">Current Status</a></nav><header class="hero"><span class="eyebrow">TARGET ARCHITECTURE · 2026-08-27</span><h1>최종 목표는 로컬 MCP가 아니라<br>팀이 함께 쓰는 중앙 MCP 서비스입니다.</h1><p>현재 local stdio 연결은 OpenCode 호환성과 Tool 사용성을 검증하기 위한 Pilot입니다. 실제 서비스에서는 Jira Knowledge DB, FAISS, BGE-M3 설정을 중앙 서버가 소유하고 팀원의 OpenCode는 Remote MCP URL에 접속하는 구조를 목표로 합니다.</p><span class="state">LOCAL STDIO = PILOT · REMOTE MCP = SERVICE TARGET</span></header>
-<section class="beginner"><span class="badge">한 줄 요약</span><h2>무엇이 달라지나?</h2><div class="flow">현재 Pilot
-팀원 PC
-└─ jira_database clone
-   ├─ .env
-   ├─ SQLite / FAISS
-   └─ local stdio MCP
-        ↓
-     OpenCode
-
-최종 서비스
-팀원 OpenCode
-        ↓ Remote MCP / HTTPS
-중앙 jira-knowledge MCP 서버
-├─ .env
-├─ SQLite
-├─ FAISS
-└─ BGE-M3 API</div><div class="box good"><b>핵심:</b><p>팀원은 Jira Knowledge 저장소와 데이터 artifact를 각자 복제하지 않습니다. 중앙 서비스의 MCP 주소와 필요한 인증 정보만 알면 됩니다.</p></div></section>
-<section><h2>1. 현재까지 확인된 것</h2><table><thead><tr><th>항목</th><th>상태</th><th>의미</th></tr></thead><tbody><tr><td>M10 MCP 자체</td><td>PASS</td><td>BGE-M3 → FAISS → ki_ → ke_ → source → MCP end-to-end 검증</td></tr><tr><td>stdio subprocess handshake</td><td>PASS</td><td>실제 subprocess initialize + tools/list에서 Tool 2개 확인</td></tr><tr><td>OpenCode local stdio 연결</td><td>PASS</td><td>같은 프로젝트 루트에서 OpenCode가 <code>jira-knowledge</code> MCP에 연결됨</td></tr><tr><td>팀 공용 Remote MCP</td><td>미구현</td><td>최종 서비스 목표. M11 기능 Pilot 이후 별도 구현</td></tr></tbody></table></section>
-<section><h2>2. 왜 local stdio를 최종 서비스로 쓰지 않나?</h2><div class="grid2"><div class="box"><b>팀원마다 환경 준비 필요</b><p>Python package, DB, FAISS, <code>.env</code>를 각 PC에 설치하면 배포와 버전 관리가 어려워집니다.</p></div><div class="box"><b>데이터 복제 문제</b><p>Jira 지식 DB와 vector artifact가 사용자 PC마다 복제되면 갱신 시점과 보안 경계가 복잡해집니다.</p></div><div class="box"><b>업데이트 어려움</b><p>MCP 코드나 index를 바꿀 때 모든 사용자 환경을 다시 맞춰야 합니다.</p></div><div class="box"><b>운영 관찰 어려움</b><p>중앙 서비스가 아니면 호출량, 오류, latency, 버전 상태를 한곳에서 보기 어렵습니다.</p></div></div></section>
-<section><h2>3. 최종 목표 아키텍처</h2><div class="flow">팀원 A · OpenCode ─┐
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge 운영 서비스 중 팀 공용 중앙 Remote MCP 목표 아키텍처"><title>Jira Knowledge MCP · 팀 공용 Remote 서비스 목표</title><link rel="stylesheet" href="../status/milestone.css"><style>.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="jira_knowledge_operational_service_phase.html">운영 서비스 전체 목표</a><a href="../status/M11_COMPLETION.html">M11 Completion</a><a href="../status/jira_knowledge_db_current_status.html">Current Status</a></nav><header class="hero"><span class="eyebrow">SERVICE COMPONENT TARGET · 2026-08-27</span><h1>Remote MCP는 최종 서비스의<br>중앙 조회 경계입니다.</h1><p>M11의 local stdio는 MVP 호환성 검증용이었습니다. 실제 팀 서비스에서는 중앙 서버가 Jira Knowledge DB, FAISS, BGE-M3 설정을 소유하고 팀원 OpenCode는 Remote MCP URL에 접속합니다. <strong>다만 Remote MCP만으로 서비스가 완성되는 것은 아니며, 지속 Jira 동기화와 증분 Knowledge/Index 갱신이 함께 동작해야 합니다.</strong></p><span class="state">REMOTE MCP = OPERATIONAL SERVICE COMPONENT · NOT THE WHOLE SERVICE</span></header>
+<section><h2>1. 전체 운영 서비스 안에서의 위치</h2><div class="flow">Jira
+ ↓ 지속 Project Discovery / Delta Sync
+RAW / Issue Version
+ ↓
+Knowledge / Evidence
+ ↓
+Embedding / FAISS Delta Update
+ ↓
+Central Remote MCP  ← 이 문서의 범위
+ ↓
+팀원 OpenCode</div><p>운영 서비스 전체 범위는 <a href="jira_knowledge_operational_service_phase.html">MVP 이후 운영 서비스 단계</a> 문서를 기준으로 합니다.</p></section>
+<section><h2>2. 최종 Remote MCP 구조</h2><div class="flow">팀원 A · OpenCode ─┐
 팀원 B · OpenCode ─┼──── Remote MCP / HTTPS ────┐
 팀원 C · OpenCode ─┘                            │
                                                ▼
@@ -33,48 +25,23 @@
                                              │
                   ┌──────────────────────────┼──────────────────────────┐
                   ▼                          ▼                          ▼
-             SQLite DB                  FAISS Index                BGE-M3 API
-             Evidence                   Knowledge vector           query embedding</div></section>
-<section><h2>4. Transport 방향</h2><div class="grid2"><div class="box good"><b>1순위 · Streamable HTTP</b><p>OpenCode 1.18.12의 Remote MCP client가 먼저 시도하는 transport이며, 현재 MCP Python SDK 2.1.1 서버도 직접 지원합니다.</p></div><div class="box"><b>호환 fallback · SSE</b><p>OpenCode 1.18.12는 Streamable HTTP 연결이 실패하면 SSE도 시도합니다. 필요할 경우 호환 경로로 검증할 수 있습니다.</p></div></div><div class="flow">OpenCode 1.18.12 Remote MCP
-1. Streamable HTTP 시도
-2. 실패 시 SSE 시도
-
-MCP Python SDK 2.1.1 MCPServer
-run("stdio")
-run("sse")
-run("streamable-http")</div></section>
-<section><h2>5. 팀원 측과 서버 측의 책임 분리</h2><table><thead><tr><th>팀원 OpenCode</th><th>중앙 MCP 서버</th></tr></thead><tbody><tr><td>Remote MCP URL 설정</td><td>Jira Knowledge DB 보관</td></tr><tr><td>필요한 인증 설정</td><td>FAISS artifact 보관</td></tr><tr><td>Tool 호출 / Agent 답변</td><td>BGE-M3 endpoint/secret 관리</td></tr><tr><td>DB/FAISS 로컬 복제 불필요</td><td>Tool 2개 실행 및 Evidence 반환</td></tr><tr><td>jira_database clone 불필요</td><td>서비스 버전/로그/상태 관리</td></tr></tbody></table></section>
-<section><h2>6. 서버 .env의 위치</h2><p>앞서 확정한 <code>.env</code> 정책은 중앙 서비스에서도 유지합니다. 차이는 <strong>팀원 PC가 아니라 중앙 MCP 서버의 배포 디렉터리</strong>에 존재한다는 점입니다.</p><div class="flow">중앙 서버 .env
+             SQLite DB                  FAISS Index                BGE-M3 API</div></section>
+<section><h2>3. 팀원 PC와 서버 책임</h2><table><thead><tr><th>팀원 OpenCode</th><th>중앙 서비스</th></tr></thead><tbody><tr><td>Remote MCP URL 설정</td><td>Jira 지속 동기화 파이프라인 실행</td></tr><tr><td>필요한 인증 정보</td><td>SQLite / FAISS 최신 Active 상태 유지</td></tr><tr><td>Tool 호출 / Agent 답변</td><td>BGE-M3 endpoint/secret 관리</td></tr><tr><td>DB/FAISS 로컬 복제 불필요</td><td>MCP Tool 실행 및 Evidence 반환</td></tr><tr><td>jira_database clone 불필요</td><td>서비스 버전/로그/health 관리</td></tr></tbody></table></section>
+<section><h2>4. Transport 방향</h2><div class="grid2"><div class="box good"><b>1순위 · Streamable HTTP</b><p>OpenCode 1.18.12 Remote MCP client가 먼저 시도하고 MCP Python SDK 2.1.1도 서버 transport로 지원합니다.</p></div><div class="box"><b>Fallback · SSE</b><p>OpenCode 1.18.12가 Streamable HTTP 실패 시 시도하는 호환 경로입니다.</p></div></div></section>
+<section><h2>5. 서버 설정</h2><div class="flow">중앙 서버 .env
 JIRA_KNOWLEDGE_DB_PATH=...
 JIRA_RETRIEVAL_ARTIFACT_DIR=...
 BGE_M3_ENDPOINT=...
 BGE_M3_API_KEY=...             optional
-BGE_M3_HEADERS_JSON=...        optional</div><div class="box warn"><b>아직 인증 방식은 Freeze하지 않음</b><p>팀원 인증은 Bearer header, 사내 reverse proxy, OAuth 등 운영 환경을 보고 결정합니다. 인증 없이 팀 공용 네트워크에 그대로 노출하는 구조는 목표가 아닙니다.</p></div></section>
-<section><h2>7. OpenCode의 최종 설정 모습</h2><p>정확한 URL과 인증은 서비스 구현 때 결정하지만, 팀원 측 설정은 개념적으로 다음처럼 단순해지는 것이 목표입니다.</p><div class="flow">{
+BGE_M3_HEADERS_JSON=...        optional</div><p>실제 값은 저장소에 커밋하지 않습니다.</p></section>
+<section><h2>6. OpenCode 측 목표 설정</h2><div class="flow">{
   "mcp": {
     "jira-knowledge": {
       "type": "remote",
-      "url": "https://jira-knowledge-mcp.example.internal/mcp",
+      "url": "https://.../mcp",
       "timeout": 30000
     }
   }
-}</div><p>실제 사내 URL이나 token/header 값은 공개 저장소 문서에 넣지 않습니다.</p></section>
-<section><h2>8. 진행 순서</h2><div class="flow">M11 · OpenCode Integration Pilot
-현재 local stdio 연결 PASS
-        ↓
-Tool 2개 discovery / 실제 call
-        ↓
-일반 질문의 자동 Tool 선택
-        ↓
-Knowledge + Evidence 기반 답변 확인
-        ↓
-M11 완료
-        ↓
-Post-M11 · Remote MCP Service
-Streamable HTTP 서버화
-→ 인증 / TLS
-→ 팀원 OpenCode remote 연결
-→ logging / health / concurrency
-→ 팀 Pilot</div><div class="box good"><b>왜 이 순서인가?</b><p>Tool 동작과 Agent 사용성이 먼저 검증되어야, 서버화 후 문제가 생겼을 때 기능 문제와 네트워크/인증/운영 문제를 분리해서 볼 수 있습니다.</p></div></section>
-<section><h2>9. 아직 결정하지 않은 것</h2><div class="grid3"><div class="box"><b>인증 방식</b><p>Bearer / OAuth / 사내 Proxy 중 무엇을 쓸지 미정.</p></div><div class="box"><b>배포 방식</b><p>직접 프로세스, systemd, Docker 등은 아직 미정.</p></div><div class="box"><b>운영 규모</b><p>동시 사용자/QPS/timeout/cache 정책은 실제 팀 Pilot 측정 후 결정.</p></div></div></section>
-<footer>Team-wide Jira Knowledge MCP Service Target · local stdio pilot → central remote MCP · 2026-08-27</footer></main></body></html>
+}</div><p>실제 사내 URL/token/header는 공개 문서에 기록하지 않습니다.</p></section>
+<section><h2>7. 아직 Freeze하지 않은 것</h2><div class="grid3"><div class="box warn"><b>인증/접근 제어</b><p>Bearer, OAuth, 사내 Proxy와 팀원별 Jira 권한 정책을 운영 설계에서 결정합니다.</p></div><div class="box"><b>배포 방식</b><p>systemd, Docker 등은 서버 환경과 운영 방식 확인 후 결정합니다.</p></div><div class="box"><b>운영 규모</b><p>동시 사용자/QPS/timeout/cache는 팀 Pilot 측정 후 결정합니다.</p></div></div></section>
+<footer>Central Remote MCP = one component of Continuous Jira Knowledge Service · 2026-08-27</footer></main></body></html>
