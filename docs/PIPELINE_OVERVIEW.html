@@ -1,5 +1,4 @@
-<!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · 전체 아키텍처</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1120px;margin:auto;padding:38px 22px 80px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.card p{color:var(--muted)}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.good{border-color:var(--green);background:#eaf8f3}.warn{border-color:var(--amber);background:#fff6e9}.pill{display:inline-block;padding:5px 9px;margin:3px;border-radius:999px;background:#e7edff;color:#2548b5;font-size:11px;font-weight:900}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a><a href="status/M10_START_HERE.html">M10 Start Here →</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-27</div><h1>Jira Knowledge Pipeline<br>전체 아키텍처</h1><p>M0~M9 실데이터 검증과 M10 Evidence/MCP 구현까지 완료했습니다. 현재 남은 Gate는 실제 로컬 SQLite·FAISS와 사내 BGE-M3를 연결하는 <strong>M10-05 Real-run</strong>입니다.</p><div><span class="pill">M0~M9 DONE</span><span class="pill">M10 IMPLEMENTATION PASS</span><span class="pill">REAL-RUN NEXT</span></div></header>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · 전체 아키텍처</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1120px;margin:auto;padding:38px 22px 80px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.card p{color:var(--muted)}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.good{border-color:var(--green);background:#eaf8f3}.pill{display:inline-block;padding:5px 9px;margin:3px;border-radius:999px;background:#e7edff;color:#2548b5;font-size:11px;font-weight:900}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a><a href="status/M10_COMPLETION.html">M10 Completion</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-27</div><h1>Jira Knowledge Pipeline<br>전체 아키텍처</h1><p>M0~M10까지 실제 환경 검증을 완료했습니다. M10은 실제 로컬 SQLite·FAISS와 사내 BGE-M3를 연결해 Knowledge 검색부터 Evidence 원문 복원, MCP Issue round-trip까지 PASS했습니다.</p><div><span class="pill">M0~M10 DONE</span><span class="pill">M10 REAL-RUN PASS</span><span class="pill">NEXT MILESTONE TBD</span></div></header>
 <section><h2>1. 전체 흐름</h2><div class="flow">Jira REST API
     ↓
 RAW / ANALYSIS                         M0 DONE
@@ -18,31 +17,35 @@ BGE-M3 Embedding                       M8 DONE · PASS
     ↓
 FAISS + Active Retrieval               M9 DONE · PASS
     ↓
-Evidence Resolver / Package            M10-02/03 PASS
-    ↓
-MCP 2 Tools                            M10-04 PASS
-    ↓
-Real End-to-End Gate                   M10-05 NEXT</div></section>
+Evidence Resolver / Package / MCP      M10 DONE · REAL-RUN PASS</div></section>
 <section><h2>2. Identity Ladder</h2><pre>jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
-
-knowledge_attempt_id = ka_
-attempt_no            = retry 회차
 
 Embedding Contract    ec_
 Embedding Artifact    emb_
 Retrieval Contract    rc_
 FAISS Index Artifact  fi_
 
-FAISS position ≠ emb_ ≠ ki_</pre><div class="callout"><strong>핵심:</strong> M10도 M9의 position을 ID처럼 쓰지 않고 <code>ki_</code>를 통해 Knowledge, <code>ke_</code>를 통해 Evidence로 돌아갑니다.</div></section>
-<section><h2>3. 완료된 핵심 Gate</h2><div class="grid"><div class="card"><h3>M7 SQLite</h3><p>30 Issue, 37 Attempt, 285 Knowledge, 502 canonical Evidence. FK/Evidence failure 0, integrity/idempotency PASS.</p></div><div class="card"><h3>M8 / M9 Search</h3><p>285 BGE-M3 vectors × 1024, IndexFlatIP exact cosine, build/rebuild/query reproducibility PASS.</p></div><div class="card"><h3>M10 Implementation</h3><p>6종 Evidence resolve, active/stale guard, read-only MCP 2 tools, MCP Client boundary test까지 PASS.</p></div></div></section>
-<section><h2>4. M10을 아주 쉽게</h2><div class="flow">M9
-“질문과 가까운 Knowledge는 이것입니다.”
-        ↓
+FAISS position ≠ emb_ ≠ ki_</pre></section>
+<section><h2>3. M9와 M10을 구분해서 이해하기</h2><div class="flow">M9
+질문 → BGE-M3 → FAISS → Top-3 Knowledge(ki_)
+
 M10
-“그 Knowledge의 실제 Jira 근거는 이 댓글/설명입니다.”
-        ↓
-Agent
-Knowledge + Evidence를 읽고 최종 답변</div><div class="callout good"><strong>MCP 외부 Tool:</strong> <code>search_jira_knowledge</code> + <code>get_jira_issue</code> 정확히 2개.</div></section>
+ki_ active/accepted 재검증
+→ ke_ Evidence resolve
+→ 실제 Jira source 복원
+→ Evidence Package
+→ MCP 2 tools
+
+Agent / LLM
+Knowledge + Evidence를 읽고 최종 답변</div><div class="callout good"><strong>FAISS는 원문 검색기가 아닙니다.</strong> Knowledge vector를 찾고, 원문 근거는 SQLite에서 <code>ki_ → ke_ → source</code>로 복원합니다.</div></section>
+<section><h2>4. M10 Real-run PASS</h2><div class="flow">tool_count: 2
+search_result_count: 3
+evidence_count: 6
+warning_count: 0
+path_leak_count: 0
+issue_lookup_ok: true
+failure_count: 0
+M10_REAL_RUN = PASS</div><table><thead><tr><th>값</th><th>의미</th></tr></thead><tbody><tr><td>tool_count 2</td><td>MCP 기능 종류 2개. 호출 횟수가 아님.</td></tr><tr><td>search_result_count 3</td><td>FAISS Top-3 Knowledge 후보.</td></tr><tr><td>evidence_count 6</td><td>3개 Knowledge를 뒷받침하는 실제 Jira 근거 총 6개.</td></tr><tr><td>warning/path leak 0</td><td>깨진 후보와 내부 경로 노출 없음.</td></tr><tr><td>issue_lookup_ok true</td><td>검색 결과에서 실제 Issue 재조회 성공.</td></tr><tr><td>failure_count 0</td><td>완료 Gate 실패 없음.</td></tr></tbody></table></section>
 <section><h2>5. M10 Security Boundary</h2><div class="flow">Tool annotation
 read_only_hint = true
 open_world_hint = false
@@ -55,21 +58,13 @@ External payload
 source_path/source_page 제외
 
 Generative LLM in MCP
-없음</div><div class="callout good"><strong>CI:</strong> 공식 MCP Client로 tools/list와 두 tools/call을 수행하고 SQLite write 차단까지 검증했습니다.</div></section>
-<section><h2>6. Production Update Direction</h2><div class="flow">운영 기본 = delta-first
+없음</div></section>
+<section><h2>6. 실제 트러블슈팅</h2><div class="grid"><div class="card"><h3>MCP import</h3><p><a href="status/M10_TROUBLESHOOTING_MCP_IMPORT.html">No module named mcp</a></p></div><div class="card"><h3>Query</h3><p><a href="status/M10_TROUBLESHOOTING_REAL_RUN_QUERY.html">PowerShell / Linux 설정</a></p></div><div class="card"><h3>Runtime paths</h3><p><a href="status/M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html">McpRuntimeSettingsError</a></p></div></div></section>
+<section><h2>7. Production Update Direction</h2><div class="flow">운영 기본 = delta-first
 unchanged → reuse
 added     → cache/embed → add
 changed   → remove/tombstone → cache/embed → add
 removed   → remove/tombstone
 
-full rebuild = maintenance / recovery / migration</div><p>Incremental exact 후보는 <code>IndexIDMap2(IndexFlatIP)</code> + stable int64 vector_id입니다. HNSW/IVF는 실제 benchmark 후 결정합니다.</p></section>
-<section><h2>7. M10-05 Real-run</h2><div class="flow">실제 질문
-→ 사내 BGE-M3
-→ 실제 M9 FAISS
-→ Top-3 ki_
-→ 실제 M7 SQLite
-→ ke_ / Jira source
-→ MCP response
-→ PASS / FAIL</div><div class="callout warn"><strong>아직 M10 DONE은 아닙니다.</strong> Git에 없는 실제 artifact와 사내 endpoint를 연결한 end-to-end Gate가 남았습니다.</div><p>검증 도구: <code>tools/jira_knowledge/validate_m10_real_run.py</code>. 실제 query/Jira 본문은 출력하지 않고 안전한 집계만 기록합니다.</p></section>
-<section><h2>8. 공식 문서</h2><div class="grid"><div class="card"><h3>M10 Handoff</h3><p><a href="status/M10_START_HERE.html">M10 Start Here</a></p></div><div class="card"><h3>M10 Contract / Implementation</h3><p><a href="status/M10_EVIDENCE_MCP_CONTRACT.html">Contract Freeze</a><br><a href="status/M10_MCP_IMPLEMENTATION.html">MCP PASS</a></p></div><div class="card"><h3>관계 구조</h3><p><a href="architecture/jira_data_relationship_map.html">Relationship Map</a></p></div></div></section>
-<footer style="margin-top:40px;color:var(--muted);font-size:12px">M0~M9 DONE / PASS · M10 IMPLEMENTATION PASS · M10-05 REAL-RUN NEXT · 2026-08-27</footer></main></body></html>
+full rebuild = maintenance / recovery / migration</div><p><code>IndexIDMap2(IndexFlatIP)</code>, vector cache, HNSW/IVF는 M10 범위 밖의 향후 hardening 후보입니다.</p></section>
+<section><h2>8. 공식 문서</h2><div class="grid"><div class="card"><h3>M10 Completion</h3><p><a href="status/M10_COMPLETION.html">최종 완료 기록</a></p></div><div class="card"><h3>M10 Real-run</h3><p><a href="status/M10_REAL_RUN_GATE.html">PASS 결과 / 재실행</a></p></div><div class="card"><h3>관계 구조</h3><p><a href="architecture/jira_data_relationship_map.html">Relationship Map</a></p></div></div></section><footer style="margin-top:40px;color:var(--muted);font-size:12px">M0~M10 DONE / PASS · M10 REAL-RUN PASS · 2026-08-27</footer></main></body></html>
