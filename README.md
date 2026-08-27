@@ -1,22 +1,16 @@
 # Jira Knowledge Pipeline
 
-Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 보존 → 결정적 정규화 → Knowledge 추출/검토 → Versioned SQLite Knowledge DB → BGE-M3 Embedding → FAISS Retrieval → Evidence/MCP**로 발전시키는 프로젝트입니다.
+Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 보존 → 결정적 정규화 → Knowledge 추출/검토 → Versioned SQLite Knowledge DB → BGE-M3 Embedding → FAISS Retrieval → Evidence/MCP → OpenCode 실제 소비자 검증**으로 발전시키는 프로젝트입니다.
 
 > 📚 새 세션/사람이 읽는 문서는 [Documentation Hub](docs/index.html)에서 시작하세요. Hub가 연결하는 로컬 문서는 모두 HTML입니다.
 
 현재 기준:
 
 ```text
-M0~M10  DONE / PASS
-M11     OPENCODE MCP INTEGRATION · CURRENT
-M11-01  .env SERVICE CONFIG · PASS
-M11-02  OPENCODE LOCAL STDIO CONNECTION · PASS
-M11-03  TOOL DISCOVERY · PASS
-M11-04  EXPLICIT TOOL CALL · PASS
-M11-05  AUTO TOOL SELECTION · NEXT
+M0~M11  DONE / PASS
 ```
 
-M10 최종 완료 기록은 **[M10 Completion](docs/status/M10_COMPLETION.html)**, 현재 M11 계획은 **[M11 OpenCode MCP Integration](docs/status/M11_OPENCODE_MCP_INTEGRATION.html)**, 최종 팀 서비스 방향은 **[Remote MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)** 에서 확인하세요.
+M10 최종 완료 기록은 **[M10 Completion](docs/status/M10_COMPLETION.html)**, M11 최종 완료 기록은 **[M11 Completion](docs/status/M11_COMPLETION.html)**, 최종 팀 서비스 방향은 **[Remote MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)** 에서 확인하세요.
 
 ## 1. 전체 흐름
 
@@ -45,7 +39,7 @@ M9  FAISS + Active Retrieval                DONE · REAL-RUN PASS
     ↓
 M10 Evidence Builder + MCP                  DONE · REAL-RUN PASS
     ↓
-M11 OpenCode MCP Integration                CURRENT · M11-01~04 PASS
+M11 OpenCode MCP Integration                DONE · USER REAL-RUN PASS
 ```
 
 ## 2. 핵심 불변 원칙
@@ -248,24 +242,28 @@ failure_count: 0
 M10_REAL_RUN = PASS
 ```
 
-## 9. M11 OpenCode MCP Integration — CURRENT
+## 9. M11 OpenCode MCP Integration — DONE / PASS
 
-M11은 이 저장소 안에 Agent를 구현하는 단계가 아닙니다. M10에서 만든 MCP를 외부 OpenCode Agent가 실제로 소비할 수 있는지 검증합니다.
+M11은 이 저장소 안에 Agent를 구현하는 단계가 아니라, M10 MCP를 외부 OpenCode Agent가 실제로 소비할 수 있는지 검증하는 단계였습니다.
 
-현재 확인:
+최종 결과:
 
 ```text
-M11-01 .env service configuration   PASS
-M11-02 local stdio OpenCode 연결    PASS
-M11-03 OpenCode Tool 2개 discovery PASS
-M11-04 명시적 MCP Tool call        PASS
-M11-05 자동 Tool selection          NEXT
-M11-06 Evidence 기반 답변           NEXT
+M11-01 .env service configuration                PASS
+M11-02 local stdio OpenCode 연결                 PASS
+M11-03 OpenCode Tool 2개 discovery              PASS
+M11-04 명시적 MCP Tool call                     PASS
+M11-05 일반 업무 질문에서 자동 Tool selection   PASS
+M11-06 근거 요청에서 description/comment 추적   PASS
+
+M11 = DONE / PASS
 ```
 
-Local stdio MCP는 사용자가 별도로 서버를 미리 띄우는 방식이 아닙니다. OpenCode가 `opencode.jsonc`의 `command`를 보고 MCP child process를 직접 실행합니다.
+실제 사용자 흐름에서는 MCP/Tool 이름을 말하지 않은 일반적인 과거 유사 문제 탐색 질문에서 OpenCode가 스스로 Jira MCP를 호출했습니다. 이어서 근거를 요구하는 후속 질문에서는 실제 Jira `description` 또는 `comment` Evidence를 가져와 제시했습니다.
 
-같은 `jira_database` 프로젝트 루트에서 local 연결을 확인했고, 별도 stdio subprocess validator에서도 다음을 확인했습니다.
+공개 저장소에는 실제 업무 질문, Issue key, Jira 원문을 기록하지 않고 동작 형태와 Evidence type만 남깁니다.
+
+별도 stdio subprocess validator에서도 다음을 확인했습니다.
 
 ```text
 tool_count: 2
@@ -273,7 +271,7 @@ tools: get_jira_issue, search_jira_knowledge
 M11_STDIO_HANDSHAKE = PASS
 ```
 
-또한 실제 OpenCode Agent가 두 Tool을 발견하고, MCP 사용을 명시적으로 지시한 질문에서 실제 Tool call을 수행하는 것을 확인했습니다. 이 M11-03/04 결과는 사용자 환경 Real-run입니다.
+자세한 완료 기록은 [M11 Completion](docs/status/M11_COMPLETION.html)을 봅니다.
 
 ## 10. 최종 팀 서비스 목표 — CENTRAL REMOTE MCP
 
@@ -300,8 +298,6 @@ BGE-M3 endpoint/key
 
 OpenCode 1.18.12는 Remote MCP 설정을 지원하며 Streamable HTTP를 먼저 시도하고 SSE를 fallback으로 사용합니다. 현재 MCP Python SDK 2.1.1도 `streamable-http`와 `sse` 서버 transport를 지원합니다.
 
-다만 M11에서는 먼저 local 환경에서 자동 Tool selection과 Evidence 기반 답변까지 검증합니다. 그 이후 Remote 서버화, 인증/TLS, logging/health/concurrency를 별도 서비스 단계로 진행합니다.
-
 ## 11. 서비스 설정 정책
 
 ```text
@@ -310,7 +306,7 @@ OS 환경 변수       .env보다 우선 · CI/진단/일시 override
 명시적 test env    .env를 읽지 않음
 ```
 
-현재 local Pilot에서는 프로젝트 루트의 `.env`, 최종 Remote 서비스에서는 중앙 서버 배포 디렉터리의 `.env`를 사용합니다.
+최종 Remote 서비스에서는 중앙 서버 배포 디렉터리의 `.env`를 사용합니다.
 
 서비스 `.env`에는 다음을 둡니다.
 
@@ -324,9 +320,25 @@ BGE_M3_HEADERS_JSON  optional
 
 `M10_REAL_RUN_QUERY`는 검증 전용이므로 실제 서비스 `.env`에는 기본적으로 넣지 않습니다.
 
-## 12. 주요 문서
+## 12. 다음 목표
+
+다음 목적은 **중앙 Remote MCP 서비스화**입니다.
+
+```text
+Streamable HTTP
+→ 서버 실행 방식
+→ TLS / 인증 / 접근 제어
+→ logging / health
+→ 동시 사용 검증
+→ 팀원 OpenCode Remote MCP Pilot
+```
+
+다음 Milestone 번호는 목표와 Completion Gate를 먼저 합의한 뒤 확정합니다.
+
+## 13. 주요 문서
 
 - [Documentation Hub](docs/index.html)
+- [M11 Completion](docs/status/M11_COMPLETION.html)
 - [M11 OpenCode MCP Integration](docs/status/M11_OPENCODE_MCP_INTEGRATION.html)
 - [Remote MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)
 - [M11 Connection Closed Troubleshooting](docs/status/M11_TROUBLESHOOTING_OPENCODE_CONNECTION_CLOSED.html)
@@ -336,7 +348,7 @@ BGE_M3_HEADERS_JSON  optional
 - [Relationship Map](docs/architecture/jira_data_relationship_map.html)
 - [Documentation Policy](docs/DOCUMENTATION_POLICY.html)
 
-## 13. 로컬 Pilot Artifact
+## 14. 로컬 Pilot Artifact
 
 ```text
 M7 SQLite
