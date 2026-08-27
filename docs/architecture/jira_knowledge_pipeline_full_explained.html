@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Jira Knowledge Pipeline 전체 프로세스를 Jira 수집부터 RAW, ANALYSIS, Knowledge, SQLite, BGE-M3, FAISS, Evidence/MCP, OpenCode, Continuous Sync까지 쉽게 설명하는 학습 문서">
+<title>Jira Knowledge Pipeline 전체를 쉽게 이해하기</title>
+<style>
+:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#65738a;--line:#d9e2ef;--blue:#3157d5;--blue-soft:#edf3ff;--green:#14845f;--green-soft:#eaf8f3;--amber:#a86500;--amber-soft:#fff6e9;--purple:#6f4bc7;--purple-soft:#f1edff;--red:#b83b3b;--red-soft:#fff0f0;--ink:#101827;--cyan:#087f8c;--cyan-soft:#e8f7f9;--shadow:0 10px 30px rgba(31,49,84,.07);--radius:18px;--max:1180px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 8% 2%,rgba(49,87,213,.10),transparent 25rem),var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}a{color:#2447b8}code,.mono{font-family:"Cascadia Code","D2Coding",Consolas,monospace}.layout{display:grid;grid-template-columns:270px minmax(0,1fr);min-height:100vh}aside{position:sticky;top:0;height:100vh;overflow:auto;padding:24px 18px;background:rgba(255,255,255,.95);border-right:1px solid var(--line)}.brand{padding:12px 10px 18px;border-bottom:1px solid var(--line);margin-bottom:12px}.brand b{display:block;font-size:15px}.brand small{color:var(--muted)}nav a{display:block;padding:8px 10px;margin:2px 0;border-radius:9px;color:#4b5971;text-decoration:none;font-size:13px;font-weight:800}nav a:hover{background:#eef3f9;color:#2447b8}main{min-width:0}.wrap{max-width:var(--max);margin:auto;padding:46px 34px 90px}.hero{padding:44px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 64%,#6d87e7);box-shadow:var(--shadow)}.eyebrow{display:inline-block;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.14);font-size:12px;font-weight:900}.hero h1{margin:13px 0 12px;font-size:clamp(34px,5vw,58px);line-height:1.1;letter-spacing:-.03em}.hero p{max-width:920px;margin:0;color:rgba(255,255,255,.9);font-size:18px}.hero .notice{margin-top:20px;padding:14px 16px;border-radius:13px;background:rgba(8,17,45,.28);font-size:14px}section{margin-top:60px;scroll-margin-top:22px}h2{font-size:31px;line-height:1.27;letter-spacing:-.02em;margin:0 0 10px}h3{margin:23px 0 8px;font-size:20px}.lead{max-width:930px;color:var(--muted);font-size:16px;margin:0 0 22px}.badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}.learn{background:#e9eeff;color:#2548b5}.done{background:#e5f7ef;color:#0c6c4a}.next{background:#fff1d7;color:#8a5700}.callout{padding:17px 19px;margin:18px 0;border-left:5px solid var(--blue);border-radius:12px;background:var(--blue-soft)}.callout.good{border-color:var(--green);background:var(--green-soft)}.callout.warn{border-color:var(--amber);background:var(--amber-soft)}.callout.red{border-color:var(--red);background:var(--red-soft)}.callout b{display:block;margin-bottom:3px}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 "Cascadia Code","D2Coding",Consolas,monospace;overflow:auto}.grid2,.grid3,.grid4{display:grid;gap:15px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.card{padding:20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper);box-shadow:0 5px 16px rgba(31,49,84,.035)}.card h3{margin-top:0}.card p:last-child{margin-bottom:0}.analogy{display:grid;grid-template-columns:74px 1fr;gap:14px;align-items:start;padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff}.analogy .emoji{width:58px;height:58px;display:grid;place-items:center;border-radius:16px;background:#edf3ff;font-size:29px}.analogy b{font-size:18px}.analogy p{margin:4px 0 0;color:var(--muted)}.bigmap{display:grid;gap:10px}.lane{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;align-items:stretch}.lane-label{display:grid;place-items:center;padding:14px;border-radius:14px;font-weight:900;text-align:center}.lane-flow{display:flex;align-items:center;gap:8px;overflow:auto;padding:3px 0}.node{min-width:138px;padding:13px 12px;border:1px solid var(--line);border-radius:13px;background:#fff;text-align:center;box-shadow:0 4px 12px rgba(31,49,84,.035)}.node b{display:block}.node small{display:block;color:var(--muted);font-size:11px;margin-top:2px}.arr{min-width:20px;text-align:center;font-weight:900;color:var(--blue)}.l1{background:var(--cyan-soft);color:#08626b}.l2{background:var(--purple-soft);color:#5e3dac}.l3{background:var(--green-soft);color:#0d6d4e}.l4{background:var(--amber-soft);color:#885500}.stage{display:grid;grid-template-columns:68px minmax(0,1fr);gap:16px;padding:20px;border:1px solid var(--line);border-radius:18px;background:#fff;margin:13px 0}.stage-no{width:52px;height:52px;display:grid;place-items:center;border-radius:16px;background:var(--blue);color:#fff;font-weight:900;font-size:18px}.stage h3{margin:0 0 6px}.stage p{margin:4px 0;color:#435068}.stage .io{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{padding:4px 8px;border-radius:999px;background:#eef3f9;color:#4b5971;font-size:11px;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}th,td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}tr:last-child td{border-bottom:0}.identity{display:grid;gap:8px}.idrow{display:grid;grid-template-columns:110px 1fr;gap:12px;align-items:center;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fff}.idrow code{font-weight:900;color:#2447b8}.reverse{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:8px;overflow:auto}.reverse .node{min-width:120px}.term-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.term{padding:15px;border:1px solid var(--line);border-radius:13px;background:#fff}.term b{display:block;color:#233b81}.term span{color:var(--muted);font-size:14px}.debug{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.debug .card{border-top:5px solid var(--blue)}.example-step{display:grid;grid-template-columns:140px 1fr;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}.example-step:last-child{border-bottom:0}.example-step b{color:#233b81}.footer{margin-top:68px;padding-top:22px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+@media(max-width:980px){.grid4{grid-template-columns:repeat(2,1fr)}.reverse{grid-template-columns:repeat(4,minmax(120px,1fr))}}@media(max-width:900px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}aside nav{display:none}.wrap{padding:28px 18px 70px}.hero{padding:31px 24px}.grid2,.grid3,.grid4,.term-grid,.debug{grid-template-columns:1fr}.lane{grid-template-columns:1fr}.lane-label{place-items:start}.stage{grid-template-columns:54px minmax(0,1fr)}.stage-no{width:44px;height:44px}.example-step,.idrow{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="layout"><aside><div class="brand"><b>Jira Knowledge Pipeline 학습 지도</b><small>전체 프로세스 · 쉽게 보기</small></div><nav><a href="#start">0. 한 장으로 보기</a><a href="#four-layers">1. 네 덩어리로 나누기</a><a href="#jira">2. Jira 수집</a><a href="#raw">3. RAW</a><a href="#analysis">4. ANALYSIS</a><a href="#knowledge-input">5. Knowledge Input</a><a href="#knowledge">6. Knowledge / Review</a><a href="#profile-schema">7. Profiling / DB 설계</a><a href="#sqlite">8. SQLite</a><a href="#embedding">9. BGE-M3 Embedding</a><a href="#faiss">10. FAISS 검색</a><a href="#evidence-mcp">11. Evidence / MCP</a><a href="#opencode">12. OpenCode</a><a href="#roundtrip">13. 근거 역추적</a><a href="#sync">14. Continuous Sync</a><a href="#identity">15. ID 족보</a><a href="#example">16. 한 Issue의 여행</a><a href="#terms">17. 용어 사전</a><a href="#debug">18. 문제 생기면 어디를 보나</a></nav></aside><main><div class="wrap">
+<header class="hero"><span class="eyebrow">FULL PIPELINE LEARNING DOCUMENT · 2026-08-27</span><h1>Jira 한 건이<br>AI의 답변 근거가 되기까지</h1><p>이 문서는 M0~M11에서 실제로 만든 전체 파이프라인과, 이제 추가하려는 Continuous Sync를 한 번에 이해하기 위한 학습 지도입니다. 먼저 큰 그림을 보고, 각 단계를 하나씩 확대합니다.</p><div class="notice"><strong>핵심 관점:</strong> 이 시스템은 “Jira를 LLM에게 통째로 던지는 프로그램”이 아닙니다. 원본을 보존하고 → 사실을 정리하고 → 지식을 만들고 → 검색 가능하게 만들고 → 다시 원문 근거로 돌아오는 파이프라인입니다.</div></header>
+<section id="start"><span class="badge learn">먼저 30초</span><h2>0. 전체를 한 장으로 보면</h2><p class="lead">처음에는 아래 한 줄만 이해하면 됩니다. 복잡해 보이는 ID와 DB 테이블은 이 흐름을 안전하게 만들기 위한 장치입니다.</p><div class="flow">Jira
+ ↓
+RAW                     원본 보관
+ ↓
+ANALYSIS                프로그램이 읽기 쉽게 사실 정리
+ ↓
+Knowledge Input         Issue 하나의 사실을 한 꾸러미로 조립
+ ↓
+Knowledge + Review      LLM이 의미를 정리하고 검증
+ ↓
+SQLite                  지식 · 이력 · 근거의 족보를 저장
+ ↓
+BGE-M3 Embedding        문장을 1024차원 의미 좌표로 변환
+ ↓
+FAISS                   질문과 가까운 Knowledge Top-3 검색
+ ↓
+Evidence Resolver       찾은 Knowledge의 실제 Jira 근거 복원
+ ↓
+MCP                     Agent가 검색 기능을 호출할 수 있게 제공
+ ↓
+OpenCode                질문 판단 → MCP 호출 → 최종 답변 작성</div><div class="analogy" style="margin-top:16px"><div class="emoji">🏭</div><div><b>공장 비유</b><p>Jira가 원재료 창고라면, RAW는 원재료 보관소, ANALYSIS는 세척·분류, Knowledge는 제품 가공, SQLite는 제품 이력 관리, BGE-M3/FAISS는 물류 검색, MCP는 출고 창구, OpenCode는 고객 요청을 처리하는 직원입니다.</p></div></div></section>
+<section id="four-layers"><h2>1. 사실은 네 덩어리로 나누면 쉽습니다</h2><p class="lead">M0~M11을 하나씩 외우기보다 역할 네 개로 묶어 기억하는 편이 훨씬 쉽습니다.</p><div class="bigmap"><div class="lane"><div class="lane-label l1">① 사실 준비</div><div class="lane-flow"><div class="node"><b>Jira</b><small>업무 원본</small></div><div class="arr">→</div><div class="node"><b>RAW</b><small>원본 보존</small></div><div class="arr">→</div><div class="node"><b>ANALYSIS</b><small>사실 정리</small></div><div class="arr">→</div><div class="node"><b>Knowledge Input</b><small>Issue별 꾸러미</small></div></div></div><div class="lane"><div class="lane-label l2">② 지식 만들기</div><div class="lane-flow"><div class="node"><b>Knowledge</b><small>의미 문장 생성</small></div><div class="arr">→</div><div class="node"><b>Review</b><small>품질 검사</small></div><div class="arr">→</div><div class="node"><b>Identity</b><small>Version/Attempt 족보</small></div><div class="arr">→</div><div class="node"><b>SQLite</b><small>구조화 저장</small></div></div></div><div class="lane"><div class="lane-label l3">③ 검색하기</div><div class="lane-flow"><div class="node"><b>BGE-M3</b><small>의미 좌표</small></div><div class="arr">→</div><div class="node"><b>FAISS</b><small>가까운 지식 검색</small></div><div class="arr">→</div><div class="node"><b>Evidence</b><small>원문 복원</small></div></div></div><div class="lane"><div class="lane-label l4">④ 서비스하기</div><div class="lane-flow"><div class="node"><b>MCP</b><small>검색 도구 API</small></div><div class="arr">→</div><div class="node"><b>OpenCode</b><small>Agent 소비자</small></div><div class="arr">→</div><div class="node"><b>사용자</b><small>최종 답변</small></div></div></div></div><div class="callout good"><b>기억할 것</b>앞쪽은 “좋은 데이터를 만드는 파이프라인”, 뒤쪽은 “그 데이터를 찾아 사용하는 파이프라인”입니다.</div></section>
+<section id="jira"><span class="badge done">M0 · DONE</span><h2>2. Jira 수집 — 먼저 사실을 가져옵니다</h2><p class="lead">첫 단계의 목표는 AI가 아닙니다. Jira에서 필요한 사실을 빠짐없이, 읽기 전용으로, 다시 재현할 수 있게 가져오는 것입니다.</p><div class="stage"><div class="stage-no">1</div><div><h3>Jira REST API</h3><p>Project를 발견하고, Issue와 Comment를 API로 읽습니다. 파일럿에서는 프로젝트별 최근 수정 Issue를 최대 30개 수집했습니다.</p><div class="io"><span class="chip">입력: Jira 서버</span><span class="chip">출력: JSON 응답</span><span class="chip">20 req/min</span><span class="chip">concurrency 1</span></div></div></div><div class="analogy"><div class="emoji">📥</div><div><b>쉽게 말하면</b><p>택배를 받는 단계입니다. 아직 상자를 뜯어 내용을 해석하지 않습니다. 먼저 빠짐없이 받아 두는 것이 목적입니다.</p></div></div></section>
+<section id="raw"><span class="badge done">M0 · DONE</span><h2>3. RAW — Jira 원본을 그대로 보존합니다</h2><p class="lead">RAW는 이 프로젝트에서 매우 중요합니다. Parser나 LLM이 나중에 틀려도 “원래 Jira에는 뭐라고 적혀 있었지?”로 돌아갈 수 있는 기준입니다.</p><div class="grid2"><div class="card"><h3>RAW가 하는 일</h3><p>Jira API 응답을 run/project/issue 단위 JSON 파일로 저장합니다. 원본 사실의 기준점입니다.</p></div><div class="card"><h3>RAW가 하지 않는 일</h3><p>원인 분석, 요약, 지식 생성, 검색 최적화는 하지 않습니다.</p></div></div><div class="flow">data/raw/runs/&lt;run_id&gt;/
+└─ projects/&lt;project_key&gt;/
+   ├─ project.json
+   ├─ issue_search/page_*.json
+   └─ issues/&lt;issue_key&gt;/
+      ├─ issue.json
+      └─ comments/page_*.json</div><div class="callout good"><b>Raw First</b>가공 결과가 마음에 안 들면 Jira를 다시 호출하는 것이 아니라 RAW에서 다시 처리할 수 있습니다.</div></section>
+<section id="analysis"><span class="badge done">M0 · DONE</span><h2>4. ANALYSIS — 원본을 “프로그램이 읽기 쉬운 사실표”로 바꿉니다</h2><p class="lead">RAW는 안전하지만 복잡합니다. ANALYSIS는 의미를 만들어내는 단계가 아니라, RAW에서 사실을 일정한 형식으로 정리하는 단계입니다.</p><div class="flow">RAW JSON
+ ↓ deterministic parser / exporter
+issues.jsonl
+comments.jsonl
+attachments.jsonl
+issue_relationships.jsonl
+custom_field_catalog.jsonl
+custom_field_values.jsonl</div><div class="grid3"><div class="card"><h3>Issue</h3><p>제목, 설명, 상태, 우선순위 같은 핵심 필드를 정리합니다.</p></div><div class="card"><h3>Comment</h3><p>댓글 ID, 순서, 작성자, 본문을 일정한 구조로 만듭니다.</p></div><div class="card"><h3>Relationship / Custom Field</h3><p>Issue 관계와 사내 Custom Field도 별도 구조로 보존합니다.</p></div></div><div class="analogy"><div class="emoji">🧺</div><div><b>비유</b><p>마트에서 장을 본 뒤 식재료를 냉장고 칸별로 정리하는 단계입니다. 아직 요리를 하지는 않습니다.</p></div></div></section>
+<section id="knowledge-input"><span class="badge done">M1 · DONE</span><h2>5. Knowledge Input — 한 Issue의 사실을 한 봉투에 모읍니다</h2><p class="lead">ANALYSIS에는 Issue, Comment, 관계, Custom Field가 따로 흩어져 있습니다. Knowledge Input은 이들을 Issue 하나 기준으로 다시 조립합니다.</p><div class="flow">Issue DEMO-42
+├─ issue
+├─ comments[]
+├─ attachments[]
+├─ relationships[]
+├─ custom_fields[]
+└─ source_hash</div><div class="grid2"><div class="card"><h3>왜 한 봉투로 묶나?</h3><p>Knowledge 생성 Agent가 여러 JSONL을 직접 찾아다니지 않아도 Issue 하나의 사실을 한 번에 볼 수 있게 합니다.</p></div><div class="card"><h3>source_hash</h3><p>이 Issue의 의미 데이터가 이전과 같은지 비교하기 위한 지문입니다. 나중의 증분 처리와 Version 재사용의 기반입니다.</p></div></div><div class="callout"><b>중요</b>Knowledge Input도 아직 “지식”이 아닙니다. 지식을 만들기 위한 검증된 사실 재료 묶음입니다.</div></section>
+<section id="knowledge"><span class="badge done">M2~M4 · DONE</span><h2>6. Knowledge + Review — 사실에서 “검색할 가치가 있는 의미 문장”을 만듭니다</h2><p class="lead">여기서 처음 생성형 LLM이 등장합니다. Issue 전체를 그대로 검색하지 않고, 업무적으로 유용한 지식 문장으로 정리합니다.</p><div class="flow">Knowledge Input
+ ↓
+Knowledge Generation
+ ↓
+Attempt 1
+ ├─ issue_summary
+ ├─ problem_or_goal
+ ├─ key_findings
+ ├─ actions_and_decisions
+ ├─ outcomes
+ └─ open_items
+ ↓
+Review
+ ├─ PASS       → accepted
+ └─ REGENERATE → Attempt 2 ...</div><div class="grid3"><div class="card"><h3>Knowledge</h3><p>“이 Issue에서 무엇이 문제였고, 무엇을 했고, 결과가 어땠나?”를 짧은 의미 단위로 정리합니다.</p></div><div class="card"><h3>Attempt</h3><p>1차 생성이 품질 기준을 못 넘으면 2차, 3차로 다시 생성합니다. 덮어쓰지 않고 이력을 보존합니다.</p></div><div class="card"><h3>Review</h3><p>사실 충실도, Evidence coverage 같은 기준으로 결과를 검증하고 PASS 여부를 결정합니다.</p></div></div><div class="analogy"><div class="emoji">🧑‍🍳</div><div><b>비유</b><p>ANALYSIS가 손질된 식재료라면, Knowledge 생성은 요리이고 Review는 맛과 위생 검사를 하는 단계입니다. 검사에 실패하면 다시 요리합니다.</p></div></div></section>
+<section id="profile-schema"><span class="badge done">M5~M6 · DONE</span><h2>7. Profiling + Logical Schema — 실제 데이터를 재고, 저장 설계도를 만듭니다</h2><p class="lead">지식을 만들었다고 곧바로 DB를 짜지 않았습니다. 먼저 실제 Knowledge가 얼마나 크고, Evidence가 몇 개이고, retry가 얼마나 생기는지 측정한 뒤 DB 관계를 정했습니다.</p><div class="grid2"><div class="card"><h3>M5 · Profiling</h3><p>실제 Knowledge/Evidence/Retry 분포를 측정합니다. “우리 데이터가 실제로 어떻게 생겼나?”를 확인하는 단계입니다.</p></div><div class="card"><h3>M6 · Logical Schema</h3><p>Issue, Version, Generation, Attempt, Item, Evidence를 서로 다른 Entity로 분리하고 관계를 확정했습니다.</p></div></div><div class="flow">Issue
+ └─ Issue Version
+     └─ Knowledge Generation
+         ├─ Attempt 1 → Review: REGENERATE
+         └─ Attempt 2 → Review: PASS
+             ├─ Knowledge Item
+             ├─ Knowledge Item
+             └─ ... 각 Item에 Evidence 연결</div><div class="callout good"><b>핵심</b>“언제 파이프라인을 실행했나”와 “Issue 내용이 실제로 바뀌었나”를 분리했습니다. 그래서 같은 source_hash면 같은 Issue Version을 재사용할 수 있습니다.</div></section>
+<section id="sqlite"><span class="badge done">M7 · DONE / PASS</span><h2>8. SQLite — 설계도를 실제 검색용 지식 DB로 만듭니다</h2><p class="lead">M6의 논리 구조를 실제 SQLite 테이블로 구현한 단계입니다. History는 보존하지만 검색에는 최신 승인 지식만 쓰도록 구분합니다.</p><div class="grid3"><div class="card"><h3>History 저장</h3><p>과거 Issue Version, 실패 Attempt, Review 이력도 남깁니다.</p></div><div class="card"><h3>Active Retrieval</h3><p>Issue 하나당 현재 검색에 사용되는 active Generation은 최대 하나입니다.</p></div><div class="card"><h3>Evidence Round-trip</h3><p>Knowledge Item이 실제 description/comment/relationship 등으로 돌아갈 수 있게 연결합니다.</p></div></div><div class="flow">History Storage
+과거 Version / 과거 Attempt / Review
+        ≠
+Active Retrieval Corpus
+현재 active Generation + accepted Attempt의 Knowledge Item</div><div class="analogy"><div class="emoji">🗃️</div><div><b>비유</b><p>SQLite는 단순 문서 보관함이 아니라 “어느 문서 버전에서 어떤 요약을 만들었고, 몇 번째 시도가 승인됐고, 그 문장은 어떤 원문을 근거로 하는가”를 기록한 족보입니다.</p></div></div></section>
+<section id="embedding"><span class="badge done">M8 · DONE / PASS</span><h2>9. BGE-M3 Embedding — Knowledge 문장을 의미 좌표로 바꿉니다</h2><p class="lead">컴퓨터는 문장의 의미를 그대로 비교하기 어렵습니다. 그래서 Knowledge 문장을 1024개의 숫자로 바꿉니다.</p><div class="flow">"부팅 중 통신 timeout이 발생했다"
+        ↓ BGE-M3
+[0.013, -0.087, 0.221, ... 총 1024개 숫자]
+
+뜻이 비슷한 문장
+        ↓
+의미 공간에서도 가까운 위치</div><div class="grid3"><div class="card"><h3>입력</h3><p>SQLite의 active + accepted Knowledge Item.</p></div><div class="card"><h3>출력</h3><p>Knowledge Item 하나당 1024차원 vector.</p></div><div class="card"><h3>Identity</h3><p><code>emb_ → ki_</code> 연결을 유지해서 vector를 원래 문장으로 되돌릴 수 있습니다.</p></div></div><div class="callout good"><b>실제 검증</b>현재 MVP에서는 285개 Knowledge Item → 285개 Embedding, 1024차원, mapping/identity failure 0으로 검증했습니다.</div></section>
+<section id="faiss"><span class="badge done">M9 · DONE / PASS</span><h2>10. FAISS — 질문과 의미가 가까운 Knowledge를 찾습니다</h2><p class="lead">BGE-M3가 좌표를 만들었다면, FAISS는 그 좌표들 중 질문과 가까운 후보를 찾는 검색 엔진입니다.</p><div class="flow">사용자 질문
+  ↓ BGE-M3
+질문 vector
+  ↓
+FAISS IndexFlatIP
+  ↓
+가까운 Knowledge Top-3
+  ↓
+knowledge_item_id (ki_) 후보</div><div class="grid2"><div class="card"><h3>FAISS가 잘하는 것</h3><p>1024차원 벡터들 중 의미적으로 가까운 후보를 매우 빠르게 찾는 것.</p></div><div class="card"><h3>FAISS가 모르는 것</h3><p>원본 Jira 문장, 댓글 ID, 실제 Evidence 내용은 모릅니다. 그것은 다음 단계에서 DB를 통해 복원합니다.</p></div></div><div class="callout warn"><b>오해 금지</b><code>FAISS position ≠ embedding_id ≠ knowledge_item_id</code> 입니다. 배열 위치, Embedding identity, Knowledge identity는 서로 다른 개념입니다.</div></section>
+<section id="evidence-mcp"><span class="badge done">M10 · DONE / REAL-RUN PASS</span><h2>11. Evidence + MCP — 찾은 지식에 실제 Jira 근거를 붙입니다</h2><p class="lead">M9가 “관련 있어 보이는 Knowledge”를 찾았다면, M10은 “그 말의 근거가 Jira 어디에 있나?”를 다시 찾아 붙입니다.</p><div class="flow">FAISS Top-3
+ ↓
+ki_ Knowledge Item
+ ↓
+ke_ Knowledge Evidence
+ ↓
+SQLite source
+ ├─ summary
+ ├─ description
+ ├─ comment
+ ├─ attachment metadata
+ ├─ relationship
+ └─ custom field
+ ↓
+Evidence Package
+ ↓
+MCP tools</div><div class="grid2"><div class="card"><h3>search_jira_knowledge</h3><p>자연어 질문 → Top-3 Knowledge + 실제 Evidence Package.</p></div><div class="card"><h3>get_jira_issue</h3><p>Issue key를 알고 있을 때 해당 Issue의 현재 snapshot을 더 깊게 조회.</p></div></div><div class="callout good"><b>중요한 아키텍처</b>MCP 내부에는 생성형 LLM이 없습니다. 검색과 근거 복원만 담당합니다. 최종 설명은 OpenCode 같은 외부 Agent가 작성합니다.</div></section>
+<section id="opencode"><span class="badge done">M11 · DONE / PASS</span><h2>12. OpenCode — 실제 사용자가 질문하는 최종 소비자입니다</h2><p class="lead">M11에서는 만든 MCP를 OpenCode에 연결해 실제 Agent가 스스로 Tool을 발견하고 필요할 때 호출하는지 검증했습니다.</p><div class="flow">사용자: 자연어 업무 질문
+ ↓
+OpenCode Agent
+ ↓ "Jira에서 찾아보는 게 좋겠다"
+search_jira_knowledge 자동 선택
+ ↓
+Knowledge + Evidence
+ ↓
+Agent가 여러 근거를 읽고 설명
+ ↓
+사용자에게 최종 답변</div><div class="grid3"><div class="card"><h3>Tool discovery</h3><p>OpenCode가 MCP의 두 Tool을 인식했습니다.</p></div><div class="card"><h3>Auto Tool Selection</h3><p>MCP 이름을 직접 말하지 않아도 업무 질문에서 Jira 검색 Tool을 선택했습니다.</p></div><div class="card"><h3>Evidence 추적</h3><p>근거 요청 시 실제 description/comment Evidence까지 되돌아갔습니다.</p></div></div></section>
+<section id="roundtrip"><h2>13. 이 프로젝트의 진짜 핵심 — 검색 후 다시 원문으로 돌아갑니다</h2><p class="lead">앞으로만 가는 파이프라인이 아닙니다. 검색 결과가 나오면 반대로 원문까지 되돌아갈 수 있어야 합니다.</p><div class="reverse"><div class="node"><b>질문</b><small>사용자</small></div><div class="node"><b>FAISS</b><small>Top-3</small></div><div class="node"><b>ki_</b><small>Knowledge Item</small></div><div class="node"><b>ke_</b><small>Evidence link</small></div><div class="node"><b>SQLite</b><small>source resolve</small></div><div class="node"><b>Jira Evidence</b><small>description/comment</small></div><div class="node"><b>Agent 답변</b><small>근거 기반</small></div></div><div class="callout good"><b>그래서 RAG가 단순 검색보다 안전해집니다.</b>Agent는 “FAISS 점수가 높으니 맞겠지”라고 끝내지 않고, 실제 Jira 근거를 읽고 답하도록 설계되어 있습니다.</div></section>
+<section id="sync"><span class="badge next">NEXT · 아직 설계 중</span><h2>14. Continuous Sync는 이 전체 파이프라인의 “자동 갱신 장치”입니다</h2><p class="lead">M0~M11은 한 번 준비한 Pilot 데이터로 전체 기술 경로가 동작하는 것을 검증했습니다. 이제 Jira가 바뀌면 이 파이프라인이 자동으로 필요한 부분만 다시 돌아야 합니다.</p><div class="flow">Sync 시작
+ ↓
+Project Discovery
+ ↓
+Watermark + Overlap으로 변경 후보 찾기
+ ↓
+new / changed / unchanged 판정
+ ↓
+changed만
+RAW → ANALYSIS → Knowledge Input → Knowledge/Review
+ ↓
+새 Issue Version / 새 active Generation
+ ↓
+Embedding 갱신
+ ↓
+FAISS active 갱신
+ ↓
+Central Remote MCP가 최신 corpus 제공</div><div class="grid3"><div class="card"><h3>unchanged</h3><p>기존 Version, Knowledge, Embedding을 그대로 재사용합니다.</p></div><div class="card"><h3>new</h3><p>처음 보는 Issue이므로 전체 하위 처리를 실행합니다.</p></div><div class="card"><h3>changed</h3><p>새 Version부터 Knowledge/Embedding/FAISS까지 변경분만 갱신합니다.</p></div></div><div class="callout warn"><b>아직 Freeze하지 않은 것</b>Overlap 정확한 시간, Project 접근 상실 정책, 새 Project Initial Ingest 범위, source_hash v2 등의 세부값은 앞서 만든 Sync Contract 학습 문서를 이해한 뒤 하나씩 결정합니다.</div></section>
+<section id="identity"><h2>15. ID 족보 — 처음 보면 무섭지만 역할은 단순합니다</h2><p class="lead">ID는 “무엇이 무엇에서 만들어졌는지” 잃지 않기 위해 붙입니다. 모두 외울 필요는 없고, 앞에서 뒤로 내려가는 족보만 이해하면 됩니다.</p><div class="identity"><div class="idrow"><code>jira_id</code><span>Jira Issue 그 자체의 안정적인 identity</span></div><div class="idrow"><code>iv_</code><span>Issue Version — Issue 내용의 한 의미 상태</span></div><div class="idrow"><code>kc_</code><span>Knowledge Contract — 어떤 Schema/Skill/Runtime 규칙으로 지식화했는지</span></div><div class="idrow"><code>kg_</code><span>Knowledge Generation — Version + Contract로 만든 지식 생성 lineage</span></div><div class="idrow"><code>ka_</code><span>Knowledge Attempt — 1차, 2차, 3차 실제 생성 시도</span></div><div class="idrow"><code>ki_</code><span>Knowledge Item — 검색에 쓰는 의미 문장 하나</span></div><div class="idrow"><code>ke_</code><span>Knowledge Evidence — 그 문장의 Jira 근거 하나</span></div><div class="idrow"><code>ec_</code><span>Embedding Contract — 어떤 모델/텍스트 규칙으로 vector화했는지</span></div><div class="idrow"><code>emb_</code><span>Embedding Artifact identity — 특정 Knowledge Item의 vector</span></div><div class="idrow"><code>rc_</code><span>Retrieval Contract — 검색 방식의 규칙</span></div><div class="idrow"><code>fi_</code><span>FAISS Index Artifact — 만들어진 검색 인덱스 결과물</span></div></div><div class="analogy" style="margin-top:14px"><div class="emoji">🌳</div><div><b>가계도 비유</b><p><code>ki_</code> 하나만 봐도 어느 Attempt에서 나왔고, 어느 Generation/Version/Jira Issue에서 왔는지 거슬러 올라갈 수 있게 만든 구조입니다.</p></div></div></section>
+<section id="example"><h2>16. 가상의 Issue 하나가 전체 파이프라인을 여행한다면</h2><p class="lead">실제 사내 Issue 내용 대신 <code>DEMO-42</code>라는 가상의 예로 흐름만 보겠습니다.</p><div class="card"><div class="example-step"><b>① Jira</b><span>DEMO-42에 “부팅 때 통신 timeout”이라는 Issue와 댓글들이 존재합니다.</span></div><div class="example-step"><b>② RAW</b><span>Jira API의 issue.json, comment page를 그대로 저장합니다.</span></div><div class="example-step"><b>③ ANALYSIS</b><span>Issue, Comment, 관계, Custom Field를 정규화된 JSONL로 나눕니다.</span></div><div class="example-step"><b>④ Knowledge Input</b><span>DEMO-42의 모든 사실을 한 JSON package로 모으고 source_hash를 계산합니다.</span></div><div class="example-step"><b>⑤ Knowledge</b><span>LLM이 “문제”, “조치”, “결과” 같은 의미 문장을 만들고 각 문장에 Evidence를 연결합니다.</span></div><div class="example-step"><b>⑥ Review</b><span>1차 결과가 부족하면 재생성하고, PASS된 Attempt를 accepted로 선택합니다.</span></div><div class="example-step"><b>⑦ SQLite</b><span>Issue Version → Generation → Attempt → Item → Evidence의 족보를 저장합니다.</span></div><div class="example-step"><b>⑧ BGE-M3</b><span>승인된 Knowledge Item을 1024차원 vector로 바꿉니다.</span></div><div class="example-step"><b>⑨ FAISS</b><span>사용자가 “부팅 통신 timeout 사례”라고 물으면 DEMO-42 관련 Knowledge가 Top-3에 들어옵니다.</span></div><div class="example-step"><b>⑩ Evidence</b><span>해당 Knowledge의 ke_를 따라 실제 description/comment 원문을 복원합니다.</span></div><div class="example-step"><b>⑪ MCP/OpenCode</b><span>OpenCode가 Knowledge + Evidence를 읽고 사용자에게 근거 기반 답변을 작성합니다.</span></div><div class="example-step"><b>⑫ 다음 Sync</b><span>DEMO-42가 수정되면 변경 후보로 다시 수집하고 source_hash에 따라 changed/unchanged를 판정합니다.</span></div></div></section>
+<section id="terms"><h2>17. 용어 사전 — 이 문서에서 자주 나오는 말</h2><p class="lead">이 용어들만 익숙해지면 이후 설계 대화가 훨씬 편해집니다.</p><div class="term-grid"><div class="term"><b>Pipeline</b><span>데이터가 여러 처리 단계를 순서대로 지나가는 전체 흐름.</span></div><div class="term"><b>Run</b><span>파이프라인을 한 번 실행한 작업 단위.</span></div><div class="term"><b>RAW</b><span>Jira에서 받은 원본에 가장 가까운 보존 데이터. 사실의 기준.</span></div><div class="term"><b>ANALYSIS</b><span>RAW에서 deterministic하게 정리한 분석 친화 사실 데이터.</span></div><div class="term"><b>Knowledge Input</b><span>한 Issue의 Issue/Comment/관계/Custom Field 사실을 묶은 LLM 입력 package.</span></div><div class="term"><b>Knowledge</b><span>원본 사실에서 뽑은 검색 가치가 있는 의미 문장.</span></div><div class="term"><b>Evidence</b><span>Knowledge 문장을 뒷받침하는 실제 Jira summary/description/comment 등.</span></div><div class="term"><b>Version</b><span>같은 Jira Issue의 내용이 실제로 달라진 의미 상태.</span></div><div class="term"><b>Generation</b><span>특정 Version을 특정 Knowledge Contract로 지식화한 작업 lineage.</span></div><div class="term"><b>Attempt</b><span>Generation 안에서 실제 수행한 1차·2차·3차 생성 시도.</span></div><div class="term"><b>Active</b><span>현재 검색 서비스에서 사용하도록 선택된 최신 승인 Generation.</span></div><div class="term"><b>Historical</b><span>감사/재현을 위해 DB에 남기지만 기본 검색에서는 제외되는 과거 상태.</span></div><div class="term"><b>Embedding</b><span>문장의 의미를 비교할 수 있도록 만든 숫자 vector.</span></div><div class="term"><b>Vector</b><span>여러 숫자로 된 좌표. 이 프로젝트의 BGE-M3 dense vector는 1024차원.</span></div><div class="term"><b>FAISS</b><span>vector 사이의 가까움을 빠르게 찾아주는 검색 인덱스.</span></div><div class="term"><b>Top-K</b><span>검색 결과에서 가장 가까운 후보 K개. 현재 baseline은 Top-3.</span></div><div class="term"><b>MCP</b><span>Agent가 검색/get_issue 같은 기능을 표준 Tool로 호출하게 해주는 서비스 경계.</span></div><div class="term"><b>RAG</b><span>질문에 관련 근거를 먼저 검색한 뒤 그 근거를 LLM에게 주어 답하게 하는 방식.</span></div><div class="term"><b>source_hash</b><span>Issue 의미 데이터의 지문. 같은지 달라졌는지 판단하는 기반.</span></div><div class="term"><b>Checkpoint</b><span>중간 실패 후 어디부터 다시 시작할지 기억하는 저장 지점.</span></div><div class="term"><b>Watermark</b><span>Continuous Sync에서 “지난번 어디까지 확인했나”를 기억하는 책갈피.</span></div><div class="term"><b>Overlap</b><span>Watermark보다 조금 앞에서 다시 읽어 경계 누락을 방지하는 안전 구간.</span></div><div class="term"><b>Delta</b><span>전체가 아니라 지난번 이후의 신규/변경분.</span></div><div class="term"><b>Idempotent</b><span>같은 입력을 다시 처리해도 중복이나 다른 결과를 만들지 않는 성질.</span></div><div class="term"><b>Atomic write / publish</b><span>반쪽짜리 결과가 보이지 않게 완성된 결과를 한 번에 교체하는 방식.</span></div><div class="term"><b>Remote MCP</b><span>각 PC의 local stdio가 아니라 중앙 서버에 올려 여러 OpenCode가 네트워크로 쓰는 MCP.</span></div></div></section>
+<section id="debug"><h2>18. 문제가 생기면 “어느 층의 문제인가?”부터 보면 됩니다</h2><p class="lead">전체 구조를 이해하면 디버깅도 쉬워집니다. 모든 오류를 “LLM이 이상하다”로 몰아가지 않는 것이 중요합니다.</p><div class="debug"><div class="card"><h3>사실이 틀렸다</h3><p>RAW / ANALYSIS / Knowledge Input을 봅니다. Jira 수집이나 정규화 문제일 가능성이 큽니다.</p></div><div class="card"><h3>요약이 이상하다</h3><p>Knowledge / Review / Evidence 연결을 봅니다. 생성 품질 또는 검증 문제입니다.</p></div><div class="card"><h3>검색이 엉뚱하다</h3><p>Embedding / FAISS / Active corpus를 봅니다. LLM 답변보다 검색 품질 문제일 수 있습니다.</p></div><div class="card"><h3>근거가 안 나온다</h3><p><code>ki_ → ke_ → source</code> Evidence round-trip을 봅니다.</p></div><div class="card"><h3>OpenCode가 Tool을 안 쓴다</h3><p>MCP 연결, Tool discovery, Agent Tool 선택 문제를 봅니다.</p></div><div class="card"><h3>최신 Jira가 검색 안 된다</h3><p>앞으로는 Sync Run / Watermark / Delta / publish 상태를 봐야 합니다.</p></div></div><div class="callout good"><b>전체를 이해했다는 기준</b>“Jira → RAW → ANALYSIS → Knowledge → SQLite → Embedding → FAISS → Evidence → MCP → OpenCode”를 말할 수 있고, 각 단계가 <strong>왜 따로 존재하는지</strong> 한 문장씩 설명할 수 있으면 충분합니다.</div></section>
+<section><h2>마지막으로, M0~M11을 번호로 다시 연결하면</h2><table><thead><tr><th>Milestone</th><th>쉽게 말하면</th><th>현재 상태</th></tr></thead><tbody><tr><td>M0</td><td>Jira 원본 수집 + RAW/ANALYSIS 만들기</td><td>DONE</td></tr><tr><td>M1</td><td>Issue별 Knowledge Input package 만들기</td><td>DONE</td></tr><tr><td>M2</td><td>Knowledge Schema / 생성 Skill 계약</td><td>DONE</td></tr><tr><td>M3</td><td>Knowledge 품질 검증 / 재생성 Loop</td><td>DONE</td></tr><tr><td>M4</td><td>실제 Jira 30건 Knowledge Pilot</td><td>DONE</td></tr><tr><td>M5</td><td>실제 Knowledge/Evidence 분포 측정</td><td>DONE</td></tr><tr><td>M6</td><td>Version/Generation/Attempt/Item/Evidence DB 설계</td><td>DONE</td></tr><tr><td>M7</td><td>SQLite 실제 구현과 무결성 검증</td><td>DONE / PASS</td></tr><tr><td>M8</td><td>BGE-M3 1024차원 Embedding</td><td>DONE / PASS</td></tr><tr><td>M9</td><td>FAISS Top-3 Retrieval</td><td>DONE / PASS</td></tr><tr><td>M10</td><td>Evidence 복원 + MCP 2 Tools</td><td>DONE / REAL-RUN PASS</td></tr><tr><td>M11</td><td>OpenCode 실제 소비자 검증</td><td>DONE / PASS</td></tr><tr><td>Next</td><td>Continuous Sync + Delta Update + Central Remote MCP + Operations</td><td>DESIGN</td></tr></tbody></table></section>
+<footer class="footer"><strong>Jira Knowledge Pipeline 전체 학습 지도</strong><br>기준: 현재 repository의 M0~M11 Functional MVP와 2026-08-27 Operational Service 목표. 이 문서는 이해용이며 다음 Sync Contract의 미확정 정책값을 새로 Freeze하지 않습니다.</footer>
+</div></main></div></body></html>
