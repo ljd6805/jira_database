@@ -1,0 +1,95 @@
+:root {
+  --doc-shell-bg: rgba(255, 255, 255, 0.96);
+  --doc-shell-text: #24324a;
+  --doc-shell-muted: #8b97aa;
+  --doc-shell-line: #d9e2ef;
+  --doc-shell-primary: #3157d5;
+  --doc-shell-shadow: 0 8px 24px rgba(31, 49, 84, 0.10);
+}
+
+.doc-global-nav {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, .75fr) minmax(0, 1fr);
+  gap: 8px;
+  width: min(100%, 1120px);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 9px;
+  border: 1px solid var(--doc-shell-line);
+  border-radius: 14px;
+  background: var(--doc-shell-bg);
+  box-shadow: var(--doc-shell-shadow);
+  font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+}
+
+.doc-global-nav--top {
+  position: sticky;
+  top: 8px;
+  z-index: 9999;
+  margin-top: 10px;
+  margin-bottom: 18px;
+  backdrop-filter: blur(12px);
+}
+
+.doc-global-nav--bottom {
+  margin-top: 34px;
+  margin-bottom: 18px;
+}
+
+.doc-global-nav__button {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: #eef3ff;
+  color: var(--doc-shell-primary);
+  text-align: center;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.doc-global-nav__button[data-nav-role="hub"] {
+  background: var(--doc-shell-primary);
+  color: #fff;
+}
+
+.doc-global-nav__button:hover {
+  filter: brightness(.97);
+  transform: translateY(-1px);
+}
+
+.doc-global-nav__button.is-disabled {
+  background: #f3f5f8;
+  color: var(--doc-shell-muted);
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+html[data-doc-shell="v1"] a.back[href$="index.html"],
+html[data-doc-shell="v1"] .top > a[href$="index.html"] {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .doc-global-nav {
+    grid-template-columns: 1fr 1.15fr 1fr;
+    gap: 5px;
+    padding: 6px;
+    border-radius: 11px;
+  }
+  .doc-global-nav__button {
+    min-height: 38px;
+    padding: 7px 5px;
+    font-size: 11px;
+  }
+  .doc-global-nav--top { top: 4px; }
+}
+
+@media print {
+  .doc-global-nav { display: none !important; }
+}

@@ -1,0 +1,19 @@
+:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--shadow:0 12px 32px rgba(31,49,84,.08)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}
+.wrap{max-width:1180px;margin:auto;padding:40px 22px 80px}
+.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7);box-shadow:var(--shadow)}
+.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.1}
+.hero p{max-width:900px;color:rgba(255,255,255,.9)}
+.pills{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.14);font-size:12px;font-weight:800}
+section[data-hub-section]{margin-top:38px}
+.grid2,.grid3{display:grid;gap:13px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}
+.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff;box-shadow:0 5px 16px rgba(31,49,84,.04)}
+.card p{color:var(--muted);font-size:13px}
+.tag{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.done{background:#e5f7ef;color:#0c6c4a}.current{background:#e9eeff;color:#2548b5}.target{background:#fff1d7;color:#8a5700}
+.btn{display:inline-block;padding:7px 10px;margin:4px 5px 0 0;border-radius:8px;background:var(--blue);color:#fff;text-decoration:none;font-size:12px;font-weight:800}.btn.alt{background:#66758b}
+.flow{white-space:pre-wrap;padding:16px;border-radius:13px;background:#101827;color:#dce8ff;font:12px/1.65 Consolas,monospace}
+.callout{padding:16px;border-left:5px solid var(--green);background:#eaf8f3;border-radius:10px}
+.framework-note{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--muted);font-size:13px}
+.footer{margin-top:42px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;text-align:center}
+@media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}.wrap{padding:24px 15px 60px}.hero{padding:28px 22px}}
