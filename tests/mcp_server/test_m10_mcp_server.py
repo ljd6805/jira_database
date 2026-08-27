@@ -14,6 +14,7 @@ from jira_collector.mcp_server import (
     create_mcp_server,
     open_knowledge_db_readonly,
 )
+from jira_collector.mcp_server.validation import validate_m10_payloads
 from jira_collector.retrieval import RetrievalCandidate
 
 
@@ -182,3 +183,33 @@ def test_mcp_lists_and_calls_exactly_two_readonly_tools() -> None:
             assert issue.structured_content["issue"]["issue_key"] == "ABC-1"
 
     asyncio.run(scenario())
+
+
+def test_real_run_payload_gate_accepts_safe_mcp_outputs() -> None:
+    service = _service()
+    search = service.search_jira_knowledge("retry timeout")
+    issue = service.get_jira_issue("ABC-1")
+
+    validation = validate_m10_payloads(search, issue)
+
+    assert validation.passed
+    assert validation.search_result_count == 1
+    assert validation.evidence_count == 1
+    assert validation.warning_count == 0
+    assert validation.path_leak_count == 0
+    assert validation.issue_lookup_ok
+
+
+def test_real_run_payload_gate_rejects_warning_and_path_leak() -> None:
+    service = _service()
+    search = service.search_jira_knowledge("retry timeout")
+    issue = service.get_jira_issue("ABC-1")
+    search["warnings"] = [{"code": "TEST"}]
+    issue["source_path"] = "/internal/path"
+
+    validation = validate_m10_payloads(search, issue)
+
+    assert not validation.passed
+    assert validation.warning_count == 1
+    assert validation.path_leak_count == 1
+    assert len(validation.failures) == 2
