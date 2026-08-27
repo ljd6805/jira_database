@@ -33,6 +33,7 @@ MILESTONE_HTML_DOCS = tuple(
 STALE_STATUS_MARKERS = (
     "M6 CURRENT", "M7 CURRENT", "M7 NEXT", "M8 BLOCKED",
     "M9 CURRENT", "M9-03 NEXT", "REAL QUERY NEXT", "REBUILD NEXT",
+    "M10 NEXT / DESIGN NOT STARTED", "M10 DESIGN IN PROGRESS",
 )
 
 
@@ -62,7 +63,7 @@ def test_current_docs_do_not_regress_to_old_status() -> None:
             assert marker not in text, f"{path} contains stale marker: {marker}"
 
 
-def test_current_docs_record_m9_done_and_m10_workflow() -> None:
+def test_current_docs_record_m9_done_and_m10_real_run_next() -> None:
     required = (
         Path("README.md"),
         Path("docs/PIPELINE_OVERVIEW.md"),
@@ -73,11 +74,17 @@ def test_current_docs_record_m9_done_and_m10_workflow() -> None:
         text = _read(path); upper = text.upper()
         assert "M8" in text and "DONE" in upper
         assert "M9" in text and "DONE" in upper and "PASS" in upper
-        assert "M10" in text and "DESIGN" in upper
+        assert "M10" in text and "IMPLEMENTATION" in upper
+        assert "REAL-RUN" in upper and "NEXT" in upper
 
 
 def test_authoritative_docs_keep_generation_attempt_identity() -> None:
-    required = (Path("README.md"), Path("docs/PIPELINE_OVERVIEW.md"), Path("docs/status/jira_knowledge_db_current_status.html"), Path("docs/status/M10_START_HERE.html"), Path("docs/M6_DECISION_LOG.md"), Path("docs/M7_SQLITE_MATERIALIZATION.md"))
+    required = (
+        Path("README.md"), Path("docs/PIPELINE_OVERVIEW.md"),
+        Path("docs/status/jira_knowledge_db_current_status.html"),
+        Path("docs/status/M10_START_HERE.html"),
+        Path("docs/M6_DECISION_LOG.md"), Path("docs/M7_SQLITE_MATERIALIZATION.md"),
+    )
     for path in required:
         text = _read(path)
         assert "knowledge_attempt" in text or "Knowledge Attempt" in text
@@ -85,7 +92,10 @@ def test_authoritative_docs_keep_generation_attempt_identity() -> None:
 
 
 def test_architecture_map_uses_attempt_as_item_and_review_parent() -> None:
-    for path in (Path("docs/architecture/jira_data_relationship_map.data_a.js"), Path("docs/architecture/jira_data_relationship_map.data_b.js")):
+    for path in (
+        Path("docs/architecture/jira_data_relationship_map.data_a.js"),
+        Path("docs/architecture/jira_data_relationship_map.data_b.js"),
+    ):
         compact = _read(path).replace(" ", "").replace("\n", "")
         assert '"from":"generation","to":"attempt"' in compact
         assert '"from":"attempt","to":"item"' in compact
@@ -96,13 +106,21 @@ def test_architecture_map_uses_attempt_as_item_and_review_parent() -> None:
 
 def test_m7_completion_doc_records_real_run_gate() -> None:
     text = _read(Path("docs/M7_SQLITE_MATERIALIZATION.md"))
-    for token in ("M7_REAL_RUN = PASS", "Evidence raw      503", "Evidence           502", "idempotent         true", "Evidence Failure     0", "FK Failure           0"):
+    for token in (
+        "M7_REAL_RUN = PASS", "Evidence raw      503", "Evidence           502",
+        "idempotent         true", "Evidence Failure     0", "FK Failure           0",
+    ):
         assert token in text
 
 
 def test_m8_final_gate_is_preserved() -> None:
     text = _read(Path("docs/M8_REAL_EMBEDDING_LOG.md"))
-    for token in ("M8 = DONE", "corpus_rows: 285", "embedding_rows: 285", "batch_count: 5", "embedding_dimension: 1024", "mapping_failure_count: 0", "identity_failure_count: 0", "Semantic Quality Sanity Check · PASS"):
+    for token in (
+        "M8 = DONE", "corpus_rows: 285", "embedding_rows: 285",
+        "batch_count: 5", "embedding_dimension: 1024",
+        "mapping_failure_count: 0", "identity_failure_count: 0",
+        "Semantic Quality Sanity Check · PASS",
+    ):
         assert token in text
 
 
@@ -117,36 +135,65 @@ def test_m9_final_contract_and_real_gate_are_preserved() -> None:
         assert "cosine" in text.lower()
     assert "rc_" in design and "fi_" in design and "manifest" in design.lower()
     assert "M9 = DONE / PASS" in design and "M10" in design
-    for token in ("M9 = DONE / PASS", "vector_count = 285", "dimension = 1024", "vector_exact_equal=True", "max_abs_diff=0", "cosine=1.000000000", "ranking_equal=True", "scores_exact_equal=True", "Top-3 noise"):
+    for token in (
+        "M9 = DONE / PASS", "vector_count = 285", "dimension = 1024",
+        "vector_exact_equal=True", "max_abs_diff=0", "cosine=1.000000000",
+        "ranking_equal=True", "scores_exact_equal=True", "Top-3 noise",
+    ):
         assert token in log
     lower_decision = decision.lower()
     assert "delta-first" in lower_decision or "delta first" in lower_decision
 
 
-def test_m10_handoff_and_frozen_contract_are_static_html() -> None:
-    handoff_path = Path("docs/status/M10_START_HERE.html")
-    contract_path = Path("docs/status/M10_EVIDENCE_MCP_CONTRACT.html")
-    assert handoff_path.is_file() and contract_path.is_file()
+def test_m10_handoff_contract_and_implementation_are_static_html() -> None:
+    paths = (
+        Path("docs/status/M10_START_HERE.html"),
+        Path("docs/status/M10_EVIDENCE_MCP_CONTRACT.html"),
+        Path("docs/status/M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html"),
+        Path("docs/status/M10_MCP_IMPLEMENTATION.html"),
+    )
+    for path in paths:
+        assert path.is_file()
+        text = _read(path); lower = text.lower()
+        assert "<!doctype html>" in lower and "<main" in lower
+        assert "fetch(" not in text and "DecompressionStream" not in text
 
-    handoff = _read(handoff_path); lower = handoff.lower()
+    handoff = _read(paths[0])
     for token in (
-        "M0~M9 DONE", "M10", "Evidence Package", "knowledge_attempt",
-        "ka_", "attempt_no", "IndexFlatIP", "delta-first",
+        "M0~M9 DONE", "M10 IMPLEMENTATION PASS", "REAL-RUN NEXT",
+        "Evidence Package", "knowledge_attempt", "ka_", "attempt_no",
+        "IndexFlatIP", "delta-first",
         "DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC",
     ):
         assert token in handoff
-    assert "DESIGN NOT STARTED" not in handoff
-    assert "<!doctype html>" in lower and "<main" in lower and "fetch(" not in handoff
 
-    contract = _read(contract_path); lower_contract = contract.lower()
+    contract = _read(paths[1])
     for token in (
         "M10-01", "CONTRACT", "FROZEN", "Evidence Package",
         "search_jira_knowledge", "get_jira_issue", "Top-3",
         "active", "accepted", "M10-02",
     ):
         assert token in contract
-    assert "<!doctype html>" in lower_contract and "<main" in lower_contract
-    assert "fetch(" not in contract
+
+    implementation = _read(paths[3])
+    for token in (
+        "M10-04", "search_jira_knowledge", "get_jira_issue",
+        "mode=ro", "query_only", "133", "M10-05", "REAL-RUN NEXT",
+    ):
+        assert token in implementation
+
+
+def test_m10_real_run_validator_exists_and_is_privacy_preserving() -> None:
+    path = Path("tools/jira_knowledge/validate_m10_real_run.py")
+    assert path.is_file()
+    text = _read(path)
+    for token in (
+        "M10_REAL_RUN_QUERY", "search_jira_knowledge", "get_jira_issue",
+        "search_result_count", "evidence_count", "warning_count",
+        "path_leak_count", "M10_REAL_RUN =",
+    ):
+        assert token in text
+    assert 'print(query' not in text and 'print(issue_key' not in text
 
 
 def test_m0_to_m9_visual_docs_exist_and_are_static() -> None:
@@ -167,7 +214,11 @@ def test_documentation_hub_links_milestones_and_m10_handoff() -> None:
     index = _read(Path("docs/index.html"))
     for path in MILESTONE_HTML_DOCS:
         assert path.name in index
-    assert "M10_START_HERE.html" in index
+    for name in (
+        "M10_START_HERE.html", "M10_EVIDENCE_MCP_CONTRACT.html",
+        "M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html", "M10_MCP_IMPLEMENTATION.html",
+    ):
+        assert name in index
 
 
 def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
@@ -183,6 +234,8 @@ def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
         Path("docs/status/M10_START_HERE.html"),
         Path("docs/M10_EVIDENCE_MCP_DESIGN.html"),
         Path("docs/status/M10_EVIDENCE_MCP_CONTRACT.html"),
+        Path("docs/status/M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html"),
+        Path("docs/status/M10_MCP_IMPLEMENTATION.html"),
     )
     pattern = re.compile(r"\b[A-Z][A-Z0-9_]{1,15}-[1-9]\d{3,}\b")
     for path in public_docs:
