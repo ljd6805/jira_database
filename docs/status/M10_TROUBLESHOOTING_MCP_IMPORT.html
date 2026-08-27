@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M10 Troubleshooting · No module named mcp</title><link rel="stylesheet" href="milestone.css"></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_REAL_RUN_GATE.html">M10 Real-run Gate</a></nav><header class="hero"><span class="eyebrow">M10 TROUBLESHOOTING · 2026-08-27</span><h1>ModuleNotFoundError:<br>No module named 'mcp'</h1><p>M10 Real-run 실행 시 현재 Python 환경에 MCP Python SDK가 설치되지 않았을 때 발생하는 환경 오류입니다.</p><span class="state">ENVIRONMENT ISSUE · CODE CONTRACT UNCHANGED</span></header><section><h2>원인</h2><p>현재 프로젝트의 <code>pyproject.toml</code>에는 <code>mcp&gt;=2.0,&lt;3.0</code>이 dependency로 정의되어 있습니다. 따라서 로컬 checkout이 오래됐거나, 최신 checkout 이후 현재 Python 환경에서 프로젝트 dependency를 다시 설치하지 않은 경우가 가장 유력합니다.</p></section><section><h2>권장 복구 순서</h2><div class="flow">cd jira_database
+git pull
+python3 --version
+python3 -m pip install -e '.[dev]'
+python3 -c "import mcp; print('mcp OK:', mcp.__file__)"
+python3 tools/jira_knowledge/validate_m10_real_run.py</div><p>프로젝트는 Python 3.11 이상을 요구합니다. <code>pip</code> 단독 명령보다 <code>python3 -m pip</code>를 사용해 실행 interpreter와 설치 interpreter를 일치시킵니다.</p></section><section><h2>그래도 실패하면</h2><div class="flow">which python3
+python3 -m pip --version
+python3 -m pip show mcp
+python3 -c "import sys; print(sys.executable); print(sys.path)"</div><p><code>pip show mcp</code>가 성공하는데 import가 실패하면 서로 다른 Python/virtualenv를 사용 중일 가능성이 높습니다.</p></section><footer>M10 troubleshooting · dependency/environment only · 2026-08-27</footer></main></body></html>
