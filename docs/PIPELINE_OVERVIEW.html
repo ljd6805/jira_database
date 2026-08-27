@@ -1,76 +1,40 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · 전체 아키텍처</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1120px;margin:auto;padding:38px 22px 80px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.card p{color:var(--muted)}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.good{border-color:var(--green);background:#eaf8f3}.pill{display:inline-block;padding:5px 9px;margin:3px;border-radius:999px;background:#e7edff;color:#2548b5;font-size:11px;font-weight:900}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style><link rel="stylesheet" href="assets/document-shell.css" data-doc-shell="v1"><script defer src="assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a><a href="architecture/jira_sync_contract.html">FROZEN Sync Contract</a><a href="architecture/jira_sync_state_project_registry_design_draft.html">Current Schema Design</a><a href="architecture/jira_knowledge_operational_service_phase.html">Operational Service Phase</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-27</div><h1>Jira Knowledge Pipeline<br>MVP → 운영 서비스</h1><p>M0~M11에서 수집부터 OpenCode 소비까지 실제 환경 검증을 완료했고, 지속 운영을 위한 <strong>Sync Contract D1~D8도 FROZEN</strong>했습니다. 현재는 이 계약을 실제 상태 DB 구조로 옮기는 단계입니다.</p><div><span class="pill">M0~M11 MVP DONE / PASS</span><span class="pill">SYNC CONTRACT FROZEN</span><span class="pill">SCHEMA DESIGN CURRENT</span><span class="pill">DELTA-FIRST</span></div></header><section><h2>1. 전체 흐름</h2><div class="flow">Functional MVP · DONE
-Jira REST API
- → RAW / ANALYSIS                      M0
- → KNOWLEDGE INPUT                     M1
- → Knowledge / Review                  M2~M4
- → Profiling                           M5
- → Logical Identity                    M6
- → SQLite                              M7 PASS
- → BGE-M3 Embedding                    M8 PASS
- → FAISS                               M9 PASS
- → Evidence / MCP                      M10 PASS
- → OpenCode Consumer                   M11 PASS
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · Two-Loop Overview</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.72}.wrap{max-width:1120px;margin:auto;padding:38px 22px 84px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.warn{border-left-color:var(--amber);background:#fff7e9}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style><link rel="stylesheet" href="assets/document-shell.css" data-doc-shell="v1"><script defer src="assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a><a href="architecture/jira_operational_two_loop_architecture.html">2-Loop Architecture</a><a href="architecture/jira_sync_state_schema_contract.html">State Schema v2</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-28</div><h1>Jira Knowledge Pipeline<br>MVP → 2-Loop 운영 서비스</h1><p>M0~M11 Functional MVP는 완료됐고, 지속 운영은 Source Sync와 Knowledge Processing/Publish를 독립 Loop로 수행합니다.</p></header><section><h2>1. 전체 흐름</h2><div class="flow">Functional MVP · DONE
+Jira → RAW → ANALYSIS → Knowledge Input → Knowledge/Review
+→ SQLite → BGE-M3 → FAISS → Evidence/MCP → OpenCode
 
-Operational Service
-Project Discovery
- → Project별 Watermark + 5분 Overlap Delta Sync
- → semantic_v2 NEW / CHANGED / UNCHANGED
- → Source Commit
- → changed Knowledge / Evidence only
- → changed Embedding / FAISS only
- → safe Publish
- → Central Remote MCP
- → scheduling / retry / health / monitoring</div></section><section><h2>2. Identity Ladder</h2><pre>jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
+Operational Service · TWO-LOOP
 
-Embedding Contract    ec_
-Embedding Artifact    emb_
-Retrieval Contract    rc_
-FAISS Index Artifact  fi_
+Loop A · SOURCE SYNC
+source_sync_run
+→ Project Discovery
+→ Delta / Initial / Catch-up
+→ RAW / ANALYSIS / Knowledge Input
+→ semantic_v2
+→ NEW / CHANGED / UNCHANGED
+→ sync_issue_change backlog
+→ SOURCE_COMMITTED / Watermark
 
-FAISS position ≠ emb_ ≠ ki_</pre></section><section><h2>3. Sync Contract 핵심</h2><div class="flow">D1 Project별 committed Watermark
-D2 5분 Overlap + fixed upper
-D3 jira_id + source_hash change classification
-D4 source_hash semantic_v2
-D5 Checkpoint / Resume
-D6 Project Registry + Knowledge Retention
-D7 Source Commit vs Publish
-D8 completed / partial / failed
+Loop B · KNOWLEDGE PROCESSING / PUBLISH
+processing_run
+→ backlog
+→ OpenCode / Review / Evidence
+→ Knowledge DB
+→ BGE-M3 / FAISS staging
+→ Atomic Publish
 
-공식 기준
-architecture/jira_sync_contract.html</div></section><section><h2>4. 운영 서비스의 핵심 루프</h2><div class="flow">Sync 시작
- ↓ upper 고정
-Project Discovery
- ├─ 처음 보는 project_id → initial ingest
- ├─ visible 기존 Project → delta sync
- └─ unavailable 기존 Project → 이번 Sync에서 skip
-       └─ 기존 Knowledge / Retrieval 유지
- ↓
-Issue Delta
- ├─ unchanged → reuse
- ├─ new       → 새 Version
- └─ changed   → 새 Version
- ↓
-SOURCE_COMMITTED
- ↓
-Knowledge / Evidence / Embedding / FAISS
- ↓
-PUBLISHED
- ↓
-Central Remote MCP</div><div class="callout good"><strong>지식 보존:</strong> Project/Issue 삭제·비노출은 Knowledge 삭제 이벤트가 아닙니다. 기존 Published Knowledge는 계속 검색에 사용합니다.</div></section><section><h2>5. 안전한 Publish</h2><div class="flow">현재 Published = V1
-새 Jira Source V2 = SOURCE_COMMITTED
+Always-on
+Published Corpus → Central MCP → Team OpenCode</div></section><section><h2>2. 현재 Contract</h2><div class="grid"><div class="card"><h3>Sync Contract v2</h3><p>D1~D7 유지, D8 Loop-local revision, D9 Two-Loop FIXED.</p></div><div class="card"><h3>State Schema v2</h3><p>5개 Operational Domain Table + explicit migration.</p></div><div class="card"><h3>Historical v1</h3><p>단일 sync_run 설계는 구현 전 superseded. 감사 이력으로만 보존.</p></div></div></section><section><h2>3. State / Data 경계</h2><div class="grid"><div class="card"><h3>State DB</h3><p>source_sync_run, project_state, source_project_run, sync_issue_change, processing_run.</p></div><div class="card"><h3>Knowledge DB</h3><p>Issue Version, Generation, Attempt, Knowledge Item, Evidence, Review.</p></div><div class="card"><h3>Retrieval</h3><p>Embedding/FAISS artifact와 Published active view.</p></div></div></section><section><h2>4. 운영 최신성</h2><div class="flow">Source Lag
+= Jira를 어디까지 안전하게 읽었나?
 
-V2 Knowledge / Embedding / FAISS 준비 중
-→ 검색은 V1 유지
+Publish Lag
+= Source Head와 Published Head가 얼마나 차이나나?
 
-V2 전체 준비 완료
-→ Published Head V2 전환
-→ V1 History 보존</div><p>사용자에게 DB/Vector/Index가 서로 다른 세대인 Half-Publish를 노출하지 않습니다.</p></section><section><h2>6. 현재 설계 단계</h2><div class="flow">sync_run
-project_registry
-project_sync_state
-sync_project_run
-sync_issue_change</div><p>이 다섯 Entity를 중심으로 Watermark, Registry, Run 결과, downstream checkpoint를 저장하는 Schema를 검토 중입니다.</p></section><section><h2>7. Remote MCP의 위치</h2><div class="flow">Background Sync Pipeline
-Jira → RAW → Knowledge DB → Embedding / FAISS
-                         ↓ latest Published corpus
-                  Central Remote MCP
-                         ↓
-                  team OpenCode clients</div><p><strong>Remote MCP만 서버화하는 것으로는 부족합니다.</strong> Background Sync와 안전한 Publish가 함께 있어야 최신 지식 서비스가 됩니다.</p></section><section><h2>8. 아직 다른 단계에서 결정할 것</h2><div class="grid"><div class="card"><h3>팀원별 접근권한</h3><p>중앙 MCP auth/authorization 설계에서 결정합니다.</p></div><div class="card"><h3>운영 cadence</h3><p>Sync 주기, retry, timeout, concurrency, monitoring은 Operations 단계에서 결정합니다.</p></div><div class="card"><h3>Publish 물리 방식</h3><p>DB pointer, manifest, artifact swap 등 atomic publish 방식은 Incremental Retrieval 설계에서 결정합니다.</p></div></div></section><section><h2>9. 공식 문서</h2><div class="grid"><div class="card"><h3>FROZEN Sync Contract</h3><p><a href="architecture/jira_sync_contract.html">공식 구현 기준</a></p></div><div class="card"><h3>Easy Guide</h3><p><a href="architecture/jira_sync_contract_easy_guide.html">결정사항 쉬운 설명</a></p></div><div class="card"><h3>Current Schema Design</h3><p><a href="architecture/jira_sync_state_project_registry_design_draft.html">Sync State / Project Registry</a></p></div></div></section><footer style="margin-top:40px;color:var(--muted);font-size:12px">M0~M11 MVP DONE / PASS · Sync Contract D1~D8 FROZEN · current = Sync State / Project Registry Schema Design · 2026-08-27</footer></main></body></html>
+Backlog
+= Loop B가 아직 처리하지 못한 semantic Work가 얼마나 있나?</div><p>시스템 전체를 하나의 run_status로 표현하지 않습니다.</p></section><section><h2>5. 장애 격리</h2><table><thead><tr><th>장애</th><th>영향</th><th>계속 동작</th></tr></thead><tbody><tr><td>Jira</td><td>Loop A</td><td>Loop B backlog + Retrieval</td></tr><tr><td>OpenCode</td><td>Loop B Knowledge</td><td>Loop A + Retrieval</td></tr><tr><td>Embedding/Publish</td><td>Loop B downstream</td><td>Loop A + last-known-good Retrieval</td></tr></tbody></table></section><section><h2>6. 다음 작업</h2><div class="callout warn"><strong>Intermediate Version supersede 정책</strong><br>V2→V3→V4가 Processing 전에 쌓인 경우 미시작 V2/V3까지 지식화할지, 최신 pending만 처리할지를 구현 전에 결정합니다. Source Version은 모두 보존합니다.</div><div class="flow">정책 Freeze
+→ State Schema v2 Migration / StateStore
+→ Loop A Delta Sync
+→ backlog producer
+→ Loop B Single Worker
+→ Knowledge/Embedding/Publish
+→ lag/backlog monitoring
+→ Remote MCP Operations</div></section><footer>Pipeline Overview · Two-Loop current architecture · 2026-08-28</footer></main></body></html>
