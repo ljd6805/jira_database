@@ -62,14 +62,18 @@ def test_current_docs_do_not_regress_to_old_status() -> None:
             assert marker not in text, f"{path} contains stale marker: {marker}"
 
 
-def test_current_docs_record_m9_done_and_m10_next() -> None:
-    required = (Path("README.md"), Path("docs/PIPELINE_OVERVIEW.md"), Path("docs/index.html"), Path("docs/status/jira_knowledge_db_current_status.html"))
+def test_current_docs_record_m9_done_and_m10_workflow() -> None:
+    required = (
+        Path("README.md"),
+        Path("docs/PIPELINE_OVERVIEW.md"),
+        Path("docs/index.html"),
+        Path("docs/status/jira_knowledge_db_current_status.html"),
+    )
     for path in required:
         text = _read(path); upper = text.upper()
         assert "M8" in text and "DONE" in upper
         assert "M9" in text and "DONE" in upper and "PASS" in upper
-        assert "M10" in text and "NEXT" in upper
-        assert "DESIGN" in upper
+        assert "M10" in text and "DESIGN" in upper
 
 
 def test_authoritative_docs_keep_generation_attempt_identity() -> None:
@@ -119,12 +123,30 @@ def test_m9_final_contract_and_real_gate_are_preserved() -> None:
     assert "delta-first" in lower_decision or "delta first" in lower_decision
 
 
-def test_m10_handoff_is_complete_and_static_html() -> None:
-    path = Path("docs/status/M10_START_HERE.html"); assert path.is_file()
-    text = _read(path); lower = text.lower()
-    for token in ("M0~M9 DONE", "M10 NEXT", "DESIGN NOT STARTED", "Evidence Package", "Resolver Contract", "MCP Tool Surface", "knowledge_attempt", "ka_", "attempt_no", "IndexFlatIP", "delta-first", "DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC"):
-        assert token in text
-    assert "<!doctype html>" in lower and "<main" in lower and "fetch(" not in text
+def test_m10_handoff_and_frozen_contract_are_static_html() -> None:
+    handoff_path = Path("docs/status/M10_START_HERE.html")
+    contract_path = Path("docs/status/M10_EVIDENCE_MCP_CONTRACT.html")
+    assert handoff_path.is_file() and contract_path.is_file()
+
+    handoff = _read(handoff_path); lower = handoff.lower()
+    for token in (
+        "M0~M9 DONE", "M10", "Evidence Package", "knowledge_attempt",
+        "ka_", "attempt_no", "IndexFlatIP", "delta-first",
+        "DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC",
+    ):
+        assert token in handoff
+    assert "DESIGN NOT STARTED" not in handoff
+    assert "<!doctype html>" in lower and "<main" in lower and "fetch(" not in handoff
+
+    contract = _read(contract_path); lower_contract = contract.lower()
+    for token in (
+        "M10-01", "CONTRACT", "FROZEN", "Evidence Package",
+        "search_jira_knowledge", "get_jira_issue", "Top-3",
+        "active", "accepted", "M10-02",
+    ):
+        assert token in contract
+    assert "<!doctype html>" in lower_contract and "<main" in lower_contract
+    assert "fetch(" not in contract
 
 
 def test_m0_to_m9_visual_docs_exist_and_are_static() -> None:
@@ -149,7 +171,19 @@ def test_documentation_hub_links_milestones_and_m10_handoff() -> None:
 
 
 def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
-    public_docs = CURRENT_DOCS + (Path("docs/M8_REAL_EMBEDDING_LOG.md"), Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.md"), Path("docs/M9_DECISION_LOG.md"), Path("docs/M9_REAL_RETRIEVAL_LOG.md"), Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.html"), Path("docs/M9_DECISION_LOG.html"), Path("docs/M9_REAL_RETRIEVAL_LOG.html"), Path("docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html"), Path("docs/status/M10_START_HERE.html"))
+    public_docs = CURRENT_DOCS + (
+        Path("docs/M8_REAL_EMBEDDING_LOG.md"),
+        Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.md"),
+        Path("docs/M9_DECISION_LOG.md"),
+        Path("docs/M9_REAL_RETRIEVAL_LOG.md"),
+        Path("docs/M9_FAISS_ACTIVE_RETRIEVAL.html"),
+        Path("docs/M9_DECISION_LOG.html"),
+        Path("docs/M9_REAL_RETRIEVAL_LOG.html"),
+        Path("docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html"),
+        Path("docs/status/M10_START_HERE.html"),
+        Path("docs/M10_EVIDENCE_MCP_DESIGN.html"),
+        Path("docs/status/M10_EVIDENCE_MCP_CONTRACT.html"),
+    )
     pattern = re.compile(r"\b[A-Z][A-Z0-9_]{1,15}-[1-9]\d{3,}\b")
     for path in public_docs:
         matches = pattern.findall(_read(path)); assert not matches, f"{path}: {matches[:3]}"
