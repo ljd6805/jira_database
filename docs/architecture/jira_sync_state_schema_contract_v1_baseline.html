@@ -1,0 +1,17 @@
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="2-Loop 채택 이전의 Sync State Schema v1 설계 baseline 보존 문서"><title>Sync State Schema v1 · Superseded Baseline</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--amber:#a86500;--blue:#3157d5;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1050px;margin:auto;padding:42px 22px 86px}.hero{padding:38px;border-radius:24px;background:#fff7e9;border-left:6px solid var(--amber)}.hero h1{margin:8px 0}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}.card{margin-top:18px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:14px}a{color:var(--blue);font-weight:800}.footer{margin-top:50px;color:var(--muted);font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_state_schema_contract.html">현재 Schema Contract v2</a></p><header class="hero"><div>HISTORICAL BASELINE · SUPERSEDED 2026-08-28</div><h1>Sync State Schema v1은 구현 전에 2-Loop 아키텍처로 대체되었습니다.</h1><p>S1~S7에서 합의했던 v1은 하나의 <code>sync_run</code>이 Source와 Publish 집계를 함께 가지는 구조였습니다. 실제 구현을 시작하기 전에 Source Sync와 Knowledge Processing/Publish를 독립 Loop로 운영하기로 확정하면서 현재 구현 기준은 v2로 revision했습니다.</p></header><section class="card"><h2>v1 핵심 구조</h2><div class="flow">sync_run
+project_state
+sync_project_run
+sync_issue_change
+
+sync_run 안에
+→ discovery_status
+→ source_status
+→ publish_status
+→ run_status</div></section><section class="card"><h2>대체 이유</h2><p>OpenCode 처리 속도의 시간대별 변동과 LLM 지연이 Jira Source 최신화까지 막지 않도록 실행 identity를 분리해야 했습니다. 따라서 현재는 <code>source_sync_run</code>과 <code>processing_run</code>을 별도 실행으로 기록합니다.</p></section><section class="card"><h2>현재 기준</h2><div class="flow">Loop A
+source_sync_run → source_project_run → SOURCE_COMMITTED / Watermark
+
+Durable backlog
+sync_issue_change
+
+Loop B
+processing_run → Knowledge → Embedding → Publish</div><p><a href="jira_operational_two_loop_architecture.html">2-Loop 공식 아키텍처</a>와 <a href="jira_sync_state_schema_contract.html">Schema Contract v2</a>가 현재 Source of Truth입니다.</p></section><section class="card"><h2>v1 Decision History</h2><p>S1~S7의 개별 결정 문서는 삭제하지 않습니다. 각 문서에는 2-Loop 채택으로 유지/수정/대체된 범위를 표시합니다.</p></section><footer class="footer">Historical only · never deployed · do not implement · 2026-08-28</footer></main></body></html>
