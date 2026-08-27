@@ -7,23 +7,30 @@ def _read(path: str) -> str:
     return Path(path).read_text(encoding="utf-8")
 
 
-def test_m11_opencode_integration_is_current_and_linked() -> None:
+def test_m11_opencode_integration_is_done_and_linked() -> None:
     m11_path = Path("docs/status/M11_OPENCODE_MCP_INTEGRATION.html")
+    completion_path = Path("docs/status/M11_COMPLETION.html")
     assert m11_path.is_file()
+    assert completion_path.is_file()
+
+    for path in (m11_path, completion_path):
+        text = path.read_text(encoding="utf-8")
+        assert "<!doctype html>" in text.lower()
+        assert "OpenCode" in text
+        assert "M11" in text and "DONE" in text and "PASS" in text
+
     m11 = m11_path.read_text(encoding="utf-8")
-    assert "<!doctype html>" in m11.lower()
-    assert "OpenCode" in m11
-    assert "M11" in m11 and "CURRENT" in m11
-    assert "프로젝트 내부에 Agent를 구현" in m11
+    assert "프로젝트 안에 Agent를 새로 구현" in m11
 
     for path in (
         "README.md",
         "docs/index.html",
+        "docs/PIPELINE_OVERVIEW.html",
         "docs/status/jira_knowledge_db_current_status.html",
     ):
         text = _read(path)
-        assert "M11" in text and "CURRENT" in text
-        assert "M11_OPENCODE_MCP_INTEGRATION.html" in text
+        assert "M11" in text and "DONE" in text and "PASS" in text
+        assert "M11_COMPLETION.html" in text
 
 
 def test_m11_service_configuration_uses_dotenv_policy() -> None:
@@ -60,26 +67,37 @@ def test_mcp_runtime_loads_dotenv_without_overriding_os_environment() -> None:
     assert "load_embedding_settings(dotenv_path=None, env=environment)" in runtime
 
 
-def test_m11_opencode_real_run_has_discovery_and_explicit_call_pass() -> None:
+def test_m11_all_opencode_real_run_gates_are_pass() -> None:
     required = (
         "README.md",
         "docs/index.html",
         "docs/PIPELINE_OVERVIEW.html",
         "docs/status/jira_knowledge_db_current_status.html",
         "docs/status/M11_OPENCODE_MCP_INTEGRATION.html",
+        "docs/status/M11_COMPLETION.html",
     )
     for path in required:
         text = _read(path)
-        assert "M11-03" in text and "PASS" in text
-        assert "M11-04" in text and "PASS" in text
-        assert "M11-05" in text and "NEXT" in text
+        for gate in ("M11-03", "M11-04", "M11-05", "M11-06"):
+            assert gate in text and "PASS" in text
+        assert "M11" in text and "DONE" in text
 
-    m11 = _read("docs/status/M11_OPENCODE_MCP_INTEGRATION.html")
+    m11 = _read("docs/status/M11_COMPLETION.html")
     for token in (
         "get_jira_issue",
         "search_jira_knowledge",
-        "Tool discovery PASS",
-        "Explicit Tool call PASS",
-        "실제 OpenCode",
+        "자동 Tool 선택",
+        "description",
+        "comment",
+        "Evidence",
+        "M11 DONE / PASS",
     ):
         assert token in m11
+
+
+def test_m11_completion_preserves_privacy_and_remote_service_target() -> None:
+    completion = _read("docs/status/M11_COMPLETION.html")
+    assert "실제 업무 질문, Issue key, Jira 원문" in completion
+    assert "Remote MCP" in completion
+    assert "Streamable HTTP" in completion
+    assert "다음 Milestone 번호는 아직 고정하지 않습니다" in completion
