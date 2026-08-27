@@ -85,8 +85,8 @@ def _first_issue_key(payload: Mapping[str, object]) -> str | None:
 def main() -> int:
     try:
         return asyncio.run(_run_real_gate(os.environ))
-    except (OSError, RuntimeError, ValueError, LookupError) as exc:
-        print(f"오류: {exc}", file=sys.stderr)
+    except Exception as exc:  # CLI privacy boundary: local path/endpoint/response details are not echoed.
+        print(f"error_type: {type(exc).__name__}", file=sys.stderr)
         print("M10_REAL_RUN = FAIL")
         return 1
 
