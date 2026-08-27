@@ -1,48 +1,8 @@
-<!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sync State Schema Decision 2 최종 결정. 5개 논리 역할을 4개 물리 SQLite 테이블로 구성한다."><title>Sync State Schema · S2 Final · Entity Layout</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1100px;margin:auto;padding:42px 22px 84px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:45px}h2{font-size:29px}.lead{color:var(--muted)}.grid2,.grid4{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.footer{margin-top:54px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_state_schema_decision1_storage_location.html">S1 Final</a><a href="jira_sync_state_project_registry_design_draft.html">Schema Draft</a></nav><header class="hero"><div>SYNC STATE / PROJECT REGISTRY · SCHEMA DECISION 2 · FINAL · 2026-08-27</div><h1>5개 논리 역할을<br>4개 물리 테이블로 구성한다</h1><p>Project Registry와 Project별 장기 Sync State는 같은 <code>project_id</code>에 대해 같은 수명으로 유지되는 1:1 현재 상태이므로 하나의 <code>project_state</code> 테이블로 합칩니다.</p><span class="state">S1 FIXED · S2 FIXED · 4 PHYSICAL TABLES</span></header>
-<section><h2>1. 최종 결정</h2><div class="flow">논리 역할 5개
-sync_run
-project_registry
-project_sync_state
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S2 · Entity Layout · Revised</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--amber:#a86500;--green:#14845f;--blue:#3157d5;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1050px;margin:auto;padding:42px 22px 84px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--amber)}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}a{color:var(--blue);font-weight:800}.card{margin-top:18px}.good{border-left:5px solid var(--green)}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">현재 Schema v2</a> · <a href="jira_sync_state_schema_contract_v1_baseline.html">v1 history</a></p><header class="hero"><div>S2 · REVISED BY TWO-LOOP</div><h1>Operational Domain Table은 4개에서 5개로 revision되었습니다.</h1><p>기존 S2는 project registry/state를 합쳐 4개 테이블로 정리했습니다. 2-Loop 채택으로 별도 <code>processing_run</code>이 필요해져 현재 물리 Domain Table은 5개입니다.</p></header><section class="card"><h2>v1 baseline</h2><div class="flow">sync_run
+project_state
 sync_project_run
-sync_issue_change
-
-물리 SQLite 테이블 4개
-1. sync_run
+sync_issue_change</div></section><section class="card good"><h2>현재 v2</h2><div class="flow">1. source_sync_run
 2. project_state
-3. sync_project_run
+3. source_project_run
 4. sync_issue_change
-
-project_registry + project_sync_state
-→ project_state 로 merge</div></section>
-<section><h2>2. 네 테이블의 질문</h2><div class="grid4"><div class="card good"><h3>sync_run</h3><p>이번 전체 Sync는 어떻게 시작되고 끝났나?</p></div><div class="card good"><h3>project_state</h3><p>이 Project는 누구이며 현재 어디까지 안전하게 읽었나?</p></div><div class="card good"><h3>sync_project_run</h3><p>이번 Run에서 이 Project에 무슨 일이 있었나?</p></div><div class="card good"><h3>sync_issue_change</h3><p>이 NEW/CHANGED Issue는 Publish까지 어디까지 진행됐나?</p></div></div></section>
-<section><h2>3. 왜 project_state로 합치나?</h2><div class="grid2"><div class="card"><h3>Identity / Visibility</h3><div class="flow">project_id
-current_key
-current_name
-visibility
-first_seen / last_seen</div></div><div class="card"><h3>장기 Sync 상태</h3><div class="flow">committed_watermark
-last_source_success
-last_error</div></div></div><p>두 정보군 모두 Project 하나당 정확히 한 현재 상태를 설명하며 거의 항상 함께 읽습니다. 분리하면 1:1 JOIN과 Migration만 늘고 의미상 이득은 작습니다.</p></section>
-<section><h2>4. Current State와 History는 분리한다</h2><table><thead><tr><th>구분</th><th>테이블</th><th>보존 방식</th></tr></thead><tbody><tr><td>현재 Project 상태</td><td><code>project_state</code></td><td>Project당 1행을 갱신</td></tr><tr><td>Run History</td><td><code>sync_run</code></td><td>Run마다 새 행</td></tr><tr><td>Project Run History</td><td><code>sync_project_run</code></td><td>Run × Project마다 새 행</td></tr><tr><td>변경 Work Item 상태</td><td><code>sync_issue_change</code></td><td><code>jira_id + source_hash</code> 변경 단위로 장기 유지</td></tr></tbody></table><div class="callout"><strong>중요:</strong> <code>sync_issue_change</code>는 한 Run에서 끝나지 않을 수 있습니다. Source Commit은 R100에서 끝나고 Knowledge/Embedding/Publish가 R101에서 Resume될 수 있으므로 독립 Work Item이어야 합니다.</div></section>
-<section><h2>5. Migration 원칙</h2><div class="card warn"><h3>S1의 Mandatory Migration 유지</h3><p>기존 <code>collection_runs</code>, <code>project_runs</code>, <code>issue_checkpoints</code>, <code>artifacts</code>를 삭제하거나 즉시 새 테이블로 덮어쓰지 않습니다.</p></div><div class="flow">legacy MVP tables 보존
-→ versioned migration
-→ 새 4개 operational table 추가
-→ 기존 collector/resume 회귀 검증
-→ 새 Sync 구현이 새 operational table 사용
-
-legacy table 정리/통합
-→ 운영 안정화 이후 별도 migration 결정</div></section>
-<section><h2>6. S2 최종 규칙</h2><div class="card good"><div class="flow">S2 FIXED
-
-physical tables = 4
-
-sync_run
-project_state
-sync_project_run
-sync_issue_change
-
-project_state
-= Project Registry + long-lived Sync State
-
-sync_issue_change
-= Run을 넘어 살아남을 수 있는 downstream Work Item</div></div><p>다음 S3에서는 네 테이블의 필수 컬럼과 상태값을 확정합니다.</p></section><footer class="footer">S2 FINAL · logical roles 5 / physical tables 4 · no implementation yet · 2026-08-27</footer></main></body></html>
+5. processing_run</div></section><section class="card"><h2>논리 역할</h2><p><strong>source_sync_run</strong>은 Loop A 실행, <strong>processing_run</strong>은 Loop B 실행, <strong>sync_issue_change</strong>는 두 Loop 사이 durable backlog입니다. <code>project_state</code>는 여전히 Project identity/visibility/watermark를 한 행으로 보유합니다.</p></section><footer>S2 revised · 5 operational domain tables · 2026-08-28</footer></main></body></html>
