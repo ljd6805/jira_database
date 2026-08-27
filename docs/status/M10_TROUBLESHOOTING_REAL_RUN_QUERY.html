@@ -1,9 +1,19 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M10 Troubleshooting · M10_REAL_RUN_QUERY empty</title><link rel="stylesheet" href="milestone.css"></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_REAL_RUN_GATE.html">M10 Real-run Gate</a></nav><header class="hero"><span class="eyebrow">M10 TROUBLESHOOTING · 2026-08-27</span><h1>M10_REAL_RUN_QUERY<br>환경 변수가 비어 있습니다</h1><p>M10 Real-run 검증기는 실제 검색 경로를 시험하기 위해 질문 1개가 필요합니다. 질문이 설정되지 않으면 BGE-M3 호출 전에 안전하게 중단합니다.</p><span class="state">EXPECTED PRECONDITION · CODE ERROR 아님</span></header><section><h2>무엇을 넣어야 하나?</h2><p>파일럿 Jira 30건 안에 실제로 존재할 것으로 기대하는 업무 질문을 넣습니다. 예를 들어 특정 문제의 원인, 조치, 결과처럼 이미 수집된 Jira 내용과 연결될 가능성이 높은 질문이 좋습니다. 공개 문서에는 실제 질문 내용을 기록하지 않습니다.</p></section><section><h2>권장 입력 방법</h2><p>실제 Jira 업무 내용이 shell history에 남지 않도록 <code>read</code>로 입력한 뒤 export하는 방법을 권장합니다.</p><div class="flow">read -r -p "M10 test query: " M10_REAL_RUN_QUERY
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M10 Troubleshooting · M10_REAL_RUN_QUERY empty</title><link rel="stylesheet" href="milestone.css"></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_REAL_RUN_GATE.html">M10 Real-run Gate</a></nav><header class="hero"><span class="eyebrow">M10 TROUBLESHOOTING · 2026-08-27</span><h1>M10_REAL_RUN_QUERY<br>환경 변수가 비어 있습니다</h1><p>M10 Real-run 검증기는 실제 검색 경로를 시험하기 위해 질문 1개가 필요합니다. 질문이 설정되지 않으면 BGE-M3 호출 전에 안전하게 중단합니다.</p><span class="state">EXPECTED PRECONDITION · CODE ERROR 아님</span></header><section><h2>무엇을 넣어야 하나?</h2><p>파일럿 Jira 30건 안에 실제로 존재할 것으로 기대하는 업무 질문을 넣습니다. 예를 들어 특정 문제의 원인, 조치, 결과처럼 이미 수집된 Jira 내용과 연결될 가능성이 높은 질문이 좋습니다. 공개 문서에는 실제 질문 내용을 기록하지 않습니다.</p></section><section class="beginner"><span class="badge">현재 테스트 환경</span><h2>Windows PowerShell에서 설정하기</h2><p>현재 Windows에서 테스트 중이라면 Linux의 <code>read/export/unset</code> 대신 PowerShell의 <code>Read-Host</code>와 <code>$env:</code> 문법을 사용합니다.</p><div class="flow">$env:M10_REAL_RUN_QUERY = Read-Host "M10 test query"
+
+if ($env:M10_REAL_RUN_QUERY) {
+    Write-Host "M10 query: SET"
+} else {
+    Write-Host "M10 query: EMPTY"
+}
+
+python tools/jira_knowledge/validate_m10_real_run.py
+
+Remove-Item Env:M10_REAL_RUN_QUERY</div><div class="callout good"><strong>권장:</strong> 질문 문자열을 명령줄에 직접 적지 않고 <code>Read-Host</code>로 입력하면 PowerShell history에 질문 내용 자체를 남기지 않을 수 있습니다.</div></section><section><h2>PowerShell에서 직접 설정해도 되는 경우</h2><p>민감하지 않은 테스트 문자열이라면 아래처럼 직접 설정할 수도 있습니다.</p><div class="flow">$env:M10_REAL_RUN_QUERY = "여기에 실제 검색 질문을 입력"
+python tools/jira_knowledge/validate_m10_real_run.py
+Remove-Item Env:M10_REAL_RUN_QUERY</div><div class="callout warn"><strong>주의:</strong> 이 방식은 명령 자체가 PowerShell history에 남을 수 있으므로 실제 업무 문장이라면 <code>Read-Host</code> 방식을 권장합니다.</div></section><section><h2>Windows CMD를 쓰는 경우</h2><div class="flow">set /p M10_REAL_RUN_QUERY=M10 test query: 
+python tools\jira_knowledge\validate_m10_real_run.py
+set M10_REAL_RUN_QUERY=</div><p>현재 터미널이 PowerShell이라면 CMD 문법보다 위의 PowerShell 방법을 사용합니다.</p></section><section><h2>나중에 Linux로 포팅하면</h2><div class="flow">read -r -p "M10 test query: " M10_REAL_RUN_QUERY
 export M10_REAL_RUN_QUERY
 python3 tools/jira_knowledge/validate_m10_real_run.py
-unset M10_REAL_RUN_QUERY</div><p>화면에도 질문을 보이지 않게 하려면 <code>read -s</code>를 사용할 수 있습니다.</p><div class="flow">read -s -r -p "M10 test query: " M10_REAL_RUN_QUERY; echo
-export M10_REAL_RUN_QUERY
-python3 tools/jira_knowledge/validate_m10_real_run.py
-unset M10_REAL_RUN_QUERY</div></section><section><h2>단순 확인용</h2><p>민감하지 않은 테스트 문자열이라면 아래처럼 직접 설정해도 됩니다.</p><div class="flow">export M10_REAL_RUN_QUERY='여기에 실제 검색 질문을 입력'
-python3 tools/jira_knowledge/validate_m10_real_run.py</div></section><section><h2>설정 확인</h2><p>질문 자체를 출력하지 않고 설정 여부만 확인합니다.</p><div class="flow">test -n "$M10_REAL_RUN_QUERY" && echo "M10 query: SET" || echo "M10 query: EMPTY"</div></section><section><h2>질문 선택 기준</h2><div class="checks"><div class="check">✓ 파일럿 Jira 안에 관련 내용이 있을 가능성이 높다</div><div class="check">✓ 너무 광범위하지 않다</div><div class="check">✓ 원인/조치/결과처럼 Knowledge로 추출됐을 법하다</div><div class="check">✓ 실제 Issue Key나 원문을 공개 문서에 남기지 않는다</div></div></section><footer>M10 troubleshooting · real-run query precondition · 2026-08-27</footer></main></body></html>
+unset M10_REAL_RUN_QUERY</div></section><section><h2>질문 선택 기준</h2><div class="checks"><div class="check">✓ 파일럿 Jira 안에 관련 내용이 있을 가능성이 높다</div><div class="check">✓ 너무 광범위하지 않다</div><div class="check">✓ 원인/조치/결과처럼 Knowledge로 추출됐을 법하다</div><div class="check">✓ 실제 Issue Key나 원문을 공개 문서에 남기지 않는다</div></div></section><footer>M10 troubleshooting · Windows PowerShell current test / Linux future port · 2026-08-27</footer></main></body></html>
