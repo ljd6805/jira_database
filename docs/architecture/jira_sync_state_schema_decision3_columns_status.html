@@ -30,13 +30,21 @@ error_summary</div></section><section class="card"><h2>sync_issue_change · dura
 project_id / jira_id / observed_issue_key
 source_hash / source_hash_profile
 change_kind
+
 first_discovered_source_run_id
 last_observed_source_run_id
+last_source_committed_run_id
+last_source_committed_at
 last_processing_run_id
+last_observed_at
+
 issue_version_id / knowledge_generation_id
 knowledge_status
 embedding_status
 publish_status
 error_stage / error_message
 created_at / updated_at
-last_published_at</div></section><section class="card"><h2>Status enum</h2><table><thead><tr><th>영역</th><th>값</th></tr></thead><tbody><tr><td>Discovery</td><td>pending / running / completed / failed</td></tr><tr><td>Source aggregate</td><td>pending / running / completed / partial / failed</td></tr><tr><td>Source Project</td><td>pending / running / source_committed / partial / failed / skipped_unavailable</td></tr><tr><td>Processing Run</td><td>running / completed / partial / failed</td></tr><tr><td>Knowledge / Embedding</td><td>pending / running / completed / failed</td></tr><tr><td>Publish</td><td>pending / running / published / failed</td></tr></tbody></table></section><section class="card"><h2>UNCHANGED</h2><p>새 Work Item을 만들지 않습니다. Source Project count와 stable cursor만 전진합니다.</p></section><footer>S3 revised · source/processing state separated · 2026-08-28</footer></main></body></html>
+last_published_at</div><p>후보를 처리하는 동안 row는 먼저 만들어질 수 있으므로 Source 관찰과 Source Commit을 별도 필드로 구분합니다.</p></section><section class="card good"><h2>Source Ready Gate</h2><div class="flow">Loop B eligible
+last_source_committed_run_id IS NOT NULL
+AND
+last_source_committed_run_id = last_observed_source_run_id</div><p>T2 Candidate 처리에서 <code>last_observed_source_run_id</code>는 전진하지만, Project 전체 Source Commit 전까지 <code>last_source_committed_run_id</code>는 이전 값/NULL입니다. 따라서 Loop B가 미완료 Source를 소비하지 않습니다.</p></section><section class="card"><h2>Status enum</h2><table><thead><tr><th>영역</th><th>값</th></tr></thead><tbody><tr><td>Discovery</td><td>pending / running / completed / failed</td></tr><tr><td>Source aggregate</td><td>pending / running / completed / partial / failed</td></tr><tr><td>Source Project</td><td>pending / running / source_committed / partial / failed / skipped_unavailable</td></tr><tr><td>Processing Run</td><td>running / completed / partial / failed</td></tr><tr><td>Knowledge / Embedding</td><td>pending / running / completed / failed</td></tr><tr><td>Publish</td><td>pending / running / published / failed</td></tr></tbody></table></section><section class="card"><h2>UNCHANGED</h2><p>새 Work Item을 만들지 않습니다. Source Project count와 stable cursor만 전진합니다.</p></section><footer>S3 revised · source/processing state separated · Source Ready Gate included · 2026-08-28</footer></main></body></html>
