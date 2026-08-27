@@ -8,10 +8,10 @@ Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 
 
 ```text
 M0~M10  DONE / PASS
-NEXT    아직 정의하지 않음
+M11     OPENCODE MCP INTEGRATION · CURRENT
 ```
 
-M10 최종 완료 기록은 **[M10 Completion](docs/status/M10_COMPLETION.html)** 에서 확인하세요.
+M10 최종 완료 기록은 **[M10 Completion](docs/status/M10_COMPLETION.html)**, 현재 M11 계획은 **[M11 OpenCode MCP Integration](docs/status/M11_OPENCODE_MCP_INTEGRATION.html)** 에서 확인하세요.
 
 ## 1. 전체 흐름
 
@@ -39,6 +39,8 @@ M8  BGE-M3 Embedding                        DONE · REAL-RUN PASS
 M9  FAISS + Active Retrieval                DONE · REAL-RUN PASS
     ↓
 M10 Evidence Builder + MCP                  DONE · REAL-RUN PASS
+    ↓
+M11 OpenCode MCP Integration                CURRENT
 ```
 
 ## 2. 핵심 불변 원칙
@@ -252,7 +254,7 @@ tool_count 2
 search_result_count 3
 = FAISS Top-3 Knowledge 후보 3개.
 
-Evidence_count 6
+evidence_count 6
 = 검색된 Knowledge 3개를 뒷받침하는 실제 Jira 근거 총 6개.
   Issue 6개나 Knowledge 6개라는 뜻은 아님.
 
@@ -289,6 +291,7 @@ Windows PowerShell에서 현재 테스트했고, 향후 Linux 포팅 명령도 H
 ## 10. 주요 문서
 
 - [Documentation Hub](docs/index.html)
+- [M11 OpenCode MCP Integration](docs/status/M11_OPENCODE_MCP_INTEGRATION.html)
 - [M10 Completion](docs/status/M10_COMPLETION.html)
 - [M10 Start Here](docs/status/M10_START_HERE.html)
 - [M10 쉬운 확정 설계](docs/M10_EVIDENCE_MCP_DESIGN.html)
@@ -325,6 +328,28 @@ data/retrieval/runs/20260804T043628Z/
 
 `data/`, `.env`, local config, DB는 Git에서 제외합니다. Public repo에는 실제 Jira Issue Key/raw body/사내 endpoint/custom header/token/로컬 절대경로를 기록하지 않습니다.
 
-## 12. 다음 단계
+## 12. M11 OpenCode MCP Integration — CURRENT
 
-M10까지 완료했습니다. 다음 Milestone은 아직 확정하지 않습니다. 운영화, Agent 연동, retrieval hardening 중 무엇을 다음 경계로 둘지는 별도 의사결정으로 정의합니다.
+M11은 이 저장소에 Agent를 구현하는 단계가 아닙니다. M10에서 만든 MCP를 외부 OpenCode Agent에 연결해 실제 소비자 관점에서 검증합니다.
+
+서비스 설정 정책:
+
+```text
+기본 서비스 설정   .env
+OS 환경 변수       .env보다 우선 · CI/진단/일시 override
+명시적 test env    .env를 읽지 않음
+```
+
+서비스 `.env`에는 다음을 둡니다.
+
+```text
+JIRA_KNOWLEDGE_DB_PATH
+JIRA_RETRIEVAL_ARTIFACT_DIR
+BGE_M3_ENDPOINT
+BGE_M3_API_KEY       optional
+BGE_M3_HEADERS_JSON  optional
+```
+
+`M10_REAL_RUN_QUERY`는 검증 전용이므로 실제 서비스 `.env`에는 기본적으로 넣지 않습니다.
+
+M11 다음 Gate는 OpenCode에 local stdio MCP를 등록하고 Tool 2개가 discovery되는지 확인하는 것입니다.
