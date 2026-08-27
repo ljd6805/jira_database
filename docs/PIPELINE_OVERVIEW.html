@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · 전체 아키텍처</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1120px;margin:auto;padding:38px 22px 80px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.card p{color:var(--muted)}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.good{border-color:var(--green);background:#eaf8f3}.pill{display:inline-block;padding:5px 9px;margin:3px;border-radius:999px;background:#e7edff;color:#2548b5;font-size:11px;font-weight:900}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a><a href="status/M10_COMPLETION.html">M10 Completion</a><a href="status/M11_OPENCODE_MCP_INTEGRATION.html">M11 Current</a><a href="architecture/jira_knowledge_mcp_service_target.html">Remote MCP Target</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-27</div><h1>Jira Knowledge Pipeline<br>전체 아키텍처</h1><p>M0~M10까지 실제 환경 검증을 완료했고, M11에서는 외부 소비자인 OpenCode가 MCP를 실제로 발견·호출·활용하는지 검증합니다. 현재 local stdio 연결, Tool 2개 discovery, 명시적 Tool call까지 PASS했습니다.</p><div><span class="pill">M0~M10 DONE</span><span class="pill">M10 REAL-RUN PASS</span><span class="pill">M11-01~04 PASS</span><span class="pill">M11-05 NEXT</span><span class="pill">REMOTE MCP = FINAL TARGET</span></div></header>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · 전체 아키텍처</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.7}.wrap{max-width:1120px;margin:auto;padding:38px 22px 80px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.card p{color:var(--muted)}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.good{border-color:var(--green);background:#eaf8f3}.pill{display:inline-block;padding:5px 9px;margin:3px;border-radius:999px;background:#e7edff;color:#2548b5;font-size:11px;font-weight:900}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a><a href="status/M11_COMPLETION.html">M11 Completion</a><a href="status/M10_COMPLETION.html">M10 Completion</a><a href="architecture/jira_knowledge_mcp_service_target.html">Remote MCP Target</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-27</div><h1>Jira Knowledge Pipeline<br>전체 아키텍처</h1><p>M0~M11까지 실제 환경 검증을 완료했습니다. M11에서 외부 소비자인 OpenCode가 Jira MCP를 스스로 선택하고, 답변 근거를 실제 Jira description/comment까지 추적하는 것을 확인했습니다.</p><div><span class="pill">M0~M11 DONE / PASS</span><span class="pill">M10 REAL-RUN PASS</span><span class="pill">M11 AUTO TOOL PASS</span><span class="pill">M11 EVIDENCE TRACE PASS</span><span class="pill">REMOTE MCP = NEXT TARGET</span></div></header>
 <section><h2>1. 전체 흐름</h2><div class="flow">Jira REST API
     ↓
 RAW / ANALYSIS                         M0 DONE
@@ -19,7 +19,9 @@ FAISS + Active Retrieval               M9 DONE · PASS
     ↓
 Evidence Resolver / Package / MCP      M10 DONE · REAL-RUN PASS
     ↓
-OpenCode MCP Consumer Pilot            M11 CURRENT · 01~04 PASS</div></section>
+OpenCode MCP Consumer Pilot            M11 DONE · USER REAL-RUN PASS
+    ↓
+중앙 Remote MCP 서비스화                NEXT TARGET · 번호 미정</div></section>
 <section><h2>2. Identity Ladder</h2><pre>jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 
 knowledge_attempt = ka_ + attempt_no
@@ -41,12 +43,12 @@ ki_ active/accepted 재검증
 → MCP 2 tools
 
 M11 OpenCode Consumer Pilot
-OpenCode가 Tool 2개 discovery
+OpenCode Tool 2개 discovery
 → 명시적 Tool call
-→ 자동 Tool selection 검증
-→ Evidence 기반 답변 검증
+→ 일반 업무 질문에서 자동 Tool selection
+→ 후속 근거 요청에서 description/comment Evidence 추적
 
-최종 서비스
+다음 서비스 목표
 팀원 OpenCode → 중앙 Remote MCP / HTTPS</div><div class="callout good"><strong>FAISS는 원문 검색기가 아닙니다.</strong> Knowledge vector를 찾고, 원문 근거는 SQLite에서 <code>ki_ → ke_ → source</code>로 복원합니다.</div></section>
 <section><h2>4. M10 Real-run PASS</h2><div class="flow">tool_count: 2
 search_result_count: 3
@@ -56,22 +58,33 @@ path_leak_count: 0
 issue_lookup_ok: true
 failure_count: 0
 M10_REAL_RUN = PASS</div></section>
-<section><h2>5. M11 OpenCode 실제 검증</h2><table><thead><tr><th>Gate</th><th>검증</th><th>상태</th></tr></thead><tbody><tr><td>M11-01</td><td>.env service configuration</td><td>PASS</td></tr><tr><td>M11-02</td><td>local stdio OpenCode connection</td><td>PASS</td></tr><tr><td>M11-03</td><td>Tool 2개 discovery</td><td>PASS · 실제 OpenCode</td></tr><tr><td>M11-04</td><td>명시적 Tool call</td><td>PASS · 실제 OpenCode</td></tr><tr><td>M11-05</td><td>일반 질문에서 자동 Tool selection</td><td>NEXT</td></tr><tr><td>M11-06</td><td>Knowledge + Evidence 기반 답변</td><td>NEXT</td></tr></tbody></table><div class="flow">tool_count: 2
+<section><h2>5. M11 OpenCode 최종 검증</h2><table><thead><tr><th>Gate</th><th>검증</th><th>상태</th></tr></thead><tbody><tr><td>M11-01</td><td>.env service configuration</td><td>PASS</td></tr><tr><td>M11-02</td><td>local stdio OpenCode connection</td><td>PASS</td></tr><tr><td>M11-03</td><td>Tool 2개 discovery</td><td>PASS · 실제 OpenCode</td></tr><tr><td>M11-04</td><td>명시적 Tool call</td><td>PASS · 실제 OpenCode</td></tr><tr><td>M11-05</td><td>일반 업무 질문에서 자동 Tool selection</td><td>PASS · 실제 OpenCode</td></tr><tr><td>M11-06</td><td>근거 요청에서 description/comment Evidence 추적</td><td>PASS · 실제 OpenCode</td></tr></tbody></table><div class="flow">tool_count: 2
 tools: get_jira_issue, search_jira_knowledge
-M11_STDIO_HANDSHAKE = PASS</div><p>M11-03/04는 사용자가 실제 OpenCode 환경에서 확인한 Real-run 결과입니다.</p></section>
-<section><h2>6. Local Pilot과 최종 서비스</h2><div class="flow">Local Pilot
+M11_STDIO_HANDSHAKE = PASS
+
+M11 = DONE / PASS</div><p>공개 문서에는 실제 업무 질문, Issue key, Jira 원문을 기록하지 않습니다.</p></section>
+<section><h2>6. M11 사용자 관점의 의미</h2><div class="flow">일반 업무 질문
+   ↓
+Agent가 Jira MCP를 스스로 선택
+   ↓
+Knowledge + Evidence 기반 답변
+   ↓
+근거 요청
+   ↓
+실제 Jira description / comment Evidence 제시</div><p>따라서 M10의 기술적 Evidence round-trip이 실제 OpenCode 사용자 경험까지 이어지는 것을 확인했습니다.</p></section>
+<section><h2>7. Local Pilot과 최종 서비스</h2><div class="flow">M11 Local Pilot · DONE
 jira_database/.env + SQLite + FAISS + MCP
                 ↓ stdio
              OpenCode
 
-Final Team Service
+Next Target · Final Team Service
 팀원 A OpenCode ─┐
 팀원 B OpenCode ─┼── Remote MCP / HTTPS ─→ 중앙 jira-knowledge MCP
 팀원 C OpenCode ─┘                          ├─ SQLite
                                            ├─ FAISS
                                            ├─ .env
                                            └─ BGE-M3</div><p>Local stdio는 기능/호환성 검증용이고, 최종 서비스에서는 팀원 PC가 DB/FAISS/BGE secret을 소유하지 않습니다.</p></section>
-<section><h2>7. M10 Security Boundary</h2><div class="flow">Tool annotation
+<section><h2>8. Security Boundary</h2><div class="flow">Tool annotation
 read_only_hint = true
 open_world_hint = false
 
@@ -84,11 +97,12 @@ source_path/source_page 제외
 
 Generative LLM in MCP
 없음</div></section>
-<section><h2>8. Production Update Direction</h2><div class="flow">운영 기본 = delta-first
+<section><h2>9. Production Update Direction</h2><div class="flow">운영 기본 = delta-first
 unchanged → reuse
 added     → cache/embed → add
 changed   → remove/tombstone → cache/embed → add
 removed   → remove/tombstone
 
 full rebuild = maintenance / recovery / migration</div><p><code>IndexIDMap2(IndexFlatIP)</code>, vector cache, HNSW/IVF는 향후 hardening 후보입니다.</p></section>
-<section><h2>9. 공식 문서</h2><div class="grid"><div class="card"><h3>M11 Current</h3><p><a href="status/M11_OPENCODE_MCP_INTEGRATION.html">OpenCode MCP Integration</a></p></div><div class="card"><h3>Remote MCP Target</h3><p><a href="architecture/jira_knowledge_mcp_service_target.html">팀 공용 서비스 목표</a></p></div><div class="card"><h3>M10 Completion</h3><p><a href="status/M10_COMPLETION.html">M10 최종 완료 기록</a></p></div></div></section><footer style="margin-top:40px;color:var(--muted);font-size:12px">M0~M10 DONE / PASS · M11-01~04 PASS · M11-05 AUTO TOOL SELECTION NEXT · 2026-08-27</footer></main></body></html>
+<section><h2>10. 다음 목표</h2><div class="callout"><strong>중앙 Remote MCP 서비스화</strong><br>Streamable HTTP → 서버 실행 → TLS/인증/접근 제어 → logging/health → 동시 사용 검증 → 팀원 OpenCode Remote MCP Pilot 순으로 설계합니다. 다음 Milestone 번호는 Completion Gate를 먼저 합의한 뒤 확정합니다.</div></section>
+<section><h2>11. 공식 문서</h2><div class="grid"><div class="card"><h3>M11 Completion</h3><p><a href="status/M11_COMPLETION.html">OpenCode 소비자 검증 완료</a></p></div><div class="card"><h3>Remote MCP Target</h3><p><a href="architecture/jira_knowledge_mcp_service_target.html">팀 공용 서비스 목표</a></p></div><div class="card"><h3>M10 Completion</h3><p><a href="status/M10_COMPLETION.html">M10 최종 완료 기록</a></p></div></div></section><footer style="margin-top:40px;color:var(--muted);font-size:12px">M0~M11 DONE / PASS · next target = team-wide Remote MCP service · 2026-08-27</footer></main></body></html>
