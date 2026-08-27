@@ -194,6 +194,8 @@ ki_ active/accepted 재검증
 Agent / LLM 최종 답변
 ```
 
+**FAISS는 Jira 원문을 직접 검색하지 않습니다.** FAISS는 Knowledge vector를 검색하고, 실제 Jira 근거는 SQLite에서 `ki_ → ke_ → source`로 복원합니다.
+
 확정 계약:
 
 ```text
@@ -239,9 +241,52 @@ failure_count: 0
 M10_REAL_RUN = PASS
 ```
 
+각 값의 의미:
+
+```text
+tool_count 2
+= MCP가 제공하는 기능 종류가 2개라는 뜻.
+  search_jira_knowledge + get_jira_issue.
+  Tool을 2번 호출했다는 뜻은 아님.
+
+search_result_count 3
+= FAISS Top-3 Knowledge 후보 3개.
+
+Evidence_count 6
+= 검색된 Knowledge 3개를 뒷받침하는 실제 Jira 근거 총 6개.
+  Issue 6개나 Knowledge 6개라는 뜻은 아님.
+
+warning_count 0
+= stale / missing / invalid ref 등 깨진 candidate 없음.
+
+path_leak_count 0
+= source_path / source_page 등 내부 경로 노출 없음.
+
+issue_lookup_ok true
+= 검색 결과에서 실제 active Issue 재조회 성공.
+
+failure_count 0
+= Completion Gate 실패 항목 없음.
+```
+
 이 결과로 실제 **BGE-M3 → FAISS → ki_ → ke_ → Jira source → MCP response** 경로가 end-to-end로 검증됐습니다.
 
-## 9. 주요 문서
+## 9. M10 Real-run에서 실제로 해결한 트러블슈팅
+
+```text
+1) ModuleNotFoundError: No module named 'mcp'
+   → 현재 Python environment에 MCP SDK가 없었음.
+
+2) M10_REAL_RUN_QUERY 환경 변수가 비어 있습니다
+   → 실제 검색 질문 환경변수가 필요했음.
+
+3) McpRuntimeSettingsError
+   → M7 SQLite / M9 FAISS artifact 경로 환경변수가 필요했음.
+```
+
+Windows PowerShell에서 현재 테스트했고, 향후 Linux 포팅 명령도 HTML 트러블슈팅 문서에 함께 기록했습니다.
+
+## 10. 주요 문서
 
 - [Documentation Hub](docs/index.html)
 - [M10 Completion](docs/status/M10_COMPLETION.html)
@@ -250,13 +295,16 @@ M10_REAL_RUN = PASS
 - [M10 Contract Freeze](docs/status/M10_EVIDENCE_MCP_CONTRACT.html)
 - [M10 Resolver / Package PASS](docs/status/M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html)
 - [M10 MCP Implementation PASS](docs/status/M10_MCP_IMPLEMENTATION.html)
-- [M10 Real-run Gate](docs/status/M10_REAL_RUN_GATE.html)
+- [M10 Real-run PASS](docs/status/M10_REAL_RUN_GATE.html)
+- [MCP Import Troubleshooting](docs/status/M10_TROUBLESHOOTING_MCP_IMPORT.html)
+- [Query Troubleshooting](docs/status/M10_TROUBLESHOOTING_REAL_RUN_QUERY.html)
+- [Runtime Settings Troubleshooting](docs/status/M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html)
 - [Current Status](docs/status/jira_knowledge_db_current_status.html)
 - [Pipeline Overview](docs/PIPELINE_OVERVIEW.html)
 - [Relationship Map](docs/architecture/jira_data_relationship_map.html)
 - [Documentation Policy](docs/DOCUMENTATION_POLICY.html)
 
-## 10. 로컬 Pilot Artifact
+## 11. 로컬 Pilot Artifact
 
 ```text
 M7 SQLite
@@ -275,8 +323,8 @@ data/retrieval/runs/20260804T043628Z/
 └─ index.manifest.json
 ```
 
-`data/`, `.env`, local config, DB는 Git에서 제외합니다. Public repo에는 실제 Jira Issue Key/raw body/사내 endpoint/custom header/token을 기록하지 않습니다.
+`data/`, `.env`, local config, DB는 Git에서 제외합니다. Public repo에는 실제 Jira Issue Key/raw body/사내 endpoint/custom header/token/로컬 절대경로를 기록하지 않습니다.
 
-## 11. 다음 단계
+## 12. 다음 단계
 
 M10까지 완료했습니다. 다음 Milestone은 아직 확정하지 않습니다. 운영화, Agent 연동, retrieval hardening 중 무엇을 다음 경계로 둘지는 별도 의사결정으로 정의합니다.
