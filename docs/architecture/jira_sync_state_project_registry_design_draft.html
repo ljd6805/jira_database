@@ -1,83 +1,56 @@
 <!doctype html>
-<html data-doc-shell="v1" lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="FROZEN Sync Contract를 실제 운영 상태 테이블로 옮기기 위한 Sync State / Project Registry DB Schema 설계 초안">
-<title>Sync State / Project Registry · Design Draft</title>
-<style>
-:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 86px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#1a2e52,#3157d5 66%,#718cec)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px;margin-bottom:10px}.lead{color:var(--muted);max-width:930px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.footer{margin-top:58px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
-</style>
-<link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
-<script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
-</head>
-<body><main class="wrap">
-<nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">FROZEN Sync Contract</a><a href="jira_sync_contract_easy_guide.html">쉬운 가이드</a></nav>
-<header class="hero"><div>POST-CONTRACT · SCHEMA DESIGN · 2026-08-27</div><h1>Sync State / Project Registry<br>DB Schema 설계 초안</h1><p>FROZEN Sync Contract D1~D8을 SQLite에 어떤 상태로 저장할지 설계합니다. 이 문서는 다음 구현 Milestone의 입력이며 아직 Schema를 Freeze하거나 코드를 변경하지 않습니다.</p><span class="state">DRAFT · DESIGN ONLY · NO IMPLEMENTATION YET</span></header>
+<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="FROZEN Sync Contract를 Operational State DB로 옮기기 위한 최신 Schema 설계 보드. S1~S3 FIXED, S4 Transaction Boundary 검토 중."><title>Sync State / Project Registry · Schema Design Board</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 86px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#1a2e52,#3157d5 66%,#718cec)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px}.lead{color:var(--muted)}.grid2,.grid4{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.current{border:2px solid var(--blue);background:#edf3ff}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e5f7ef;color:#0c6c4a;font-size:11px;font-weight:900}.review{background:#e9eeff;color:#2548b5}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff}.footer{margin-top:58px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:820px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">FROZEN Sync Contract</a><a href="jira_sync_state_schema_decision4_transaction_boundary.html">S4 Current</a></nav><header class="hero"><div>POST-CONTRACT · SYNC STATE SCHEMA · 2026-08-27</div><h1>Sync State / Project Registry<br>Schema Design Board</h1><p>FROZEN Sync Contract D1~D8을 기존 State DB에 안전하게 옮기기 위한 설계 상태판입니다. S1~S3는 확정했고 현재 S4 Transaction Boundary를 검토합니다.</p><span class="state">S1~S3 FIXED · S4 REVIEWING · NO IMPLEMENTATION YET</span></header>
+<section><h2>1. 결정 진행 상태</h2><div class="flow">S1 Storage Location        FIXED
+→ existing data/state/collector.db 확장
+→ explicit versioned Migration REQUIRED
 
-<section><h2>1. 왜 별도 상태 DB 구조가 필요한가?</h2><p class="lead">현재 MVP StateStore는 같은 Collection Run 안의 Project/Issue resume에는 충분하지만, 운영 서비스에는 Run을 넘어 Project를 기억하고 Watermark와 downstream 미완료 작업을 계속 추적해야 합니다.</p><div class="flow">현재 MVP가 기억하는 것
-Run R100 안에서
-→ Project A completed
-→ Project B partial
-→ Issue X completed
+S2 Entity Layout           FIXED
+→ 4 physical tables
 
-운영에서 추가로 기억해야 하는 것
-Run이 끝난 뒤에도
-→ Project A의 stable project_id
-→ Project A watermark
-→ Project가 visible / unavailable인지
-→ jira_id + source_hash Work Item이 어디까지 Publish됐는지
-→ 다음 Run에서 어디서 이어갈지</div></section>
+S3 Columns / Status        FIXED
+→ required columns / enums
+→ stable Source resume cursor
 
-<section><h2>2. 추천하는 5개 핵심 상태 Entity</h2><div class="grid3"><div class="card good"><h3>① sync_run</h3><p>한 번의 운영 Sync 실행 자체.</p></div><div class="card good"><h3>② project_registry</h3><p>지금까지 만난 Project 주소록.</p></div><div class="card good"><h3>③ project_sync_state</h3><p>Project별 장기 Watermark와 최근 Source 상태.</p></div><div class="card good"><h3>④ sync_project_run</h3><p>이번 Run에서 Project 하나를 어떻게 처리했는지.</p></div><div class="card good"><h3>⑤ sync_issue_change</h3><p>NEW/CHANGED Work Item과 downstream 진행 상태.</p></div></div><div class="callout"><strong>역할 분리:</strong> Registry는 “누구인가”, Sync State는 “어디까지 읽었나”, Run은 “이번 실행에서 무슨 일이 있었나”, Issue Change는 “어떤 변경이 어디까지 반영됐나”를 답합니다.</div></section>
+S4 Transaction Boundary   REVIEWING
+→ Watermark atomicity
+→ crash-safe commit order
 
-<section><h2>3. Entity 관계</h2><div class="flow">project_registry 1 ───── 1 project_sync_state
-       │
-       │ 1
-       └──── N sync_project_run N ───── 1 sync_run
-                    │
-                    │ 1
-                    └──── N sync_issue_change
+S5 Migration Specification NEXT
+→ version / backup / verify / rollback Gate
+
+그 다음
+→ Schema Contract FROZEN
+→ implementation</div></section>
+<section><h2>2. 확정된 저장 책임</h2><div class="grid2"><div class="card good"><h3>Control Plane · collector.db</h3><p>Sync Run, Project 현재 상태, Watermark, Resume cursor, downstream checkpoint, retry/error를 저장합니다.</p></div><div class="card"><h3>Data Plane · Knowledge DB</h3><p>Issue Version, Generation, Attempt, Knowledge Item, Evidence, Review 등 실제 업무지식과 족보를 보존합니다.</p></div></div><div class="callout"><strong>S1:</strong> 기존 State DB를 그대로 무변경 사용하는 것이 아니라 <strong>명시적 Schema Migration</strong>으로 운영 상태를 추가합니다.</div></section>
+<section><h2>3. 확정된 4개 물리 테이블</h2><div class="grid4"><div class="card"><h3>sync_run</h3><p>한 번의 전체 Sync 범위, fixed upper, 집계 상태.</p></div><div class="card"><h3>project_state</h3><p>Project identity, visibility, committed Watermark.</p></div><div class="card"><h3>sync_project_run</h3><p>Run × Project lower/upper, Source 결과, Resume cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>NEW/CHANGED Work Item의 Knowledge→Embedding→Publish 상태.</p></div></div></section>
+<section><h2>4. 핵심 관계</h2><div class="flow">sync_run 1 ───── N sync_project_run N ───── 1 project_state
+                          │
+                          │ Source에서 NEW / CHANGED
+                          ↓
+                    sync_issue_change
+                          │
+                          ├─ issue_version_id ──→ Knowledge DB
+                          └─ knowledge_generation_id ──→ Knowledge DB
+
+project_state
+→ Project당 현재 상태 1행
+
+sync_run / sync_project_run
+→ 실행 History
 
 sync_issue_change
-→ jira_id + source_hash + hash_profile 기반 Work Item
-→ Knowledge / Embedding / Publish checkpoint를 가짐</div></section>
+→ Run을 넘어 Resume 가능한 변경 Work Item</div></section>
+<section><h2>5. S3 확정 필드의 핵심</h2><table><thead><tr><th>테이블</th><th>특히 중요한 필드</th></tr></thead><tbody><tr><td><code>sync_run</code></td><td><code>sync_run_id</code>, <code>upper_bound</code>, discovery/source/publish/run status</td></tr><tr><td><code>project_state</code></td><td><code>project_id</code>, key/name, visibility, <code>committed_watermark</code>, last source success</td></tr><tr><td><code>sync_project_run</code></td><td>operation kind, exact lower/upper, counts, <code>cursor_updated_at + cursor_jira_id</code>, source status</td></tr><tr><td><code>sync_issue_change</code></td><td><code>jira_id + source_hash + profile</code>, discovered/last-attempt run, Knowledge/Embedding/Publish statuses</td></tr></tbody></table><div class="callout"><strong>UNCHANGED:</strong> downstream Work Item을 만들지 않습니다. Project count + stable Source cursor로 같은 Run Resume를 지원합니다.</div></section>
+<section><h2>6. 현재 S4 · Transaction Boundary</h2><div class="card current"><span class="badge review">REVIEWING</span><h3>Watermark는 Source Commit과 같은 transaction에서만 전진</h3><div class="flow">Per candidate
+실제 Source 파일 durable
+→ classification
+→ State transaction: count + Work Item + cursor
 
-<section><h2>4. sync_run · 한 번의 Sync</h2><table><thead><tr><th>필드 후보</th><th>뜻</th><th>Contract 근거</th></tr></thead><tbody><tr><td><code>sync_run_id</code> PK</td><td>운영 Sync 실행 ID</td><td>D5 same-run resume</td></tr><tr><td><code>mode</code></td><td>bootstrap / delta / recovery 등</td><td>운영 구분용 · 아직 enum Freeze 전</td></tr><tr><td><code>started_at</code>, <code>finished_at</code></td><td>Run 실행 시간</td><td>감사/운영</td></tr><tr><td><code>upper_bound</code></td><td>이번 Run의 고정 상한</td><td>D2</td></tr><tr><td><code>discovery_status</code></td><td>Project Discovery 신뢰 여부</td><td>D8</td></tr><tr><td><code>source_status</code></td><td>Source 처리 집계</td><td>D8</td></tr><tr><td><code>publish_status</code></td><td>Publish 처리 집계</td><td>D7/D8</td></tr><tr><td><code>run_status</code></td><td>completed / partial / failed</td><td>D8</td></tr></tbody></table><div class="callout warn"><strong>구현 시 개선:</strong> 현재 Collector의 timestamp-second 기반 Run ID는 충돌 가능성을 줄이기 위해 운영판에서는 더 높은 정밀도 또는 nonce/UUID를 포함하는 방식을 검토합니다. 아직 ID 형식은 Freeze하지 않습니다.</div></section>
-
-<section><h2>5. project_registry · Project 주소록</h2><table><thead><tr><th>필드 후보</th><th>뜻</th></tr></thead><tbody><tr><td><code>project_id</code> PK</td><td>Jira의 stable Project identity</td></tr><tr><td><code>current_key</code></td><td>현재 Project Key</td></tr><tr><td><code>current_name</code></td><td>현재 표시 이름</td></tr><tr><td><code>visibility_state</code></td><td>visible / unavailable</td></tr><tr><td><code>first_seen_run_id</code></td><td>처음 발견한 Run</td></tr><tr><td><code>last_seen_run_id</code></td><td>마지막으로 Discovery에 나타난 Run</td></tr><tr><td><code>last_seen_at</code></td><td>마지막 관찰 시각</td></tr><tr><td><code>unavailable_since</code></td><td>안 보이기 시작한 시점 · nullable</td></tr></tbody></table><p>Project가 unavailable이어도 이 row를 삭제하지 않습니다. Knowledge Retrieval과도 자동으로 연결해 차단하지 않습니다.</p></section>
-
-<section><h2>6. project_sync_state · Project별 장기 책갈피</h2><table><thead><tr><th>필드 후보</th><th>뜻</th></tr></thead><tbody><tr><td><code>project_id</code> PK/FK</td><td>어느 Project의 상태인가</td></tr><tr><td><code>committed_watermark</code></td><td>마지막 안전 Source Commit 상한</td></tr><tr><td><code>last_source_success_run_id</code></td><td>마지막 Source 성공 Run</td></tr><tr><td><code>last_source_success_at</code></td><td>최신성 표시용</td></tr><tr><td><code>last_published_run_id</code></td><td>최근 Publish 성공 관찰</td></tr><tr><td><code>last_error</code></td><td>최근 Source 오류 요약</td></tr></tbody></table><div class="flow">Registry
-= 지금 Project가 보이는가?
-
-project_sync_state
-= 이 Project를 Jira에서 어디까지 안전하게 읽었는가?</div></section>
-
-<section><h2>7. sync_project_run · 이번 Run의 Project 처리 기록</h2><table><thead><tr><th>필드 후보</th><th>뜻</th></tr></thead><tbody><tr><td><code>sync_run_id + project_id</code> PK</td><td>Run 안의 Project 작업</td></tr><tr><td><code>lower_bound</code></td><td>watermark - 5분</td></tr><tr><td><code>upper_bound</code></td><td>Run 고정 상한</td></tr><tr><td><code>status</code></td><td>pending/running/source_committed/partial/failed/skipped_unavailable 등</td></tr><tr><td><code>candidate_count</code></td><td>JQL 후보 수</td></tr><tr><td><code>new_count</code></td><td>NEW 수</td></tr><tr><td><code>changed_count</code></td><td>CHANGED 수</td></tr><tr><td><code>unchanged_count</code></td><td>UNCHANGED 수</td></tr><tr><td><code>error_message</code></td><td>Project 처리 오류</td></tr></tbody></table><div class="callout"><strong>Watermark Commit 조건:</strong> 이 Project의 책임 Source window가 안전하게 완료돼 <code>SOURCE_COMMITTED</code>가 된 뒤 <code>project_sync_state.committed_watermark = upper_bound</code>로 갱신합니다.</div></section>
-
-<section><h2>8. sync_issue_change · 변경 Work Item</h2><table><thead><tr><th>필드 후보</th><th>뜻</th></tr></thead><tbody><tr><td><code>work_item_id</code> PK</td><td>변경 작업 identity · 형식 추후 결정</td></tr><tr><td><code>sync_run_id</code>, <code>project_id</code></td><td>발견 출처</td></tr><tr><td><code>jira_id</code></td><td>Issue identity</td></tr><tr><td><code>observed_issue_key</code></td><td>이번에 본 현재 Key</td></tr><tr><td><code>jira_updated_at</code></td><td>Delta 후보 시간 정보</td></tr><tr><td><code>source_hash</code></td><td>semantic_v2 지문</td></tr><tr><td><code>source_hash_profile</code></td><td><code>semantic_v2</code></td></tr><tr><td><code>change_kind</code></td><td>new / changed / unchanged</td></tr><tr><td><code>source_status</code></td><td>Source checkpoint</td></tr><tr><td><code>knowledge_status</code></td><td>Knowledge/Review checkpoint</td></tr><tr><td><code>embedding_status</code></td><td>Embedding checkpoint</td></tr><tr><td><code>publish_status</code></td><td>Retrieval 전환 checkpoint</td></tr><tr><td><code>error_stage</code>, <code>error_message</code></td><td>Resume 시작점 판단</td></tr></tbody></table><p>UNCHANGED는 전체 downstream Work Item을 만들지 않고 관찰 통계만 남기는 방식도 가능합니다. 실제 저장 비용과 감사 요구를 보고 다음 설계에서 결정합니다.</p></section>
-
-<section><h2>9. Source Head와 Published Head는 어디에 둘까?</h2><p class="lead">D7은 최신 Source와 현재 검색에 제공되는 상태를 분리합니다. 기존 Knowledge DB의 active Generation 구조를 최대한 재사용하는 것이 좋습니다.</p><div class="grid2"><div class="card"><h3>Source Head</h3><p>최신 안전 Source는 기존 <code>issue_version</code> + 새로운 sync change state로 알 수 있습니다.</p></div><div class="card"><h3>Published Head</h3><p>기존 <code>knowledge_generation.status = active</code>와 retrieval artifact pointer를 재사용/확장합니다.</p></div></div><div class="callout"><strong>추천:</strong> 같은 정보를 Sync State DB에 중복 저장하기보다 기존 Knowledge DB identity를 참조해 “진행 상태”만 추가하는 방향을 우선 검토합니다.</div></section>
-
-<section><h2>10. 기존 StateStore와의 관계</h2><div class="grid2"><div class="card good"><h3>재사용할 것</h3><p>Run/Project/Issue checkpoint 개념, SQLite transaction, WAL, 실패 격리, artifact 기록.</p></div><div class="card warn"><h3>확장할 것</h3><p>project_id 기반 Registry, cross-run Watermark, fixed lower/upper, semantic change Work Item, downstream checkpoint, D8 집계.</p></div></div><p>기존 MVP DB의 의미를 억지로 바꾸기보다 운영 상태 Schema를 확장하거나 별도 migration을 명확히 두는 편이 안전합니다.</p></section>
-
-<section><h2>11. 다음 검토에서 확정해야 할 것</h2><div class="grid2"><div class="card warn"><h3>물리 DB 위치</h3><p>Collector State DB에 합칠지 Knowledge DB에 합칠지, 운영 State 전용 DB를 둘지.</p></div><div class="card warn"><h3>Status enum</h3><p>Project/Stage 상태값의 최종 이름.</p></div><div class="card warn"><h3>Work Item identity</h3><p>deterministic ID를 쓸지 surrogate ID + unique key를 쓸지.</p></div><div class="card warn"><h3>Transaction boundary</h3><p>Source Commit과 Watermark 갱신을 한 transaction으로 묶는 정확한 방법.</p></div><div class="card warn"><h3>Published pointer</h3><p>FAISS/Mapping artifact를 atomic하게 전환할 물리 방식.</p></div><div class="card warn"><h3>Migration</h3><p>기존 pilot state와 Knowledge DB를 어떻게 보존하며 운영 Schema로 이동할지.</p></div></div></section>
-
-<section><h2>12. 현재 제안의 한 줄 요약</h2><div class="flow">sync_run
-= 이번 실행
-
-project_registry
-= Project 주소록
-
-project_sync_state
-= Project별 장기 Watermark
-
-sync_project_run
-= 이번 Run에서 Project 하나의 Source 작업
-
-sync_issue_change
-= NEW/CHANGED가 Knowledge→Embedding→Publish 어디까지 갔는지</div><div class="callout"><strong>아직 FROZEN 아님:</strong> 이 구조는 다음 설계 대화를 위한 출발점입니다. 테이블 이름, 필드, 물리 DB 배치, transaction 경계를 사용자와 검토한 뒤 Freeze합니다.</div></section>
-
-<footer class="footer">Sync State / Project Registry Design Draft · based on FROZEN Sync Contract D1~D8 · 2026-08-27</footer>
-</main></body></html>
+Project 전체 Source 완료
+→ State transaction:
+   sync_project_run.source_status = source_committed
+   project_state.committed_watermark = upper
+   last source success 갱신
+→ COMMIT</div><p>Downstream은 각 실제 산출물을 먼저 durable하게 만든 뒤 State status를 완료로 기록하고, Publish는 실제 Retrieval 전환 후 State를 published로 기록하는 방향을 검토합니다.</p></div></section>
+<section><h2>7. Migration은 마지막 구현 작업이 아니라 Schema의 일부</h2><div class="card warn"><p>S1에서 Migration을 필수로 확정했습니다. 따라서 S5에서 Migration version, backup, pre/post validation, idempotency, rollback/recovery Gate까지 설계한 뒤에야 Schema를 Freeze합니다.</p></div></section>
+<section><h2>8. 아직 구현하지 않습니다</h2><p class="lead">현재는 Schema Contract를 만드는 단계입니다. 새 테이블 DDL, StateStore 코드, Delta Collector 구현은 S4/S5와 최종 Schema Freeze 이후에 시작합니다.</p></section><footer class="footer">Sync State Schema Design Board · S1~S3 FIXED · S4 REVIEWING · 2026-08-27</footer></main></body></html>
