@@ -3,175 +3,50 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Continuous Jira Knowledge Service Sync Contract 의사결정 초안. D1~D5 확정, Project Registry와 unavailable Project의 Retrieval/복구 정책을 검토 중인 문서">
-<title>Sync Contract · Decision Draft</title>
+<meta name="description" content="Continuous Jira Knowledge Service Sync Contract 의사결정 보드. D1~D6 확정, D7 Source Commit vs Publish 검토 중">
+<title>Sync Contract · Decision Board</title>
 <style>
-:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827;--shadow:0 10px 28px rgba(31,49,84,.07)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7);box-shadow:var(--shadow)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px;margin:0 0 10px}.lead{color:var(--muted);max-width:900px}.flow,pre{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid2,.grid3,.grid5{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid5{grid-template-columns:repeat(5,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card h3{margin-top:0}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.active{border:2px solid var(--blue);background:#edf3ff}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.callout.warn{border-color:var(--amber);background:#fff6e9}.callout.good{border-color:var(--green);background:#eaf8f3}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}.draft{background:#fff1d7;color:#8a5700}.review{background:#e9eeff;color:#2548b5}.fixed{background:#e5f7ef;color:#0c6c4a}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:900px){.grid5{grid-template-columns:repeat(2,1fr)}}@media(max-width:800px){.grid2,.grid3,.grid5{grid-template-columns:1fr}}
+:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:44px}h2{font-size:29px;margin:0 0 10px}.flow{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.board{display:grid;gap:12px}.decision{display:grid;grid-template-columns:52px 110px minmax(0,1fr);gap:12px;align-items:start;padding:17px;border:1px solid var(--line);border-radius:15px;background:#fff}.num{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:var(--blue);color:#fff;font-weight:900}.badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:900;text-align:center}.fixed{background:#e5f7ef;color:#0c6c4a}.review{background:#e9eeff;color:#2548b5}.next{background:#fff1d7;color:#8a5700}.decision h3{margin:0 0 5px}.decision p{margin:0;color:#49566d}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.active{border:2px solid var(--blue);background:#edf3ff}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.btn{display:inline-block;padding:7px 10px;margin:5px 5px 0 0;border-radius:8px;background:var(--blue);color:#fff;text-decoration:none;font-size:12px;font-weight:800}.btn.alt{background:#66758b}.footer{margin-top:54px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:760px){.decision{grid-template-columns:46px 1fr}.decision>.badge{grid-column:2}.decision>div:last-child{grid-column:1/-1}}
 </style>
 <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
 <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
 </head>
 <body><main class="wrap">
-<nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_knowledge_pipeline_full_explained.html">전체 Pipeline 학습</a><a href="jira_sync_contract_explained.html">Sync Contract 학습</a><a href="jira_knowledge_operational_service_phase.html">Operational Service Phase</a></nav>
-<header class="hero"><div>SYNC CONTRACT · DECISION DRAFT · 2026-08-27</div><h1>Sync 운영 규칙을<br>하나씩 확정합니다.</h1><p>Continuous Jira Knowledge Service 구현 전에 Watermark, Overlap, 변경 판정, semantic hash, 재개, Project 상태와 Publish 의미를 항목별로 합의합니다.</p><span class="state">DRAFT · D1~D5 FIXED · D6 REVISED / REVIEWING</span></header>
+<nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract_explained.html">개념 학습</a><a href="jira_sync_contract_decision6_final.html">D6 Final</a><a href="jira_sync_contract_decision7_source_commit_publish.html">D7 상세</a></nav>
+<header class="hero"><div>SYNC CONTRACT · DECISION BOARD · 2026-08-27</div><h1>운영 Sync 규칙을<br>하나씩 확정합니다.</h1><p>학습이 끝난 뒤 실제 구현 기준을 결정하는 현재 상태판입니다. D1~D6는 확정했고, D7 Source Commit vs Publish를 검토합니다.</p><span class="state">D1~D6 FIXED · D7 REVIEWING · D8 NEXT · NO IMPLEMENTATION YET</span></header>
 
-<section><h2>1. 진행 상태</h2><div class="flow">1. Project별 committed Watermark     FIXED
-2. Overlap Window = 5분              FIXED
-3. new / changed / unchanged         FIXED
-4. source_hash semantic_v2           FIXED
-5. Checkpoint / Resume               FIXED
-6. Project Registry / 접근 상실      REVISED · NOW REVIEWING
-7. Source Commit vs Publish          NEXT
-8. Sync Run 완료 상태                DRAFT</div></section>
+<section><h2>1. 전체 상태</h2><div class="board">
+<div class="decision"><div class="num">1</div><span class="badge fixed">FIXED</span><div><h3>Project별 committed Watermark</h3><p>Project마다 독립 책갈피를 가진다. 해당 Project Source window가 안전하게 끝났을 때만 전진한다.</p></div></div>
+<div class="decision"><div class="num">2</div><span class="badge fixed">FIXED</span><div><h3>5분 Overlap + 고정 upper</h3><p><code>lower = watermark - 5분</code>, <code>updated &gt;= lower AND updated &lt; upper</code>, <code>updated ASC, id ASC</code>.</p></div></div>
+<div class="decision"><div class="num">3</div><span class="badge fixed">FIXED</span><div><h3>NEW / CHANGED / UNCHANGED</h3><p><code>jira_id + source_hash</code>로 실제 변경을 판정한다. Jira <code>updated</code>는 후보 탐색용이다.</p></div></div>
+<div class="decision"><div class="num">4</div><span class="badge fixed">FIXED</span><div><h3>source_hash semantic_v2</h3><p>Issue/Comment <code>updated_at</code>과 경로 정보는 hash에서 제외하고 실제 업무 내용 중심으로 계산하며 profile version을 기록한다.</p></div></div>
+<div class="decision"><div class="num">5</div><span class="badge fixed">FIXED</span><div><h3>Checkpoint / Resume</h3><p>Source와 downstream checkpoint를 분리한다. 완료 Stage는 재사용하고 실패 지점부터 재개한다. same-run resume 우선.</p></div></div>
+<div class="decision"><div class="num">6</div><span class="badge fixed">FIXED</span><div><h3>Project Registry / Knowledge Retention</h3><p><code>project_id</code>를 identity로 쓴다. Project/Issue 삭제·비노출은 Knowledge 삭제 이벤트가 아니다. 기존 Retrieval은 유지하고 재등장 시 Watermark 기반 Catch-up Delta를 수행한다.</p><a class="btn alt" href="jira_sync_contract_decision6_final.html">D6 Final</a></div></div>
+<div class="decision active"><div class="num">7</div><span class="badge review">REVIEWING</span><div><h3>Source Commit vs Publish</h3><p>Jira Source 확보 완료와 Knowledge/Embedding/FAISS 서비스 반영 완료를 분리한다. Source Commit 후 Watermark는 전진 가능하며, 새 Publish가 완성되기 전까지 기존 Published Knowledge를 계속 제공한다.</p><a class="btn" href="jira_sync_contract_decision7_source_commit_publish.html">D7 상세 검토</a></div></div>
+<div class="decision"><div class="num">8</div><span class="badge next">NEXT</span><div><h3>Sync Run 완료 상태</h3><p><code>completed / partial / failed</code>의 정확한 의미와 Project별 결과 집계 규칙을 마지막으로 확정한다.</p></div></div>
+</div></section>
 
-<section><h2>2. 지금까지 확정한 다섯 가지</h2><div class="grid5"><div class="card good"><span class="badge fixed">D1</span><h3>Watermark</h3><p>Project별 독립 책갈피.</p></div><div class="card good"><span class="badge fixed">D2</span><h3>Overlap</h3><p>5분 + 고정 upper.</p></div><div class="card good"><span class="badge fixed">D3</span><h3>Classification</h3><p><code>jira_id + source_hash</code>.</p></div><div class="card good"><span class="badge fixed">D4</span><h3>semantic_v2</h3><p><code>updated_at</code> hash 제외.</p></div><div class="card good"><span class="badge fixed">D5</span><h3>Resume</h3><p>완료 Stage 재사용, 실패 지점 재개.</p></div></div></section>
+<section><h2>2. 현재 D7의 핵심 제안</h2><div class="flow">SOURCE_COMMITTED
+= Jira Source 안전 저장
+= semantic hash / 변경 판정 durable
+= downstream Work Item 생성
+= Project window 전체 Source 성공 시 Watermark advance 가능
 
-<section><h2>3. Decision 6 — Project Registry란?</h2><p class="lead">Registry는 우리 서비스가 지금까지 만난 Jira Project의 주소록입니다. 매 Sync마다 현재 Jira가 보여주는 Project 목록과 비교합니다.</p><div class="flow">어제 Registry
-P100 / ABC / Project Alpha
-P200 / DEF / Project Delta
+PUBLISHED
+= 승인 Knowledge 준비
+= Evidence resolve 가능
+= Embedding 준비
+= FAISS / Retrieval mapping 일치
+= 실제 사용자 Retrieval 전환 완료
 
-오늘 Discovery
-P100 / ABC / Project Alpha
-P300 / NEW / New Project
+Source Commit 후 Publish 실패
+→ Source 다시 수집하지 않음
+→ 실패 Stage부터 Resume
 
-비교
-P100 → 기존 Project · visible
-P200 → 기존 Project · 이번에는 not visible
-P300 → 새 Project · visible</div></section>
+새 Publish 완료 전
+→ 기존 Published Knowledge 계속 제공</div><div class="callout"><strong>현재 설계와 일치:</strong> 기존 M6도 새 Generation을 candidate로 두고 Review PASS 전까지 기존 active Generation을 유지합니다. D7은 이 원칙을 Knowledge→Embedding→Retrieval 전체 경계로 확장합니다.</div></section>
 
-<section><h2>4. Project Identity</h2><div class="grid2"><div class="card good"><h3><code>project_id</code> = Identity</h3><p>같은 Project를 장기간 추적하는 기준값입니다.</p><div class="flow">project_id = 10000
-→ Registry identity</div></div><div class="card"><h3><code>project_key / name</code> = 현재 표시값</h3><p>사람이 읽는 현재 값이며 바뀔 수 있습니다.</p><div class="flow">ABC / Project Alpha
-→ current metadata</div></div></div><p>Issue에서 <code>jira_id</code>와 Issue Key를 분리한 것과 같은 원칙입니다.</p></section>
+<section><h2>3. 다음 단계</h2><div class="card"><h3>D7 합의 후</h3><p>D7을 FIXED로 올린 뒤 마지막 D8 Sync Run 상태를 결정합니다. D8까지 끝나면 전체 Sync Contract를 하나의 FROZEN HTML Contract로 정리하고, 그 다음에 Sync State / Project Registry DB Schema와 구현 Milestone을 시작합니다.</p></div></section>
 
-<section><h2>5. Discovery 결과는 세 부류로 나눕니다</h2><table><thead><tr><th>상황</th><th>Registry 상태</th><th>처리</th></tr></thead><tbody>
-<tr><td>기존에도 있었고 이번에도 보임</td><td><strong>visible</strong></td><td>key/name 최신화 후 Delta Sync</td></tr>
-<tr><td>처음 보는 project_id</td><td><strong>visible · new</strong></td><td>Registry 등록 후 최초 Initial Ingest</td></tr>
-<tr><td>기존 Registry에는 있지만 이번 Discovery에 없음</td><td><strong>unavailable / not_visible</strong></td><td>동기화 중단, 기존 Knowledge는 유지</td></tr>
-</tbody></table></section>
-
-<section><h2>6. “안 보임”은 “삭제됨”이 아닙니다</h2><p class="lead">현재 서비스 계정에서 보이지 않는 이유는 삭제, Archive, 권한 변경 등 여러 가지일 수 있습니다. 원인을 추측하지 않습니다.</p><div class="flow">Project가 목록에서 사라짐
-        ↓
-관찰 가능한 사실
-= 현재 서비스 계정에서 not visible
-        ↓
-Registry
-visibility_state = unavailable
-
-하지 않는 것
-→ deleted라고 단정 X
-→ History 삭제 X
-→ Watermark 초기화 X</div></section>
-
-<section><h2>7. Discovery 자체가 실패하면 Registry를 바꾸지 않습니다</h2><div class="flow">page 1 SUCCESS
-page 2 SUCCESS
-page 3 API ERROR
-
-→ Discovery = INCOMPLETE
-→ Project 비교 결과를 신뢰하지 않음
-→ 기존 visibility_state 그대로 유지</div><div class="callout warn"><strong>유지할 안전 규칙:</strong> Project가 unavailable이라고 판단하는 것은 <strong>Discovery 전체가 정상 완료된 경우에만</strong> 허용합니다.</div></section>
-
-<section><h2>8. 수정된 핵심 정책 — unavailable이어도 Retrieval은 유지</h2><p class="lead">Project가 현재 Jira에서 보이지 않는다는 이유만으로 이미 구축한 과거 Knowledge의 의미가 사라지는 것은 아닙니다.</p><div class="flow">어제
-P100 visible
-Knowledge active
-last_synced_at = 2026-08-27 10:30
-
-오늘
-Discovery SUCCESS
-P100 not visible
-        ↓
-visibility_state = unavailable
-sync = paused
-        ↓
-기존 Knowledge / Embedding / FAISS
-→ 그대로 Retrieval 가능</div><div class="callout good"><strong>수정안:</strong> <code>unavailable</code>은 <strong>Source Sync 상태</strong>이지 Retrieval 차단 상태가 아닙니다. 과거 Jira 지식은 계속 검색할 수 있습니다.</div></section>
-
-<section><h2>9. 대신 “얼마나 최신인가”를 표시합니다</h2><p class="lead">현재 갱신되는 Project와 오래 전 마지막으로 수집된 Project를 같은 최신성으로 보이면 혼동할 수 있습니다. 검색 가능 여부와 최신성은 분리합니다.</p><div class="grid3"><div class="card"><h3>visibility_state</h3><p><code>visible / unavailable</code></p><p>현재 Jira Source와 동기화 가능한가?</p></div><div class="card"><h3>last_synced_at</h3><p>마지막 정상 Source Sync 시각.</p><p>지식의 최신성을 판단하는 정보입니다.</p></div><div class="card"><h3>retrieval_state</h3><p>기본은 <code>enabled</code>.</p><p>Jira visibility와 자동 연동하지 않습니다.</p></div></div><div class="flow">검색 결과 예
-Project ABC
-source_state = unavailable
-last_synced_at = 2026-08-20 13:00
-retrieval = enabled
-
-→ "현재 Jira 갱신은 중단됐지만 8/20 시점의 지식은 검색 가능"</div></section>
-
-<section><h2>10. Retrieval을 정말 막고 싶을 때는 별도 정책으로</h2><p class="lead">향후 보안 또는 운영 정책상 특정 Project를 검색에서 빼야 한다면 Jira visibility와는 별도의 명시적 제어값으로 처리하는 편이 안전합니다.</p><div class="flow">visibility_state = unavailable
-≠
-retrieval_enabled = false
-
-관리자가 명시적으로 차단해야 할 때만
-retrieval_enabled = false</div><p>즉 Project가 안 보인다는 기술적 상태가 곧바로 “과거 지식을 삭제하거나 숨겨라”는 정책으로 번역되지 않습니다.</p></section>
-
-<section><h2>11. Watermark는 그대로 보존합니다</h2><div class="flow">P100 unavailable
-committed_watermark = 2026-08-20 13:00
-
-→ 앞으로 이동 X
-→ 초기화 X
-→ 삭제 X</div><p>다시 접근 가능해졌을 때 이 지점에서 이어서 갱신하기 위해 필요합니다.</p></section>
-
-<section><h2>12. 다시 같은 Project가 보이면 Initial Ingest하지 않습니다</h2><p class="lead">여기서는 사용자의 제안을 채택하는 것이 더 효율적입니다. 같은 <code>project_id</code>가 Registry에 이미 있고 Watermark도 남아 있다면 처음부터 전부 다시 받을 이유가 없습니다.</p><div class="flow">P100 unavailable
-watermark = 8/20 13:00
-        ↓
-8/27 다시 visible
-        ↓
-lower = 8/20 12:55   (5분 overlap)
-upper = 이번 Sync 고정 상한
-        ↓
-Catch-up Delta Sync
-        ↓
-NEW / CHANGED / UNCHANGED
-        ↓
-필요한 변경분만 downstream</div><div class="callout good"><strong>수정안:</strong> <strong>기존 project_id의 재등장 = Catch-up Delta Sync</strong>. 전체 Initial Ingest는 하지 않습니다.</div></section>
-
-<section><h2>13. 단, Delta만으로 완벽히 알 수 없는 한 가지</h2><p class="lead">Project가 안 보이던 기간에 Issue가 <strong>삭제</strong>되었다면, 다시 접근했을 때 그 Issue는 Jira 검색 결과 자체에 나타나지 않을 수 있습니다. 그래서 단순 updated Delta만으로는 “사라진 Issue”를 완벽히 감지할 수 없습니다.</p><div class="flow">8/20 마지막 Sync
-ABC-10 존재
-
-8/21~8/26 Project unavailable
-ABC-10 삭제
-
-8/27 다시 visible
-updated Delta 검색
-→ ABC-10은 이미 없어서 검색 결과에 나오지 않음
-→ 우리 DB에는 과거 ABC-10이 남아 있음</div><div class="callout warn"><strong>중요:</strong> 이것은 Full Initial Ingest가 필요하다는 뜻은 아닙니다. 필요하다면 재접근 시 <strong>가벼운 Reconcile</strong>을 별도로 수행해 현재 Issue ID 목록과 Registry를 비교하면 됩니다.</div></section>
-
-<section><h2>14. Reconcile은 “전체 재수집”과 다릅니다</h2><div class="grid2"><div class="card bad"><h3>하지 않을 것 · Full Re-ingest</h3><p>모든 Issue의 Description, Comment, Custom Field 등을 처음부터 다시 수집.</p><p>비용이 큽니다.</p></div><div class="card good"><h3>필요 시 할 것 · Lightweight Reconcile</h3><p>현재 Project의 Issue ID/key 목록처럼 가벼운 기준 목록만 대조.</p><p>삭제/누락 후보만 따로 판단합니다.</p></div></div><div class="flow">Recovery 기본
-Catch-up Delta Sync
-
-선택적 보완
-Lightweight Issue-ID Reconcile
-
-≠ Full Initial Ingest</div></section>
-
-<section><h2>15. 새 Project와 재등장 Project는 다릅니다</h2><table><thead><tr><th>상황</th><th>기준</th><th>처리</th></tr></thead><tbody>
-<tr><td>완전히 처음 보는 Project</td><td>Registry에 project_id 없음</td><td><strong>Initial Ingest</strong> 후 Watermark 생성</td></tr>
-<tr><td>예전에 수집했던 Project가 다시 보임</td><td>Registry에 같은 project_id + Watermark 존재</td><td><strong>Catch-up Delta</strong>, 필요 시 lightweight Reconcile</td></tr>
-<tr><td>같은 key인데 project_id가 다름</td><td>새 project_id</td><td>새 Project로 취급</td></tr>
-</tbody></table></section>
-
-<section><h2>16. Registry와 Retrieval 상태는 분리합니다</h2><div class="grid2"><div class="card"><h3>Project Registry / Sync State</h3><div class="flow">project_id
-current_key
-current_name
-visibility_state
-last_seen_at
-committed_watermark
-last_source_sync_at</div></div><div class="card"><h3>Retrieval Policy</h3><div class="flow">retrieval_enabled
-last_published_at
-freshness / stale metadata</div><p>Jira visibility가 변했다고 자동으로 검색을 끄지 않습니다.</p></div></div></section>
-
-<section><h2>17. Decision 6 수정 추천안</h2><div class="card active"><span class="badge review">REVISED PROPOSAL</span><h3>Project가 unavailable이어도 과거 Knowledge Retrieval은 유지한다.</h3><div class="flow">Project identity = project_id
-
-Discovery complete + 기존 Project 미표시
-→ visibility_state = unavailable
-→ Source Sync만 pause
-→ Watermark 보존
-→ 기존 Retrieval 유지
-→ last_synced_at / stale 상태 표시
-
-같은 project_id 재등장
-→ Initial Ingest X
-→ 보존 Watermark + 5분 overlap Catch-up Delta
-→ 필요 시 lightweight Reconcile
-
-완전히 새로운 project_id
-→ 최초 Initial Ingest</div></div><div class="callout"><strong>이 수정안의 장점:</strong> 과거 Jira Knowledge의 가치를 보존하면서도, 다시 접근 가능해졌을 때 전체 재수집 없이 자연스럽게 증분 갱신할 수 있습니다.</div></section>
-
-<footer class="footer">Sync Contract Decision Draft · D1~D5 FIXED · D6 revised under review · no implementation yet · 2026-08-27</footer>
+<footer class="footer">Sync Contract Decision Board · D1~D6 FIXED · D7 REVIEWING · D8 NEXT · 2026-08-27</footer>
 </main></body></html>
