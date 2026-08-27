@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M10 Evidence/MCP 실제 환경 end-to-end Real-run Gate 실행 가이드"><title>M10-05 · Real-run Gate · 실행 가이드</title><link rel="stylesheet" href="milestone.css"></head>
+<body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_START_HERE.html">M10 Start Here</a><a href="M10_MCP_IMPLEMENTATION.html">MCP PASS</a><a href="M10_EVIDENCE_MCP_CONTRACT.html">Contract</a></nav>
+<header class="hero"><span class="eyebrow">M10-05 · REAL-RUN GATE · 2026-08-27</span><h1>코드는 통과했습니다.<br>이제 실제 사내 환경에서 시운전합니다.</h1><p>이 Gate는 실제 M7 SQLite, M9 FAISS artifact, 사내 BGE-M3를 MCP 2 tools와 연결해 <strong>질문 → 검색 → Knowledge → Evidence → Jira source</strong>가 끝까지 이어지는지 검증합니다.</p><span class="state">READY TO RUN · PASS 전에는 M10 DONE 아님</span><div class="breadcrumb">Real query → BGE-M3 → FAISS → ki_ → ke_ → Source → MCP</div></header>
+<section class="beginner"><span class="badge">왜 필요한가?</span><h2>CI가 PASS인데 왜 또 검사하나?</h2><div class="grid3"><div class="easy-card"><div class="emoji">🧪</div><b>CI</b><p>코드 구조와 계약이 맞는지 synthetic/in-memory 데이터로 검사합니다.</p></div><div class="easy-card"><div class="emoji">🏢</div><b>Real-run</b><p>실제 회사 endpoint, 실제 vector index, 실제 SQLite가 서로 맞는지 검사합니다.</p></div><div class="easy-card"><div class="emoji">✅</div><b>완료</b><p>두 검증을 모두 통과해야 “실제로 사용할 수 있다”고 판단할 수 있습니다.</p></div></div><div class="analogy"><strong>비유</strong> 공장에서 엔진 단품 검사는 끝났지만, 실제 차체에 넣고 시동이 걸리는지 확인하는 최종 시운전입니다.</div></section>
+<section><h2>1. 실제로 검증되는 경로</h2><div class="flow">M10_REAL_RUN_QUERY
+        ↓
+사내 BGE-M3
+        ↓ 1024-d query vector
+M9 index.faiss
+        ↓ Top-3 RetrievalCandidate
+embedding_id → knowledge_item_id(ki_)
+        ↓
+M7 SQLite
+        ↓ active + accepted 재검증
+ki_ → ke_ → actual source row
+        ↓
+Evidence Package
+        ↓
+MCP search_jira_knowledge
+        ↓ 첫 결과의 issue key 내부 사용
+MCP get_jira_issue
+        ↓
+Gate validation</div></section>
+<section><h2>2. 준비할 환경 변수</h2><table><thead><tr><th>변수</th><th>의미</th><th>공개 문서에 값 기록?</th></tr></thead><tbody><tr><td><code>JIRA_KNOWLEDGE_DB_PATH</code></td><td>M7 validation SQLite 파일</td><td>아니요</td></tr><tr><td><code>JIRA_RETRIEVAL_ARTIFACT_DIR</code></td><td>M9 index.faiss / mapping / manifest 디렉터리</td><td>아니요</td></tr><tr><td><code>BGE_M3_ENDPOINT</code></td><td>실제 query embedding endpoint</td><td>아니요</td></tr><tr><td><code>BGE_M3_API_KEY</code></td><td>필요한 경우 인증 값</td><td>절대 안 됨</td></tr><tr><td><code>BGE_M3_HEADERS_JSON</code></td><td>필요한 경우 사내 custom header</td><td>절대 안 됨</td></tr><tr><td><code>M10_REAL_RUN_QUERY</code></td><td>실제 데이터에서 결과가 나올 것으로 기대하는 질문</td><td>아니요</td></tr></tbody></table></section>
+<section><h2>3. 왜 Query를 CLI argument로 받지 않나?</h2><div class="callout warn"><strong>Shell history 보호</strong> 실제 Jira 업무 내용이 들어갈 수 있는 질문을 <code>--query "..."</code> 형태로 명령줄에 남기지 않습니다. Query는 환경 변수로 전달하고 검증 도구는 그 내용을 stdout에 출력하지 않습니다.</div></section>
+<section><h2>4. 실행</h2><div class="flow">python tools/jira_knowledge/validate_m10_real_run.py</div><p>사내 환경에서 기존 M8/M9 embedding 설정과 위 M10 환경 변수가 준비된 상태로 실행합니다.</p></section>
+<section><h2>5. PASS 출력 형태</h2><div class="flow">tool_count: 2
+search_result_count: 1~3
+evidence_count: 1 이상
+warning_count: 0
+path_leak_count: 0
+issue_lookup_ok: true
+failure_count: 0
+M10_REAL_RUN = PASS</div><div class="callout good"><strong>원문은 출력하지 않습니다.</strong> Gate 로그에 남기는 것은 위와 같은 안전한 집계뿐입니다.</div></section>
+<section><h2>6. PASS 기준</h2><div class="checks"><div class="check">□ MCP tool surface = 정확히 2개</div><div class="check">□ search 결과가 1건 이상 존재</div><div class="check">□ 각 result에 statement 존재</div><div class="check">□ 각 result에 Evidence 1개 이상 존재</div><div class="check">□ warning_count = 0</div><div class="check">□ path_leak_count = 0</div><div class="check">□ 첫 검색 결과 Issue가 get_jira_issue로 round-trip</div><div class="check">□ 최종 failure_count = 0</div></div></section>
+<section><h2>7. 실패하면 어디를 볼까?</h2><table><thead><tr><th>증상</th><th>우선 의심</th><th>의미</th></tr></thead><tbody><tr><td>BGE 호출 오류</td><td>M8/M9 embedding runtime 설정</td><td>endpoint/header/TLS/model profile 확인</td></tr><tr><td>M9 artifact validation 오류</td><td>FAISS/mapping/manifest</td><td>M9 artifact가 서로 다른 build에서 섞였을 수 있음</td></tr><tr><td><code>STALE_RETRIEVAL_INDEX</code></td><td>M7 DB vs M9 snapshot</td><td>검색 index가 과거 active Knowledge를 가리킴</td></tr><tr><td><code>EVIDENCE_SOURCE_MISSING</code></td><td>M7 materialization</td><td>ke_가 가리키는 실제 source row 누락</td></tr><tr><td>warning_count &gt; 0</td><td>Candidate integrity</td><td>Runtime에서는 격리 가능하지만 Completion Gate는 FAIL</td></tr><tr><td>path_leak_count &gt; 0</td><td>MCP serialization</td><td>내부 파일 provenance가 외부 응답에 노출됨</td></tr><tr><td>검색 결과 0</td><td>Query 품질 또는 corpus</td><td>Gate용 질문이 파일럿 지식과 맞는지 먼저 확인</td></tr></tbody></table></section>
+<section><h2>8. Real-run에서 하지 않는 것</h2><div class="grid2"><div class="mini"><b>LLM 답변 품질 평가</b><p>M10 Gate는 Evidence/MCP 파이프라인 검증입니다. Agent가 얼마나 자연스럽게 답하는지는 별도 상위 레벨 평가입니다.</p></div><div class="mini"><b>Threshold/Reranker 튜닝</b><p>Real-run에서 후보 하나가 어색하다는 이유만으로 M9 계약을 즉시 바꾸지 않습니다.</p></div><div class="mini"><b>Production delta 구현</b><p>IndexIDMap2, vector cache, HNSW/IVF는 별도 production-hardening입니다.</p></div><div class="mini"><b>실제 데이터 Git 기록</b><p>Query, Issue key, source text, endpoint/header/token을 공개 저장소 문서에 남기지 않습니다.</p></div></div></section>
+<section><h2>9. PASS 후 해야 할 일</h2><div class="steps"><div class="step-row"><div><b>M10 Real-run Log</b><p>집계 결과만 Log로 기록합니다. 실제 Jira 본문은 기록하지 않습니다.</p></div></div><div class="step-row"><div><b>M10 Completion HTML</b><p>Contract + Implementation + Real-run Gate를 하나의 완료 기록으로 묶습니다.</p></div></div><div class="step-row"><div><b>Hub / Current Status</b><p>M10을 DONE / PASS로 승격하고 다음 Milestone 경계를 정의합니다.</p></div></div></div></section>
+<footer>M10-05 Real-run Gate · READY TO RUN · actual data is not logged · 2026-08-27</footer></main></body></html>
