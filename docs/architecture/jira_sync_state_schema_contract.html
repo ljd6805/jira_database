@@ -1,70 +1,121 @@
-<!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Operational Sync State Schema v1 공식 FROZEN Contract. S1~S7 최종 결정을 통합한다."><title>Jira Knowledge Service · Sync State Schema Contract · FROZEN</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 90px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:48px}h2{font-size:30px}.lead{color:var(--muted);max-width:940px}.grid2,.grid3,.grid4{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">Sync Contract</a><a href="jira_sync_state_schema_decision7_final_ddl.html">S7 Final DDL</a><a href="jira_sync_state_project_registry_design_draft.html">Decision History</a></nav><header class="hero"><div>CONTINUOUS JIRA KNOWLEDGE SERVICE · OPERATIONAL STATE SCHEMA · 2026-08-27</div><h1>Sync State Schema Contract<br>FROZEN v1</h1><p>Sync Contract D1~D8을 실제 운영 상태 저장소로 옮기기 위해 S1~S7에서 합의한 저장소, 테이블, 컬럼, 상태, Transaction, Migration, ID, DDL을 하나의 구현 기준으로 통합합니다.</p><span class="state">FROZEN BASELINE · S1~S7 APPROVED · NO IMPLEMENTATION YET</span></header>
-<section><h2>1. 책임 경계</h2><div class="grid2"><div class="card good"><h3>Control Plane · State DB</h3><p><code>data/state/collector.db</code>를 Operational Sync State DB로 확장합니다.</p><p>Run, Project 현재 상태, Watermark, Source cursor, Work Item, retry/error를 관리합니다.</p></div><div class="card"><h3>Data Plane · Knowledge DB</h3><p>Issue Version, Generation, Attempt, Knowledge Item, Evidence, Review 등 실제 업무지식과 족보를 보존합니다.</p></div></div><div class="callout"><strong>원칙:</strong> State DB는 “어디까지 진행됐는가”, Knowledge DB는 “무엇이 만들어졌는가”를 답합니다.</div></section>
-<section><h2>2. S1 · 저장소와 Migration</h2><div class="flow">기존 data/state/collector.db 재사용
-→ 의미 없는 그대로 사용 X
-→ explicit versioned migration 필수
-→ legacy table/data 보존
-→ Operational State 확장</div><p>Silent auto-migration은 금지합니다. 기존 DB는 fingerprint를 확인하고 consistent backup, validation, regression Gate를 통과한 뒤에만 v1로 전환합니다.</p></section>
-<section><h2>3. S2 · 4개 Operational Domain Table</h2><div class="grid4"><div class="card"><h3>sync_run</h3><p>전체 Source Sync 범위와 집계 상태.</p></div><div class="card"><h3>project_state</h3><p>Project identity, visibility, Watermark 현재 상태.</p></div><div class="card"><h3>sync_project_run</h3><p>Run×Project Source 처리 이력과 Resume cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>NEW/CHANGED semantic Work Item의 downstream 진행 상태.</p></div></div><p>Migration 감사용 <code>state_schema_migration</code>은 별도 Technical Metadata입니다.</p></section>
-<section><h2>4. S3 · 필수 컬럼과 상태</h2><div class="flow">sync_run
-→ fixed upper
-→ discovery_status / source_status / publish_status / run_status
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="2-Loop Continuous Jira Knowledge Service의 Operational State Schema v2 공식 FROZEN Contract"><title>Jira Knowledge Service · State Schema Contract v2 · FROZEN</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1180px;margin:auto;padding:42px 22px 92px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:48px}h2{font-size:30px}.lead{color:var(--muted);max-width:950px}.grid2,.grid3,.grid5{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid5{grid-template-columns:repeat(5,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:900px){.grid2,.grid3,.grid5{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a><a href="jira_sync_contract.html">Sync Contract v2</a><a href="jira_sync_state_schema_contract_v1_baseline.html">v1 Historical</a></nav><header class="hero"><div>OPERATIONAL STATE SCHEMA · TWO-LOOP REVISION · 2026-08-28</div><h1>Sync State Schema Contract<br>FROZEN v2</h1><p>Source Sync Loop와 Knowledge Processing/Publish Loop를 독립 실행하기 위해 v1의 단일 <code>sync_run</code> 모델을 폐기하고 두 종류의 Run identity와 durable backlog를 명시적으로 분리합니다.</p><span class="state">CURRENT SOURCE OF TRUTH · STATE_SCHEMA_VERSION = 2 · IMPLEMENT THIS</span></header>
+<section><h2>1. v1에서 v2로 바뀐 이유</h2><div class="flow">v1 · 구현 전 baseline
+sync_run = Source + Publish 집계
+
+문제
+→ Source Run과 OpenCode Processing Run은 같은 사건이 아님
+→ LLM 지연이 큰 환경에서 독립 cadence/관찰이 어려움
+
+v2 · 현재
+source_sync_run = Loop A
+processing_run  = Loop B
+sync_issue_change = 두 Loop 사이 durable backlog</div><p>v1은 실제 배포되지 않았으며 <a href="jira_sync_state_schema_contract_v1_baseline.html">역사 문서</a>로만 보존합니다.</p></section>
+<section><h2>2. 저장소 책임</h2><div class="grid2"><div class="card good"><h3>Control Plane · collector.db</h3><p>두 Loop의 Run, Project Watermark, Source cursor, durable Work Item, processing checkpoint/error를 저장합니다.</p></div><div class="card"><h3>Data Plane · Knowledge DB</h3><p>Issue Version, Knowledge Generation/Attempt/Item/Evidence/Review를 보존합니다.</p></div></div><div class="callout"><strong>원칙:</strong> Source 최신화와 Knowledge 최신화를 분리하지만, 두 상태를 stable ID로 추적 가능해야 합니다.</div></section>
+<section><h2>3. State Schema v2 Domain Table · 5개</h2><div class="grid5"><div class="card"><h3>source_sync_run</h3><p>Loop A 실행.</p></div><div class="card"><h3>project_state</h3><p>Project current state / Watermark.</p></div><div class="card"><h3>source_project_run</h3><p>Source Run×Project 이력/cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>durable semantic Work Item/backlog.</p></div><div class="card"><h3>processing_run</h3><p>Loop B 실행/처리량.</p></div></div><p><code>state_schema_migration</code>은 5개 Domain Table과 별개의 기술 메타 테이블입니다.</p></section>
+<section><h2>4. Loop A · Source State</h2><div class="flow">source_sync_run
+→ source_run_id = sr_ + UUID4
+→ started_at / finished_at
+→ fixed upper_bound
+→ discovery_status
+→ source_status
+→ run_status
 
 project_state
-→ project_id / current key,name / visibility
-→ committed_watermark / last source success
+→ project_id
+→ key/name/visibility
+→ committed_watermark
+→ last source success
 
-sync_project_run
-→ operation_kind / lower / upper
-→ candidate,new,changed,unchanged counts
+source_project_run
+→ (source_run_id, project_id)
+→ operation_kind
+→ lower/upper
+→ candidate/new/changed/unchanged counts
 → cursor_updated_at + cursor_jira_id
-→ source_status
+→ source_status</div><p>v1의 <code>publish_status</code>는 Source Run에서 제거합니다.</p></section>
+<section><h2>5. Loop B · Processing State</h2><div class="flow">processing_run
+→ processing_run_id = pr_ + UUID4
+→ started_at / finished_at
+→ run_status = running|completed|partial|failed
+→ selected_count
+→ published_count
+→ failed_count
+→ backlog_before / backlog_after (nullable)
+→ error_summary
 
 sync_issue_change
-→ jira_id + source_hash + semantic_v2
-→ discovered_run / last_attempt_run
-→ Knowledge / Embedding / Publish checkpoint</div><p>UNCHANGED는 Work Item을 만들지 않고 Project 집계와 Source cursor만 남깁니다.</p></section>
-<section><h2>5. S4 · Transaction / Crash Safety</h2><div class="flow">T0 Run Start        → fixed upper durable
-T1 Discovery Commit → 완전한 snapshot만 Registry 반영
-T2 Candidate        → 실제 Source durable 후 count/work/cursor commit
-T3 Project Commit   → source_committed + Watermark SAME transaction
-T4 Downstream       → 실제 산출물 먼저, State completed 나중
-T5 Publish          → 실제 Retrieval 전환 먼저, State published 나중
-T6 Run Finalize     → completed / partial / failed 집계</div><div class="callout"><strong>최우선 불변식:</strong> Watermark는 Source Commit보다 앞서가지 않습니다.</div></section>
-<section><h2>6. S5 · Migration Contract</h2><div class="flow">STATE_SCHEMA_VERSION = 1
-PRAGMA user_version = 1
+→ last_processing_run_id → processing_run
+→ knowledge_status
+→ embedding_status
+→ publish_status</div><p>Processing Run은 Source Run과 1:1 관계가 아닙니다. 한 Processing Run이 여러 Source Run에서 만들어진 backlog를 처리할 수 있습니다.</p></section>
+<section><h2>6. Durable Work Item identity</h2><div class="flow">work_item_id
+= sw_ + deterministic SHA-256
 
-legacy user_version 0
-→ empty / known legacy / unknown fingerprint 구분
+identity material
+jira_id
++ source_hash
++ source_hash_profile
 
-known legacy
-→ explicit migration
-→ SQLite consistent backup
-→ additive new tables
-→ legacy rows 보존
-→ integrity/schema/regression PASS
-→ cutover</div><div class="card warn"><strong>No Guess Backfill</strong><p>Legacy <code>project_runs</code>에서 stable <code>project_id</code>나 committed Watermark를 추정하지 않습니다. 첫 Operational Source Sync부터 정식 상태를 만듭니다.</p></div></section>
-<section><h2>7. S6 · ID / Key</h2><table><thead><tr><th>Entity</th><th>Identity</th></tr></thead><tbody><tr><td>Project</td><td>Jira <code>project_id</code></td></tr><tr><td>Issue</td><td>Jira <code>jira_id</code></td></tr><tr><td>Sync Run</td><td><code>sr_</code> + UUID4 full hex</td></tr><tr><td>Run × Project</td><td><code>(sync_run_id, project_id)</code> composite PK</td></tr><tr><td>Issue Change Work Item</td><td><code>sw_</code> + deterministic full SHA-256</td></tr></tbody></table><div class="flow">Work Item identity material
-jira_id + source_hash + source_hash_profile
+UNIQUE(jira_id, source_hash, source_hash_profile)</div><p>같은 semantic state를 다시 만나면 새 row를 만들지 않고 기존 Work Item을 재사용합니다.</p><table><thead><tr><th>필드</th><th>v2 의미</th></tr></thead><tbody><tr><td>first_discovered_source_run_id</td><td>이 semantic state를 처음 발견한 Loop A Run</td></tr><tr><td>last_observed_source_run_id</td><td>가장 최근에 같은 semantic state를 다시 본 Loop A Run</td></tr><tr><td>last_processing_run_id</td><td>가장 최근 Loop B 처리 Run</td></tr><tr><td>last_published_at</td><td>과거 Publish 성공 이력. 재활성화해도 보존 가능</td></tr></tbody></table></section>
+<section><h2>7. Crash Safety · Loop별로 분리</h2><div class="grid2"><div class="card"><h3>Loop A</h3><div class="flow">actual Source durable
+→ Work Item/count/cursor State commit
 
-UNIQUE(jira_id, source_hash, source_hash_profile)</div><p>State DB 내부 참조는 SQLite FK를 사용하고, Knowledge DB의 <code>iv_</code>/<code>kg_</code>는 cross-DB FK 없이 logical ID로 참조합니다.</p></section>
-<section><h2>8. S7 · DDL / Constraint / Index</h2><p class="lead">실제 CREATE TABLE / CHECK / FK / UNIQUE / INDEX의 구현 기준은 S7 Final 문서를 따릅니다.</p><div class="grid3"><div class="card"><h3>DB가 직접 막음</h3><p>enum 오류, 음수 count, cursor pair 불일치, stage 순서 모순, Work Item 중복.</p></div><div class="card"><h3>StateStore가 막음</h3><p>Source Commit + Watermark 원자성, Project upper와 Run upper 일치.</p></div><div class="card"><h3>Validator가 막음</h3><p>Knowledge logical ID 존재, 실제 Retrieval Publish, Source Head/Published Head 일치.</p></div></div><p><a href="jira_sync_state_schema_decision7_final_ddl.html">S7 Final DDL 전체 보기</a></p></section>
-<section><h2>9. 상태가 다시 과거 semantic state로 돌아올 때</h2><div class="flow">A → B → 다시 A
+Project complete
+→ source_committed
++ committed_watermark = upper
+→ SAME transaction</div></div><div class="card"><h3>Loop B</h3><div class="flow">Knowledge/Embedding actual output first
+→ State completed second
 
-A Work Item / Knowledge / Embedding 존재
-→ 새 Work Item X
-→ 기존 결과 재사용
-→ Published Head가 B라면 Publish만 재실행
-→ Source Head == Published Head에서 최신</div></section>
-<section><h2>10. 구현 Gate</h2><div class="flow">[ ] Schema Contract와 DDL 일치
-[ ] Migration backup / fingerprint / rollback tests
-[ ] legacy Resume regression PASS
-[ ] Source cursor crash tests
-[ ] source_committed + Watermark atomicity tests
-[ ] duplicate Work Item idempotency tests
-[ ] downstream reconcile tests
-[ ] publish-state ordering tests
+actual Retrieval atomic publish first
+→ State published second</div></div></div><p>두 Loop 사이에 분산 Transaction을 만들지 않습니다. durable Work Item이 비동기 경계입니다.</p></section>
+<section><h2>8. Run 상태 의미</h2><table><thead><tr><th>Run</th><th>completed</th><th>partial</th><th>failed</th></tr></thead><tbody><tr><td>source_sync_run</td><td>Discovery 성공 + 모든 visible Project Source 책임 완료</td><td>일부 Source durable progress + 일부 실패</td><td>Discovery 불신뢰 또는 필요한 Source progress 없음</td></tr><tr><td>processing_run</td><td>선택 작업 모두 완료 또는 선택 작업 0</td><td>일부 durable processing progress + 일부 실패/미완료</td><td>의미 있는 processing progress 없이 실패</td></tr></tbody></table><p>시스템 전체에는 단일 completed/failed를 부여하지 않습니다. Source Lag, Publish Lag, Backlog가 실제 운영 상태입니다.</p></section>
+<section><h2>9. Migration Contract v2</h2><div class="flow">STATE_SCHEMA_VERSION = 2
+PRAGMA user_version = 2
 
-전부 PASS 후 구현 Milestone 완료 선언</div></section>
-<section><h2>11. 현재 주의사항</h2><div class="card warn"><p>이 문서는 현재 합의된 <strong>FROZEN BASELINE</strong>입니다. 구현 전 상위 아키텍처가 변경되면 변경 이유와 영향 범위를 별도 Decision 문서로 남기고 Contract를 명시적으로 revision합니다. 조용히 의미를 바꾸지 않습니다.</p></div></section><footer class="footer">Sync State Schema Contract v1 · S1~S7 FROZEN BASELINE · 2026-08-27</footer></main></body></html>
+legacy collector.db / user_version 0
+→ fingerprint 확인
+→ consistent backup
+→ explicit migration only
+→ legacy table/data 보존
+→ v2 tables additive 생성
+→ validation/regression PASS
+→ cutover
+
+user_version = 1 발견
+→ 자동 변환 금지
+→ v1은 never-deployed design baseline이므로 운영자 확인 후 explicit path</div><div class="card warn"><strong>No Guess Backfill</strong><p>Legacy 수집 기록에서 project_id, Watermark, Processing history를 추정 생성하지 않습니다. 첫 v2 Source Sync와 Processing Run부터 정식 상태를 만듭니다.</p></div></section>
+<section><h2>10. 현재 Index 방향</h2><div class="flow">source_sync_run
+→ started_at
+→ run_status, started_at
+
+project_state
+→ visibility_state
+→ current_key
+
+source_project_run
+→ source_run_id, source_status
+→ project_id, started_at
+
+processing_run
+→ started_at
+→ run_status, started_at
+
+sync_issue_change
+→ project_id, updated_at
+→ knowledge_status
+→ embedding_status
+→ publish_status
+→ last_observed_source_run_id
+→ last_processing_run_id</div></section>
+<section><h2>11. 아직 Freeze하지 않은 Queue 정책</h2><div class="card warn"><h3>중간 Version supersede</h3><p>V2/V3/V4가 backlog에 쌓였을 때 미시작 V2/V3를 superseded 처리할지 여부는 별도 결정입니다. 이 결정 전까지 Schema v2는 모든 semantic Work Item을 보존할 수 있게 합니다.</p></div><div class="card warn"><h3>Multi-worker lease</h3><p>초기 Single Worker 기준입니다. 병렬 Worker가 필요해지면 claim/lease 관련 필드를 별도 revision합니다.</p></div></section>
+<section><h2>12. 구현 Gate</h2><div class="flow">[ ] legacy → v2 migration / backup / rollback
+[ ] source_run fixed upper / resume tests
+[ ] candidate cursor crash tests
+[ ] source_committed + watermark atomicity
+[ ] deterministic Work Item idempotency
+[ ] processing_run independent execution tests
+[ ] Knowledge/Embedding reconcile tests
+[ ] atomic Publish ordering tests
+[ ] Source Loop 장애 중 Processing Loop 독립 동작
+[ ] Processing Loop 장애 중 Source Loop 독립 동작
+[ ] Source Lag / Publish Lag / Backlog query tests</div></section><footer class="footer">State Schema Contract v2 · TWO-LOOP FROZEN · v1 superseded before deployment · 2026-08-28</footer></main></body></html>
