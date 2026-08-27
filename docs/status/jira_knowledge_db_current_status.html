@@ -1,7 +1,7 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M10 실제 환경 검증 완료"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid4,.grid2{display:grid;gap:12px}.grid4{grid-template-columns:repeat(4,1fr)}.grid2{grid-template-columns:repeat(2,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid2{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a><a href="M10_COMPLETION.html">M10 Completion</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-27</span><h1>M0~M10 완료.<br>실제 환경 end-to-end까지 PASS했습니다.</h1><p>M10 Evidence Package / Resolver / MCP Tool Contract를 구현한 뒤 실제 로컬 SQLite/FAISS와 사내 BGE-M3를 연결해 Real-run을 수행했고, 검색 3건·Evidence 6건·warning 0·path leak 0·Issue round-trip 성공으로 PASS했습니다.</p><span class="state">M0~M10 DONE / PASS</span></header>
-<div class="kpis"><div class="kpi"><b>285</b><span>Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>6</b><span>Evidence type</span></div><div class="kpi"><b>2</b><span>MCP tools</span></div><div class="kpi"><b>PASS</b><span>M10 Real-run</span></div></div>
-<section><h2>1. Milestone</h2><div class="grid4"><div class="box"><b>M7 · DONE</b><p>SQLite 30 issue / 37 attempt / 285 item / 502 Evidence.</p></div><div class="box good"><b>M8 · DONE</b><p>285 BGE-M3 embeddings × 1024, integrity/sanity PASS.</p></div><div class="box good"><b>M9 · DONE</b><p>FAISS build/rebuild/query reproducibility + real query PASS.</p></div><div class="box good"><b>M10 · DONE</b><p>Evidence/MCP 구현 + 실제 BGE-M3/FAISS/SQLite/MCP Real-run PASS.</p></div></div></section>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M10 완료, M11 OpenCode MCP Integration 진행"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid4,.grid2{display:grid;gap:12px}.grid4{grid-template-columns:repeat(4,1fr)}.grid2{grid-template-columns:repeat(2,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid2{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="M10_COMPLETION.html">M10 Completion</a><a href="M11_OPENCODE_MCP_INTEGRATION.html">M11 Current</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-27</span><h1>M0~M10 완료.<br>M11에서 OpenCode에 MCP를 연결합니다.</h1><p>M10은 실제 BGE-M3 + FAISS + SQLite + MCP end-to-end를 PASS했습니다. 현재 M11은 이 저장소에 Agent를 구현하지 않고, 완성된 MCP를 외부 OpenCode Agent에 연결해 실제 Tool discovery/call/answer 활용을 검증하는 단계입니다.</p><span class="state">M0~M10 DONE / PASS · M11 OPENCODE MCP INTEGRATION CURRENT</span></header>
+<div class="kpis"><div class="kpi"><b>285</b><span>Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>6</b><span>Evidence type</span></div><div class="kpi"><b>2</b><span>MCP tools</span></div><div class="kpi"><b>M11</b><span>OpenCode integration</span></div></div>
+<section><h2>1. 완료 / 현재 Milestone</h2><div class="grid4"><div class="box"><b>M7 · DONE</b><p>SQLite 30 issue / 37 attempt / 285 item / 502 Evidence.</p></div><div class="box good"><b>M8 · DONE</b><p>285 BGE-M3 embeddings × 1024 PASS.</p></div><div class="box good"><b>M9 · DONE</b><p>FAISS real query/reproducibility PASS.</p></div><div class="box good"><b>M10 · DONE</b><p>Evidence/MCP + 실제 end-to-end Real-run PASS.</p></div></div><div class="box next" style="margin-top:12px"><b>M11 · CURRENT</b><p>M10 MCP를 외부 OpenCode Agent에 local stdio MCP로 연결하고 실제 소비자 관점에서 검증합니다.</p></div></section>
 <section><h2>2. Identity</h2><div class="flow">jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 
 knowledge_attempt = ka_ + attempt_no
@@ -9,31 +9,25 @@ knowledge_attempt = ka_ + attempt_no
 Embedding  ec_ → emb_
 Retrieval  rc_ → fi_
 
-FAISS position ≠ emb_ ≠ ki_</div><p>M10은 <code>ki_</code>를 현재 active accepted Knowledge인지 다시 확인하고 <code>ke_</code>를 통해 실제 Evidence source까지 round-trip합니다.</p></section>
-<section><h2>3. M10 최종 결과</h2><table><thead><tr><th>단계</th><th>상태</th><th>핵심</th></tr></thead><tbody><tr><td>M10-01 Contract</td><td>PASS</td><td>Evidence Package / 6종 Resolver / Top-3 / 2 tools / stale guard 확정</td></tr><tr><td>M10-02 Resolver</td><td>PASS</td><td>6종 Evidence source row 복원</td></tr><tr><td>M10-03 Builder</td><td>PASS</td><td>candidate package + partial failure 격리</td></tr><tr><td>M10-04 MCP</td><td>PASS</td><td><code>search_jira_knowledge</code> + <code>get_jira_issue</code></td></tr><tr><td>M10-05 Real-run</td><td>PASS</td><td>실제 BGE-M3 + FAISS + SQLite + MCP end-to-end</td></tr></tbody></table></section>
-<section><h2>4. Real-run 숫자 해석</h2><div class="flow">tool_count: 2             → MCP 기능 종류 2개
-search_result_count: 3    → FAISS Top-3 Knowledge
-Evidence_count: 6         → 3 Knowledge에 연결된 실제 Jira 근거 총 6개
-warning_count: 0          → 깨진 candidate 없음
-path_leak_count: 0        → 내부 경로 노출 없음
-issue_lookup_ok: true     → 검색 결과에서 실제 Issue 재조회 성공
-failure_count: 0          → Gate 실패 항목 없음
-M10_REAL_RUN = PASS</div><p>자세한 설명과 트러블슈팅은 <a href="M10_COMPLETION.html">M10 Completion</a>에 모았습니다.</p></section>
-<section><h2>5. M10 MCP 경계</h2><div class="flow">Agent
-  ↓ MCP
-search_jira_knowledge
-  ↓
-BGE-M3 query embedding
-  ↓
-M9 FAISS Top-3
-  ↓
-M10 active/stale guard
-  ↓
-ki_ → ke_ → source
-  ↓
-Evidence Package
-  ↓
-Agent / LLM 최종 답변</div><div class="box good"><b>MCP 내부 생성형 LLM 없음</b><p>검색/근거 복원과 최종 답변 생성을 분리합니다.</p></div></section>
-<section><h2>6. 구현된 보안 / 품질 Guard</h2><div class="grid2"><div class="box good"><b>DB read-only</b><p><code>mode=ro</code> + <code>PRAGMA query_only=ON</code>.</p></div><div class="box good"><b>Source path 미노출</b><p><code>source_path</code> / <code>source_page</code>를 외부 payload에서 제외.</p></div><div class="box good"><b>Stale 차단</b><p>active + accepted + content_available를 candidate마다 재검증.</p></div><div class="box good"><b>Typed Error</b><p>missing/stale/ref/source/category 오류를 구조적으로 격리.</p></div></div></section>
-<section><h2>7. 실제 트러블슈팅</h2><div class="grid2"><div class="box"><b>MCP dependency</b><p><a href="M10_TROUBLESHOOTING_MCP_IMPORT.html">No module named mcp</a></p></div><div class="box"><b>Query 설정</b><p><a href="M10_TROUBLESHOOTING_REAL_RUN_QUERY.html">Windows PowerShell / Linux</a></p></div><div class="box"><b>DB / FAISS 경로</b><p><a href="M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html">McpRuntimeSettingsError</a></p></div><div class="box"><b>최종 기록</b><p><a href="M10_REAL_RUN_GATE.html">M10-05 Real-run PASS</a></p></div></div></section>
-<section><h2>8. 다음 액션</h2><div class="box"><b>다음 Milestone은 아직 정의하지 않습니다.</b><p>운영화, Agent 연동, retrieval hardening 중 우선순위를 별도 의사결정한 후 다음 Milestone 경계를 정합니다.</p></div></section><footer>M0~M10 DONE / PASS · current source of truth · 2026-08-27</footer></main></body></html>
+FAISS position ≠ emb_ ≠ ki_</div></section>
+<section><h2>3. M10 최종 Real-run</h2><div class="flow">tool_count: 2
+search_result_count: 3
+evidence_count: 6
+warning_count: 0
+path_leak_count: 0
+issue_lookup_ok: true
+failure_count: 0
+M10_REAL_RUN = PASS</div><p>상세 의미와 트러블슈팅은 <a href="M10_COMPLETION.html">M10 Completion</a>에 있습니다.</p></section>
+<section><h2>4. M11 범위</h2><div class="grid2"><div class="box good"><b>프로젝트가 제공</b><p><code>jira-knowledge</code> MCP와 <code>search_jira_knowledge</code>, <code>get_jira_issue</code> 두 Tool.</p></div><div class="box good"><b>OpenCode가 소비</b><p>외부 Agent가 MCP를 발견·호출하고 Knowledge + Evidence를 이용해 답변합니다.</p></div><div class="box"><b>하지 않음</b><p>이 저장소 안에 Agent framework/planner/sub-agent/memory를 구현하지 않습니다.</p></div><div class="box"><b>다음 Gate</b><p>OpenCode에 local stdio MCP 등록 → Tool 2개 discovery.</p></div></div></section>
+<section><h2>5. 서비스 설정 정책 · .env</h2><div class="flow">서비스 기본 설정   .env
+OS 환경 변수       .env보다 우선 · CI/진단/일시 override
+명시적 test env    .env를 읽지 않음
+
+서비스 .env
+JIRA_KNOWLEDGE_DB_PATH
+JIRA_RETRIEVAL_ARTIFACT_DIR
+BGE_M3_ENDPOINT
+BGE_M3_API_KEY       optional
+BGE_M3_HEADERS_JSON  optional</div><p><code>M10_REAL_RUN_QUERY</code>는 Real-run 검증 전용이므로 서비스 <code>.env</code>에는 기본적으로 넣지 않습니다. 실제 <code>.env</code>는 Git에서 제외하고 <code>.env.example</code>만 공유합니다.</p></section>
+<section><h2>6. M11 Gate</h2><table><thead><tr><th>Gate</th><th>내용</th><th>상태</th></tr></thead><tbody><tr><td>M11-01</td><td>MCP runtime .env service configuration</td><td>IMPLEMENTED · CI 확인</td></tr><tr><td>M11-02</td><td>OpenCode local stdio MCP 등록</td><td>NEXT</td></tr><tr><td>M11-03</td><td>Tool 2개 discovery</td><td>NEXT</td></tr><tr><td>M11-04</td><td>명시적 Tool call</td><td>NEXT</td></tr><tr><td>M11-05</td><td>자연어 질문에서 자동 Tool selection</td><td>NEXT</td></tr><tr><td>M11-06</td><td>Knowledge + Evidence 기반 답변 확인</td><td>NEXT</td></tr></tbody></table></section>
+<footer>M0~M10 DONE / PASS · M11 OPENCODE MCP INTEGRATION CURRENT · 2026-08-27</footer></main></body></html>
