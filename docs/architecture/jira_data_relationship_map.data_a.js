@@ -1,7 +1,7 @@
 window.JIRA_MAP_VIEWS={
 "entity":{
-  "title":"Current Knowledge Entity Map · M9 DONE / M10 NEXT",
-  "help":"M7 SQLite, M8 BGE-M3 embedding, M9 FAISS retrieval까지 실데이터 검증을 완료했습니다. M10은 ki_ → ke_ → Source를 Evidence package와 MCP로 연결하는 다음 단계입니다.",
+  "title":"Current Knowledge Entity Map · M10 IMPLEMENTATION PASS",
+  "help":"M7 SQLite, M8 BGE-M3 embedding, M9 FAISS retrieval의 실데이터 Gate를 통과했고, M10의 ki_ → ke_ → Source → Evidence Package → MCP 구현도 완료했습니다. 현재는 실제 환경 Real-run이 남았습니다.",
   "nodes":[
     {"id":"run","type":"store","kind":"store","shape":"pill","x":120,"y":70,"w":180,"h":60,"label":"Pipeline Run","sub":"observation scope"},
     {"id":"issue","type":"issue","kind":"issue","shape":"pill","x":400,"y":70,"w":200,"h":60,"label":"Issue","sub":"jira_id authoritative"},
@@ -49,7 +49,7 @@ window.JIRA_MAP_VIEWS={
 },
 "pipeline":{
   "title":"Milestone Pipeline · M0~M10",
-  "help":"M0~M9는 완료했습니다. M10 Evidence Builder + MCP는 다음 단계이며 새 세션에서 DESIGN부터 시작합니다.",
+  "help":"M0~M9는 완료했고 M10-01~04 Contract/Evidence/MCP 구현과 CI도 PASS했습니다. 현재 M10-05 실제 환경 Real-run이 마지막 Gate입니다.",
   "nodes":[
     {"id":"m0","type":"store","kind":"store","shape":"rect","x":110,"y":120,"w":175,"h":80,"label":"M0 DONE","sub":"RAW + ANALYSIS"},
     {"id":"m1","type":"store","kind":"store","shape":"rect","x":325,"y":120,"w":175,"h":80,"label":"M1 DONE","sub":"Knowledge Input"},
@@ -61,7 +61,7 @@ window.JIRA_MAP_VIEWS={
     {"id":"m7","type":"db","kind":"db","shape":"rect","x":850,"y":340,"w":220,"h":92,"label":"M7 DONE","sub":"real-run PASS · evidence 502"},
     {"id":"m8","type":"db","kind":"db","shape":"rect","x":590,"y":340,"w":190,"h":84,"label":"M8 DONE","sub":"285 × 1024 · PASS"},
     {"id":"m9","type":"db","kind":"db","shape":"rect","x":350,"y":340,"w":190,"h":84,"label":"M9 DONE","sub":"FAISS real-run PASS"},
-    {"id":"m10","type":"plan","kind":"store","shape":"rect","x":110,"y":340,"w":190,"h":84,"label":"M10 NEXT","sub":"Evidence + MCP design"},
+    {"id":"m10","type":"plan","kind":"store","shape":"rect","x":110,"y":340,"w":190,"h":84,"label":"M10 IMPL PASS","sub":"Evidence + MCP · real-run next"},
     {"id":"gate","type":"issue","kind":"issue","shape":"rect","x":850,"y":600,"w":330,"h":100,"label":"M7 Real-run PASS","sub":"30 issue · 37 attempt · 285 item · 502 evidence"},
     {"id":"m8gate","type":"issue","kind":"issue","shape":"rect","x":500,"y":600,"w":300,"h":100,"label":"M8 Real-run PASS","sub":"285 embedding · 1024 dim · integrity PASS"},
     {"id":"m9gate","type":"issue","kind":"issue","shape":"rect","x":150,"y":600,"w":300,"h":100,"label":"M9 Real-run PASS","sub":"285 index · real query · reproducibility PASS"}
