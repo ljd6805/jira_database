@@ -1,7 +1,7 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M9 완료, M10 Evidence Builder + MCP 설계 진행 중"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid4,.grid2{display:grid;gap:12px}.grid4{grid-template-columns:repeat(4,1fr)}.grid2{grid-template-columns:repeat(2,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid2{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a><a href="M9_FAISS_ACTIVE_RETRIEVAL.html">M9 DONE</a><a href="M10_START_HERE.html">M10 Start Here</a><a href="../M10_EVIDENCE_MCP_DESIGN.html">M10 Design →</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-26</span><h1>M0~M9 완료.<br>M10 Evidence Builder + MCP 설계 진행 중.</h1><p>SQLite Knowledge DB, 실제 BGE-M3 embedding, FAISS exact retrieval까지 실데이터 Gate를 모두 통과했습니다. M10 구현 전 단계로 Evidence Package / Resolver / MCP Tool Contract의 추천안을 문서화했으며, 사용자 합의 후 Contract freeze와 구현으로 이동합니다.</p><span class="state">M0~M9 DONE / PASS · M10 DESIGN IN PROGRESS</span></header>
-<div class="kpis"><div class="kpi"><b>285</b><span>Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>1024</b><span>BGE-M3 dimension</span></div><div class="kpi"><b>PASS</b><span>M9 same-query</span></div><div class="kpi"><b>DESIGN</b><span>M10 Evidence + MCP</span></div></div>
-<section><h2>1. Milestone</h2><div class="grid4"><div class="box"><b>M7 · DONE</b><p>SQLite 30 issue / 37 attempt / 285 item / 502 Evidence.</p></div><div class="box good"><b>M8 · DONE</b><p>285 BGE-M3 embeddings × 1024, integrity/sanity PASS.</p></div><div class="box good"><b>M9 · DONE</b><p>FAISS build/rebuild/query/same-query reproducibility PASS.</p></div><div class="box next"><b>M10 · DESIGN</b><p>Evidence Builder + MCP. 추천 계약을 작성했고 구현 전 합의 단계입니다.</p></div></div></section>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M9 완료, M10 구현 PASS, Real-run 다음 단계"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid4,.grid2{display:grid;gap:12px}.grid4{grid-template-columns:repeat(4,1fr)}.grid2{grid-template-columns:repeat(2,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid2{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a><a href="M10_START_HERE.html">M10 Start Here</a><a href="M10_MCP_IMPLEMENTATION.html">MCP PASS</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-27</span><h1>M0~M9 완료.<br>M10 구현 PASS, Real-run만 남았습니다.</h1><p>Evidence Package / Resolver / MCP Tool Contract를 확정했고, 6종 Evidence Resolver, Candidate Builder, read-only MCP 2 tools까지 구현·테스트했습니다. 실제 로컬 SQLite/FAISS와 사내 BGE-M3를 연결한 M10-05 Real-run Gate 전까지는 M10을 DONE으로 표시하지 않습니다.</p><span class="state">M0~M9 DONE / PASS · M10 IMPLEMENTATION PASS · REAL-RUN NEXT</span></header>
+<div class="kpis"><div class="kpi"><b>285</b><span>Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>6</b><span>Evidence type</span></div><div class="kpi"><b>2</b><span>MCP tools</span></div><div class="kpi"><b>133</b><span>CI PASS baseline</span></div></div>
+<section><h2>1. Milestone</h2><div class="grid4"><div class="box"><b>M7 · DONE</b><p>SQLite 30 issue / 37 attempt / 285 item / 502 Evidence.</p></div><div class="box good"><b>M8 · DONE</b><p>285 BGE-M3 embeddings × 1024, integrity/sanity PASS.</p></div><div class="box good"><b>M9 · DONE</b><p>FAISS build/rebuild/query/same-query reproducibility PASS.</p></div><div class="box next"><b>M10 · REAL-RUN NEXT</b><p>Design/Contract/Implementation/CI PASS. 실제 환경 end-to-end만 남음.</p></div></div></section>
 <section><h2>2. Identity</h2><div class="flow">jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
 
 knowledge_attempt
@@ -11,23 +11,42 @@ knowledge_attempt
 Embedding  ec_ → emb_
 Retrieval  rc_ → fi_
 
-FAISS position ≠ emb_ ≠ ki_</div><p>M10에서도 <code>ki_</code>를 통해 Knowledge를 조회하고 <code>ke_</code>를 통해 Evidence source로 round-trip합니다.</p></section>
-<section><h2>3. M9 최종 근거</h2><table><thead><tr><th>Gate</th><th>결과</th></tr></thead><tbody><tr><td>Real Build</td><td>285 vectors / 1024 dimensions / mapping·hash·normalization failure 0</td></tr><tr><td>Rebuild</td><td>same rc_ / fi_ / source SHA / mapping SHA</td></tr><tr><td>Distinct Query A/B</td><td>두 사례 모두 Rank 1/2 유효, Rank 3 noise 관찰</td></tr><tr><td>Same-query</td><td>vector exact equal, max diff 0, cosine 1.0, ranking equal, scores equal</td></tr></tbody></table><div class="box good"><b>M9 = DONE / PASS</b></div></section>
-<section><h2>4. M10 Input / Boundary</h2><div class="flow">M9 output
-rank + score + faiss_position + emb_ + ki_
-        ↓
-M10
-ki_ → Knowledge statement
-ke_ → Evidence source
-→ Evidence package
-→ MCP</div></section>
-<section><h2>5. M10 Design Proposal</h2><div class="grid2"><div class="box next"><b>Evidence Package</b><p>후보 중심 package를 추천합니다. rank/score + Knowledge + Evidence를 한 묶음으로 전달합니다.</p></div><div class="box next"><b>Resolver Contract</b><p>기존 M7 Evidence type/key 계약을 재사용하고 6종 source의 실제 내용을 읽습니다.</p></div><div class="box next"><b>MCP Tool Surface</b><p><code>search_jira_knowledge</code> + <code>get_jira_issue</code>의 2-tool surface를 추천합니다.</p></div><div class="box next"><b>Quality Gate</b><p>active lineage, evidence round-trip, stale index, path leak, deterministic package를 자동 검증합니다.</p></div></div><div class="box good"><b><a href="../M10_EVIDENCE_MCP_DESIGN.html">M10 Evidence + MCP Design Proposal 열기</a></b><p>구현 전에 확정할 6개 결정과 추천 기본값, Quality Gate, 구현 순서를 정리했습니다.</p></div></section>
-<section><h2>6. Production 방향은 M10과 분리</h2><div class="flow">운영 기본 = delta-first
+FAISS position ≠ emb_ ≠ ki_</div><p>M10은 <code>ki_</code>를 현재 active accepted Knowledge인지 다시 확인하고 <code>ke_</code>를 통해 실제 Evidence source까지 round-trip합니다.</p></section>
+<section><h2>3. M10 진행 상황</h2><table><thead><tr><th>단계</th><th>상태</th><th>핵심</th></tr></thead><tbody><tr><td>M10-01 Contract</td><td>PASS</td><td>Evidence Package / Resolver / failure / Top-3 / 2 tools / stale guard 확정</td></tr><tr><td>M10-02 Resolver</td><td>PASS</td><td>6종 Evidence source 실제 row 복원</td></tr><tr><td>M10-03 Builder</td><td>PASS</td><td>candidate package + partial failure 격리</td></tr><tr><td>M10-04 MCP</td><td>PASS</td><td><code>search_jira_knowledge</code> + <code>get_jira_issue</code></td></tr><tr><td>M10-05 Real-run</td><td>NEXT</td><td>실제 BGE-M3 + FAISS + SQLite end-to-end</td></tr></tbody></table></section>
+<section><h2>4. M10 MCP 경계</h2><div class="flow">Agent
+  ↓ MCP
+search_jira_knowledge
+  ↓
+BGE-M3 query embedding
+  ↓
+M9 FAISS Top-3
+  ↓
+M10 active/stale guard
+  ↓
+ki_ → ke_ → source
+  ↓
+Evidence Package
+  ↓
+Agent / LLM 최종 답변</div><div class="box good"><b>MCP 내부 생성형 LLM 없음</b><p>검색/근거 복원과 최종 답변 생성을 계속 분리합니다.</p></div></section>
+<section><h2>5. 구현된 보안 / 품질 Guard</h2><div class="grid2"><div class="box good"><b>DB read-only</b><p><code>mode=ro</code> + <code>PRAGMA query_only=ON</code>.</p></div><div class="box good"><b>Source path 미노출</b><p><code>source_path</code> / <code>source_page</code>를 외부 payload에서 제외.</p></div><div class="box good"><b>Stale 차단</b><p>active + accepted + content_available를 candidate마다 재검증.</p></div><div class="box good"><b>Typed Error</b><p>missing/stale/ref/source/category 오류를 구조적으로 격리.</p></div></div></section>
+<section><h2>6. CI</h2><div class="flow">Evidence Resolver / Builder tests   PASS
+Official MCP Client tools/list        PASS
+MCP tools/call × 2                    PASS
+SQLite write rejection                PASS
+path leak synthetic Gate              PASS
+
+GitHub Actions baseline: 133 passed</div><p>Real-run validator 자체의 추가 unit test가 이어지므로 최종 suite 수는 증가할 수 있습니다.</p></section>
+<section><h2>7. 다음 액션</h2><div class="box next"><b>M10-05 Real-run</b><p><code>tools/jira_knowledge/validate_m10_real_run.py</code>를 실제 artifact가 있는 환경에서 실행합니다. Query/Issue/원문은 stdout에 남기지 않고 안전한 집계만 확인합니다.</p></div><div class="flow">JIRA_KNOWLEDGE_DB_PATH
+JIRA_RETRIEVAL_ARTIFACT_DIR
+BGE_M3_ENDPOINT
+M10_REAL_RUN_QUERY
+
+python tools/jira_knowledge/validate_m10_real_run.py</div></section>
+<section><h2>8. Production 방향은 별도</h2><div class="flow">운영 기본 = delta-first
 full rebuild = maintenance / recovery / migration
 
 후속 후보
 vector cache
 IndexIDMap2(IndexFlatIP) + stable vector_id
-HNSW / IVF benchmark</div><p>이 production-hardening을 M10 Evidence Builder 구현에 섞지 않습니다.</p></section>
-<section><h2>7. 새 세션</h2><div class="box good"><b><a href="M10_START_HERE.html">M10 Start Here</a></b><p>새 세션은 인수인계 문서로 완료된 M0~M9를 고정한 뒤, 현재 Design Proposal을 읽고 M10 Contract를 확정합니다.</p></div></section>
-<footer>M0~M9 DONE / PASS · M10 DESIGN IN PROGRESS · 2026-08-26</footer></main></body></html>
+HNSW / IVF benchmark</div><p>이 production-hardening은 M10 Real-run Gate와 섞지 않습니다.</p></section>
+<footer>M0~M9 DONE / PASS · M10 IMPLEMENTATION PASS · M10-05 REAL-RUN NEXT · 2026-08-27</footer></main></body></html>
