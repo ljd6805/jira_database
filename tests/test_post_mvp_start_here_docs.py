@@ -21,7 +21,7 @@ def test_next_session_starts_from_sync_contract_not_implementation() -> None:
         "첫 작업 = Sync Contract 설계",
         "코드부터 만들지 않습니다",
         "Project Discovery",
-        "Delta Issue Sync",
+        "Issue Delta Detection",
         "checkpoint",
         "resume",
         "source_hash",
