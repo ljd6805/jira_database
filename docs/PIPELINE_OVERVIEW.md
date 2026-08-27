@@ -1,7 +1,7 @@
 # Jira Knowledge Pipeline 전체 아키텍처
 
 기준일: 2026-08-27  
-현재 단계: **M0~M10 DONE / PASS**
+현재 단계: **M0~M10 DONE / PASS · M11 CURRENT · M11-01~04 PASS**
 
 > Documentation Hub가 직접 연결하는 문서는 HTML을 기준으로 합니다. 이 Markdown은 검색/로그/개발 편의용 보조 문서입니다.
 
@@ -31,20 +31,24 @@ BGE-M3 Embedding                       M8 DONE · REAL-RUN PASS
 FAISS + Active Retrieval               M9 DONE · REAL-RUN PASS
     ↓
 Evidence Builder + MCP                 M10 DONE · REAL-RUN PASS
+    ↓
+OpenCode MCP Consumer Pilot            M11 CURRENT · M11-01~04 PASS
 ```
 
 ## 2. 핵심 불변 원칙
 
 ```text
-RAW → ANALYSIS → KNOWLEDGE → DB → EMBEDDING → RETRIEVAL → EVIDENCE PACKAGE
+RAW → ANALYSIS → KNOWLEDGE → DB → EMBEDDING → RETRIEVAL → EVIDENCE PACKAGE → MCP CONSUMER
 ```
 
 - RAW가 사실의 최종 기준이다.
 - History Storage와 Active Retrieval을 분리한다.
 - `knowledge_generation`과 retry `knowledge_attempt`를 구분한다.
 - Identity는 `jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_`를 유지한다.
+- `knowledge_attempt = ka_ + attempt_no` 관계를 유지한다.
 - `FAISS position ≠ embedding_id(emb_) ≠ knowledge_item_id(ki_)`다.
 - MCP는 검색/근거 복원만 담당하고 생성형 LLM은 Agent에 둔다.
+- Local stdio는 Pilot용이고 최종 팀 서비스는 중앙 Remote MCP다.
 
 ## 3. Pilot 핵심 숫자
 
@@ -59,7 +63,7 @@ Embedding dimension         1024
 M9 FAISS vector_count        285
 ```
 
-## 4. M9와 M10 역할 구분
+## 4. M9 / M10 / M11 역할 구분
 
 ```text
 M9 Retrieval
@@ -72,8 +76,15 @@ ki_ active/accepted 재검증
 → Evidence Package
 → MCP 2 tools
 
-Agent / LLM
-Knowledge + Evidence를 읽고 최종 답변
+M11 OpenCode Consumer Pilot
+OpenCode local stdio 연결
+→ Tool 2개 discovery
+→ 명시적 Tool call
+→ 자동 Tool selection 검증
+→ Evidence 기반 답변 검증
+
+최종 서비스
+팀원 OpenCode → 중앙 Remote MCP / HTTPS
 ```
 
 FAISS는 Jira 원문을 직접 검색하지 않는다. Knowledge vector를 검색하고, 실제 원문 근거는 SQLite에서 `ki_ → ke_ → source`로 복원한다.
@@ -97,8 +108,6 @@ External payload       source_path/source_page 제외
 
 ## 6. M10-05 실제 Real-run — PASS
 
-실제 M7 SQLite, M9 FAISS artifact, 사내 BGE-M3, MCP 2 tools를 연결했다.
-
 ```text
 tool_count: 2
 search_result_count: 3
@@ -110,37 +119,65 @@ failure_count: 0
 M10_REAL_RUN = PASS
 ```
 
-쉬운 의미:
+## 7. M11 실제 OpenCode 검증
 
 ```text
-tool_count 2          = MCP 기능 종류 2개, 호출 횟수가 아님
-search_result_count 3 = FAISS Top-3 Knowledge
-Evidence_count 6      = 3 Knowledge에 연결된 실제 Jira 근거 총 6개
-warning_count 0       = 깨진 candidate 없음
-path_leak_count 0     = 내부 경로 노출 없음
-issue_lookup_ok true  = 실제 Issue 재조회 성공
-failure_count 0       = Completion Gate 실패 없음
+M11-01 .env service configuration   PASS
+M11-02 local stdio OpenCode 연결    PASS
+M11-03 Tool 2개 discovery           PASS
+M11-04 명시적 Tool call             PASS
+M11-05 자동 Tool selection          NEXT
+M11-06 Evidence 기반 답변           NEXT
 ```
 
-## 7. Real-run에서 실제로 해결한 환경 문제
+별도 subprocess stdio 검증:
 
-1. `ModuleNotFoundError: No module named 'mcp'`
-   - 현재 Python environment에 MCP SDK가 없어 발생.
-   - `python -m pip install -e ".[dev]"`로 현재 interpreter에 dependency 설치.
+```text
+tool_count: 2
+tools: get_jira_issue, search_jira_knowledge
+M11_STDIO_HANDSHAKE = PASS
+```
 
-2. `M10_REAL_RUN_QUERY 환경 변수가 비어 있습니다`
-   - 실제 검색 질문이 설정되지 않아 발생.
-   - Windows PowerShell에서는 `$env:M10_REAL_RUN_QUERY = Read-Host "M10 test query"` 사용.
+M11-03/04는 사용자가 실제 OpenCode 환경에서 확인한 Real-run 결과다.
 
-3. `McpRuntimeSettingsError`
-   - `JIRA_KNOWLEDGE_DB_PATH` 또는 `JIRA_RETRIEVAL_ARTIFACT_DIR`가 없거나 경로가 존재하지 않아 발생.
-   - PowerShell `Test-Path` / `Resolve-Path`로 실제 artifact 경로를 확인해 설정.
+## 8. Local Pilot과 최종 팀 서비스
 
-상세한 트러블슈팅은 HTML 문서를 기준으로 한다.
+```text
+Local Pilot
+jira_database/.env + SQLite + FAISS + MCP
+                ↓ stdio
+             OpenCode
 
-## 8. 정식 서비스 Retrieval Update 방향
+Final Service
+팀원 A OpenCode ─┐
+팀원 B OpenCode ─┼── Remote MCP / HTTPS ─→ 중앙 jira-knowledge MCP
+팀원 C OpenCode ─┘                          ├─ SQLite
+                                           ├─ FAISS
+                                           ├─ .env
+                                           └─ BGE-M3
+```
 
-Pilot full rebuild와 운영 update를 분리한다.
+최종 서비스에서는 팀원 PC가 `jira_database` clone, SQLite/FAISS artifact, BGE secret을 가지지 않는 것을 목표로 한다.
+
+## 9. 서비스 설정 정책
+
+```text
+기본 서비스 설정   .env
+OS 환경 변수       .env보다 우선 · CI/진단/일시 override
+명시적 test env    .env를 읽지 않음
+```
+
+서비스 `.env`:
+
+```text
+JIRA_KNOWLEDGE_DB_PATH
+JIRA_RETRIEVAL_ARTIFACT_DIR
+BGE_M3_ENDPOINT
+BGE_M3_API_KEY       optional
+BGE_M3_HEADERS_JSON  optional
+```
+
+## 10. 정식 서비스 Retrieval Update 방향
 
 ```text
 Pilot       full rebuild → deterministic/integrity/reproducibility 검증
@@ -155,23 +192,21 @@ IndexIDMap2(IndexFlatIP) + stable int64 vector_id
 HNSW / IVF benchmark
 ```
 
-이 후보들은 M10 완료 범위에 포함하지 않는다.
-
-## 9. 보안 기록 원칙
+## 11. 보안 기록 원칙
 
 실제 Query, Issue key, Jira 원문, 사내 endpoint/header/token, 로컬 절대경로는 공개 저장소에 기록하지 않는다. Real-run Completion에는 안전한 aggregate만 남긴다.
 
-## 10. Current Source of Truth
+## 12. Current Source of Truth
 
 ```text
 README.md
 docs/index.html
 docs/PIPELINE_OVERVIEW.html
 docs/status/jira_knowledge_db_current_status.html
-docs/status/M10_START_HERE.html
 docs/status/M10_COMPLETION.html
-docs/status/M10_REAL_RUN_GATE.html
+docs/status/M11_OPENCODE_MCP_INTEGRATION.html
+docs/architecture/jira_knowledge_mcp_service_target.html
 docs/architecture/jira_data_relationship_map.*
 ```
 
-다음 Milestone은 아직 정의하지 않는다. 운영화·Agent 연동·retrieval hardening 중 우선순위를 별도 의사결정한 뒤 경계를 정한다.
+다음 Gate는 **M11-05 자동 Tool selection**이다. MCP나 Tool 이름을 명시하지 않은 일반 Jira 업무 질문에서 OpenCode Agent가 스스로 `search_jira_knowledge`를 선택하는지 확인한다.
