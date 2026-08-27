@@ -1,34 +1,34 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sync State Schema 설계 결정 이력. S1~S7 모두 FIXED, Schema Contract v1 FROZEN baseline"><title>Sync State / Project Registry · Schema Decision History</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1120px;margin:auto;padding:42px 22px 86px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#1a2e52,#3157d5 66%,#718cec)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:44px}h2{font-size:29px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace}.footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_state_schema_contract.html">FROZEN Schema Contract</a><a href="jira_operational_two_loop_architecture_review.html">Two-Loop Review</a></nav><header class="hero"><div>SYNC STATE SCHEMA · DECISION HISTORY · 2026-08-27</div><h1>S1~S7<br>모두 확정했습니다.</h1><p>Sync Contract D1~D8을 Operational State DB로 옮기기 위한 Schema 설계 의사결정은 완료됐습니다. 현재는 구현 직전 2-Loop 상위 아키텍처를 검토합니다.</p><span class="state">S1~S7 ALL FIXED · SCHEMA v1 FROZEN BASELINE · IMPLEMENTATION HOLD</span></header><section><h2>1. 결정 이력</h2><div class="flow">S1 Storage Location        FIXED
-→ existing data/state/collector.db + explicit migration
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Operational State Schema S1~S7 결정 이력과 2-Loop v2 revision 상태판"><title>Sync State Schema · Revision History · v2</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1120px;margin:auto;padding:42px 22px 86px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{background:linear-gradient(130deg,#17264a,#3157d5);color:#fff}.card{margin-top:18px}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.hero a{color:#fff}.footer{margin-top:48px;color:var(--muted);font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">Current Schema v2</a> · <a href="jira_sync_state_schema_contract_v1_baseline.html">v1 Historical</a></p><header class="hero"><div>SCHEMA DECISION / REVISION HISTORY · 2026-08-28</div><h1>S1~S7 결정은 보존하고,<br>2-Loop에 맞춰 v2로 revision했습니다.</h1><p>v1은 구현 전에 완성된 단일-Run baseline이었고, D9 2-Loop 채택으로 실행 모델과 DDL을 v2로 수정했습니다. 현재 구현 Source of Truth는 State Schema Contract v2입니다.</p></header><section class="card"><h2>1. S1~S7 현재 상태</h2><table><thead><tr><th>Decision</th><th>상태</th><th>2-Loop 영향</th></tr></thead><tbody><tr><td>S1 Storage</td><td>FIXED</td><td>collector.db 재사용 유지. Migration 목표 v2.</td></tr><tr><td>S2 Entity Layout</td><td>REVISED</td><td>4 Domain → 5 Domain. processing_run 추가.</td></tr><tr><td>S3 Columns/Status</td><td>REVISED</td><td>Source Run과 Processing Run 상태 분리.</td></tr><tr><td>S4 Transaction</td><td>FIXED / REFRAMED</td><td>Loop A와 Loop B 각각 짧은 commit point. Work Item이 비동기 경계.</td></tr><tr><td>S5 Migration</td><td>REVISED</td><td>첫 실제 운영 버전 = 2.</td></tr><tr><td>S6 ID/Key</td><td>REVISED</td><td>sr_ Source Run + pr_ Processing Run + sw_ Work.</td></tr><tr><td>S7 DDL</td><td>REVISED / FROZEN</td><td>5 Domain Table v2 DDL.</td></tr></tbody></table></section><section class="card good"><h2>2. 현재 Domain 모델</h2><div class="flow">source_sync_run
+      │
+      └── source_project_run ── project_state
+                 │
+                 └── NEW/CHANGED
+                        ↓
+                sync_issue_change
+                        ↑
+                 processing_run
 
-S2 Entity Layout           FIXED
-→ 4 operational domain tables
+sync_issue_change
+→ 두 Loop 사이 durable backlog
+→ Knowledge/Embedding/Publish checkpoint</div></section><section class="card"><h2>3. v1→v2 핵심 변경</h2><div class="flow">v1
+sync_run
+├─ discovery_status
+├─ source_status
+├─ publish_status
+└─ run_status
 
-S3 Columns / Status        FIXED
-→ enums / source resume cursor / Work Item states
+v2
+source_sync_run
+├─ discovery_status
+├─ source_status
+└─ run_status
 
-S4 Transaction Boundary   FIXED
-→ source_committed + Watermark atomic
-→ actual durable result first
-
-S5 Migration Contract     FIXED
-→ State Schema v1 / backup / validation / rollback
-
-S6 ID / Key Strategy      FIXED
-→ project_id/jira_id external
-→ sr_ UUID4 run
-→ sw_ deterministic work item
-
-S7 Final SQLite DDL       FIXED
-→ CREATE TABLE / CHECK / FK / UNIQUE / INDEX
-
-통합
-→ jira_sync_state_schema_contract.html
-→ FROZEN BASELINE</div></section><section><h2>2. 최종 baseline</h2><div class="grid2"><div class="card good"><h3>4 Domain Tables</h3><p><code>sync_run</code>, <code>project_state</code>, <code>sync_project_run</code>, <code>sync_issue_change</code>.</p></div><div class="card"><h3>Technical Metadata</h3><p><code>state_schema_migration</code>.</p></div><div class="card"><h3>Crash Safety</h3><p>Source Commit/Watermark 원자성, downstream durable-output-first.</p></div><div class="card"><h3>Migration Safety</h3><p>silent migration 금지, backup + fingerprint + regression Gate.</p></div></div></section><section><h2>3. 왜 구현을 바로 시작하지 않나?</h2><div class="card warn"><p>Source Sync와 Knowledge Publish를 독립 Loop로 분리하면 현재 <code>sync_run</code>의 Source/Publish 집계와 <code>last_attempt_run_id</code> 의미가 달라질 수 있습니다. 구현 전 상위 아키텍처를 먼저 결정하고, 필요하면 v1 baseline에 명시적 revision을 적용합니다.</p></div></section><section><h2>4. 현재 검토</h2><div class="flow">Loop A Source Sync
-Jira → RAW/ANALYSIS → Source Commit → Work Item
-
-Loop B Knowledge Publish
-Work Item → OpenCode → Knowledge → Embedding → FAISS → Publish
-
-검토 문서
-jira_operational_two_loop_architecture_review.html</div></section><footer class="footer">Schema Decision History · S1~S7 FIXED · current = Two-Loop Architecture Review · 2026-08-27</footer></main></body></html>
+processing_run
+├─ selected/published/failed counts
+└─ run_status</div></section><section class="card warn"><h2>4. 아직 Schema에 넣지 않은 정책</h2><p><strong>Intermediate Version supersede</strong>와 <strong>Multi-worker lease</strong>는 아직 Freeze하지 않았기 때문에 v2 DDL에 넣지 않았습니다. 이력과 Work Item은 둘 다 향후 revision이 가능하도록 보존합니다.</p></section><section class="card"><h2>5. 구현 순서</h2><div class="flow">Schema v2 DDL / Migration
+→ Loop A StateStore + Delta Source Sync
+→ durable backlog
+→ Loop B Processing Run / Worker
+→ Knowledge / Embedding / Publish
+→ lag/backlog monitoring
+→ next policy decisions</div></section><footer class="footer">Schema Decision History · current = State Schema v2 FROZEN · 2026-08-28</footer></main></body></html>
