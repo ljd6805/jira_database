@@ -1,0 +1,104 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Continuous Jira Knowledge Service 공식 FROZEN Sync Contract. D1~D8 최종 결정과 구현 경계를 정의한다.">
+<title>Jira Knowledge Service · Sync Contract · FROZEN</title>
+<style>
+:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 86px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.hero p{max-width:930px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px;margin:0 0 10px}.lead{color:var(--muted);max-width:940px}.grid2,.grid3,.grid4{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.flow,pre{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e5f7ef;color:#0c6c4a;font-size:11px;font-weight:900}.footer{margin-top:58px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:860px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+</style>
+<link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+<script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
+</head>
+<body><main class="wrap">
+<nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract_easy_guide.html">쉬운 가이드</a><a href="jira_sync_contract_decision_draft.html">Decision Board</a><a href="jira_knowledge_operational_service_phase.html">Operational Service Phase</a></nav>
+<header class="hero"><div>CONTINUOUS JIRA KNOWLEDGE SERVICE · SYNC CONTRACT · 2026-08-27</div><h1>Sync Contract<br>FROZEN</h1><p>이 문서는 Continuous Jira Knowledge Service의 지속 동기화 구현 기준입니다. Watermark, Overlap, 변경 판정, semantic hash, Checkpoint/Resume, Project Registry, Knowledge 보존, Source Commit/Publish, Run 상태를 하나의 계약으로 고정합니다.</p><span class="state">FROZEN · D1~D8 APPROVED · IMPLEMENTATION SOURCE OF TRUTH</span></header>
+
+<section><h2>1. 목적과 범위</h2><p class="lead">Sync의 목적은 Jira의 현재 변경분을 누락 없이 수집하고, 실제로 달라진 업무지식만 하위 파이프라인에 전달하며, 실패해도 이미 성공한 결과를 재사용하는 것입니다. Knowledge DB는 Jira의 현재 상태를 그대로 복제하는 Mirror가 아니라 과거부터 축적된 업무지식을 보존하는 저장소입니다.</p><div class="flow">Jira
+→ Project Discovery
+→ Project별 Delta Source Sync
+→ source_hash 기반 NEW / CHANGED / UNCHANGED
+→ Issue Version / Knowledge Work Item
+→ Knowledge / Review / Evidence
+→ Embedding / Retrieval Publish
+→ Central MCP</div><div class="callout"><strong>핵심 원칙:</strong> Jira Source Lifecycle과 Knowledge Lifecycle은 동일하지 않습니다. Jira에서 Project/Issue가 삭제되거나 보이지 않게 되어도 이미 축적된 Knowledge를 자동 삭제하지 않습니다.</div></section>
+
+<section><h2>2. D1 · Project별 committed Watermark</h2><span class="badge">FIXED</span><div class="grid2"><div class="card good"><h3>계약</h3><p>각 Project는 독립적인 <code>committed_watermark</code>를 가집니다.</p><p>해당 Project의 Source window가 안전하게 처리된 경우에만 Watermark를 전진시킵니다.</p></div><div class="card"><h3>실패 격리</h3><p>Project A/C가 성공하고 B가 실패하면 A/C의 Watermark만 전진하고 B는 기존 Watermark를 유지합니다.</p></div></div><div class="flow">A → 10:30 committed
+B → 09:50 유지 · source 실패
+C → 10:30 committed</div></section>
+
+<section><h2>3. D2 · 5분 Overlap + 고정 upper</h2><span class="badge">FIXED</span><p class="lead">Delta 조회는 경계 누락보다 약간의 중복을 선택합니다.</p><div class="flow">lower = committed_watermark - 5 minutes
+upper = Sync Run 시작 시 고정한 상한
+
+JQL 개념
+project = ABC
+AND updated >= lower
+AND updated < upper
+ORDER BY updated ASC, id ASC</div><div class="grid3"><div class="card"><h3>Overlap</h3><p>이전 구간 5분을 다시 읽습니다.</p></div><div class="card"><h3>Fixed upper</h3><p>Run 도중 Jira가 계속 변해도 이번 Run의 책임 범위를 고정합니다.</p></div><div class="card"><h3>Stable order</h3><p><code>updated ASC, id ASC</code>를 기본 정렬로 사용합니다.</p></div></div></section>
+
+<section><h2>4. D3 · NEW / CHANGED / UNCHANGED</h2><span class="badge">FIXED</span><table><thead><tr><th>판정</th><th>조건</th><th>처리</th></tr></thead><tbody><tr><td><strong>NEW</strong></td><td>기존 Source 상태에 <code>jira_id</code> 없음</td><td>새 Issue Version + 전체 downstream</td></tr><tr><td><strong>CHANGED</strong></td><td>같은 <code>jira_id</code> + 새 <code>source_hash</code></td><td>새 Issue Version + 변경분 downstream</td></tr><tr><td><strong>UNCHANGED</strong></td><td>같은 <code>jira_id</code> + 같은 <code>source_hash</code></td><td>기존 Version/Knowledge/Vector 재사용</td></tr></tbody></table><div class="callout"><strong>Jira <code>updated</code>의 역할:</strong> 다시 검사할 후보를 찾는 신호입니다. 실제 semantic change는 <code>source_hash</code>로 판정합니다. Issue Key가 바뀌어도 같은 <code>jira_id</code>면 같은 Issue입니다.</div></section>
+
+<section><h2>5. D4 · source_hash semantic_v2</h2><span class="badge">FIXED</span><p class="lead">source_hash는 “Jira가 언제 수정됐는가”가 아니라 “Knowledge의 업무 재료가 실제로 달라졌는가”를 나타냅니다.</p><table><thead><tr><th>영역</th><th>Hash 포함</th><th>Hash 제외</th></tr></thead><tbody><tr><td>Issue</td><td>jira_id, summary, description, format, type, status, priority, created_at</td><td><strong>updated_at</strong>, source_path</td></tr><tr><td>Comment</td><td>comment_id, sequence, author, created_at, body, format</td><td><strong>updated_at</strong>, source_path, source_page</td></tr><tr><td>Attachment</td><td>ID, filename, author, created_at, size, MIME, content_available</td><td>source_path</td></tr><tr><td>Relationship</td><td>관계 ID/type/direction/상대 Issue 정보 등 Knowledge Input에 포함되는 의미 값</td><td>source_path</td></tr><tr><td>Custom Field</td><td>field ID/name/schema + 실제 value/display 정보</td><td>source_path</td></tr></tbody></table><div class="flow">source_hash_profile = semantic_v2</div><p>Hash 규칙 버전을 저장하여 실제 Jira 내용 변화와 hash 알고리즘 변경을 구분합니다.</p></section>
+
+<section><h2>6. D5 · Checkpoint / Resume</h2><span class="badge">FIXED</span><div class="grid2"><div class="card"><h3>Source Checkpoint</h3><div class="flow">Jira
+→ RAW
+→ ANALYSIS
+→ source_hash
+→ change classification</div></div><div class="card"><h3>Downstream Checkpoint</h3><div class="flow">Knowledge / Review
+→ Evidence / DB
+→ Embedding
+→ Retrieval Publish</div></div></div><table><thead><tr><th>Stage 상태</th><th>의미</th><th>재개 규칙</th></tr></thead><tbody><tr><td>pending</td><td>미시작</td><td>실행</td></tr><tr><td>running</td><td>실행 중</td><td>완료 증거 없으면 재검증/재시도</td></tr><tr><td>completed</td><td>안전 완료</td><td>재사용 / skip</td></tr><tr><td>failed</td><td>오류 종료</td><td>retry</td></tr></tbody></table><div class="callout"><strong>Resume 우선순위:</strong> 1) 가능한 경우 같은 Sync Run과 동일 lower/upper로 재개. 2) same-run 재개가 불가능하면 기존 committed watermark + 5분 overlap으로 새 Run을 시작합니다. 전체 rollback은 하지 않습니다.</div><p>Downstream Work Item의 안정적인 identity는 <code>jira_id + source_hash + source_hash_profile</code>을 기준으로 합니다.</p></section>
+
+<section><h2>7. D6 · Project Registry / Knowledge Retention</h2><span class="badge">FIXED</span><div class="grid2"><div class="card good"><h3>Project identity</h3><p><code>project_id</code>를 authoritative identity로 사용합니다. <code>project_key</code>와 name은 현재 metadata입니다.</p></div><div class="card"><h3>Discovery 신뢰 조건</h3><p>Project가 unavailable이라고 판정하는 것은 Project Discovery 전체가 정상 완료된 경우에만 허용합니다.</p></div></div><table><thead><tr><th>상황</th><th>Sync 처리</th><th>Knowledge / Retrieval</th></tr></thead><tbody><tr><td>처음 보는 project_id</td><td>전체 Initial Ingest</td><td>새 Knowledge 구축</td></tr><tr><td>기존 visible Project</td><td>Delta Sync</td><td>변경분만 갱신</td></tr><tr><td>기존 Project가 안 보임</td><td><code>unavailable</code>, 이번 Run에서 skip, Watermark 유지</td><td><strong>기존 Knowledge/Embedding/FAISS 계속 제공</strong></td></tr><tr><td>같은 project_id가 재등장</td><td>Watermark + 5분 overlap 기반 Catch-up Delta</td><td>기존 Knowledge 유지 + 변경분 반영</td></tr><tr><td>Project/Issue 삭제</td><td>Source에서 더 이상 갱신되지 않을 수 있음</td><td><strong>Knowledge 자동 삭제 아님</strong></td></tr></tbody></table><div class="callout"><strong>Reconcile:</strong> 삭제 탐지를 위한 Reconcile은 필수 Sync 경로가 아닙니다. “현재 Jira에도 존재하는가?” 같은 메타데이터가 실제로 필요할 때만 선택 기능으로 추가합니다.</div></section>
+
+<section><h2>8. D7 · Source Commit vs Publish</h2><span class="badge">FIXED</span><div class="grid2"><div class="card good"><h3>SOURCE_COMMITTED</h3><p>Jira Source가 안전하게 저장되고 semantic hash 및 변경 판정이 durable하게 기록되며 downstream Work Item이 생성된 상태입니다.</p><p>Project Source window 전체가 성공하면 Watermark 전진이 가능합니다.</p></div><div class="card good"><h3>PUBLISHED</h3><p>승인 Knowledge, Evidence resolve, Embedding, FAISS/Mapping이 모두 일치하고 실제 사용자 Retrieval 전환까지 끝난 상태입니다.</p></div></div><div class="flow">현재 Published = V1
+새 Source V2 = SOURCE_COMMITTED
+새 Knowledge V2 = candidate
+
+V2 Publish 완료 전
+→ Retrieval은 V1 계속 제공
+
+V2 전체 준비 + 검증 완료
+→ Published Head를 V2로 전환
+→ V1은 History로 보존</div><div class="callout"><strong>Half-Publish 금지:</strong> DB, Embedding, FAISS가 서로 다른 세대를 사용자에게 노출하지 않습니다. 새 Published 상태가 완성될 때까지 기존 Published Knowledge를 계속 제공합니다.</div></section>
+
+<section><h2>9. D8 · Sync Run 상태</h2><span class="badge">FIXED</span><p class="lead">Run의 성공 여부와 기존 Knowledge 서비스의 생존 여부를 혼동하지 않습니다. Run이 failed여도 기존 Published Knowledge는 계속 제공됩니다.</p><table><thead><tr><th>run_status</th><th>정확한 의미</th></tr></thead><tbody><tr><td><strong>completed</strong></td><td>Discovery 성공 + 모든 visible Project Source Commit 완료 + 필요한 Publish 모두 완료 또는 publish not_required</td></tr><tr><td><strong>partial</strong></td><td>하나 이상의 durable 성공 결과가 존재하지만 Source 또는 Publish에 실패/미완료가 남음</td></tr><tr><td><strong>failed</strong></td><td>Discovery 결과를 신뢰할 수 없거나, 처리해야 할 Source 범위에서 durable Source progress를 하나도 만들지 못함</td></tr></tbody></table><div class="grid4"><div class="card"><h3>discovery_status</h3><p>Project 목록을 신뢰 가능한가</p></div><div class="card"><h3>source_status</h3><p>Source window 처리 결과</p></div><div class="card"><h3>publish_status</h3><p>서비스 반영 결과</p></div><div class="card"><h3>run_status</h3><p>운영자용 최종 집계</p></div></div><div class="callout"><strong>Unavailable Project:</strong> 실패로 세지 않고 <code>SKIPPED_UNAVAILABLE</code>로 처리합니다. 기존 Knowledge는 계속 Retrieval됩니다.</div></section>
+
+<section><h2>10. Contract 전체 흐름</h2><div class="flow">Sync Run 시작
+↓ upper 고정
+Project Discovery
+├─ 처음 보는 project_id → Initial Ingest
+├─ visible 기존 Project → Delta
+└─ unavailable 기존 Project → Skip · Knowledge는 유지
+↓
+Project별 lower = watermark - 5분
+↓
+updated ASC, id ASC로 후보 수집
+↓
+최신 Source snapshot + semantic_v2 hash
+├─ NEW
+├─ CHANGED
+└─ UNCHANGED → reuse
+↓
+Source window 전체 안전 완료
+→ SOURCE_COMMITTED
+→ Project Watermark advance
+↓
+NEW / CHANGED Work Item
+→ Knowledge / Review / Evidence
+→ Embedding
+→ FAISS / Mapping
+↓
+전체 준비 후 atomic Published Head 전환
+↓
+Run status 집계
+completed / partial / failed</div></section>
+
+<section><h2>11. 이 Contract가 일부러 결정하지 않는 것</h2><div class="grid2"><div class="card warn"><h3>Sync cadence</h3><p>몇 분/몇 시간 간격으로 실행할지는 운영 단계에서 별도 결정합니다.</p></div><div class="card warn"><h3>팀원별 권한</h3><p>중앙 MCP에서 사용자별 Jira 권한을 재현할지 여부는 Remote MCP 인증/권한 설계에서 결정합니다.</p></div><div class="card warn"><h3>Publish atomicity 구현 방식</h3><p>DB transaction, manifest pointer, artifact swap 등 구체 방식은 Incremental Retrieval 설계에서 결정합니다.</p></div><div class="card warn"><h3>Remote MCP 배포</h3><p>TLS/auth/reverse proxy/concurrency/timeout은 중앙 서비스 설계에서 결정합니다.</p></div></div></section>
+
+<section><h2>12. 다음 구현 Gate</h2><div class="card good"><h3>다음은 Sync State / Project Registry DB Schema 설계</h3><p>이 FROZEN Contract를 물리 상태 모델로 바꿉니다. 최소한 <code>sync_run</code>, <code>project_registry</code>, <code>project_sync_state</code>, Project별 Run 결과, Issue/Work Item checkpoint가 필요합니다. Schema를 먼저 HTML로 설계하고 검토한 뒤 구현합니다.</p></div></section>
+
+<footer class="footer">FROZEN Sync Contract · D1~D8 approved · implementation source of truth · 2026-08-27</footer>
+</main></body></html>
