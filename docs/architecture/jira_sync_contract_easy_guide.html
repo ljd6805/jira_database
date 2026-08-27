@@ -1,0 +1,140 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="FROZEN Sync Contract D1~D8을 책갈피, 겹쳐 읽기, 지문, 게임 세이브, 창고와 매대 비유로 쉽게 설명하는 가이드">
+<title>Sync Contract · 쉬운 가이드</title>
+<style>
+:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.8;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 88px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#173152,#3157d5 66%,#7390ed)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.1}.hero p{max-width:900px;color:rgba(255,255,255,.92)}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:50px}h2{font-size:30px;margin-bottom:10px}.lead{color:var(--muted);max-width:900px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:19px;border:1px solid var(--line);border-radius:16px;background:#fff}.easy{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.72 Consolas,monospace;overflow:auto}.analogy{padding:18px;border-radius:14px;background:#edf3ff;border-left:5px solid var(--blue)}.decision{display:grid;grid-template-columns:58px 1fr;gap:15px;padding:20px;border:1px solid var(--line);border-radius:17px;background:#fff;margin:13px 0}.num{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--blue);color:white;font-weight:900;font-size:18px}.decision h3{margin:0 0 7px}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e5f7ef;color:#0c6c4a;font-size:11px;font-weight:900}.footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}.decision{grid-template-columns:1fr}.num{margin-bottom:4px}}
+</style>
+<link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+<script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
+</head>
+<body><main class="wrap">
+<nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">공식 FROZEN Contract</a><a href="jira_knowledge_pipeline_full_explained.html">전체 Pipeline 가이드</a></nav>
+<header class="hero"><div>SYNC CONTRACT · EASY GUIDE · 2026-08-27</div><h1>지금까지 결정한 Sync 규칙을<br>아주 쉽게 다시 이해하기</h1><p>D1~D8을 구현 용어보다 생활 속 비유와 예제로 설명합니다. 이 문서의 목적은 “왜 이런 규칙을 정했는지”를 이해하는 것입니다. 정확한 구현 기준은 별도의 FROZEN Sync Contract를 따릅니다.</p><span class="state">EASY GUIDE · D1~D8 APPROVED</span></header>
+
+<section><h2>0. 전체를 한 번에 보면</h2><div class="analogy"><strong>이 Sync 시스템은 매일 회사 문서 보관실을 점검하는 직원과 비슷합니다.</strong><br>어제 어디까지 확인했는지 책갈피를 기억하고, 경계에서 놓치지 않게 몇 쪽 되돌아가 읽고, 진짜 내용이 바뀐 문서만 새 버전으로 보관합니다. 중간에 실패하면 저장 지점부터 이어서 하고, 새 문서가 완전히 검증되기 전에는 기존 검색 결과를 그대로 제공합니다.</div><div class="flow">Project 찾기
+→ 지난 책갈피 확인
+→ 5분 되돌아가 다시 확인
+→ 변경 후보 수집
+→ 실제 내용 지문 비교
+→ NEW / CHANGED / UNCHANGED
+→ 변경분만 Knowledge 생성
+→ Embedding / FAISS 준비
+→ 모두 준비되면 새 검색 결과로 교체</div></section>
+
+<section><h2>1. 먼저 꼭 기억할 두 문장</h2><div class="grid2"><div class="card easy"><h3>Jira는 현재 원본</h3><p>지금 Jira에 무엇이 존재하고 누가 볼 수 있는지를 보여주는 업무 시스템입니다.</p></div><div class="card easy"><h3>Knowledge DB는 축적 지식</h3><p>과거 Jira에서 얻은 문제 해결 경험과 업무지식을 장기적으로 보존하는 저장소입니다.</p></div></div><div class="analogy"><strong>그래서:</strong> Jira에서 Issue가 없어졌다고 해서 “그때 배운 해결 방법”까지 버리지 않습니다. 사진 원본이 사라져도 이미 작성한 기술 노트의 가치가 없어지는 것은 아닌 것과 같습니다.</div></section>
+
+<section><h2>2. Decision 1 — Project마다 Watermark를 하나씩</h2><div class="decision"><div class="num">1</div><div><span class="badge">FIXED</span><h3>Watermark = 책갈피</h3><p>Project마다 “여기까지 안전하게 확인했다”는 책갈피를 따로 둡니다.</p></div></div><div class="flow">Project A → 10:30
+Project B → 09:50
+Project C → 10:30</div><p>A와 C는 성공했지만 B가 실패했다면 B 때문에 전체를 되돌리지 않습니다. B의 책갈피만 09:50에 남겨두고 다음에 거기서 이어갑니다.</p><div class="analogy"><strong>왜 Project별인가?</strong> 서로 다른 세 권의 책을 읽는데 책갈피를 하나만 쓰면 어느 책을 어디까지 읽었는지 알 수 없습니다. Project마다 하나씩 두는 게 자연스럽습니다.</div></section>
+
+<section><h2>3. Decision 2 — 5분 Overlap</h2><div class="decision"><div class="num">2</div><div><span class="badge">FIXED</span><h3>Overlap = 책갈피보다 몇 쪽 앞에서 다시 읽기</h3><p>지난 Watermark에서 정확히 시작하지 않고 5분 앞에서부터 다시 확인합니다.</p></div></div><div class="flow">지난 Watermark = 10:30
+Overlap = 5분
+
+다음 시작 = 10:25</div><p>10:25~10:30 데이터를 다시 볼 수도 있습니다. 하지만 중복은 나중에 지문 비교로 없앨 수 있습니다. 반대로 한 건을 놓치면 그 존재 자체를 모를 수 있습니다.</p><div class="analogy"><strong>우리가 선택한 것:</strong> “조금 다시 읽는 수고”를 감수하고 “한 줄을 영원히 놓치는 위험”을 줄입니다.</div><p>또 이번 Sync가 책임질 끝 시각도 먼저 고정합니다. 그래서 실행 중 Jira가 계속 바뀌어도 이번 작업 범위가 흔들리지 않습니다.</p></section>
+
+<section><h2>4. Decision 3 — NEW / CHANGED / UNCHANGED</h2><div class="decision"><div class="num">3</div><div><span class="badge">FIXED</span><h3><code>updated</code>는 초인종, <code>source_hash</code>는 실제 확인</h3><p>Jira의 updated 시간은 “한번 확인해보세요”라는 신호일 뿐입니다.</p></div></div><div class="flow">jira_id 처음 봄
+→ NEW
+
+jira_id 있음 + 지문 다름
+→ CHANGED
+
+jira_id 있음 + 지문 같음
+→ UNCHANGED</div><div class="grid3"><div class="card"><h3>NEW</h3><p>처음 보는 Issue. 전체 Knowledge 파이프라인 실행.</p></div><div class="card"><h3>CHANGED</h3><p>같은 Issue지만 실제 내용이 달라짐. 새 Version 생성.</p></div><div class="card"><h3>UNCHANGED</h3><p>Overlap 때문에 다시 봤지만 실제 내용은 같음. 기존 결과 재사용.</p></div></div><div class="analogy"><strong>Issue Key보다 jira_id가 중요한 이유:</strong> 사람 이름표가 바뀌어도 주민등록번호가 같으면 같은 사람인 것과 비슷합니다.</div></section>
+
+<section><h2>5. Decision 4 — source_hash semantic_v2</h2><div class="decision"><div class="num">4</div><div><span class="badge">FIXED</span><h3>source_hash = 내용의 지문</h3><p>실제 업무 의미가 달라졌는지를 판별하는 지문입니다.</p></div></div><div class="flow">Description
++ Status / Priority
++ Comments
++ Attachment metadata
++ Relationships
++ Custom Fields
+        ↓
+semantic_v2 hash</div><p>반면 <code>updated_at</code>은 hash에서 뺐습니다. 내용은 그대로인데 “마지막 수정 시각”만 달라져 새 Version을 만드는 낭비를 막기 위해서입니다.</p><div class="analogy"><strong>쉽게:</strong> 책 내용이 똑같은데 도서관에서 바코드를 다시 찍은 시간만 바뀌었다고 새 판본으로 보지 않습니다.</div><p><code>created_at</code>은 실제 사실이 될 수 있으므로 남깁니다. 또 hash 규칙 이름 자체도 <code>semantic_v2</code>로 기록해 나중에 규칙이 바뀌었는지 알 수 있게 합니다.</p></section>
+
+<section><h2>6. Decision 5 — Checkpoint / Resume</h2><div class="decision"><div class="num">5</div><div><span class="badge">FIXED</span><h3>Checkpoint = 게임 세이브</h3><p>중간에 실패해도 처음부터 다시 하지 않습니다.</p></div></div><div class="flow">Jira Source      COMPLETED
+Knowledge        COMPLETED
+Embedding        FAILED
+FAISS            PENDING
+
+재시작
+→ Embedding부터</div><div class="analogy"><strong>게임처럼:</strong> 10스테이지까지 클리어했는데 11스테이지에서 죽었다고 1스테이지부터 다시 하지 않습니다.</div><p>가능하면 같은 Sync Run을 그대로 이어서 재개합니다. 같은 Run을 살릴 수 없다면 마지막 committed Watermark에서 5분 Overlap을 두고 새 Run으로 안전하게 복구합니다.</p><p>성공한 Project나 Stage는 되돌리지 않습니다. 실패한 것만 다시 합니다.</p></section>
+
+<section><h2>7. Decision 6 — Project가 사라져도 Knowledge는 남긴다</h2><div class="decision"><div class="num">6</div><div><span class="badge">FIXED</span><h3>Project Registry = Project 주소록</h3><p>지금까지 만난 Project를 <code>project_id</code> 기준으로 기억합니다.</p></div></div><div class="flow">오늘 Discovery
+A 보임 → Sync
+B 안 보임 → 이번 Sync에서 Skip
+C 보임 → Sync
+
+B의 기존 Knowledge
+→ 그대로 검색 가능</div><div class="analogy"><strong>핵심:</strong> 퇴사한 직원의 과거 회고록이 여전히 회사에 도움이 될 수 있는 것처럼, Jira에서 사라진 Issue의 해결 경험도 여전히 지식으로 가치가 있습니다.</div><p>Project가 다시 보이면 처음부터 다시 받지 않습니다. 남겨둔 Watermark에서 5분 앞부터 Catch-up Delta Sync를 합니다.</p><p>삭제 여부를 굳이 찾기 위한 Reconcile은 필수가 아닙니다. 삭제됐어도 Knowledge를 버리지 않을 것이기 때문입니다.</p></section>
+
+<section><h2>8. Decision 7 — Source Commit과 Publish를 나눈다</h2><div class="decision"><div class="num">7</div><div><span class="badge">FIXED</span><h3>창고 입고와 매대 진열은 다르다</h3><p>Jira 데이터를 안전하게 받아둔 것과 새 Knowledge를 실제 검색에 내놓은 것은 다른 완료입니다.</p></div></div><div class="grid2"><div class="card easy"><h3>SOURCE_COMMITTED</h3><p>최신 Jira 원재료를 안전하게 창고에 넣은 상태.</p></div><div class="card easy"><h3>PUBLISHED</h3><p>Knowledge·Evidence·Embedding·FAISS가 모두 준비되어 매대에 진열된 상태.</p></div></div><div class="flow">현재 검색 = V1
+
+Jira V2 수집 완료
+→ SOURCE_COMMITTED
+
+V2 Knowledge 생성 중 / 실패 가능
+→ 아직 검색은 V1 유지
+
+V2 전체 준비 완료
+→ PUBLISHED
+→ 검색을 V2로 전환</div><div class="analogy"><strong>왜 이렇게 하나?</strong> 새 제품을 포장 중인데 기존 매대 상품부터 치우면 손님은 아무것도 살 수 없습니다. 새 제품이 완전히 준비될 때까지 기존 제품을 계속 제공합니다.</div><p>그래서 “DB는 V2인데 FAISS는 V1” 같은 반쯤 갱신된 상태를 사용자에게 보여주지 않습니다.</p></section>
+
+<section><h2>9. Decision 8 — completed / partial / failed</h2><div class="decision"><div class="num">8</div><div><span class="badge">FIXED</span><h3>이번 Sync가 얼마나 일을 끝냈는지 표현</h3><p>이 상태는 기존 Knowledge 서비스가 살아 있는지와는 별개입니다.</p></div></div><table><thead><tr><th>상태</th><th>쉽게 말하면</th></tr></thead><tbody><tr><td><strong>COMPLETED</strong></td><td>이번에 해야 할 Source와 Publish 작업을 모두 끝냄. 변경 0건이어도 정상 completed.</td></tr><tr><td><strong>PARTIAL</strong></td><td>일부는 안전하게 성공했지만 남은 실패/미완료가 있음.</td></tr><tr><td><strong>FAILED</strong></td><td>Project Discovery를 신뢰할 수 없거나 이번 Source에서 의미 있는 진척을 하나도 못 만듦.</td></tr></tbody></table><div class="flow">이번 Sync = FAILED
+
+그렇다고
+기존 Knowledge 서비스 = FAILED
+가 아님
+
+기존 Published Knowledge는 계속 검색 가능</div><p>안 보이는 Project는 실패로 세지 않습니다. 그냥 이번 Sync에서 Skip합니다.</p></section>
+
+<section><h2>10. 가상의 하루를 끝까지 따라가 보기</h2><div class="flow">09:00 Sync 시작
+upper = 09:00 고정
+
+Project A
+watermark = 08:00
+lower = 07:55
+
+후보 3개 발견
+ABC-1 → hash 같음 → UNCHANGED
+ABC-2 → hash 다름 → CHANGED
+ABC-3 → 처음 봄 → NEW
+
+Source 수집 전부 성공
+→ SOURCE_COMMITTED
+→ A watermark = 09:00
+
+ABC-2 Knowledge 생성 성공
+ABC-3 Knowledge 생성 실패
+
+ABC-2 Embedding / FAISS Publish 성공
+ABC-3는 Knowledge failed checkpoint
+
+이번 Run
+→ 일부 성공 + 남은 실패
+→ PARTIAL
+
+사용자 검색
+→ ABC-2는 새 Published Knowledge 사용
+→ ABC-3는 기존 Published Knowledge가 있으면 기존 것을 계속 사용
+→ 다음 Resume에서 ABC-3 Knowledge부터 재시도</div></section>
+
+<section><h2>11. 최종 기억법</h2><div class="grid3"><div class="card easy"><h3>놓치지 않기</h3><p>Project별 Watermark + 5분 Overlap + fixed upper</p></div><div class="card easy"><h3>낭비하지 않기</h3><p>jira_id + semantic_v2 hash로 실제 변경만 처리</p></div><div class="card easy"><h3>실패에 강하게</h3><p>Checkpoint/Resume + Source Commit/Publish 분리</p></div><div class="card easy"><h3>지식을 버리지 않기</h3><p>Jira 삭제/비노출 ≠ Knowledge 삭제</p></div><div class="card easy"><h3>서비스를 끊지 않기</h3><p>새 Publish가 준비될 때까지 기존 Published Knowledge 유지</p></div><div class="card easy"><h3>상태를 정확히 말하기</h3><p>completed / partial / failed를 이번 Run 진척 기준으로 구분</p></div></div></section>
+
+<section><h2>12. 이제 무엇을 만들까?</h2><div class="analogy"><strong>계약은 끝났습니다.</strong> 이제 “무슨 규칙으로 운영할지”는 정해졌습니다. 다음 단계는 이 규칙을 실제 SQLite 상태 테이블로 옮기는 것입니다. 즉 Project 주소록, Watermark, Run 상태, Checkpoint를 어떤 테이블과 컬럼으로 저장할지 설계합니다.</div><div class="flow">FROZEN Sync Contract
+        ↓
+Sync State / Project Registry Schema
+        ↓
+Delta Collector 구현
+        ↓
+Incremental Knowledge
+        ↓
+Incremental Embedding / FAISS
+        ↓
+Central Remote MCP / Operations</div></section>
+
+<footer class="footer">Easy Guide · FROZEN Sync Contract D1~D8 · 2026-08-27</footer>
+</main></body></html>
