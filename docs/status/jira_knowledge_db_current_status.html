@@ -1,19 +1,23 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M9 완료, M10 구현 PASS, Real-run 다음 단계"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid4,.grid2{display:grid;gap:12px}.grid4{grid-template-columns:repeat(4,1fr)}.grid2{grid-template-columns:repeat(2,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid2{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a><a href="M10_START_HERE.html">M10 Start Here</a><a href="M10_MCP_IMPLEMENTATION.html">MCP PASS</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-27</span><h1>M0~M9 완료.<br>M10 구현 PASS, Real-run만 남았습니다.</h1><p>Evidence Package / Resolver / MCP Tool Contract를 확정했고, 6종 Evidence Resolver, Candidate Builder, read-only MCP 2 tools까지 구현·테스트했습니다. 실제 로컬 SQLite/FAISS와 사내 BGE-M3를 연결한 M10-05 Real-run Gate 전까지는 M10을 DONE으로 표시하지 않습니다.</p><span class="state">M0~M9 DONE / PASS · M10 IMPLEMENTATION PASS · REAL-RUN NEXT</span></header>
-<div class="kpis"><div class="kpi"><b>285</b><span>Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>6</b><span>Evidence type</span></div><div class="kpi"><b>2</b><span>MCP tools</span></div><div class="kpi"><b>133</b><span>CI PASS baseline</span></div></div>
-<section><h2>1. Milestone</h2><div class="grid4"><div class="box"><b>M7 · DONE</b><p>SQLite 30 issue / 37 attempt / 285 item / 502 Evidence.</p></div><div class="box good"><b>M8 · DONE</b><p>285 BGE-M3 embeddings × 1024, integrity/sanity PASS.</p></div><div class="box good"><b>M9 · DONE</b><p>FAISS build/rebuild/query/same-query reproducibility PASS.</p></div><div class="box next"><b>M10 · REAL-RUN NEXT</b><p>Design/Contract/Implementation/CI PASS. 실제 환경 end-to-end만 남음.</p></div></div></section>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M10 실제 환경 검증 완료"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid4,.grid2{display:grid;gap:12px}.grid4{grid-template-columns:repeat(4,1fr)}.grid2{grid-template-columns:repeat(2,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid4,.grid2{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../PIPELINE_OVERVIEW.html">Pipeline Overview</a><a href="../architecture/jira_data_relationship_map.html">Relationship Map</a><a href="M10_COMPLETION.html">M10 Completion</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-27</span><h1>M0~M10 완료.<br>실제 환경 end-to-end까지 PASS했습니다.</h1><p>M10 Evidence Package / Resolver / MCP Tool Contract를 구현한 뒤 실제 로컬 SQLite/FAISS와 사내 BGE-M3를 연결해 Real-run을 수행했고, 검색 3건·Evidence 6건·warning 0·path leak 0·Issue round-trip 성공으로 PASS했습니다.</p><span class="state">M0~M10 DONE / PASS</span></header>
+<div class="kpis"><div class="kpi"><b>285</b><span>Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>6</b><span>Evidence type</span></div><div class="kpi"><b>2</b><span>MCP tools</span></div><div class="kpi"><b>PASS</b><span>M10 Real-run</span></div></div>
+<section><h2>1. Milestone</h2><div class="grid4"><div class="box"><b>M7 · DONE</b><p>SQLite 30 issue / 37 attempt / 285 item / 502 Evidence.</p></div><div class="box good"><b>M8 · DONE</b><p>285 BGE-M3 embeddings × 1024, integrity/sanity PASS.</p></div><div class="box good"><b>M9 · DONE</b><p>FAISS build/rebuild/query reproducibility + real query PASS.</p></div><div class="box good"><b>M10 · DONE</b><p>Evidence/MCP 구현 + 실제 BGE-M3/FAISS/SQLite/MCP Real-run PASS.</p></div></div></section>
 <section><h2>2. Identity</h2><div class="flow">jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_
-
-knowledge_attempt
-  knowledge_attempt_id = ka_
-  attempt_no = retry 회차
 
 Embedding  ec_ → emb_
 Retrieval  rc_ → fi_
 
 FAISS position ≠ emb_ ≠ ki_</div><p>M10은 <code>ki_</code>를 현재 active accepted Knowledge인지 다시 확인하고 <code>ke_</code>를 통해 실제 Evidence source까지 round-trip합니다.</p></section>
-<section><h2>3. M10 진행 상황</h2><table><thead><tr><th>단계</th><th>상태</th><th>핵심</th></tr></thead><tbody><tr><td>M10-01 Contract</td><td>PASS</td><td>Evidence Package / Resolver / failure / Top-3 / 2 tools / stale guard 확정</td></tr><tr><td>M10-02 Resolver</td><td>PASS</td><td>6종 Evidence source 실제 row 복원</td></tr><tr><td>M10-03 Builder</td><td>PASS</td><td>candidate package + partial failure 격리</td></tr><tr><td>M10-04 MCP</td><td>PASS</td><td><code>search_jira_knowledge</code> + <code>get_jira_issue</code></td></tr><tr><td>M10-05 Real-run</td><td>NEXT</td><td>실제 BGE-M3 + FAISS + SQLite end-to-end</td></tr></tbody></table></section>
-<section><h2>4. M10 MCP 경계</h2><div class="flow">Agent
+<section><h2>3. M10 최종 결과</h2><table><thead><tr><th>단계</th><th>상태</th><th>핵심</th></tr></thead><tbody><tr><td>M10-01 Contract</td><td>PASS</td><td>Evidence Package / 6종 Resolver / Top-3 / 2 tools / stale guard 확정</td></tr><tr><td>M10-02 Resolver</td><td>PASS</td><td>6종 Evidence source row 복원</td></tr><tr><td>M10-03 Builder</td><td>PASS</td><td>candidate package + partial failure 격리</td></tr><tr><td>M10-04 MCP</td><td>PASS</td><td><code>search_jira_knowledge</code> + <code>get_jira_issue</code></td></tr><tr><td>M10-05 Real-run</td><td>PASS</td><td>실제 BGE-M3 + FAISS + SQLite + MCP end-to-end</td></tr></tbody></table></section>
+<section><h2>4. Real-run 숫자 해석</h2><div class="flow">tool_count: 2             → MCP 기능 종류 2개
+search_result_count: 3    → FAISS Top-3 Knowledge
+Evidence_count: 6         → 3 Knowledge에 연결된 실제 Jira 근거 총 6개
+warning_count: 0          → 깨진 candidate 없음
+path_leak_count: 0        → 내부 경로 노출 없음
+issue_lookup_ok: true     → 검색 결과에서 실제 Issue 재조회 성공
+failure_count: 0          → Gate 실패 항목 없음
+M10_REAL_RUN = PASS</div><p>자세한 설명과 트러블슈팅은 <a href="M10_COMPLETION.html">M10 Completion</a>에 모았습니다.</p></section>
+<section><h2>5. M10 MCP 경계</h2><div class="flow">Agent
   ↓ MCP
 search_jira_knowledge
   ↓
@@ -27,26 +31,7 @@ ki_ → ke_ → source
   ↓
 Evidence Package
   ↓
-Agent / LLM 최종 답변</div><div class="box good"><b>MCP 내부 생성형 LLM 없음</b><p>검색/근거 복원과 최종 답변 생성을 계속 분리합니다.</p></div></section>
-<section><h2>5. 구현된 보안 / 품질 Guard</h2><div class="grid2"><div class="box good"><b>DB read-only</b><p><code>mode=ro</code> + <code>PRAGMA query_only=ON</code>.</p></div><div class="box good"><b>Source path 미노출</b><p><code>source_path</code> / <code>source_page</code>를 외부 payload에서 제외.</p></div><div class="box good"><b>Stale 차단</b><p>active + accepted + content_available를 candidate마다 재검증.</p></div><div class="box good"><b>Typed Error</b><p>missing/stale/ref/source/category 오류를 구조적으로 격리.</p></div></div></section>
-<section><h2>6. CI</h2><div class="flow">Evidence Resolver / Builder tests   PASS
-Official MCP Client tools/list        PASS
-MCP tools/call × 2                    PASS
-SQLite write rejection                PASS
-path leak synthetic Gate              PASS
-
-GitHub Actions baseline: 133 passed</div><p>Real-run validator 자체의 추가 unit test가 이어지므로 최종 suite 수는 증가할 수 있습니다.</p></section>
-<section><h2>7. 다음 액션</h2><div class="box next"><b>M10-05 Real-run</b><p><code>tools/jira_knowledge/validate_m10_real_run.py</code>를 실제 artifact가 있는 환경에서 실행합니다. Query/Issue/원문은 stdout에 남기지 않고 안전한 집계만 확인합니다.</p></div><div class="flow">JIRA_KNOWLEDGE_DB_PATH
-JIRA_RETRIEVAL_ARTIFACT_DIR
-BGE_M3_ENDPOINT
-M10_REAL_RUN_QUERY
-
-python tools/jira_knowledge/validate_m10_real_run.py</div></section>
-<section><h2>8. Production 방향은 별도</h2><div class="flow">운영 기본 = delta-first
-full rebuild = maintenance / recovery / migration
-
-후속 후보
-vector cache
-IndexIDMap2(IndexFlatIP) + stable vector_id
-HNSW / IVF benchmark</div><p>이 production-hardening은 M10 Real-run Gate와 섞지 않습니다.</p></section>
-<footer>M0~M9 DONE / PASS · M10 IMPLEMENTATION PASS · M10-05 REAL-RUN NEXT · 2026-08-27</footer></main></body></html>
+Agent / LLM 최종 답변</div><div class="box good"><b>MCP 내부 생성형 LLM 없음</b><p>검색/근거 복원과 최종 답변 생성을 분리합니다.</p></div></section>
+<section><h2>6. 구현된 보안 / 품질 Guard</h2><div class="grid2"><div class="box good"><b>DB read-only</b><p><code>mode=ro</code> + <code>PRAGMA query_only=ON</code>.</p></div><div class="box good"><b>Source path 미노출</b><p><code>source_path</code> / <code>source_page</code>를 외부 payload에서 제외.</p></div><div class="box good"><b>Stale 차단</b><p>active + accepted + content_available를 candidate마다 재검증.</p></div><div class="box good"><b>Typed Error</b><p>missing/stale/ref/source/category 오류를 구조적으로 격리.</p></div></div></section>
+<section><h2>7. 실제 트러블슈팅</h2><div class="grid2"><div class="box"><b>MCP dependency</b><p><a href="M10_TROUBLESHOOTING_MCP_IMPORT.html">No module named mcp</a></p></div><div class="box"><b>Query 설정</b><p><a href="M10_TROUBLESHOOTING_REAL_RUN_QUERY.html">Windows PowerShell / Linux</a></p></div><div class="box"><b>DB / FAISS 경로</b><p><a href="M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html">McpRuntimeSettingsError</a></p></div><div class="box"><b>최종 기록</b><p><a href="M10_REAL_RUN_GATE.html">M10-05 Real-run PASS</a></p></div></div></section>
+<section><h2>8. 다음 액션</h2><div class="box"><b>다음 Milestone은 아직 정의하지 않습니다.</b><p>운영화, Agent 연동, retrieval hardening 중 우선순위를 별도 의사결정한 후 다음 Milestone 경계를 정합니다.</p></div></section><footer>M0~M10 DONE / PASS · current source of truth · 2026-08-27</footer></main></body></html>
