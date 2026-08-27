@@ -89,6 +89,42 @@ window.JIRA_DOCUMENT_REGISTRY = Object.freeze([
     "title": "Jira Knowledge DB · Current Status"
   },
   {
+    "path": "status/M10_START_HERE.html",
+    "title": "M10 · Start Here · DONE / PASS"
+  },
+  {
+    "path": "status/M10_EVIDENCE_MCP_CONTRACT.html",
+    "title": "M10 · Evidence Builder + MCP · Contract Freeze"
+  },
+  {
+    "path": "status/M10_MCP_IMPLEMENTATION.html",
+    "title": "M10 · MCP 2 Tools · Implementation PASS"
+  },
+  {
+    "path": "status/M10_REAL_RUN_GATE.html",
+    "title": "M10-05 · Real-run Gate · PASS"
+  },
+  {
+    "path": "status/M10_TROUBLESHOOTING_MCP_IMPORT.html",
+    "title": "M10 Troubleshooting · No module named mcp"
+  },
+  {
+    "path": "status/M10_TROUBLESHOOTING_REAL_RUN_QUERY.html",
+    "title": "M10 Troubleshooting · M10_REAL_RUN_QUERY empty"
+  },
+  {
+    "path": "status/M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html",
+    "title": "M10 Troubleshooting · McpRuntimeSettingsError"
+  },
+  {
+    "path": "status/M11_OPENCODE_MCP_INTEGRATION.html",
+    "title": "M11 · OpenCode MCP Integration · DONE"
+  },
+  {
+    "path": "status/M11_TROUBLESHOOTING_OPENCODE_CONNECTION_CLOSED.html",
+    "title": "M11 Troubleshooting · OpenCode MCP Connection closed · RESOLVED"
+  },
+  {
     "path": "HTML_DOCUMENT_ENRICHMENT_2026-08-26.html",
     "title": "HTML Documentation Enrichment · 2026-08-26"
   },
@@ -129,44 +165,8 @@ window.JIRA_DOCUMENT_REGISTRY = Object.freeze([
     "title": "Baseline Plan · Jira → BGE-M3 RAG → MCP · 쉬운 상세판"
   },
   {
-    "path": "status/M10_EVIDENCE_MCP_CONTRACT.html",
-    "title": "M10 · Evidence Builder + MCP · Contract Freeze"
-  },
-  {
     "path": "status/M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html",
     "title": "M10 · Evidence Resolver / Package Builder · PASS"
-  },
-  {
-    "path": "status/M10_MCP_IMPLEMENTATION.html",
-    "title": "M10 · MCP 2 Tools · Implementation PASS"
-  },
-  {
-    "path": "status/M10_REAL_RUN_GATE.html",
-    "title": "M10-05 · Real-run Gate · PASS"
-  },
-  {
-    "path": "status/M10_START_HERE.html",
-    "title": "M10 · Start Here · DONE / PASS"
-  },
-  {
-    "path": "status/M10_TROUBLESHOOTING_MCP_IMPORT.html",
-    "title": "M10 Troubleshooting · No module named mcp"
-  },
-  {
-    "path": "status/M10_TROUBLESHOOTING_REAL_RUN_QUERY.html",
-    "title": "M10 Troubleshooting · M10_REAL_RUN_QUERY empty"
-  },
-  {
-    "path": "status/M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html",
-    "title": "M10 Troubleshooting · McpRuntimeSettingsError"
-  },
-  {
-    "path": "status/M11_OPENCODE_MCP_INTEGRATION.html",
-    "title": "M11 · OpenCode MCP Integration · DONE"
-  },
-  {
-    "path": "status/M11_TROUBLESHOOTING_OPENCODE_CONNECTION_CLOSED.html",
-    "title": "M11 Troubleshooting · OpenCode MCP Connection closed · RESOLVED"
   },
   {
     "path": "status/M8_REAL_EMBEDDING_TROUBLESHOOTING.html",
