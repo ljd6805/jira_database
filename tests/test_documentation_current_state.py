@@ -145,12 +145,13 @@ def test_m9_final_contract_and_real_gate_are_preserved() -> None:
     assert "delta-first" in lower_decision or "delta first" in lower_decision
 
 
-def test_m10_handoff_contract_and_implementation_are_static_html() -> None:
+def test_m10_handoff_contract_implementation_and_real_run_docs_are_static_html() -> None:
     paths = (
         Path("docs/status/M10_START_HERE.html"),
         Path("docs/status/M10_EVIDENCE_MCP_CONTRACT.html"),
         Path("docs/status/M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html"),
         Path("docs/status/M10_MCP_IMPLEMENTATION.html"),
+        Path("docs/status/M10_REAL_RUN_GATE.html"),
     )
     for path in paths:
         assert path.is_file()
@@ -181,6 +182,14 @@ def test_m10_handoff_contract_and_implementation_are_static_html() -> None:
         "mode=ro", "query_only", "133", "M10-05", "REAL-RUN NEXT",
     ):
         assert token in implementation
+
+    real_run = _read(paths[4])
+    for token in (
+        "M10-05", "JIRA_KNOWLEDGE_DB_PATH", "JIRA_RETRIEVAL_ARTIFACT_DIR",
+        "M10_REAL_RUN_QUERY", "warning_count: 0", "path_leak_count: 0",
+        "M10_REAL_RUN = PASS",
+    ):
+        assert token in real_run
 
 
 def test_m10_real_run_validator_exists_and_is_privacy_preserving() -> None:
@@ -217,6 +226,7 @@ def test_documentation_hub_links_milestones_and_m10_handoff() -> None:
     for name in (
         "M10_START_HERE.html", "M10_EVIDENCE_MCP_CONTRACT.html",
         "M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html", "M10_MCP_IMPLEMENTATION.html",
+        "M10_REAL_RUN_GATE.html",
     ):
         assert name in index
 
@@ -236,6 +246,7 @@ def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
         Path("docs/status/M10_EVIDENCE_MCP_CONTRACT.html"),
         Path("docs/status/M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html"),
         Path("docs/status/M10_MCP_IMPLEMENTATION.html"),
+        Path("docs/status/M10_REAL_RUN_GATE.html"),
     )
     pattern = re.compile(r"\b[A-Z][A-Z0-9_]{1,15}-[1-9]\d{3,}\b")
     for path in public_docs:
