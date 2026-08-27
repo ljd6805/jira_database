@@ -3,104 +3,162 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Continuous Jira Knowledge Service Sync Contract 의사결정 초안. D1~D3 확정, source_hash v2를 검토 중인 문서">
+<meta name="description" content="Continuous Jira Knowledge Service Sync Contract 의사결정 초안. D1~D4 확정, Checkpoint / Resume를 검토 중인 문서">
 <title>Sync Contract · Decision Draft</title>
 <style>
-:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827;--shadow:0 10px 28px rgba(31,49,84,.07)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7);box-shadow:var(--shadow)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px;margin:0 0 10px}.lead{color:var(--muted);max-width:900px}.flow,pre{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card h3{margin-top:0}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.active{border:2px solid var(--blue);background:#edf3ff}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.callout.warn{border-color:var(--amber);background:#fff6e9}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}.draft{background:#fff1d7;color:#8a5700}.review{background:#e9eeff;color:#2548b5}.fixed{background:#e5f7ef;color:#0c6c4a}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.compare{display:grid;grid-template-columns:1fr 60px 1fr;gap:12px;align-items:center}.compare .mid{text-align:center;font-weight:900;color:var(--blue)}.footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2,.grid3,.compare{grid-template-columns:1fr}.compare .mid{transform:rotate(90deg)}}
+:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827;--shadow:0 10px 28px rgba(31,49,84,.07)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7);box-shadow:var(--shadow)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px;margin:0 0 10px}.lead{color:var(--muted);max-width:900px}.flow,pre{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid2,.grid3,.grid4{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card h3{margin-top:0}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.active{border:2px solid var(--blue);background:#edf3ff}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.callout.warn{border-color:var(--amber);background:#fff6e9}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}.draft{background:#fff1d7;color:#8a5700}.review{background:#e9eeff;color:#2548b5}.fixed{background:#e5f7ef;color:#0c6c4a}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.step{display:grid;grid-template-columns:44px 1fr;gap:12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;margin:10px 0}.n{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:var(--blue);color:#fff;font-weight:900}.footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
 </style>
 </head>
 <body><main class="wrap">
 <nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_knowledge_pipeline_full_explained.html">전체 Pipeline 학습</a><a href="jira_sync_contract_explained.html">Sync Contract 학습</a><a href="jira_knowledge_operational_service_phase.html">Operational Service Phase</a></nav>
-<header class="hero"><div>SYNC CONTRACT · DECISION DRAFT · 2026-08-27</div><h1>Sync 운영 규칙을<br>하나씩 확정합니다.</h1><p>Continuous Jira Knowledge Service 구현 전에 Watermark, Overlap, 변경 판정, source hash, 재개와 Publish 의미를 항목별로 합의하는 문서입니다.</p><span class="state">DRAFT · D1/D2/D3 FIXED · D4 SOURCE_HASH V2 REVIEWING</span></header>
+<header class="hero"><div>SYNC CONTRACT · DECISION DRAFT · 2026-08-27</div><h1>Sync 운영 규칙을<br>하나씩 확정합니다.</h1><p>Continuous Jira Knowledge Service 구현 전에 Watermark, Overlap, 변경 판정, semantic hash, 재개와 Publish 의미를 항목별로 합의합니다.</p><span class="state">DRAFT · D1~D4 FIXED · D5 CHECKPOINT / RESUME REVIEWING</span></header>
 
 <section><h2>1. 진행 상태</h2><div class="flow">1. Project별 committed Watermark     FIXED
 2. Overlap Window = 5분              FIXED
 3. new / changed / unchanged         FIXED
-4. source_hash v2                    NOW REVIEWING
-5. Checkpoint / Resume               NEXT
-6. Project Registry / 접근 상실      DRAFT
+4. source_hash semantic_v2           FIXED
+5. Checkpoint / Resume               NOW REVIEWING
+6. Project Registry / 접근 상실      NEXT
 7. Source Commit vs Publish          DRAFT
 8. Sync Run 완료 상태                DRAFT</div></section>
 
-<section><h2>2. 지금까지 확정한 세 가지</h2><div class="grid3"><div class="card good"><span class="badge fixed">D1</span><h3>Project별 Watermark</h3><p>Project마다 독립적인 마지막 안전 수집 시점을 가집니다.</p></div><div class="card good"><span class="badge fixed">D2</span><h3>5분 Overlap</h3><p><code>lower = watermark - 5분</code>, 고정 upper, <code>updated ASC, id ASC</code>를 사용합니다.</p></div><div class="card good"><span class="badge fixed">D3</span><h3>Change Classification</h3><p><code>jira_id + source_hash</code>로 NEW / CHANGED / UNCHANGED를 판정합니다.</p></div></div></section>
+<section><h2>2. 지금까지 확정한 네 가지</h2><div class="grid4"><div class="card good"><span class="badge fixed">D1</span><h3>Project별 Watermark</h3><p>Project마다 독립적인 마지막 안전 수집 시점.</p></div><div class="card good"><span class="badge fixed">D2</span><h3>5분 Overlap</h3><p>고정 lower/upper와 <code>updated,id</code> 정렬.</p></div><div class="card good"><span class="badge fixed">D3</span><h3>Change Classification</h3><p><code>jira_id + source_hash</code>로 NEW/CHANGED/UNCHANGED.</p></div><div class="card good"><span class="badge fixed">D4</span><h3>semantic_v2</h3><p><code>updated_at</code>은 hash에서 제외하고 profile version을 기록.</p></div></div></section>
 
-<section><h2>3. Decision 4 — source_hash는 무엇을 뜻해야 하나?</h2><p class="lead">source_hash는 “이 Issue의 업무 지식 재료가 실제로 달라졌는가?”를 판단하는 지문입니다. 따라서 단순한 시스템 시간 변화 때문에 지문이 달라지면 안 됩니다.</p><div class="flow">source_hash가 달라짐
+<section><h2>3. Decision 5 — Checkpoint와 Resume를 아주 쉽게</h2><p class="lead">Checkpoint는 게임의 저장 지점입니다. Resume는 다시 실행했을 때 저장된 지점부터 이어서 하는 것입니다.</p><div class="flow">작업 1  성공  ✓
+작업 2  성공  ✓
+작업 3  실패  ✗
+작업 4  아직  -
+
+프로그램 재시작
+→ 작업 1, 2를 다시 하지 않음
+→ 작업 3부터 다시 시작</div><div class="callout"><strong>목표:</strong> 실패했다고 전체 파이프라인을 처음부터 반복하지 않습니다. 이미 안전하게 끝난 결과는 재사용합니다.</div></section>
+
+<section><h2>4. 현재 프로젝트에 이미 있는 Checkpoint</h2><p class="lead">현재 Collector는 한 Collection Run 안에서 Project와 Issue 상태를 SQLite에 기록합니다.</p><div class="flow">collection_run
+ ├─ project A  completed
+ ├─ project B  partial
+ │    ├─ issue 1 completed
+ │    ├─ issue 2 completed
+ │    └─ issue 3 failed
+ └─ project C  completed
+
+resume_run()
+→ completed Issue는 skip
+→ pending / running / failed / partial 대상 재개</div><div class="callout"><strong>좋은 기반:</strong> 이 구조는 그대로 살립니다. 새 운영 서비스는 이 Checkpoint를 버리는 것이 아니라 downstream까지 확장합니다.</div></section>
+
+<section><h2>5. 왜 Source와 Downstream Checkpoint를 나눠야 하나?</h2><div class="grid2"><div class="card good"><h3>① Source 수집 Checkpoint</h3><p>Jira Issue와 Comment 등을 어디까지 안전하게 가져왔는지 기억합니다.</p><div class="flow">Jira
+→ RAW
+→ ANALYSIS
+→ source_hash
+→ change classification</div></div><div class="card active"><h3>② Downstream Checkpoint</h3><p>확인된 NEW/CHANGED가 지식 서비스에 어디까지 반영됐는지 기억합니다.</p><div class="flow">Knowledge
+→ Review / DB
+→ Embedding
+→ Retrieval publish</div></div></div><p>두 층을 분리하면 Jira 수집은 이미 끝났는데 Knowledge 생성만 실패했을 때 Jira를 다시 호출하지 않아도 됩니다.</p></section>
+
+<section><h2>6. 대표 상황 A — Jira 수집 도중 실패</h2><div class="flow">Sync Run R100
+Project A
+  Issue 1  source completed ✓
+  Issue 2  source completed ✓
+  Issue 3  source failed    ✗
+  Issue 4  pending          -
+
+프로세스 재시작
+→ 가능하면 같은 R100을 Resume
+→ R100의 고정 lower / upper를 그대로 사용
+→ Issue 1, 2는 skip
+→ Issue 3부터 재개</div><div class="callout"><strong>추천:</strong> 중단된 Sync Run을 재개할 수 있으면 같은 Run을 우선 재개합니다. 그래야 Decision 2에서 고정한 조회 window가 움직이지 않습니다.</div></section>
+
+<section><h2>7. 같은 Run을 재개할 수 없다면?</h2><p class="lead">운영자가 Run을 폐기했거나 상태가 손상되어 같은 Run을 재개하지 못할 수도 있습니다. 그때는 안전한 fallback이 필요합니다.</p><div class="flow">R100 폐기
+Project A committed_watermark = 10:30 그대로
+
+새 Sync Run R101
+lower = 10:30 - 5분 overlap
+→ 다시 후보 조회
+→ source_hash로 중복 제거
+→ 누락 없이 복구</div><p>즉 <strong>same-run resume가 1순위</strong>, <strong>새 Run + committed watermark + overlap이 2순위 안전망</strong>입니다.</p></section>
+
+<section><h2>8. 대표 상황 B — Jira는 성공, Knowledge만 실패</h2><div class="flow">jira_id = 10042
+source_hash = BBB
+
+Source snapshot      COMPLETED ✓
+Change classification CHANGED ✓
+Knowledge generation FAILED    ✗
+Embedding            PENDING   -
+Retrieval publish    PENDING   -
+
+다음 재개
+→ Jira 다시 수집 X
+→ CHANGED 다시 판정 X
+→ Knowledge generation부터 재시도</div><div class="callout warn"><strong>이게 Decision 5의 핵심입니다.</strong> 다음 Sync에서 Jira가 그대로라서 source_hash가 BBB로 같더라도 “이미 서비스 반영 완료”라고 착각하지 않습니다. BBB에 대한 downstream 미완료 상태를 따로 기억합니다.</div></section>
+
+<section><h2>9. Downstream 작업의 Identity</h2><p class="lead">어떤 변경분에 대한 작업인지 흔들리지 않으려면 Run ID보다 Issue Version identity가 중요합니다.</p><div class="flow">jira_id = 10042
+source_hash = BBB
+source_hash_profile = semantic_v2
         ↓
-CHANGED 판정
+하나의 변경 Work Item
         ↓
-새 Issue Version
+Stage별 Checkpoint</div><p>즉 새 Sync Run이 시작되어도 같은 <code>jira_id + source_hash</code>라면 과거에 실패한 downstream 작업을 이어갈 수 있습니다.</p></section>
+
+<section><h2>10. Stage 상태는 단순하게</h2><table><thead><tr><th>상태</th><th>뜻</th><th>재시작 시</th></tr></thead><tbody>
+<tr><td><strong>pending</strong></td><td>아직 시작하지 않음</td><td>실행 대상</td></tr>
+<tr><td><strong>running</strong></td><td>실행 중</td><td>프로세스가 죽었다면 완료로 간주하지 않고 재검증/재시도</td></tr>
+<tr><td><strong>completed</strong></td><td>해당 Stage 산출물이 안전하게 완료</td><td>재사용 / skip</td></tr>
+<tr><td><strong>failed</strong></td><td>오류로 끝남</td><td>retry 대상</td></tr>
+</tbody></table><div class="callout"><strong>원칙:</strong> <code>running</code>은 성공이 아닙니다. 완료 표식이 없으면 안전하게 다시 시도합니다.</div></section>
+
+<section><h2>11. Resume 규칙을 한 줄로</h2><div class="flow">각 Work Item에서
+가장 앞의 "completed가 아닌 Stage"를 찾는다
         ↓
-Knowledge 재생성
+그 Stage부터 다시 실행한다
         ↓
-Embedding / FAISS 갱신
-
-즉 hash에 무엇을 넣는지가
-곧 "무엇을 진짜 변경으로 볼 것인가"를 결정함</div></section>
-
-<section><h2>4. 현재 구현은 어떻게 되어 있나?</h2><p class="lead">현재 builder는 Issue, Comment, Attachment metadata, Relationship, Custom Field를 한 묶음으로 만들고 경로만 제외한 뒤 SHA-256을 계산합니다.</p><div class="flow">Issue
-  summary / description / status / priority
-  created_at / updated_at
-
-Comments
-  comment_id / sequence / author
-  created_at / updated_at / body
-
-Attachments / Relationships / Custom Fields
+앞의 completed Stage는 재사용한다
         ↓
-source_path / source_page만 제거
-        ↓
-canonical JSON
-        ↓
-SHA-256 source_hash</div><div class="callout warn"><strong>문제 후보:</strong> 현재는 Issue의 <code>updated_at</code>과 Comment의 <code>updated_at</code>도 hash에 포함됩니다. 본문은 그대로인데 Jira가 timestamp만 바꾸면 새 Version으로 판정될 수 있습니다.</div></section>
+뒤의 Stage는 선행 Stage 성공 후 순서대로 진행한다</div><div class="grid3"><div class="card"><h3>Source 실패</h3><p>Source 단계부터 재개.</p></div><div class="card"><h3>Knowledge 실패</h3><p>Knowledge부터 재개.</p></div><div class="card"><h3>Embedding 실패</h3><p>Knowledge 재생성 없이 Embedding부터 재개.</p></div></div></section>
 
-<section><h2>5. 쉬운 예 — 내용은 같은데 시간만 바뀌었다면?</h2><div class="compare"><div class="card"><h3>어제</h3><div class="flow">description = "retry 3회 적용"
-status = Resolved
-updated_at = 10:30
+<section><h2>12. 전체 rollback은 하지 않습니다</h2><p class="lead">Project A가 성공하고 B가 실패했다고 A를 과거 상태로 되돌리지는 않습니다.</p><div class="flow">Project A  source completed   → 보존
+Project B  source failed      → B만 retry
+Project C  source completed   → 보존
 
-hash = AAA</div></div><div class="mid">→</div><div class="card warn"><h3>오늘</h3><div class="flow">description = "retry 3회 적용"
-status = Resolved
-updated_at = 10:35
+Work Item X Knowledge completed → 보존
+Work Item Y Embedding failed    → Y embedding만 retry</div><div class="callout"><strong>추천:</strong> 성공한 독립 작업은 durable하게 보존하고 실패한 경계만 재시도합니다. 전역 rollback은 하지 않습니다.</div></section>
 
-현재 방식이면
-hash = BBB 가능</div></div></div><p>업무 내용은 하나도 달라지지 않았는데 새 Issue Version과 Knowledge를 만들 수 있습니다. 운영에서는 이런 재처리를 피하는 편이 좋습니다.</p></section>
+<section><h2>13. 구현 시 필요한 상태의 모양 · 아직 Schema Freeze 아님</h2><div class="grid2"><div class="card"><h3>Sync Run / Source 상태</h3><div class="flow">sync_run
+project_run
+issue_source_checkpoint
 
-<section><h2>6. 그렇다고 모든 시간을 빼면 안 됩니다</h2><div class="grid2"><div class="card good"><h3><code>created_at</code>은 유지</h3><p>Issue나 Comment가 언제 생성됐는지는 실제 사실의 일부일 수 있습니다. 잘못된 시간이 정정되었다면 그것도 데이터 변화로 볼 가치가 있습니다.</p></div><div class="card warn"><h3><code>updated_at</code>은 제외 추천</h3><p>이 값은 “Jira가 마지막으로 수정됐다고 기록한 시각”입니다. 실제 지식 내용은 별도로 hash에 이미 포함되므로 변경 탐지 지문에는 중복 신호가 됩니다.</p></div></div><div class="callout"><strong>핵심 구분:</strong> <code>updated_at</code>은 Delta 후보를 찾는 데는 중요하지만, 최종 semantic change를 판단하는 source_hash에는 넣지 않는 방향입니다.</div></section>
+lower / upper
+status
+error
+attempt 정보</div></div><div class="card"><h3>변경 Work Item 상태</h3><div class="flow">change_work_item
+jira_id
+source_hash
+hash_profile
 
-<section><h2>7. source_hash v2 추천 구성</h2><table><thead><tr><th>영역</th><th>포함</th><th>제외</th></tr></thead><tbody>
-<tr><td>Issue</td><td>jira_id, summary, description, format, type, status, priority, created_at</td><td><strong>updated_at</strong>, source_path</td></tr>
-<tr><td>Comment</td><td>comment_id, sequence, author, created_at, body, format</td><td><strong>updated_at</strong>, source_path, source_page</td></tr>
-<tr><td>Attachment</td><td>ID, filename, author, created_at, size, mime, content_available</td><td>source_path</td></tr>
-<tr><td>Relationship</td><td>관계 ID/type/direction/상대 Issue 정보 등 현재 Knowledge Input에 보이는 값</td><td>source_path</td></tr>
-<tr><td>Custom Field</td><td>field ID/name/schema + 실제 display/value 정보</td><td>source_path</td></tr>
-</tbody></table><div class="callout"><strong>보수적 원칙:</strong> 이번 v2에서는 불필요하다고 확신할 수 있는 <code>updated_at</code>만 추가로 제외합니다. 작성자, 생성 시각, 관계 상태, Custom Field 등 Knowledge 결과에 영향을 줄 수 있는 값은 섣불리 빼지 않습니다.</div></section>
+stage_checkpoint
+stage
+status
+error
+attempt_no</div></div></div><div class="callout warn"><strong>주의:</strong> 위 테이블명은 설명용입니다. Decision 5에서는 상태 의미만 합의하고 실제 DB Schema/DDL은 구현 Milestone에서 별도로 설계합니다.</div></section>
 
-<section><h2>8. 실제 내용이 바뀌면 당연히 hash도 바뀝니다</h2><div class="grid3"><div class="card"><h3>Description 수정</h3><p>원인/해결 내용이 달라짐 → hash 변경 → CHANGED.</p></div><div class="card"><h3>댓글 추가/수정</h3><p>comment_id/body가 달라짐 → hash 변경 → CHANGED.</p></div><div class="card"><h3>Status / Custom Field / 관계 변경</h3><p>업무 상태나 관계 지식이 달라짐 → hash 변경 → CHANGED.</p></div></div></section>
+<section><h2>14. Decision 5에서 아직 일부러 미루는 것</h2><div class="grid3"><div class="card"><h3>Watermark를 정확히 언제 Commit?</h3><p>Source 완료와 Publish 완료의 관계는 Decision 7에서 최종 확정합니다.</p></div><div class="card"><h3>Project가 사라지면?</h3><p>Project Registry / 접근 상실은 Decision 6.</p></div><div class="card"><h3>Run의 completed / partial / failed</h3><p>전체 상태 정의는 Decision 8.</p></div></div></section>
 
-<section><h2>9. hash 규칙 자체에도 Version이 필요합니다</h2><p class="lead">중요한 부분입니다. v1에서 v2로 계산 규칙을 바꾸면 같은 Jira 내용도 hash 문자열이 달라질 수 있습니다. 따라서 hash 규칙 자체의 버전을 명시해야 합니다.</p><div class="flow">source_hash_profile = semantic_v2
+<section><h2>15. Decision 5 추천 결론</h2><div class="card active"><span class="badge review">PROPOSED</span><h3>Source 수집과 downstream을 Stage별 durable Checkpoint로 관리한다.</h3><div class="flow">규칙 1
+중단된 Sync Run은 가능하면 같은 lower/upper로 same-run resume
 
-semantic_v1
-  path 제외
-  updated_at 포함
+규칙 2
+completed Issue / Stage는 재사용
+failed / stale-running Stage부터 재시도
 
-semantic_v2
-  path 제외
-  issue.updated_at 제외
-  comment.updated_at 제외</div><div class="callout"><strong>추천:</strong> package/manifest 또는 DB가 어떤 hash profile로 계산됐는지 알 수 있게 기록합니다. 그래야 향후 v3가 생겨도 “내용이 바뀐 것”과 “hash 알고리즘이 바뀐 것”을 구분할 수 있습니다.</div></section>
+규칙 3
+NEW/CHANGED Work Item은 jira_id + source_hash로 식별
+Run이 바뀌어도 downstream 미완료 상태 유지
 
-<section><h2>10. Decision 4 추천 결론</h2><div class="card active"><span class="badge review">PROPOSED</span><h3>source_hash v2는 업무 내용 중심의 semantic hash로 만든다.</h3><div class="flow">계속 포함
-→ Issue 실제 내용/상태
-→ Comment 내용/작성자/생성시각
-→ Attachment metadata
-→ Relationship
-→ Custom Field
+규칙 4
+전체 rollback 없음
+독립적으로 성공한 Project / Stage는 보존
 
-추가 제외
-→ issue.updated_at
-→ comment.updated_at
-→ 기존 source_path / source_page
+규칙 5
+same-run resume 불가 시
+committed watermark + 5분 overlap으로 새 Run 안전 복구</div></div><div class="callout warn"><strong>아직 D5는 FROZEN 아님.</strong> 승인하면 FIXED로 올리고 Decision 6 Project Registry / 접근 상실로 넘어갑니다.</div></section>
 
-그리고
-→ source_hash_profile = semantic_v2 기록</div><p><code>updated_at</code>은 Delta 후보 조회용으로 보존하지만 semantic Version 생성의 직접 재료에서는 제외합니다.</p></div><div class="callout warn"><strong>아직 D4는 FROZEN 아님.</strong> 승인하면 FIXED로 올리고 Decision 5 Checkpoint / Resume로 넘어갑니다.</div></section>
-
-<footer class="footer">Sync Contract Decision Draft · D1/D2/D3 FIXED · D4 source_hash v2 under review · no implementation yet · 2026-08-27</footer>
+<footer class="footer">Sync Contract Decision Draft · D1~D4 FIXED · D5 Checkpoint / Resume under review · no implementation yet · 2026-08-27</footer>
 </main></body></html>
