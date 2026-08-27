@@ -1,4 +1,4 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="2-Loop Operational State Schema v2 실제 SQLite DDL, CHECK, FK, UNIQUE, INDEX 구현 기준"><title>State Schema S7 · Final DDL v2 · Two-Loop</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.74}.wrap{max-width:1180px;margin:auto;padding:42px 22px 90px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:20px}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow,pre{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.68 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:48px;color:#66748a;font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">Schema Contract v2</a> · <a href="jira_sync_state_schema_contract_v1_baseline.html">v1 Historical</a></p><header class="hero"><div>S7 · FINAL DDL · REVISED 2026-08-28</div><h1>2-Loop Operational State Schema v2<br>SQLite DDL</h1><p>현재 구현 기준입니다. v1의 단일 <code>sync_run</code> DDL은 대체되었으며 Source Run과 Processing Run을 분리합니다.</p></header><section class="card"><h2>1. 전체 구성</h2><div class="flow">Legacy MVP · 보존
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="2-Loop Operational State Schema v2 실제 SQLite DDL, Source Ready Gate, CHECK, FK, UNIQUE, INDEX 구현 기준"><title>State Schema S7 · Final DDL v2 · Two-Loop</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.74}.wrap{max-width:1180px;margin:auto;padding:42px 22px 90px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:20px}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow,pre{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.68 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:48px;color:#66748a;font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">Schema Contract v2</a> · <a href="jira_sync_state_schema_contract_v1_baseline.html">v1 Historical</a></p><header class="hero"><div>S7 · FINAL DDL · REVISED 2026-08-28</div><h1>2-Loop Operational State Schema v2<br>SQLite DDL</h1><p>현재 구현 기준입니다. Source 후보 처리 중 생성된 Work Item을 Processing Loop가 너무 일찍 소비하지 않도록 <strong>Source Ready Gate</strong>까지 명시합니다.</p></header><section class="card"><h2>1. 전체 구성</h2><div class="flow">Legacy MVP · 보존
 collection_runs
 project_runs
 issue_checkpoints
@@ -45,7 +45,7 @@ PRAGMA user_version = 2</div></section><section class="card"><h2>2. Migration Me
         (run_status IN ('completed','partial','failed')
          AND finished_at IS NOT NULL)
     )
-);</pre><p>Source Run에는 <code>publish_status</code>가 없습니다. Publish는 별도 Processing Loop의 책임입니다.</p></section><section class="card"><h2>4. project_state</h2><pre>CREATE TABLE IF NOT EXISTS project_state (
+);</pre></section><section class="card"><h2>4. project_state</h2><pre>CREATE TABLE IF NOT EXISTS project_state (
     project_id TEXT PRIMARY KEY,
     current_key TEXT NOT NULL CHECK(length(current_key) &gt; 0),
     current_name TEXT NOT NULL,
@@ -76,7 +76,7 @@ PRAGMA user_version = 2</div></section><section class="card"><h2>2. Migration Me
          AND last_source_success_run_id IS NOT NULL
          AND last_source_success_at IS NOT NULL)
     )
-);</pre><p><code>current_key</code>는 mutable metadata라 UNIQUE가 아닙니다. authoritative identity는 <code>project_id</code>입니다.</p></section><section class="card"><h2>5. source_project_run</h2><pre>CREATE TABLE IF NOT EXISTS source_project_run (
+);</pre></section><section class="card"><h2>5. source_project_run</h2><pre>CREATE TABLE IF NOT EXISTS source_project_run (
     source_run_id TEXT NOT NULL
         REFERENCES source_sync_run(source_run_id),
     project_id TEXT NOT NULL
@@ -94,14 +94,10 @@ PRAGMA user_version = 2</div></section><section class="card"><h2>2. Migration Me
         )),
     started_at TEXT,
     finished_at TEXT,
-    candidate_count INTEGER NOT NULL DEFAULT 0
-        CHECK(candidate_count &gt;= 0),
-    new_count INTEGER NOT NULL DEFAULT 0
-        CHECK(new_count &gt;= 0),
-    changed_count INTEGER NOT NULL DEFAULT 0
-        CHECK(changed_count &gt;= 0),
-    unchanged_count INTEGER NOT NULL DEFAULT 0
-        CHECK(unchanged_count &gt;= 0),
+    candidate_count INTEGER NOT NULL DEFAULT 0 CHECK(candidate_count &gt;= 0),
+    new_count INTEGER NOT NULL DEFAULT 0 CHECK(new_count &gt;= 0),
+    changed_count INTEGER NOT NULL DEFAULT 0 CHECK(changed_count &gt;= 0),
+    unchanged_count INTEGER NOT NULL DEFAULT 0 CHECK(unchanged_count &gt;= 0),
     cursor_updated_at TEXT,
     cursor_jira_id TEXT,
     error_message TEXT,
@@ -119,24 +115,20 @@ PRAGMA user_version = 2</div></section><section class="card"><h2>2. Migration Me
     CHECK(
         (operation_kind IN ('delta','catchup') AND lower_bound IS NOT NULL)
         OR
-        (operation_kind IN ('initial_ingest','skip_unavailable')
-         AND lower_bound IS NULL)
+        (operation_kind IN ('initial_ingest','skip_unavailable') AND lower_bound IS NULL)
     ),
     CHECK(
-        (operation_kind = 'skip_unavailable'
-         AND source_status = 'skipped_unavailable')
+        (operation_kind = 'skip_unavailable' AND source_status = 'skipped_unavailable')
         OR
-        (operation_kind != 'skip_unavailable'
-         AND source_status != 'skipped_unavailable')
+        (operation_kind != 'skip_unavailable' AND source_status != 'skipped_unavailable')
     ),
     CHECK(
         (source_status IN ('pending','running') AND finished_at IS NULL)
         OR
-        (source_status IN (
-            'source_committed','partial','failed','skipped_unavailable'
-         ) AND finished_at IS NOT NULL)
+        (source_status IN ('source_committed','partial','failed','skipped_unavailable')
+         AND finished_at IS NOT NULL)
     )
-);</pre><div class="warn card"><strong>Application invariant:</strong> <code>source_status='source_committed'</code>와 <code>project_state.committed_watermark = upper_bound</code>는 반드시 같은 State DB Transaction에서 반영합니다.</div></section><section class="card"><h2>6. processing_run</h2><pre>CREATE TABLE IF NOT EXISTS processing_run (
+);</pre></section><section class="card"><h2>6. processing_run</h2><pre>CREATE TABLE IF NOT EXISTS processing_run (
     processing_run_id TEXT PRIMARY KEY
         CHECK(length(processing_run_id) = 35
               AND substr(processing_run_id, 1, 3) = 'pr_'),
@@ -144,25 +136,19 @@ PRAGMA user_version = 2</div></section><section class="card"><h2>2. Migration Me
     finished_at TEXT,
     run_status TEXT NOT NULL DEFAULT 'running'
         CHECK(run_status IN ('running','completed','partial','failed')),
-    selected_count INTEGER NOT NULL DEFAULT 0
-        CHECK(selected_count &gt;= 0),
-    published_count INTEGER NOT NULL DEFAULT 0
-        CHECK(published_count &gt;= 0),
-    failed_count INTEGER NOT NULL DEFAULT 0
-        CHECK(failed_count &gt;= 0),
-    backlog_before INTEGER
-        CHECK(backlog_before IS NULL OR backlog_before &gt;= 0),
-    backlog_after INTEGER
-        CHECK(backlog_after IS NULL OR backlog_after &gt;= 0),
+    selected_count INTEGER NOT NULL DEFAULT 0 CHECK(selected_count &gt;= 0),
+    published_count INTEGER NOT NULL DEFAULT 0 CHECK(published_count &gt;= 0),
+    failed_count INTEGER NOT NULL DEFAULT 0 CHECK(failed_count &gt;= 0),
+    backlog_before INTEGER CHECK(backlog_before IS NULL OR backlog_before &gt;= 0),
+    backlog_after INTEGER CHECK(backlog_after IS NULL OR backlog_after &gt;= 0),
     error_summary TEXT,
     CHECK(published_count + failed_count &lt;= selected_count),
     CHECK(
         (run_status = 'running' AND finished_at IS NULL)
         OR
-        (run_status IN ('completed','partial','failed')
-         AND finished_at IS NOT NULL)
+        (run_status IN ('completed','partial','failed') AND finished_at IS NOT NULL)
     )
-);</pre><p><code>selected_count=0</code>인 completed Processing Run은 정상입니다.</p></section><section class="card"><h2>7. sync_issue_change · Durable Backlog</h2><pre>CREATE TABLE IF NOT EXISTS sync_issue_change (
+);</pre></section><section class="card"><h2>7. sync_issue_change · Durable Backlog + Source Ready Gate</h2><pre>CREATE TABLE IF NOT EXISTS sync_issue_change (
     work_item_id TEXT PRIMARY KEY
         CHECK(length(work_item_id) = 67
               AND substr(work_item_id, 1, 3) = 'sw_'),
@@ -173,16 +159,20 @@ PRAGMA user_version = 2</div></section><section class="card"><h2>2. Migration Me
     source_hash TEXT NOT NULL CHECK(length(source_hash) &gt; 0),
     source_hash_profile TEXT NOT NULL
         CHECK(source_hash_profile = 'semantic_v2'),
-    change_kind TEXT NOT NULL
-        CHECK(change_kind IN ('new','changed')),
+    change_kind TEXT NOT NULL CHECK(change_kind IN ('new','changed')),
+
     first_discovered_source_run_id TEXT NOT NULL
         REFERENCES source_sync_run(source_run_id),
     last_observed_source_run_id TEXT NOT NULL
         REFERENCES source_sync_run(source_run_id),
+    last_source_committed_run_id TEXT
+        REFERENCES source_sync_run(source_run_id),
+    last_source_committed_at TEXT,
+
     last_processing_run_id TEXT
         REFERENCES processing_run(processing_run_id),
-    first_source_committed_at TEXT NOT NULL,
     last_observed_at TEXT NOT NULL,
+
     issue_version_id TEXT,
     knowledge_generation_id TEXT,
     knowledge_status TEXT NOT NULL DEFAULT 'pending'
@@ -192,13 +182,19 @@ PRAGMA user_version = 2</div></section><section class="card"><h2>2. Migration Me
     publish_status TEXT NOT NULL DEFAULT 'pending'
         CHECK(publish_status IN ('pending','running','published','failed')),
     error_stage TEXT
-        CHECK(error_stage IS NULL
-              OR error_stage IN ('knowledge','embedding','publish')),
+        CHECK(error_stage IS NULL OR error_stage IN ('knowledge','embedding','publish')),
     error_message TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     last_published_at TEXT,
+
     UNIQUE(jira_id, source_hash, source_hash_profile),
+
+    CHECK(
+        (last_source_committed_run_id IS NULL AND last_source_committed_at IS NULL)
+        OR
+        (last_source_committed_run_id IS NOT NULL AND last_source_committed_at IS NOT NULL)
+    ),
     CHECK(embedding_status = 'pending' OR knowledge_status = 'completed'),
     CHECK(publish_status = 'pending' OR embedding_status = 'completed'),
     CHECK(
@@ -207,26 +203,30 @@ PRAGMA user_version = 2</div></section><section class="card"><h2>2. Migration Me
         OR (error_stage = 'embedding' AND embedding_status = 'failed')
         OR (error_stage = 'publish' AND publish_status = 'failed')
     )
-);</pre><div class="warn card"><strong>재활성화 허용:</strong> A→B→A처럼 과거 semantic state가 다시 현재가 되면 <code>last_published_at</code>은 과거 이력으로 남기면서 <code>publish_status</code>를 다시 pending/running으로 전환할 수 있습니다. 그래서 <code>last_published_at</code>과 현재 publish_status를 1:1 CHECK로 묶지 않습니다.</div></section><section class="card"><h2>8. Index</h2><pre>CREATE INDEX IF NOT EXISTS ix_source_sync_run_started_at
+);</pre><div class="warn card"><strong>Loop B Claim Gate:</strong><div class="flow">Loop B가 처리 가능한 Work Item
+last_source_committed_run_id IS NOT NULL
+AND last_source_committed_run_id = last_observed_source_run_id</div><p>후보 처리 중 T2에서 row가 만들어져도 Project 전체 Source Commit(T3) 전에는 Loop B가 소비하지 않습니다.</p></div><div class="warn card"><strong>T3 Source Commit Transaction:</strong><div class="flow">같은 State DB transaction에서
+1. source_project_run.source_status = source_committed
+2. project_state.committed_watermark = upper
+3. 이번 Project/Run에서 관찰된 NEW/CHANGED Work Item에
+   last_source_committed_run_id = current source_run_id
+   last_source_committed_at = now
+COMMIT</div><p>Project Source Commit이 실패하면 Work Item row는 남아도 ready gate가 열리지 않습니다.</p></div><div class="warn card"><strong>과거 semantic state 재등장:</strong><p>A→B→A처럼 기존 Work Item이 다시 CHANGED로 관찰되면 T2에서 <code>last_observed_source_run_id</code>가 새 Source Run으로 이동해 일시적으로 gate가 닫힙니다. T3 Source Commit 후 다시 열립니다. 기존 Knowledge/Embedding은 재사용할 수 있고, 필요하면 Publish만 pending으로 재활성화합니다. <code>last_published_at</code>은 과거 이력으로 보존합니다.</p></div></section><section class="card"><h2>8. Index</h2><pre>CREATE INDEX IF NOT EXISTS ix_source_sync_run_started_at
     ON source_sync_run(started_at);
 CREATE INDEX IF NOT EXISTS ix_source_sync_run_status_started
     ON source_sync_run(run_status, started_at);
-
 CREATE INDEX IF NOT EXISTS ix_project_state_visibility
     ON project_state(visibility_state);
 CREATE INDEX IF NOT EXISTS ix_project_state_current_key
     ON project_state(current_key);
-
 CREATE INDEX IF NOT EXISTS ix_source_project_run_run_status
     ON source_project_run(source_run_id, source_status);
 CREATE INDEX IF NOT EXISTS ix_source_project_run_project_started
     ON source_project_run(project_id, started_at);
-
 CREATE INDEX IF NOT EXISTS ix_processing_run_started_at
     ON processing_run(started_at);
 CREATE INDEX IF NOT EXISTS ix_processing_run_status_started
     ON processing_run(run_status, started_at);
-
 CREATE INDEX IF NOT EXISTS ix_sync_issue_change_project_updated
     ON sync_issue_change(project_id, updated_at);
 CREATE INDEX IF NOT EXISTS ix_sync_issue_change_knowledge_status
@@ -237,13 +237,16 @@ CREATE INDEX IF NOT EXISTS ix_sync_issue_change_publish_status
     ON sync_issue_change(publish_status);
 CREATE INDEX IF NOT EXISTS ix_sync_issue_change_last_source_run
     ON sync_issue_change(last_observed_source_run_id);
+CREATE INDEX IF NOT EXISTS ix_sync_issue_change_source_ready
+    ON sync_issue_change(last_source_committed_run_id, last_observed_source_run_id);
 CREATE INDEX IF NOT EXISTS ix_sync_issue_change_last_processing_run
     ON sync_issue_change(last_processing_run_id);</pre></section><section class="card"><h2>9. DB 밖에서 강제하는 규칙</h2><div class="flow">Source Project upper = source_sync_run.fixed upper
-Source actual files durable → State cursor second
-source_committed + Watermark same transaction
+Source actual files durable → State candidate checkpoint second
+T3: source_committed + Watermark + Work Item ready gate SAME transaction
+Loop B claim: committed source observation only
 Knowledge DB actual result → State completed second
 Embedding artifact actual → State completed second
 actual Retrieval active switch → State published second
 Knowledge DB iv_/kg_ logical ID existence validation
 Source Head vs actual Published Head reconciliation
-Loop A / Loop B independent failure tests</div></section><section class="card"><h2>10. 아직 DDL에 넣지 않는 것</h2><p><strong>Intermediate Version supersede</strong>와 <strong>Multi-worker lease</strong>는 아직 정책이 Freeze되지 않아 v2 DDL에 넣지 않습니다.</p></section><footer class="footer">S7 current · Final SQLite DDL v2 · Two-Loop FROZEN · 2026-08-28</footer></main></body></html>
+Loop A / Loop B independent failure tests</div></section><section class="card"><h2>10. 아직 DDL에 넣지 않는 것</h2><p><strong>Intermediate Version supersede</strong>와 <strong>Multi-worker lease</strong>는 아직 정책이 Freeze되지 않아 v2 DDL에 넣지 않습니다.</p></section><footer class="footer">S7 current · Final SQLite DDL v2 · Source Ready Gate included · 2026-08-28</footer></main></body></html>
