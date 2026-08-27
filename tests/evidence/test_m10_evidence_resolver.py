@@ -187,6 +187,18 @@ def test_missing_source_is_resolution_failure() -> None:
     assert caught.value.code == "EVIDENCE_SOURCE_MISSING"
 
 
+def test_invalid_evidence_ref_is_typed_resolution_failure() -> None:
+    connection = _database()
+    connection.execute(
+        "UPDATE knowledge_evidence SET evidence_ref='comment:10:bad' WHERE knowledge_evidence_id='ke_3'"
+    )
+
+    with pytest.raises(EvidenceResolutionError) as caught:
+        EvidenceResolver(connection).resolve_candidate(_candidate())
+
+    assert caught.value.code == "EVIDENCE_REF_INVALID"
+
+
 def test_builder_keeps_valid_candidate_and_warns_for_broken_candidate() -> None:
     connection = _database()
     builder = CandidateEvidenceBuilder(EvidenceResolver(connection))
