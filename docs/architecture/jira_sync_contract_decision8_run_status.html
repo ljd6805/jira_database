@@ -1,142 +1,23 @@
 <!doctype html>
-<html data-doc-shell="v1" lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Sync Contract Decision 8 Sync Run completed/partial/failed 의미와 Source/Publish 상태 집계 규칙 검토 문서">
-<title>Sync Contract · Decision 8 · Run Status</title>
-<style>
-:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px;margin:0 0 10px}.lead{color:var(--muted);max-width:920px}.flow{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.active{border:2px solid var(--blue);background:#edf3ff}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}.fixed{background:#e5f7ef;color:#0c6c4a}.review{background:#e9eeff;color:#2548b5}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}
-</style>
-<link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
-<script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
-</head>
-<body><main class="wrap">
-<nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract_decision_draft.html">Decision Board</a><a href="jira_sync_contract_decision7_source_commit_publish.html">D7</a></nav>
-<header class="hero"><div>SYNC CONTRACT · DECISION 8 · 2026-08-27</div><h1>한 번의 Sync가<br>성공했는지 어떻게 말할까?</h1><p>D7에서 Source Commit과 Publish를 분리했습니다. 마지막 D8에서는 한 Sync Run 전체를 <strong>completed / partial / failed</strong> 중 무엇으로 기록할지 정합니다.</p><span class="state">D1~D7 FIXED · D8 REVIEWING · LAST DECISION</span></header>
+<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sync Contract Decision 8 최종 결정. Sync Run completed/partial/failed 의미와 Source/Publish 집계 규칙을 정의한다."><title>Sync Contract · Decision 8 Final</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1040px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,54px);line-height:1.12}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:42px}h2{font-size:28px}.flow{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">FROZEN Contract</a><a href="jira_sync_contract_easy_guide.html">쉬운 가이드</a></nav><header class="hero"><div>SYNC CONTRACT · DECISION 8 · FINAL · 2026-08-27</div><h1>한 번의 Sync가<br>성공했는지 어떻게 말할까?</h1><p>Run 상태는 이번 실행의 진척을 표현합니다. 기존 Published Knowledge 서비스의 생존 여부와는 별개입니다.</p><span class="state">FIXED · COMPLETED / PARTIAL / FAILED</span></header><section><h2>1. 내부 상태를 따로 봅니다</h2><div class="flow">discovery_status
++ source_status
++ publish_status
+        ↓
+run_status</div><p>Project 목록을 신뢰할 수 있는지, Source를 어디까지 commit했는지, Publish를 어디까지 끝냈는지 따로 기록한 뒤 최종 Run 상태를 집계합니다.</p></section><section><h2>2. 최종 상태</h2><div class="grid3"><div class="card good"><h3>COMPLETED</h3><p>Discovery 성공 + 모든 visible Project Source Commit 완료 + 필요한 Publish 모두 완료 또는 not_required.</p></div><div class="card warn"><h3>PARTIAL</h3><p>하나 이상의 durable 성공 결과가 있지만 Source 또는 Publish에 실패/미완료가 남음.</p></div><div class="card bad"><h3>FAILED</h3><p>Discovery 결과를 신뢰할 수 없거나 처리 대상 Source 범위에서 durable Source progress를 하나도 만들지 못함.</p></div></div></section><section><h2>3. 중요한 예외</h2><table><thead><tr><th>상황</th><th>Run 상태</th></tr></thead><tbody><tr><td>변경 0건, 모든 visible Project 정상 확인</td><td>completed</td></tr><tr><td>Source 전부 성공, Publish 일부/전부 실패</td><td>partial</td></tr><tr><td>Project A/C 성공, B 실패</td><td>partial</td></tr><tr><td>Project Discovery 자체 실패/불완전</td><td>failed</td></tr><tr><td>모든 visible Project Source 실패</td><td>failed</td></tr><tr><td>기존 Project unavailable</td><td>실패로 세지 않고 skip</td></tr></tbody></table></section><section><h2>4. Run 실패와 Knowledge 서비스 실패는 다릅니다</h2><div class="flow">이번 Sync Run = FAILED
 
-<section><h2>1. 먼저 세 가지 상태를 구분합니다</h2><p class="lead">Run 상태 하나만 보면 원인을 알기 어렵습니다. 따라서 내부적으로 Source 상태와 Publish 상태를 따로 기록하고, 마지막에 Run 상태를 집계하는 방식을 추천합니다.</p><div class="flow">source_status
-= Jira Project Discovery + 각 visible Project Source window 처리 결과
-
-publish_status
-= 이번 Run에서 생긴 NEW/CHANGED Work Item의 Knowledge→Embedding→Retrieval 반영 결과
-
-run_status
-= source_status + publish_status를 사람이 보기 쉽게 집계한 최종 상태</div></section>
-
-<section><h2>2. COMPLETED — 이번 Run이 맡은 일을 모두 끝냄</h2><div class="card good"><h3>조건</h3><div class="flow">Project Discovery = SUCCESS
-
-현재 visible Project
-→ 모든 Source window = SOURCE_COMMITTED
-
-이번 Run의 NEW / CHANGED Work Item
-→ 모두 PUBLISHED
-또는
-→ NEW / CHANGED가 없어서 Publish 작업 자체가 없음
-
-결론
-run_status = completed</div></div><p>변경이 0건이어도 실패가 아닙니다. 확인할 범위를 정상적으로 확인했고 새로 Publish할 것이 없었다면 <strong>completed</strong>입니다.</p></section>
-
-<section><h2>3. PARTIAL — 일부는 안전하게 끝났지만 남은 일이 있음</h2><div class="card warn"><h3>대표 상황</h3><div class="flow">Project A Source Commit ✓
-Project B Source 실패 ✗
-Project C Source Commit ✓
-
-또는
-
-Source Commit 전부 ✓
-ABC-1 Publish ✓
-ABC-2 Embedding 실패 ✗
-ABC-3 Publish ✓
-
-결론
-run_status = partial</div></div><p>이미 성공한 Project/Stage는 그대로 보존합니다. 실패한 경계만 D5 Checkpoint/Resume 규칙으로 다시 수행합니다.</p><div class="callout"><strong>중요:</strong> Source는 전부 성공했지만 Publish가 일부 또는 전부 남은 경우도 <code>partial</code>입니다. 최신 Jira 사실은 확보했지만 이번 Run의 서비스 반영이 아직 완성되지 않았기 때문입니다.</div></section>
-
-<section><h2>4. FAILED — 신뢰할 수 있는 Sync 진행 자체를 만들지 못함</h2><div class="card bad"><h3>추천 정의</h3><div class="flow">예 1
-Project Discovery 자체가 FAILED / INCOMPLETE
-→ 이번 Run이 책임질 Project 범위를 신뢰할 수 없음
-
-예 2
-Discovery는 성공했지만
-처리해야 할 visible Project의 Source window가 모두 실패
-→ durable Source Commit이 하나도 없음
-
-결론
-run_status = failed</div></div><p><strong>failed는 “검색 서비스가 망가졌다”는 뜻이 아닙니다.</strong> 기존 Published Knowledge는 그대로 서비스됩니다. 단지 이번 Sync Run이 새 Source 진행을 신뢰성 있게 남기지 못했다는 뜻입니다.</p></section>
-
-<section><h2>5. unavailable Project는 실패가 아닙니다</h2><p class="lead">D6에서 기존 Project가 현재 Jira에 안 보이면 그 Project는 이번 Source Sync에서 그냥 건너뛰기로 했습니다. 따라서 unavailable 자체를 Run 실패로 세지 않습니다.</p><div class="flow">Registry
-A = visible
-B = unavailable
-C = visible
-
-이번 Run
-A Source Commit ✓
-B SKIPPED_UNAVAILABLE
-C Source Commit ✓
-
-Publish 필요한 변경분 모두 완료 ✓
-
-→ run_status = completed</div><p>B의 기존 Knowledge는 계속 Retrieval되고, Watermark도 보존됩니다.</p></section>
-
-<section><h2>6. 새 Project가 하나도 없고 변경도 0건이면?</h2><div class="flow">Discovery SUCCESS
-모든 visible Project Source window SUCCESS
-NEW = 0
-CHANGED = 0
-UNCHANGED만 존재
-Publish work = 0
-
-→ completed</div><p>“아무것도 바뀌지 않았다”는 정상적인 Sync 결과입니다.</p></section>
-
-<section><h2>7. Source는 성공했는데 Publish가 전부 실패하면?</h2><div class="flow">Discovery SUCCESS
-Project A/B/C Source Commit ✓
-Watermark advance ✓
-
-NEW/CHANGED = 5건
-Publish 성공 = 0건
-Publish 실패 = 5건
-
-Source에는 durable progress가 있음
-하지만 검색 반영은 미완료
-
-→ run_status = partial
-→ 기존 Published Knowledge는 계속 제공
-→ 다음 Resume은 실패 Stage부터</div><p>이 경우를 <code>failed</code>로 부르면 Source Commit까지 성공한 중요한 진척을 숨기게 됩니다. 그래서 <strong>partial</strong>이 더 정확합니다.</p></section>
-
-<section><h2>8. 내부 상태는 이렇게 두는 것을 추천합니다</h2><table><thead><tr><th>필드</th><th>예시 값</th><th>의미</th></tr></thead><tbody>
-<tr><td><code>discovery_status</code></td><td>completed / failed</td><td>Project 목록 비교를 신뢰할 수 있는가</td></tr>
-<tr><td><code>source_status</code></td><td>completed / partial / failed</td><td>visible Project Source window 처리 결과</td></tr>
-<tr><td><code>publish_status</code></td><td>completed / partial / failed / not_required</td><td>NEW/CHANGED의 서비스 반영 결과</td></tr>
-<tr><td><code>run_status</code></td><td>completed / partial / failed</td><td>운영자가 보는 최종 집계 상태</td></tr>
-</tbody></table></section>
-
-<section><h2>9. 현재 Collector와 달라지는 점</h2><p class="lead">현재 <code>finish_run()</code>은 Project 하나라도 실패하면 <code>partial</code>로 처리하고, 모든 Project가 실패해도 별도 <code>failed</code> 상태로 구분하지 않습니다.</p><div class="flow">현재 MVP
-failure_count > 0 또는 unfinished > 0
-→ partial
-
-운영 Contract 제안
-신뢰 가능한 진행 없음
-→ failed
-
-일부 durable progress 있음 + 미완료 있음
-→ partial
-
-모든 책임 범위 완료
-→ completed</div><p>구현 단계에서 이 집계 규칙을 운영 Sync State에 새로 반영합니다. 기존 MVP 상태 DB를 억지로 의미 변경하지 않고 확장하는 편이 안전합니다.</p></section>
-
-<section><h2>10. Decision 8 추천 결론</h2><div class="card active"><span class="badge review">PROPOSED</span><h3>최종 Run 상태는 세 가지로 고정합니다.</h3><div class="flow">COMPLETED
-= Discovery 성공
-+ 모든 visible Project Source Commit 완료
-+ 모든 필요한 Publish 완료(또는 not_required)
+하지만
+기존 Published Knowledge = 그대로
+기존 Embedding / FAISS = 그대로
+MCP Retrieval = 그대로</div><div class="callout"><strong>확정:</strong> failed는 이번 Sync가 새 Source 진척을 만들지 못했다는 뜻입니다. 기존 지식 제공을 자동 중단하지 않습니다.</div></section><section><h2>5. Decision 8 최종 규칙</h2><div class="flow">COMPLETED
+= 이번 책임 범위를 모두 완료
 
 PARTIAL
-= durable한 성공 결과가 하나 이상 있음
-+ Source 또는 Publish에 미완료/실패가 남음
+= durable progress 있음 + 남은 미완료 있음
 
 FAILED
-= Discovery를 신뢰할 수 없거나
-+ 처리해야 할 Source 범위에서 durable progress를 하나도 만들지 못함
+= Discovery 불신뢰 또는 durable Source progress 없음
 
 UNAVAILABLE Project
-= 실패로 세지 않고 skip</div></div><div class="callout"><strong>D8까지 승인되면:</strong> D1~D8 전체 결정을 하나의 공식 <strong>FROZEN Sync Contract HTML</strong>로 합치고, 다음 구현 단계인 Sync State / Project Registry DB Schema 설계로 넘어갑니다.</div></section>
-
-<footer class="footer">Sync Contract Decision 8 · D1~D7 FIXED · D8 REVIEWING · 2026-08-27</footer>
-</main></body></html>
+= SKIPPED_UNAVAILABLE
+= Run 실패 아님
+= 기존 Knowledge Retrieval 유지</div></section><footer class="footer">Decision 8 FINAL · reflected in FROZEN Sync Contract · 2026-08-27</footer></main></body></html>
