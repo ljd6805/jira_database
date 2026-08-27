@@ -3,101 +3,87 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Continuous Jira Knowledge Service Sync Contract 의사결정 초안. Project별 Watermark는 확정, Overlap Window를 검토 중인 문서">
+<meta name="description" content="Continuous Jira Knowledge Service Sync Contract 의사결정 초안. Project별 Watermark와 5분 Overlap은 확정, new/changed/unchanged 판정을 검토 중인 문서">
 <title>Sync Contract · Decision Draft</title>
 <style>
-:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827;--shadow:0 10px 28px rgba(31,49,84,.07)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7);box-shadow:var(--shadow)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px;margin:0 0 10px}.lead{color:var(--muted);max-width:900px}.flow,pre{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card h3{margin-top:0}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.active{border:2px solid var(--blue);background:#edf3ff}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}.draft{background:#fff1d7;color:#8a5700}.review{background:#e9eeff;color:#2548b5}.fixed{background:#e5f7ef;color:#0c6c4a}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.decision{display:grid;grid-template-columns:52px minmax(0,1fr);gap:14px;padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff;margin:12px 0}.num{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:var(--blue);color:#fff;font-weight:900}.decision h3{margin:0 0 6px}.decision p{margin:5px 0;color:#44516a}.decision small{color:var(--muted)}.compare{display:grid;grid-template-columns:1fr 60px 1fr;gap:12px;align-items:center}.compare .mid{text-align:center;font-weight:900;color:var(--blue)}.timeline{display:flex;align-items:stretch;gap:8px;overflow:auto;padding:8px 0}.time{min-width:150px;padding:14px;border:1px solid var(--line);border-radius:13px;background:#fff;text-align:center}.time strong{display:block}.arrow{display:grid;place-items:center;min-width:26px;font-weight:900;color:var(--blue)}.footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2,.grid3,.compare{grid-template-columns:1fr}.compare .mid{transform:rotate(90deg)}}
+:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827;--shadow:0 10px 28px rgba(31,49,84,.07)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7);box-shadow:var(--shadow)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.12}.hero p{max-width:900px;color:rgba(255,255,255,.9)}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px;margin:0 0 10px}.lead{color:var(--muted);max-width:900px}.flow,pre{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card h3{margin-top:0}.good{border-left:5px solid var(--green);background:#eaf8f3}.warn{border-left:5px solid var(--amber);background:#fff6e9}.active{border:2px solid var(--blue);background:#edf3ff}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.callout.warn{border-color:var(--amber);background:#fff6e9}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900}.draft{background:#fff1d7;color:#8a5700}.review{background:#e9eeff;color:#2548b5}.fixed{background:#e5f7ef;color:#0c6c4a}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.compare{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.case{padding:18px;border-radius:15px;border:1px solid var(--line);background:#fff}.case b{font-size:18px}.footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2,.grid3,.compare{grid-template-columns:1fr}}
 </style>
 </head>
 <body><main class="wrap">
 <nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_knowledge_pipeline_full_explained.html">전체 Pipeline 학습</a><a href="jira_sync_contract_explained.html">Sync Contract 학습</a><a href="jira_knowledge_operational_service_phase.html">Operational Service Phase</a></nav>
-<header class="hero"><div>SYNC CONTRACT · DECISION DRAFT · 2026-08-27</div><h1>Sync 운영 규칙을<br>하나씩 확정합니다.</h1><p>Continuous Jira Knowledge Service 구현 전에 Watermark, Overlap, 변경 판정, 재개와 Publish 의미를 항목별로 합의하는 문서입니다. 현재 Decision 1은 확정했고 Decision 2를 검토합니다.</p><span class="state">DRAFT · DECISION 1 FIXED · DECISION 2 REVIEWING · NO IMPLEMENTATION YET</span></header>
-
-<section><h2>1. 진행 상태</h2><div class="flow">M0~M11 Functional MVP = DONE / PASS
-
-학습 1: 전체 Pipeline 이해          DONE
-학습 2: Sync Contract 개념 이해     DONE
-
-Sync Contract Decisions
-1. Project별 committed Watermark     FIXED
-2. Overlap Window                    NOW REVIEWING
-3. new / changed / unchanged         NEXT
-4. source_hash v2                    DRAFT
+<header class="hero"><div>SYNC CONTRACT · DECISION DRAFT · 2026-08-27</div><h1>Sync 운영 규칙을<br>하나씩 확정합니다.</h1><p>Continuous Jira Knowledge Service 구현 전에 Watermark, Overlap, 변경 판정, 재개와 Publish 의미를 항목별로 합의하는 문서입니다.</p><span class="state">DRAFT · D1 WATERMARK FIXED · D2 OVERLAP FIXED · D3 CHANGE CLASSIFICATION REVIEWING</span></header>
+<section><h2>1. 진행 상태</h2><div class="flow">1. Project별 committed Watermark     FIXED
+2. Overlap Window = 5분              FIXED
+3. new / changed / unchanged         NOW REVIEWING
+4. source_hash v2                    NEXT
 5. Checkpoint / Resume               DRAFT
 6. Project Registry / 접근 상실      DRAFT
 7. Source Commit vs Publish          DRAFT
 8. Sync Run 완료 상태                DRAFT</div></section>
+<section><h2>2. 이미 확정한 두 가지</h2><div class="grid2"><div class="card good"><span class="badge fixed">D1 FIXED</span><h3>Project별 Watermark</h3><p>Project마다 “여기까지 안전하게 수집했다”는 책갈피를 따로 둡니다. 한 Project 실패가 다른 Project의 진행을 막지 않습니다.</p></div><div class="card good"><span class="badge fixed">D2 FIXED</span><h3>5분 Overlap + 고정 upper</h3><p><code>lower = watermark - 5분</code>, <code>updated &gt;= lower AND updated &lt; upper</code> 범위로 조회합니다. 정렬은 <code>updated ASC, id ASC</code>를 기본 계약으로 둡니다.</p></div></div></section>
+<section><h2>3. Decision 3 — 후보와 실제 변경은 다릅니다</h2><p class="lead">Jira의 <code>updated</code>는 “이 Issue를 다시 검사해 보라”는 신호입니다. 그것만 보고 Knowledge를 다시 만들지는 않습니다.</p><div class="flow">JQL updated 범위 검색
+       ↓
+변경 후보 Issue 발견
+       ↓
+최신 source snapshot 구성
+       ↓
+source_hash 계산
+       ↓
+기존 상태와 비교
+       ├─ 처음 보는 jira_id        → NEW
+       ├─ 같은 jira_id + hash 다름 → CHANGED
+       └─ 같은 jira_id + hash 같음 → UNCHANGED</div><div class="callout"><strong>핵심:</strong> <code>updated</code>는 후보 탐색용, <code>source_hash</code>는 실제 변경 판정용입니다.</div></section>
+<section><h2>4. 세 가지 상태를 아주 쉽게</h2><div class="compare"><div class="case good"><b>NEW</b><p>우리 시스템이 처음 보는 <code>jira_id</code>입니다.</p><div class="flow">jira_id = 10042
+기존 source 상태에 없음
+→ NEW</div><p>새 Issue Version부터 Knowledge, Embedding, FAISS까지 처리합니다.</p></div><div class="case warn"><b>CHANGED</b><p>같은 Issue인데 실제 업무 내용 묶음의 지문이 달라졌습니다.</p><div class="flow">jira_id = 10042
+old hash = AAA
+new hash = BBB
+→ CHANGED</div><p>새 Issue Version을 만들고 변경분을 downstream에 전달합니다.</p></div><div class="case"><b>UNCHANGED</b><p>Overlap 때문에 다시 발견했지만 실제 내용은 같습니다.</p><div class="flow">jira_id = 10042
+old hash = AAA
+new hash = AAA
+→ UNCHANGED</div><p>기존 Version / Knowledge / Embedding을 재사용합니다.</p></div></div></section>
+<section><h2>5. 왜 issue_key가 아니라 jira_id인가?</h2><p class="lead"><code>ABC-123</code> 같은 Issue Key는 사람이 보기 좋은 이름입니다. Jira 내부 ID는 같은 Issue의 안정적인 identity로 사용합니다.</p><div class="flow">어제
+jira_id = 10042
+issue_key = OLD-123
 
-<section><h2>2. 전체 의사결정 보드</h2>
-<div class="decision"><div class="num">1</div><div><span class="badge fixed">FIXED</span><h3>Project별 committed Watermark</h3><p>각 Project가 독립적인 마지막 안전 수집 시점을 가진다. Project가 실패하면 그 Project Watermark는 이동하지 않는다.</p></div></div>
-<div class="decision active"><div class="num">2</div><div><span class="badge review">NOW REVIEWING</span><h3>Overlap Window</h3><p>지난 Watermark보다 조금 앞에서 다시 조회해 경계 시각의 변경 누락을 방지한다.</p><small>현재 추천값: 5분</small></div></div>
-<div class="decision"><div class="num">3</div><div><span class="badge draft">NEXT</span><h3>new / changed / unchanged 판정</h3><p>Jira ID와 source_hash로 하위 파이프라인 재처리 여부를 결정한다.</p></div></div>
-<div class="decision"><div class="num">4</div><div><span class="badge draft">DRAFT</span><h3>source_hash v2</h3><p>업무 의미 변화만 Version 변화가 되도록 hash 재료를 검토한다.</p></div></div>
-<div class="decision"><div class="num">5</div><div><span class="badge draft">DRAFT</span><h3>Checkpoint / Resume</h3><p>부분 실패 시 성공 작업을 보존하고 실패 지점부터 재개한다.</p></div></div>
-<div class="decision"><div class="num">6</div><div><span class="badge draft">DRAFT</span><h3>Project Registry / 접근 상실</h3><p>새 Project, 기존 Project, 더 이상 보이지 않는 Project 상태를 관리한다.</p></div></div>
-<div class="decision"><div class="num">7</div><div><span class="badge draft">DRAFT</span><h3>Source Commit vs Publish</h3><p>Jira 원본 확보 완료와 검색 서비스 반영 완료를 분리한다.</p></div></div>
-<div class="decision"><div class="num">8</div><div><span class="badge draft">DRAFT</span><h3>Sync Run 완료 상태</h3><p>completed / partial / failed의 정확한 의미를 정의한다.</p></div></div>
-</section>
+Key 변경 / Project 이동
 
-<section><h2>3. Decision 1 · 확정 내용</h2><div class="card good"><span class="badge fixed">FIXED</span><h3>Project마다 독립적인 committed Watermark를 가진다.</h3><div class="flow">Project A → 10:30
-Project B → 09:50  ← 이번 Sync 실패
-Project C → 10:30
+오늘
+jira_id = 10042
+issue_key = NEW-987
 
-다음 Sync
-A → 10:30 부근부터
-B → 09:50 부근부터 다시
-C → 10:30 부근부터</div><p>한 Project 실패가 다른 Project의 진행을 막지 않도록 합니다. Watermark는 해당 Project의 Jira source 수집과 변경 후보 확인이 안전하게 끝난 뒤에만 전진합니다.</p></div></section>
+→ 같은 jira_id
+→ NEW 아님
+→ 현재 key/project metadata는 갱신</div><div class="callout"><strong>현재 DB도 이 원칙입니다.</strong> <code>issue.jira_id</code>가 Primary Key이고 동일 jira_id가 다시 들어오면 현재 issue_key/project_key를 갱신합니다.</div></section>
+<section><h2>6. 왜 source_hash를 쓰나?</h2><p class="lead">source_hash는 Issue 하나의 “업무 내용 묶음 지문”입니다. 현재 코드도 Issue, Comment, Attachment metadata, Relationship, Custom Field를 한 묶음으로 canonicalize해서 SHA-256을 계산합니다.</p><div class="flow">Issue 핵심 내용
++ Comments
++ Attachment metadata
++ Relationships
++ Custom Fields
+        ↓ canonical JSON
+SHA-256
+        ↓
+source_hash</div><p>Description은 그대로여도 댓글이 새로 추가되거나 관계/Custom Field가 달라지면 hash가 달라질 수 있습니다.</p><div class="callout warn"><strong>단, hash에 정확히 어떤 필드를 넣을지는 Decision 4에서 다시 봅니다.</strong> 특히 <code>updated_at</code> 같은 시간 정보가 “실제 지식 변화”인지 따로 판단합니다.</div></section>
+<section><h2>7. Overlap이 있어도 비싼 재처리를 막을 수 있습니다</h2><div class="flow">Watermark 10:30
+Overlap 5분
+→ 10:25~ 구간 다시 조회
 
-<section><h2>4. Decision 2 — Overlap이 왜 필요한가?</h2><p class="lead">Watermark가 10:30이라고 해서 다음 조회를 정확히 10:30 이후부터만 시작하면 경계에 걸린 변경을 놓칠 가능성이 있습니다. 그래서 책갈피보다 몇 쪽 앞에서 다시 읽습니다.</p>
-<div class="timeline"><div class="time"><strong>10:25</strong><span>다시 확인 시작</span></div><div class="arrow">→</div><div class="time"><strong>10:30</strong><span>지난 Watermark</span></div><div class="arrow">→</div><div class="time"><strong>10:40</strong><span>이번 Sync 상한</span></div></div>
-<div class="flow">지난 committed watermark = 10:30
-Overlap = 5분
-이번 Sync upper bound = 10:40
+ABC-1 다시 발견 → hash 같음 → UNCHANGED → downstream 없음
+ABC-2 다시 발견 → hash 같음 → UNCHANGED → downstream 없음
+ABC-3 댓글 추가   → hash 다름 → CHANGED → downstream 실행</div><p>Overlap 때문에 Jira 후보를 조금 더 확인하더라도 Knowledge 생성이나 BGE-M3 embedding 같은 비싼 작업은 실제 new/changed에만 수행합니다.</p></section>
+<section><h2>8. 처리 규칙 초안</h2><table><thead><tr><th>판정</th><th>조건</th><th>Issue Version</th><th>Knowledge / Embedding / FAISS</th></tr></thead><tbody><tr><td><strong>NEW</strong></td><td>jira_id가 기존 source 상태에 없음</td><td>새 Version</td><td>전체 downstream</td></tr><tr><td><strong>CHANGED</strong></td><td>jira_id 존재 + source_hash 변경</td><td>새 Version</td><td>변경분 downstream</td></tr><tr><td><strong>UNCHANGED</strong></td><td>jira_id 존재 + source_hash 동일</td><td>기존 Version 재사용</td><td>재사용, 새 생성 없음</td></tr></tbody></table></section>
+<section><h2>9. 중요한 경계 — source 변경과 Publish 성공은 다릅니다</h2><p class="lead">Jira source 수집과 CHANGED 판정은 성공했지만 Knowledge 생성이 실패할 수도 있습니다.</p><div class="flow">Jira source 수집       SUCCESS
+source_hash 판정        CHANGED
+Knowledge 생성          FAILED
 
-실제 조회 범위
-10:25 이상 ~ 10:40 미만
+다음 Sync에서
+"Jira 내용이 그대로니까 UNCHANGED, 끝"
+으로 처리하면 안 됨
 
-10:25~10:30 데이터는 다시 볼 수 있음
-→ 중복 후보 허용
-→ 뒤의 source_hash 판정에서 unchanged면 재처리하지 않음</div>
-<div class="callout"><strong>핵심 생각:</strong> Sync에서는 “조금 더 읽는 비용”보다 “한 건을 영원히 놓치는 위험”이 더 큽니다. 중복은 뒤에서 제거할 수 있지만, 누락은 발견하기 어렵습니다.</div></section>
-
-<section><h2>5. 왜 0분이 아니라 최소한의 Overlap을 두나?</h2><div class="grid3"><div class="card warn"><h3>시간 경계</h3><p>JQL의 날짜/시간 표현은 분 단위이므로 같은 분에 여러 변경이 모일 수 있습니다. 경계를 딱 잘라 읽는 것보다 겹쳐 읽는 편이 안전합니다.</p></div><div class="card warn"><h3>검색 중 데이터 이동</h3><p>페이지를 읽는 동안 Jira가 계속 변경되면 검색 결과 위치가 움직일 수 있습니다. Atlassian도 pagination에서 이런 현상을 설명합니다.</p></div><div class="card good"><h3>중복은 안전하게 제거 가능</h3><p>Overlap으로 같은 Issue를 다시 수집하더라도 이후 Jira ID와 source_hash로 unchanged를 판별할 수 있습니다.</p></div></div></section>
-
-<section><h2>6. Overlap을 너무 작게/크게 잡으면?</h2><table><thead><tr><th>값</th><th>장점</th><th>문제</th></tr></thead><tbody>
-<tr><td>0분</td><td>중복 최소</td><td>경계 누락에 가장 취약</td></tr>
-<tr><td>1분</td><td>분 단위 경계는 어느 정도 보호</td><td>여유가 작고 운영 환경 차이에 민감</td></tr>
-<tr><td><strong>5분</strong></td><td>안전 여유가 있고 중복량도 작음</td><td>일부 Issue를 다시 확인함</td></tr>
-<tr><td>30분+</td><td>누락 방지 여유 큼</td><td>매 Sync마다 불필요한 재조회가 많아짐</td></tr>
-</tbody></table>
-<div class="callout good"><strong>현재 추천:</strong> 파일럿/초기 운영은 <strong>5분 Overlap</strong>. Jira 호출 제한이 20 req/min이고 delta-first 구조이므로 5분 정도의 중복 후보 비용은 감당 가능하고, 누락 방지 쪽에 더 무게를 두는 것이 좋습니다.</div></section>
-
-<section><h2>7. 조회 범위는 시작점뿐 아니라 끝점도 고정합니다</h2><p class="lead">Overlap만 두고 조회 상한을 열어두면, 페이지를 읽는 동안 새 Issue가 계속 들어와 결과 위치가 흔들릴 수 있습니다. 따라서 이번 Sync가 책임질 끝 시각도 먼저 정합니다.</p>
-<div class="flow">lower = committed_watermark - 5 minutes
-upper = sync 시작 시 정한 안전한 기준 시각
-
-JQL 개념
-project = ABC
-AND updated >= lower
-AND updated < upper
-ORDER BY updated ASC, id ASC</div>
-<div class="grid2"><div class="card"><h3>왜 <code>&gt;= lower</code>?</h3><p>Overlap 구간의 시작점까지 다시 포함해 누락보다 중복을 선택합니다.</p></div><div class="card"><h3>왜 <code>&lt; upper</code>?</h3><p>이번 실행이 읽는 데이터 집합을 고정합니다. upper 이후 변경은 다음 Sync가 담당합니다.</p></div></div>
-<div class="callout warn"><strong>주의:</strong> 구체적인 Jira server timezone 변환/upper 시각 획득 방식은 구현 명세에서 실제 사내 Jira 응답으로 검증합니다. 이 Decision에서는 “고정 lower/upper 범위를 사용한다”는 계약만 다룹니다.</div></section>
-
-<section><h2>8. Pagination 정렬도 함께 안전하게</h2><div class="flow">ORDER BY updated ASC, id ASC
-
-updated가 같은 Issue가 여러 개여도
-→ Jira id를 두 번째 기준으로 사용
-→ 페이지 간 순서를 더 안정적으로 유지</div><p>Atlassian은 동일 정렬값이 많을 때 결과 순서를 보장하기 어렵기 때문에 두 번째 정렬 기준을 추가하는 방식을 안내합니다. 따라서 Delta 조회도 단일 <code>updated</code> 정렬보다 안정적인 tie-breaker를 둡니다.</p></section>
-
-<section><h2>9. Decision 2의 현재 추천 결론</h2><div class="card active"><span class="badge review">PROPOSED</span><h3>Project별 Delta 조회에 5분 Overlap과 고정 upper bound를 사용한다.</h3><div class="flow">lower = project.committed_watermark - 5m
-upper = 이번 Sync가 시작할 때 고정한 기준 시각
-
-updated >= lower
-updated < upper
-ORDER BY updated ASC, id ASC</div><p>Overlap에서 생긴 중복 후보는 허용합니다. 실제 재처리 여부는 다음 Decision인 <strong>new / changed / unchanged</strong> 판정에서 결정합니다.</p></div></section>
-
-<section><h2>10. 다음 Decision</h2><div class="card"><span class="badge draft">NEXT</span><h3>Decision 3 · new / changed / unchanged</h3><p>Overlap 때문에 다시 발견된 Issue와 정말 새로 바뀐 Issue를 어떻게 구분할지 결정합니다. 여기서 <code>jira_id</code>와 <code>source_hash</code>가 핵심 역할을 합니다.</p></div></section>
-
-<footer class="footer">Sync Contract Decision Draft · Decision 1 FIXED · Decision 2 under review · no implementation yet · 2026-08-27</footer>
+→ source 변경 사실은 durable하게 기억
+→ 실패한 downstream은 다시 수행</div><div class="callout"><strong>정확한 checkpoint와 publish 상태는 Decision 5와 7에서 확정합니다.</strong> Decision 3에서는 source 변경 판정과 서비스 반영 완료를 같은 것으로 보지 않는다는 경계만 둡니다.</div></section>
+<section><h2>10. Decision 3 추천 결론</h2><div class="card active"><span class="badge review">PROPOSED</span><h3><code>jira_id + source_hash</code>로 NEW / CHANGED / UNCHANGED를 판정한다.</h3><div class="flow">jira_id 없음                 → NEW
+jira_id 있음 + hash 다름     → CHANGED
+jira_id 있음 + hash 같음     → UNCHANGED</div><p>Jira <code>updated</code>는 Delta 후보 탐색에만 사용합니다. Issue Key가 바뀌어도 같은 jira_id라면 새로운 Issue로 보지 않습니다.</p></div><div class="callout warn"><strong>아직 D3는 FROZEN 아님.</strong> 승인하면 FIXED로 올리고 Decision 4 source_hash v2로 넘어갑니다.</div></section>
+<footer class="footer">Sync Contract Decision Draft · D1/D2 FIXED · D3 under review · no implementation yet · 2026-08-27</footer>
 </main></body></html>
