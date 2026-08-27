@@ -1,19 +1,36 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M11 Troubleshooting · OpenCode MCP Connection closed</title><link rel="stylesheet" href="milestone.css"></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M11_OPENCODE_MCP_INTEGRATION.html">M11 OpenCode MCP Integration</a></nav><header class="hero"><span class="eyebrow">M11 TROUBLESHOOTING · 2026-08-27</span><h1>OpenCode MCP error -32000:<br>Connection closed</h1><p>OpenCode가 local stdio MCP 프로세스를 시작했지만 handshake를 완료하기 전에 연결이 닫힌 경우의 진단 기록입니다.</p><span class="state">M11-02 TROUBLESHOOTING</span></header><section><h2>실제 관찰된 메시지</h2><div class="flow">jira-knowledge failed
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M11 Troubleshooting · OpenCode MCP Connection closed</title><link rel="stylesheet" href="milestone.css"></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M11_OPENCODE_MCP_INTEGRATION.html">M11 OpenCode MCP Integration</a></nav><header class="hero"><span class="eyebrow">M11 TROUBLESHOOTING · 2026-08-27</span><h1>OpenCode MCP error -32000:<br>Connection closed</h1><p>OpenCode가 local stdio MCP 프로세스를 시작하지만 handshake를 완료하지 못하는 경우의 단계별 진단 기록입니다.</p><span class="state">M11-02 TROUBLESHOOTING · STDIO BOUNDARY ISOLATION</span></header><section><h2>현재까지 실제 관찰</h2><div class="flow">1) OpenCode
+jira-knowledge failed
 MCP error -32000: Connection closed
-python -m jira_collector.mcp_server.server</div></section><section><h2>직접 실행에서 발견한 RuntimeWarning</h2><div class="flow">&lt;frozen runpy&gt;:128: RuntimeWarning:
+python -m jira_collector.mcp_server.server
+
+2) PowerShell 직접 실행
+python -m jira_collector.mcp_server.server
+→ RuntimeWarning 수정 후 아무 출력 없이 계속 대기
+→ stdio server process 자체는 살아 있음
+
+3) OpenCode 재시도
+→ 여전히 Connection closed</div><p>따라서 현재는 <code>.env</code>, SQLite, FAISS가 즉시 프로세스를 죽이는 단계는 지나갔습니다. 다만 터미널에서 대기한다는 사실만으로 MCP initialize handshake가 정상이라고 판정할 수는 없습니다.</p></section><section><h2>처음 발견했던 RuntimeWarning</h2><div class="flow">&lt;frozen runpy&gt;:128: RuntimeWarning:
 'jira_collector.mcp_server.server' found in sys.modules after import of package
 'jira_collector.mcp_server', but prior to execution of
-'jira_collector.mcp_server.server'; this may result in unpredictable behaviour</div><p>이 메시지는 traceback이 있는 치명적 예외가 아니라 Python의 <code>RuntimeWarning</code>입니다. 따라서 이것만으로 OpenCode의 Connection closed 원인을 확정하지 않습니다. 다만 stdio MCP entrypoint의 import 구조가 잘못됐다는 신호이므로 먼저 제거했습니다.</p></section><section><h2>원인</h2><div class="flow">python -m jira_collector.mcp_server.server
-        ↓
-Python이 먼저 package __init__.py import
-        ↓
-__init__.py가 .server를 eager import
-        ↓
-server 모듈이 sys.modules에 이미 존재
-        ↓
-runpy가 같은 server 모듈을 다시 -m으로 실행
-        ↓
-RuntimeWarning</div></section><section><h2>수정</h2><p><code>jira_collector.mcp_server.__init__</code>에서 <code>server.py</code>를 즉시 import하지 않고 <code>create_mcp_server()</code> 호출 시에만 지연 import하도록 변경했습니다. 기존 public import API는 유지합니다.</p></section><section><h2>재검증 순서 · Windows PowerShell</h2><div class="flow">git pull
+'jira_collector.mcp_server.server'</div><p>이 경고는 <code>mcp_server.__init__</code>의 eager import 때문에 생겼고 lazy import로 수정했습니다. 이후 직접 실행에서 경고가 사라지고 서버가 정상 대기하는 것을 확인했습니다.</p></section><section><h2>왜 아직 원인이 확정되지 않았나?</h2><div class="flow">터미널 직접 실행
+= 프로세스가 시작되고 stdin을 기다릴 수 있는지 확인
 
-python -m jira_collector.mcp_server.server</div><p>정상이라면 RuntimeWarning 없이 프로세스가 종료되지 않고 stdio 요청을 기다립니다. 직접 실행에서는 <code>Ctrl+C</code>로 종료합니다.</p><div class="flow">opencode mcp list</div><p>그 다음 OpenCode 연결을 다시 확인합니다. 여전히 <code>Connection closed</code>라면 다음 원인은 Python executable, cwd, MCP handshake/protocol 순서로 분리해서 조사합니다.</p></section><section><h2>중요한 판단</h2><div class="callout warn"><strong>아직 M11-02 PASS가 아닙니다.</strong> RuntimeWarning 수정은 한 원인을 제거한 것입니다. 실제 <code>opencode mcp list</code>에서 <code>jira-knowledge</code>가 connected 상태가 되어야 OpenCode 등록 Gate를 PASS로 판정합니다.</div></section><footer>M11 troubleshooting · OpenCode local stdio MCP · import-order warning fixed · 2026-08-27</footer></main></body></html>
+실제 MCP host 연결
+= subprocess spawn
+  → MCP initialize JSON-RPC
+  → initialize response
+  → notifications/initialized
+  → tools/list
+
+OpenCode 실패는 이 handshake 경계에서 발생할 수 있음</div></section><section><h2>다음 진단: OpenCode를 제외한 실제 stdio handshake</h2><p>공식 MCP Python Client가 우리 서버를 실제 subprocess로 띄워 <code>initialize → tools/list</code>를 수행하는 검증기를 추가했습니다.</p><div class="flow">git pull
+python tools/jira_knowledge/validate_m11_stdio_transport.py</div><p>정상이면 다음처럼 안전한 정보만 출력합니다.</p><div class="flow">python_executable: ...
+tool_count: 2
+tools: get_jira_issue, search_jira_knowledge
+M11_STDIO_HANDSHAKE = PASS</div><p>실패하면 실제 Jira 내용이나 secret 대신 실패 stage와 exception type만 출력합니다.</p><div class="flow">failure_stage: spawn_or_initialize 또는 list_tools
+error_type: ...
+M11_STDIO_HANDSHAKE = FAIL</div></section><section><h2>결과 해석</h2><table><thead><tr><th>stdio validator</th><th>OpenCode</th><th>판단</th></tr></thead><tbody><tr><td>PASS</td><td>Connection closed</td><td>우리 MCP stdio는 정상. OpenCode의 Python executable / cwd / host compatibility를 조사</td></tr><tr><td>FAIL · spawn_or_initialize</td><td>Connection closed</td><td>우리 subprocess stdio initialize 경계 문제. OpenCode보다 먼저 MCP transport를 수정</td></tr><tr><td>PASS</td><td>connected</td><td>M11-02 등록 + M11-03 Tool discovery PASS 후보</td></tr></tbody></table></section><section><h2>PASS인데 OpenCode만 실패하면 다음 순서</h2><div class="flow">1. python -c "import sys; print(sys.executable)"
+2. opencode.jsonc command를 해당 python 절대경로로 임시 고정
+3. cwd가 실제 jira_database workspace인지 확인
+4. opencode mcp list 재실행
+5. 필요 시 OpenCode MCP 로그/프로토콜 호환성 조사</div><p>처음부터 protocol 문제라고 단정하지 않고 executable과 cwd를 먼저 제거합니다.</p></section><section><h2>중요한 판단</h2><div class="callout warn"><strong>아직 M11-02 PASS가 아닙니다.</strong> 실제 <code>opencode mcp list</code>에서 <code>jira-knowledge</code>가 connected가 되어야 등록 Gate를 PASS로 판정합니다.</div></section><footer>M11 troubleshooting · direct server alive · external stdio handshake isolation next · 2026-08-27</footer></main></body></html>
