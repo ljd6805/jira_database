@@ -1,7 +1,7 @@
 <!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="FROZEN Sync Contract를 Operational State DB로 옮기기 위한 최신 Schema 설계 보드. S1~S5 FIXED, S6 ID/Key Strategy 검토 중."><title>Sync State / Project Registry · Schema Design Board</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 86px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#1a2e52,#3157d5 66%,#718cec)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px}.lead{color:var(--muted)}.grid2,.grid4{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.current{border:2px solid var(--blue);background:#edf3ff}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e5f7ef;color:#0c6c4a;font-size:11px;font-weight:900}.review{background:#e9eeff;color:#2548b5}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff}.footer{margin-top:58px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:820px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">FROZEN Sync Contract</a><a href="jira_sync_state_schema_decision6_id_key_strategy.html">S6 Current</a></nav><header class="hero"><div>POST-CONTRACT · SYNC STATE SCHEMA · 2026-08-27</div><h1>Sync State / Project Registry<br>Schema Design Board</h1><p>FROZEN Sync Contract D1~D8을 기존 State DB에 안전하게 옮기기 위한 설계 상태판입니다. S1~S5는 확정했고 현재 S6 ID / Key Strategy를 검토합니다.</p><span class="state">S1~S5 FIXED · S6 REVIEWING · NO IMPLEMENTATION YET</span></header>
+<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="FROZEN Sync Contract를 Operational State DB로 옮기기 위한 최신 Schema 설계 보드. S1~S6 FIXED, S7 Final DDL 검토 중."><title>Sync State / Project Registry · Schema Design Board</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 86px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#1a2e52,#3157d5 66%,#718cec)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:46px}h2{font-size:29px}.lead{color:var(--muted)}.grid2,.grid4{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.current{border:2px solid var(--blue);background:#edf3ff}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e5f7ef;color:#0c6c4a;font-size:11px;font-weight:900}.review{background:#e9eeff;color:#2548b5}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff}.footer{margin-top:58px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:820px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">FROZEN Sync Contract</a><a href="jira_sync_state_schema_decision7_final_ddl.html">S7 Current</a></nav><header class="hero"><div>POST-CONTRACT · SYNC STATE SCHEMA · 2026-08-27</div><h1>Sync State / Project Registry<br>Schema Design Board</h1><p>FROZEN Sync Contract D1~D8을 기존 State DB에 안전하게 옮기기 위한 설계 상태판입니다. <strong>S1~S6은 확정</strong>했고 현재 마지막 설계 결정인 <strong>S7 Final SQLite DDL</strong>을 검토합니다.</p><span class="state">S1~S6 FIXED · S7 REVIEWING · NO IMPLEMENTATION YET</span></header>
 <section><h2>1. 결정 진행 상태</h2><div class="flow">S1 Storage Location        FIXED
-→ existing data/state/collector.db 확장
+→ existing data/state/collector.db
 
 S2 Entity Layout           FIXED
 → 4 operational domain tables
@@ -14,53 +14,54 @@ S4 Transaction Boundary   FIXED
 → durable output first, State second
 
 S5 Migration Contract     FIXED
-→ State Schema v1
-→ explicit migration / backup / validation / rollback
+→ State Schema v1 / backup / validation / rollback
 
-S6 ID / Key Strategy      REVIEWING
-→ external ID / run ID / deterministic work ID
+S6 ID / Key Strategy      FIXED
+→ Jira external IDs
+→ sr_ UUID4 Run ID
+→ sw_ deterministic Work ID
 → PK / FK / UNIQUE
 
-NEXT
-S7 actual DDL / CHECK / INDEX
-→ Schema Contract FROZEN
-→ implementation</div></section>
-<section><h2>2. 확정된 4개 Operational Domain Table</h2><div class="grid4"><div class="card"><h3>sync_run</h3><p>Run 전체 범위, fixed upper, 집계 상태.</p></div><div class="card"><h3>project_state</h3><p>Project identity, visibility, committed Watermark.</p></div><div class="card"><h3>sync_project_run</h3><p>Run × Project lower/upper, counts, Source cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>NEW/CHANGED의 Knowledge→Embedding→Publish Work Item.</p></div></div></section>
-<section><h2>3. S3~S5 핵심 안전 규칙</h2><div class="flow">Per candidate
-→ actual Source durable
-→ classification + count + cursor commit
+S7 Final DDL              REVIEWING
+→ CREATE TABLE / CHECK / FK / UNIQUE / INDEX
 
-Project Source complete
-→ source_committed + committed_watermark same transaction
+승인 후
+→ Sync State Schema Contract FROZEN
+→ Migration + StateStore implementation</div></section>
+<section><h2>2. 최종 Domain 구조</h2><div class="grid4"><div class="card"><h3>sync_run</h3><p>Run 전체 범위, fixed upper, 집계 상태.</p></div><div class="card"><h3>project_state</h3><p>Project identity, visibility, committed Watermark.</p></div><div class="card"><h3>sync_project_run</h3><p>Run × Project lower/upper, counts, Source cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>NEW/CHANGED의 Knowledge→Embedding→Publish Work Item.</p></div></div><div class="callout"><strong>별도 기술 메타:</strong> <code>state_schema_migration</code>은 Migration 감사용이며 4개 Operational Domain Table에는 포함되지 않습니다.</div></section>
+<section><h2>3. 확정된 Identity / Transaction</h2><div class="flow">project_state PK
+→ Jira project_id
 
-Downstream
-→ actual durable artifact first
-→ State completed second
+sync_run PK
+→ sr_ + UUID4
 
-Publish
-→ actual active Retrieval first
-→ State published second
+sync_project_run PK
+→ (sync_run_id, project_id)
 
-Migration
-→ explicit only
-→ known legacy fingerprint only
-→ consistent backup
-→ additive v1
-→ validation/regression PASS after cutover</div></section>
-<section><h2>4. 현재 S6 · ID / Key Strategy</h2><div class="card current"><span class="badge review">REVIEWING</span><h3>Identity 성격에 따라 다른 Key를 사용</h3><div class="flow">External identity
-project_id / jira_id
-→ Jira 값을 그대로 사용
+sync_issue_change PK
+→ sw_ + deterministic SHA-256
+→ UNIQUE(jira_id, source_hash, source_hash_profile)
 
-Execution identity
-sync_run_id
-→ sr_ + UUID4 full hex
+Project Source Commit
+→ source_committed + Watermark same transaction
 
-Semantic Work identity
-work_item_id
-→ sw_ + deterministic full SHA-256
-→ material = jira_id + source_hash + source_hash_profile
+Downstream / Publish
+→ actual durable result first
+→ State completed/published second</div></section>
+<section><h2>4. 현재 S7 · Final DDL</h2><div class="card current"><span class="badge review">REVIEWING</span><h3>구조적 모순은 DB가 막고, cross-system 불변식은 명시적 코드로 강제</h3><p>PK/FK/enum/count/cursor/stage dependency/semantic Work Item 중복은 SQLite Constraint로 막습니다. Watermark atomicity, Knowledge DB logical ID 존재, 실제 Retrieval Publish와 같은 cross-row/cross-DB 규칙은 S4 Transaction method와 validation test로 강제합니다.</p><div class="flow">DB Constraint
+→ CHECK / PK / FK / UNIQUE
 
-Run × Project
-→ PRIMARY KEY(sync_run_id, project_id)</div><p>State DB 내부 관계는 SQLite FK를 사용하고, Knowledge DB의 <code>issue_version_id</code>/<code>knowledge_generation_id</code>는 cross-DB physical FK 없이 logical reference로 유지하는 안입니다.</p></div></section>
-<section><h2>5. Migration Contract는 FIXED</h2><div class="grid2"><div class="card good"><h3>State Schema v1</h3><p><code>PRAGMA user_version = 1</code>. version 0은 legacy fingerprint 확인 후에만 migration합니다.</p></div><div class="card"><h3>No Guess Backfill</h3><p>Legacy 기록에서 stable project_id나 Watermark를 추정하지 않습니다. 첫 Operational Sync에서 정식 상태를 만듭니다.</p></div></div></section>
-<section><h2>6. 아직 구현하지 않습니다</h2><p class="lead">S6와 S7의 실제 DDL/constraint/index를 확정한 뒤 하나의 Sync State Schema Contract로 Freeze하고, 그 다음 migration/StateStore 구현으로 넘어갑니다.</p></section><footer class="footer">Sync State Schema Design Board · S1~S5 FIXED · S6 REVIEWING · 2026-08-27</footer></main></body></html>
+Application Contract
+→ source_committed + watermark transaction
+→ Knowledge DB reference verification
+→ actual Retrieval active pointer verification
+→ Source Head vs Published Head reconciliation</div></div></section>
+<section><h2>5. 재등장 semantic state 처리</h2><div class="card good"><p>Issue가 <code>A → B → A</code>로 돌아와도 A의 deterministic Work Item을 새로 만들지 않습니다. 이미 만든 Knowledge/Embedding은 재사용하고, 현재 Published Head가 B라면 A의 Publish만 다시 수행합니다.</p></div><p>따라서 <code>publish_status='published'</code> 이력 하나만으로 현재성이 결정되지 않으며, D7에 따라 <strong>현재 Source Head와 실제 Published Head</strong>를 비교합니다.</p></section>
+<section><h2>6. S7 승인 후 바로 하는 일</h2><div class="flow">S7 APPROVED
+→ S1~S7 통합
+→ Sync State Schema Contract FROZEN
+→ 구현 Milestone/Gate 문서화
+→ explicit State DB Migration 구현
+→ StateStore repository methods 구현
+→ crash/migration/resume tests
+→ Delta Jira Collection</div><p class="lead">S7 이후에는 새로운 Schema 결정을 계속 늘리지 않고 구현 단계로 전환합니다.</p></section><footer class="footer">Sync State Schema Design Board · S1~S6 FIXED · S7 REVIEWING · 2026-08-27</footer></main></body></html>
