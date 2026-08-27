@@ -1,0 +1,90 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Continuous Jira Knowledge Service를 Source Sync Loop와 Knowledge Publish Loop 두 개로 분리하는 아키텍처 비판적 검토 문서"><title>Operational Architecture · Two-Loop Review</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 90px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:48px}h2{font-size:30px}.lead{color:var(--muted);max-width:950px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">Sync Contract</a><a href="jira_sync_state_schema_contract.html">Schema Contract</a><a href="jira_knowledge_pipeline_full_explained.html">전체 Pipeline</a></nav><header class="hero"><div>PRE-IMPLEMENTATION ARCHITECTURE REVIEW · 2026-08-27</div><h1>Source Sync와 Knowledge Publish를<br>두 개의 독립 Loop로 나눌 것인가?</h1><p>Jira 수집/정제와 OpenCode 기반 지식화/Embedding을 독립 실행하는 구조를 현재 Contract와 운영 특성에 비춰 비판적으로 검토합니다.</p><span class="state">REVIEW ONLY · NOT FROZEN · IMPLEMENTATION ON HOLD</span></header>
+<section><h2>1. 검토 대상 구조</h2><div class="flow">Loop A · Source Sync
+Scheduler A
+→ Project Discovery
+→ Delta Jira Download
+→ RAW
+→ ANALYSIS / Knowledge Input
+→ semantic_v2 hash
+→ NEW / CHANGED / UNCHANGED
+→ SOURCE_COMMITTED
+→ Watermark advance
+→ durable Work Item 생성
+→ 종료
+
+                 durable boundary / backlog
+                         ↓
+                 sync_issue_change
+                         ↓
+
+Loop B · Knowledge Publish
+Scheduler / Worker B
+→ pending Work Item claim
+→ OpenCode Knowledge Generation
+→ Review / Evidence
+→ Knowledge DB
+→ BGE-M3 Embedding
+→ FAISS staging
+→ Atomic Publish
+→ Work Item published
+→ 다음 Work Item</div><div class="callout"><strong>경계 후보:</strong> 두 Loop 사이의 계약은 파일 전달이 아니라 <code>SOURCE_COMMITTED + durable sync_issue_change Work Item</code>입니다.</div></section>
+<section><h2>2. 이 구조가 매력적인 이유</h2><div class="grid3"><div class="card good"><h3>LLM 지연 격리</h3><p>OpenCode가 느려져도 Jira Source Sync는 계속 진행할 수 있습니다. Jira 최신 사실 확보와 비싼 지식화를 분리합니다.</p></div><div class="card good"><h3>독립 Cadence</h3><p>Source는 정해진 간격으로 빠르게 돌리고, Knowledge Loop는 지속 실행·야간 집중 실행 등 다른 정책을 사용할 수 있습니다.</p></div><div class="card good"><h3>Backpressure 가시화</h3><p>Source는 얼마나 앞서 있고 Publish가 얼마나 밀렸는지 backlog count와 oldest pending age로 직접 측정할 수 있습니다.</p></div><div class="card good"><h3>Failure Isolation</h3><p>OpenCode 장애가 Jira 수집 실패로 보이지 않고, Jira 장애가 이미 쌓인 Knowledge 작업 처리까지 막지 않습니다.</p></div><div class="card good"><h3>운영 제어</h3><p>Knowledge Loop만 일시 중지하거나 concurrency를 낮춰도 Source Loop는 정상 운영할 수 있습니다.</p></div><div class="card good"><h3>Catch-up 용이</h3><p>밤에 OpenCode 처리량이 좋아지면 낮에 쌓인 Work Item을 순차적으로 소진할 수 있습니다.</p></div></div></section>
+<section><h2>3. 그러나 자동으로 좋은 구조는 아닙니다</h2><div class="grid2"><div class="card bad"><h3>문제 1 · Backlog는 사라지지 않고 축적됩니다</h3><p>Loop B의 장기 평균 처리량이 Loop A가 만드는 변경량보다 낮으면 Queue는 끝없이 늘어납니다. 단순 분리는 병목을 해결하지 않고 <strong>병목을 버퍼 뒤로 숨길 뿐</strong>일 수 있습니다.</p></div><div class="card bad"><h3>문제 2 · 최신성은 Eventual Consistency가 됩니다</h3><p>Jira Source는 최신인데 Retrieval은 몇 시간 전일 수 있습니다. 사용자와 운영자에게 Source freshness와 Published freshness를 분리해 보여줘야 합니다.</p></div><div class="card bad"><h3>문제 3 · 같은 Issue가 여러 번 바뀔 수 있습니다</h3><p>V2가 처리되기 전에 V3, V4가 들어오면 모든 중간 Version을 LLM으로 지식화할지, 최신만 처리할지 정책이 필요합니다.</p></div><div class="card bad"><h3>문제 4 · Worker ownership이 필요합니다</h3><p>Knowledge Worker가 2개 이상이면 같은 Work Item을 중복 처리하지 않도록 claim/lease가 필요합니다. 단순 status만으로는 crash recovery와 동시 처리 경쟁을 완전히 해결하기 어렵습니다.</p></div></div></section>
+<section><h2>4. 현재 FROZEN Schema와 충돌하는 지점</h2><p class="lead">현재 Schema v1은 두 Loop를 전혀 못 쓰는 것은 아닙니다. 하지만 하나의 <code>sync_run</code>에 Source와 Publish 집계를 같이 넣어 두어 독립 Loop의 실행 이력을 표현하기에는 다소 어색합니다.</p><div class="flow">현재
+sync_run
+├─ discovery_status
+├─ source_status
+├─ publish_status
+└─ run_status
+
+sync_issue_change
+├─ discovered_run_id → sync_run
+└─ last_attempt_run_id → sync_run</div><div class="callout"><strong>문제:</strong> Loop A의 Run과 Loop B의 실행은 동일한 사건이 아닙니다. 독립 Scheduler로 돌리면 <code>last_attempt_run_id</code>가 어느 Source Sync Run을 뜻해야 하는지 의미가 흐려집니다.</div><p><strong>결론:</strong> 2-Loop를 채택한다면 구현 전에 Run 모델을 revision하는 편이 좋습니다. 아직 코드가 없으므로 지금 수정하는 비용은 낮습니다.</p></section>
+<section><h2>5. 제가 추천하는 수정안</h2><div class="flow">Loop A Run
+source_sync_run
+→ Jira Discovery / Delta / Source Commit
+→ project_state / source watermark
+→ sync_issue_change 생성
+
+Loop B Run
+processing_run
+→ Work Item consume
+→ Knowledge / Embedding / Publish
+→ 처리량 / latency / error / 시간 기록
+
+Work Item
+sync_issue_change
+→ discovered_source_run_id
+→ last_processing_run_id
+→ stage status</div><p>즉 실행 이력을 두 종류로 나눕니다. 업무 Domain Table 자체는 크게 바뀌지 않지만, 현재 <code>sync_run</code>을 Source Run으로 명확히 하고 Knowledge 처리용 <code>processing_run</code>을 별도로 두는 쪽이 운영 관찰성이 좋아집니다.</p><div class="card warn"><strong>대안:</strong><p>테이블을 늘리고 싶지 않다면 <code>sync_run</code>을 Source Run으로만 정의하고 Loop B는 Work Item의 <code>updated_at</code>/log만으로 운영할 수도 있습니다. 하지만 OpenCode 시간대별 성능 편차를 관리하려는 목적이라면 Processing Run 이력을 따로 갖는 편이 훨씬 유용합니다.</p></div></section>
+<section><h2>6. Queue는 처음부터 Kafka/RabbitMQ가 필요한가?</h2><div class="card good"><h3>초기에는 아니라고 봅니다.</h3><p>현재 규모에서는 <code>collector.db</code>의 <code>sync_issue_change</code>를 durable work queue처럼 사용하는 것이 더 단순합니다. 먼저 실제 backlog와 처리량을 측정한 뒤 외부 Message Queue 필요성을 판단하는 편이 좋습니다.</p></div><div class="flow">Source Loop
+→ INSERT / UPSERT sync_issue_change
+
+Knowledge Loop
+→ pending/failed 대상 조회
+→ transaction으로 claim
+→ 처리
+→ completed/published 업데이트</div><p>단, Worker를 여러 개로 늘리는 시점에는 <code>lease_owner</code>, <code>lease_until</code>, <code>attempt_count</code>, <code>next_attempt_at</code> 같은 Queue 제어 필드가 필요할 수 있습니다. 초기 Single Worker라면 당장 넣지 않아도 됩니다.</p></section>
+<section><h2>7. OpenCode가 느릴 때 실제 효과</h2><table><thead><tr><th>상황</th><th>1개 직렬 Loop</th><th>2개 독립 Loop</th></tr></thead><tbody><tr><td>낮시간 OpenCode 매우 느림</td><td>Jira 다음 Sync까지 함께 지연될 수 있음</td><td>Source는 계속 최신화, Knowledge backlog만 증가</td></tr><tr><td>밤시간 OpenCode 빨라짐</td><td>그때 Source부터 다시 통과</td><td>쌓인 backlog를 바로 소진 가능</td></tr><tr><td>Jira 일시 장애</td><td>전체 파이프라인 시작이 멈춤</td><td>이미 쌓인 Knowledge Work는 계속 처리 가능</td></tr><tr><td>Knowledge 생성 오류</td><td>전체 Run이 길어짐</td><td>해당 Work Item만 retry</td></tr></tbody></table><p>따라서 사용자가 지적한 시간대별 OpenCode 편차는 2-Loop를 선택할 실질적인 근거가 됩니다. 단, Queue가 계속 쌓이는지는 별도의 처리량 지표로 관리해야 합니다.</p></section>
+<section><h2>8. 꼭 필요한 운영 지표</h2><div class="grid3"><div class="card"><h3>Source Lag</h3><p>현재 시각 - Project committed watermark.</p></div><div class="card"><h3>Publish Lag</h3><p>Source Head와 Published Head의 시간/Version 차이.</p></div><div class="card"><h3>Backlog Depth</h3><p>pending/failed Work Item 수.</p></div><div class="card"><h3>Oldest Pending Age</h3><p>가장 오래 기다린 변경분의 대기 시간.</p></div><div class="card"><h3>LLM Throughput</h3><p>시간당 성공 Knowledge Work Item 수.</p></div><div class="card"><h3>LLM Latency / Error</h3><p>시간대별 p50/p95 처리시간과 실패율.</p></div></div><div class="callout"><strong>핵심:</strong> 2-Loop의 성공 기준은 “두 프로세스가 돈다”가 아니라 <strong>backlog가 장기적으로 안정되고 Publish Lag가 허용 범위 안에 있는가</strong>입니다.</div></section>
+<section><h2>9. 중간 Version 처리 정책도 필요합니다</h2><div class="flow">Source Loop가 빠름
+V2 → V3 → V4
+
+Knowledge Loop는 아직 V2 대기 중</div><div class="grid2"><div class="card"><h3>모든 Version 처리</h3><p>History가 풍부하지만 느린 OpenCode를 불필요하게 많이 사용합니다.</p></div><div class="card good"><h3>최신 pending 우선 / supersede</h3><p>Source Version은 모두 보존하되 아직 시작하지 않은 오래된 Knowledge Work는 최신 semantic state가 있으면 superseded 처리하는 방향이 운영 효율상 유리합니다.</p></div></div><p>다만 “모든 중간 상태의 Knowledge도 반드시 남겨야 한다”는 감사 요구가 있다면 이 최적화는 사용할 수 없습니다. 이 정책은 별도 결정이 필요합니다.</p></section>
+<section><h2>10. Embedding은 같은 Loop에 두어도 되는가?</h2><p>현재는 <strong>같은 Loop B 안에 두는 것이 맞다</strong>고 봅니다.</p><div class="flow">Knowledge PASS
+→ Evidence
+→ Embedding
+→ FAISS staging
+→ Publish</div><p>Embedding은 Knowledge 결과에 종속되어 있고, 지금 별도 병목이라는 증거가 없습니다. 처음부터 3개 Loop로 쪼개면 Queue와 상태 전이가 늘어납니다. 실제 측정에서 Embedding이 독립 병목이 될 때만 세 번째 Worker로 분리하는 것이 낫습니다.</p></section>
+<section><h2>11. 최종 평가</h2><table><thead><tr><th>평가 항목</th><th>판단</th></tr></thead><tbody><tr><td>OpenCode 시간대별 편차 대응</td><td><strong>2-Loop가 명확히 유리</strong></td></tr><tr><td>Jira 최신 Source 확보</td><td><strong>2-Loop가 유리</strong></td></tr><tr><td>Failure isolation</td><td><strong>2-Loop가 유리</strong></td></tr><tr><td>초기 구현 단순성</td><td>1-Loop가 유리</td></tr><tr><td>상태/모니터링 복잡도</td><td>2-Loop가 더 복잡</td></tr><tr><td>Backlog 관리 필요성</td><td>2-Loop에서 필수</td></tr><tr><td>현재 프로젝트 상황 적합성</td><td><strong>2-Loop 쪽이 더 적합하다고 판단</strong></td></tr></tbody></table></section>
+<section><h2>12. 추천 결론 · 아직 Freeze 아님</h2><div class="card good"><h3>두 Loop로 분리하는 방향을 추천합니다.</h3><div class="flow">Loop A · Source Sync
+Jira Download + deterministic 정제 + Source Commit
+→ 빠르고 예측 가능한 단계
+
+Durable Boundary
+sync_issue_change backlog
+
+Loop B · Knowledge Publish
+OpenCode + Review + Embedding + FAISS Publish
+→ 느리고 시간대 편차가 큰 단계</div><p>다만 단순히 프로세스 두 개로 나누는 것으로 끝내지 말고, <strong>Source Run과 Processing Run의 실행 identity를 분리하고 backlog/lag를 1급 운영 상태로 관리</strong>하는 것을 함께 권고합니다.</p></div><div class="callout"><strong>다음 결정 제안:</strong> ① 2-Loop 채택 여부, ② Processing Run 테이블 추가 여부, ③ pending intermediate Version supersede 정책을 순서대로 Freeze한 뒤 구현에 들어가는 것이 안전합니다.</div></section><footer class="footer">Two-Loop Architecture Review · NOT FROZEN · pre-implementation review · 2026-08-27</footer></main></body></html>
