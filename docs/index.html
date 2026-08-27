@@ -3,71 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Jira Knowledge Pipeline 공식 HTML 문서 허브. M0~M11 MVP 완료, Sync Contract 의사결정 진행 중">
+  <meta name="description" content="Jira Knowledge Pipeline 공식 HTML 문서 허브. M0~M11 MVP 완료, Sync Contract D7 Source Commit vs Publish 검토 중">
   <title>Jira Knowledge Pipeline · Documentation Hub</title>
-  <link rel="stylesheet" href="assets/hub-frame.css" data-hub-frame="v1"></head>
-<body>
-<main class="wrap">
-  <header class="hero">
-    <div>OFFICIAL DOCUMENTATION ENTRYPOINT · 2026-08-27</div>
-    <h1>Jira Knowledge Pipeline<br>Documentation Hub</h1>
-    <p><strong>M0~M11 Functional MVP는 완료</strong>했습니다. 현재는 Continuous Jira Knowledge Service 구현 전에 <strong>Sync Contract 운영 규칙을 하나씩 확정</strong>하고 있습니다.</p>
-    <div class="pills">
-      <span class="pill">M0~M11 MVP DONE / PASS</span>
-      <span class="pill">SYNC CONTRACT DECISION = CURRENT</span>
-      <span class="pill">D1~D6 FIXED</span>
-      <span class="pill">D7 SOURCE COMMIT / PUBLISH NEXT</span>
-      <span class="pill">HUB FRAME v1</span>
-      <span class="pill">HUB LINKS · HTML ONLY</span>
-    </div>
-  </header>
+  <link rel="stylesheet" href="assets/hub-frame.css" data-hub-frame="v1">
+</head>
+<body><main class="wrap">
+<header class="hero"><div>OFFICIAL DOCUMENTATION ENTRYPOINT · 2026-08-27</div><h1>Jira Knowledge Pipeline<br>Documentation Hub</h1><p><strong>M0~M11 Functional MVP는 완료</strong>했습니다. 현재는 Continuous Jira Knowledge Service 구현 전에 <strong>Sync Contract 운영 규칙을 하나씩 확정</strong>하고 있습니다.</p><div class="pills"><span class="pill">M0~M11 MVP DONE / PASS</span><span class="pill">SYNC CONTRACT DECISION = CURRENT</span><span class="pill">D1~D6 FIXED</span><span class="pill">D7 SOURCE COMMIT / PUBLISH REVIEW</span><span class="pill">HUB FRAME v1</span><span class="pill">HUB LINKS · HTML ONLY</span></div></header>
 
-  <section id="hub-start" data-hub-section="1">
-    <h2>1. 지금 어디부터 읽나?</h2>
-    <div class="grid3">
-      <div class="card">
-        <span class="tag current">DECIDE NEXT</span>
-        <h3>Sync Contract Decision Draft</h3>
-        <p><strong>D1~D6는 FIXED</strong>입니다. 다음은 <strong>D7 Source Commit vs Publish</strong>에서 Jira 원본 확보 완료와 Knowledge/Embedding/FAISS 서비스 반영 완료를 분리합니다.</p>
-        <a class="btn" href="architecture/jira_sync_contract_decision_draft.html">의사결정 초안</a>
-        <a class="btn alt" href="architecture/jira_sync_contract_decision6_final.html">D6 Final</a>
-      </div>
-      <div class="card">
-        <span class="tag done">LEARNED</span>
-        <h3>전체 Pipeline 쉽게 이해하기</h3>
-        <p>Jira → RAW → ANALYSIS → Knowledge → SQLite → BGE-M3 → FAISS → Evidence/MCP → OpenCode 전체 흐름 학습 문서입니다.</p>
-        <a class="btn alt" href="architecture/jira_knowledge_pipeline_full_explained.html">전체 Pipeline 학습</a>
-      </div>
-      <div class="card">
-        <span class="tag done">LEARNED</span>
-        <h3>Sync Contract 쉽게 이해하기</h3>
-        <p>Watermark, Overlap, Delta, source_hash, checkpoint/resume를 쉬운 비유로 설명한 학습 문서입니다.</p>
-        <a class="btn alt" href="architecture/jira_sync_contract_explained.html">Sync Contract 학습</a>
-      </div>
-      <div class="card">
-        <span class="tag target">NEXT PHASE</span>
-        <h3>지속 Jira Knowledge 운영 서비스</h3>
-        <p>Jira 프로젝트/이슈 변화가 Knowledge DB와 Embedding/FAISS까지 증분 반영되고 중앙 MCP로 제공되는 전체 서비스 목표입니다.</p>
-        <a class="btn" href="architecture/jira_knowledge_operational_service_phase.html">Operational Service Phase</a>
-      </div>
-      <div class="card">
-        <span class="tag done">MVP COMPLETED</span>
-        <h3>M11 Completion</h3>
-        <p>OpenCode 자동 Tool 선택과 원문 Evidence 추적까지 실제 사용자 환경에서 검증한 MVP 마지막 Gate입니다.</p>
-        <a class="btn" href="status/M11_COMPLETION.html">M11 Completion</a>
-      </div>
-      <div class="card">
-        <span class="tag target">SERVICE COMPONENT</span>
-        <h3>팀 공용 Remote MCP</h3>
-        <p>운영 서비스의 조회 경계입니다. 중앙 서버가 DB/FAISS/BGE를 소유하고 팀원 OpenCode가 원격 접속합니다.</p>
-        <a class="btn" href="architecture/jira_knowledge_mcp_service_target.html">Remote MCP Target</a>
-      </div>
-    </div>
-  </section>
+<section id="hub-start" data-hub-section="1"><h2>1. 지금 어디부터 읽나?</h2><div class="grid3">
+<div class="card"><span class="tag current">DECIDE NOW</span><h3>Decision 7 · Source Commit vs Publish</h3><p>Jira 원본 확보 완료와 Knowledge/Embedding/FAISS 서비스 반영 완료를 분리합니다. 새 Publish가 끝날 때까지 기존 Published Knowledge를 계속 제공하는 방향을 검토합니다.</p><a class="btn" href="architecture/jira_sync_contract_decision7_source_commit_publish.html">D7 상세 검토</a><a class="btn alt" href="architecture/jira_sync_contract_decision_draft.html">Decision Board</a></div>
+<div class="card"><span class="tag done">FIXED</span><h3>Decision 6 Final</h3><p>Project/Issue 삭제·비노출은 Knowledge 삭제 이벤트가 아닙니다. 기존 Retrieval을 유지하고 같은 Project가 다시 보이면 Watermark 기반 Catch-up Delta를 수행합니다.</p><a class="btn alt" href="architecture/jira_sync_contract_decision6_final.html">D6 Final</a></div>
+<div class="card"><span class="tag done">LEARNED</span><h3>전체 Pipeline 쉽게 이해하기</h3><p>Jira → RAW → ANALYSIS → Knowledge → SQLite → BGE-M3 → FAISS → Evidence/MCP → OpenCode 전체 흐름 학습 문서입니다.</p><a class="btn alt" href="architecture/jira_knowledge_pipeline_full_explained.html">전체 Pipeline 학습</a></div>
+<div class="card"><span class="tag done">LEARNED</span><h3>Sync Contract 쉽게 이해하기</h3><p>Watermark, Overlap, Delta, source_hash, checkpoint/resume를 쉬운 비유로 설명한 학습 문서입니다.</p><a class="btn alt" href="architecture/jira_sync_contract_explained.html">Sync Contract 학습</a></div>
+<div class="card"><span class="tag target">NEXT PHASE</span><h3>지속 Jira Knowledge 운영 서비스</h3><p>Jira 변화가 Knowledge DB와 Embedding/FAISS까지 증분 반영되고 중앙 MCP로 제공되는 전체 서비스 목표입니다.</p><a class="btn" href="architecture/jira_knowledge_operational_service_phase.html">Operational Service Phase</a></div>
+<div class="card"><span class="tag done">MVP COMPLETED</span><h3>M11 Completion</h3><p>OpenCode 자동 Tool 선택과 원문 Evidence 추적까지 실제 사용자 환경에서 검증한 MVP 마지막 Gate입니다.</p><a class="btn" href="status/M11_COMPLETION.html">M11 Completion</a></div>
+</div></section>
 
-  <section id="hub-roadmap" data-hub-section="2">
-    <h2>2. 전체를 한 줄씩만 보면</h2>
-    <div class="flow">M0~M11 = Functional MVP DONE / PASS
+<section id="hub-roadmap" data-hub-section="2"><h2>2. 전체를 한 줄씩만 보면</h2><div class="flow">M0~M11 = Functional MVP DONE / PASS
 
 Current Sync Contract Decisions
 D1 Project별 committed Watermark = FIXED
@@ -75,92 +27,52 @@ D2 Overlap = 5 minutes + fixed upper + updated,id sort = FIXED
 D3 jira_id + source_hash classification = FIXED
 D4 source_hash semantic_v2 = FIXED
 D5 Checkpoint / Resume = FIXED
-D6 Project Registry / knowledge retention = FIXED
-D7 Source Commit vs Publish = NEXT
-D8 run status = DRAFT
+D6 Project Registry / Knowledge Retention = FIXED
+D7 Source Commit vs Publish = REVIEWING
+D8 Sync Run status = NEXT
 
-D6 final
-project_id 기반 Registry
-→ Discovery 전체 성공 후에만 unavailable 판정
-→ unavailable = 해당 Project Source Sync skip
-→ Watermark / RAW / History / Knowledge / Vector 보존
-→ Retrieval 계속 제공
-→ Project/Issue 삭제도 Knowledge 자동 삭제 아님
-→ 같은 project_id 재등장 시 Catch-up Delta
-→ Reconcile은 선택 기능</div>
-  </section>
+D7 proposal
+SOURCE_COMMITTED
+→ Jira Source 안전 저장 / 변경 판정 durable
+→ Project window 전체 Source 성공 시 Watermark advance 가능
 
-  <section id="hub-service" data-hub-section="3">
-    <h2>3. 운영 서비스 핵심</h2>
-    <div class="grid2">
-      <div class="card"><h3>지속 Jira 업데이트</h3><p>신규/수정 이슈와 댓글·관계·필드 변화가 다음 sync에 반영됩니다.</p></div>
-      <div class="card"><h3>Project 추가</h3><p>접근 가능한 프로젝트를 매 sync discovery하여 신규 프로젝트를 자동 편입합니다.</p></div>
-      <div class="card"><h3>증분 처리</h3><p>unchanged는 reuse, new/changed만 Version→Knowledge→Embedding→FAISS로 전파합니다.</p></div>
-      <div class="card"><h3>지식 보존</h3><p>Jira에서 Project/Issue가 사라져도 이미 축적된 Knowledge는 자동 삭제하지 않고 계속 Retrieval에 사용합니다.</p></div>
-      <div class="card"><h3>중앙 서비스</h3><p>팀원은 Remote MCP를 사용하고 DB/FAISS/.env/BGE secret은 중앙 서버가 소유합니다.</p></div>
-    </div>
-  </section>
+PUBLISHED
+→ 승인 Knowledge + Evidence + Embedding + Retrieval 일치
+→ 새 Published Head 전환 완료
 
-  <section id="hub-milestones" data-hub-section="4">
-    <h2>4. Milestone Visual Documents</h2>
-    <div class="grid3">
-      <div class="card"><span class="tag done">M0</span><h3>Jira Collection / Analysis</h3><a class="btn" href="status/M0_JIRA_COLLECTION_ANALYSIS_COMPLETION.html">M0</a></div>
-      <div class="card"><span class="tag done">M1</span><h3>Knowledge Input</h3><a class="btn" href="status/M1_KNOWLEDGE_INPUT_COMPLETION.html">M1</a></div>
-      <div class="card"><span class="tag done">M2</span><h3>Knowledge Schema / Skill</h3><a class="btn" href="status/M2_KNOWLEDGE_SCHEMA_SKILL_COMPLETION.html">M2</a></div>
-      <div class="card"><span class="tag done">M3</span><h3>Knowledge Quality Loop</h3><a class="btn" href="status/M3_KNOWLEDGE_QUALITY_LOOP_COMPLETION.html">M3</a></div>
-      <div class="card"><span class="tag done">M4</span><h3>Real Knowledge Pilot</h3><a class="btn" href="status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.html">M4</a></div>
-      <div class="card"><span class="tag done">M5</span><h3>Knowledge Profiling</h3><a class="btn" href="status/M5_KNOWLEDGE_PROFILING_COMPLETION.html">M5</a></div>
-      <div class="card"><span class="tag done">M6</span><h3>DB Logical Schema</h3><a class="btn" href="status/M6_DB_LOGICAL_SCHEMA_COMPLETION.html">M6</a></div>
-      <div class="card"><span class="tag done">M7</span><h3>SQLite Materialization</h3><a class="btn" href="status/M7_SQLITE_MATERIALIZATION.html">M7</a></div>
-      <div class="card"><span class="tag done">M8</span><h3>BGE-M3 Embedding</h3><a class="btn" href="status/M8_EMBEDDING_CHUNK_BGE_M3.html">M8</a></div>
-      <div class="card"><span class="tag done">M9</span><h3>FAISS Retrieval</h3><a class="btn" href="status/M9_FAISS_ACTIVE_RETRIEVAL.html">M9</a></div>
-      <div class="card"><span class="tag done">M10</span><h3>Evidence + MCP</h3><a class="btn" href="status/M10_COMPLETION.html">M10 Completion</a></div>
-      <div class="card"><span class="tag done">M11</span><h3>OpenCode Integration</h3><a class="btn" href="status/M11_COMPLETION.html">M11 Completion</a></div>
-    </div>
-  </section>
+Publish 전/실패
+→ 기존 Published Knowledge 계속 제공
+→ Source 재수집 없이 실패 Stage부터 Resume</div></section>
 
-  <section id="hub-reference" data-hub-section="5">
-    <h2>5. Architecture / Policy</h2>
-    <p class="framework-note"><strong>문서 UI 규칙:</strong> <a class="btn" href="DOCUMENT_FRAMEWORK_STANDARD_2026-08-27.html">Document Framework v1</a> <a class="btn alt" href="DOCUMENTATION_POLICY.html">Documentation Policy</a></p>
-    <div class="grid3">
-      <div class="card"><h3>Pipeline Overview</h3><a class="btn" href="PIPELINE_OVERVIEW.html">Pipeline Overview</a></div>
-      <div class="card"><h3>Relationship Map</h3><a class="btn" href="architecture/jira_data_relationship_map.html">Relationship Map</a></div>
-      <div class="card"><h3>Documentation Policy</h3><a class="btn" href="DOCUMENTATION_POLICY.html">Policy</a></div>
-      <div class="card"><h3>Current Status</h3><a class="btn" href="status/jira_knowledge_db_current_status.html">Current Status</a></div>
+<section id="hub-service" data-hub-section="3"><h2>3. 운영 서비스 핵심</h2><div class="grid2">
+<div class="card"><h3>지속 Jira 업데이트</h3><p>신규/수정 이슈와 댓글·관계·필드 변화가 다음 Sync에 반영됩니다.</p></div>
+<div class="card"><h3>증분 처리</h3><p>unchanged는 reuse, new/changed만 Version→Knowledge→Embedding→FAISS로 전파합니다.</p></div>
+<div class="card"><h3>지식 보존</h3><p>Jira에서 Project/Issue가 사라져도 이미 축적된 Knowledge는 자동 삭제하지 않고 Retrieval에 계속 사용합니다.</p></div>
+<div class="card"><h3>안전한 Publish</h3><p>새 Knowledge와 Retrieval index가 모두 준비되기 전에는 기존 Published 상태를 유지합니다.</p></div>
+<div class="card"><h3>중앙 서비스</h3><p>팀원은 Remote MCP를 사용하고 DB/FAISS/.env/BGE secret은 중앙 서버가 소유합니다.</p></div>
+</div></section>
 
-      <div class="card">
-        <span class="tag done">M10 REAL-RUN PASS</span>
-        <h3>M10 검증 · 운영 문서</h3>
-        <p>M10 = DONE / PASS · REAL-RUN PASS · <strong>M10_REAL_RUN = PASS</strong>. Evidence/MCP 설계부터 실제 검증과 장애 대응까지 다시 들어갈 수 있는 진입점입니다.</p>
-        <a class="btn" href="status/M10_START_HERE.html">Start Here</a>
-        <a class="btn alt" href="status/M10_EVIDENCE_MCP_CONTRACT.html">Contract</a>
-        <a class="btn alt" href="status/M10_MCP_IMPLEMENTATION.html">MCP Implementation</a>
-        <a class="btn alt" href="status/M10_REAL_RUN_GATE.html">Real Run Gate</a>
-        <a class="btn alt" href="status/M10_COMPLETION.html">Completion</a>
-        <a class="btn alt" href="status/M10_TROUBLESHOOTING_MCP_IMPORT.html">Trouble · Import</a>
-        <a class="btn alt" href="status/M10_TROUBLESHOOTING_REAL_RUN_QUERY.html">Trouble · Query</a>
-        <a class="btn alt" href="status/M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html">Trouble · Runtime</a>
-      </div>
+<section id="hub-milestones" data-hub-section="4"><h2>4. Milestone Visual Documents</h2><div class="grid3">
+<div class="card"><span class="tag done">M0</span><h3>Jira Collection / Analysis</h3><a class="btn" href="status/M0_JIRA_COLLECTION_ANALYSIS_COMPLETION.html">M0</a></div>
+<div class="card"><span class="tag done">M1</span><h3>Knowledge Input</h3><a class="btn" href="status/M1_KNOWLEDGE_INPUT_COMPLETION.html">M1</a></div>
+<div class="card"><span class="tag done">M2</span><h3>Knowledge Schema / Skill</h3><a class="btn" href="status/M2_KNOWLEDGE_SCHEMA_SKILL_COMPLETION.html">M2</a></div>
+<div class="card"><span class="tag done">M3</span><h3>Knowledge Quality Loop</h3><a class="btn" href="status/M3_KNOWLEDGE_QUALITY_LOOP_COMPLETION.html">M3</a></div>
+<div class="card"><span class="tag done">M4</span><h3>Real Knowledge Pilot</h3><a class="btn" href="status/M4_KNOWLEDGE_EXTRACTION_COMPLETION.html">M4</a></div>
+<div class="card"><span class="tag done">M5</span><h3>Knowledge Profiling</h3><a class="btn" href="status/M5_KNOWLEDGE_PROFILING_COMPLETION.html">M5</a></div>
+<div class="card"><span class="tag done">M6</span><h3>DB Logical Schema</h3><a class="btn" href="status/M6_DB_LOGICAL_SCHEMA_COMPLETION.html">M6</a></div>
+<div class="card"><span class="tag done">M7</span><h3>SQLite Materialization</h3><a class="btn" href="status/M7_SQLITE_MATERIALIZATION.html">M7</a></div>
+<div class="card"><span class="tag done">M8</span><h3>BGE-M3 Embedding</h3><a class="btn" href="status/M8_EMBEDDING_CHUNK_BGE_M3.html">M8</a></div>
+<div class="card"><span class="tag done">M9</span><h3>FAISS Retrieval</h3><a class="btn" href="status/M9_FAISS_ACTIVE_RETRIEVAL.html">M9</a></div>
+<div class="card"><span class="tag done">M10</span><h3>Evidence + MCP</h3><a class="btn" href="status/M10_COMPLETION.html">M10 Completion</a></div>
+<div class="card"><span class="tag done">M11</span><h3>OpenCode Integration</h3><a class="btn" href="status/M11_COMPLETION.html">M11 Completion</a></div>
+</div></section>
 
-      <div class="card">
-        <span class="tag done">M11 DONE / PASS</span>
-        <h3>M11 OpenCode 실제 검증</h3>
-        <p><strong>M11-03 PASS · M11-04 PASS · M11-05 PASS · M11-06 PASS</strong>. OpenCode 자동 Tool 선택과 Remote MCP 서비스 방향까지 검증한 기록입니다.</p>
-        <a class="btn" href="status/M11_OPENCODE_MCP_INTEGRATION.html">OpenCode Integration</a>
-        <a class="btn alt" href="status/M11_COMPLETION.html">Completion</a>
-        <a class="btn alt" href="status/M11_TROUBLESHOOTING_OPENCODE_CONNECTION_CLOSED.html">Troubleshooting</a>
-      </div>
+<section id="hub-reference" data-hub-section="5"><h2>5. Architecture / Policy</h2><p class="framework-note"><strong>문서 UI 규칙:</strong> <a class="btn" href="DOCUMENT_FRAMEWORK_STANDARD_2026-08-27.html">Document Framework v1</a> <a class="btn alt" href="DOCUMENTATION_POLICY.html">Documentation Policy</a></p><div class="grid3">
+<div class="card"><h3>Pipeline Overview</h3><a class="btn" href="PIPELINE_OVERVIEW.html">Pipeline Overview</a></div>
+<div class="card"><h3>Relationship Map</h3><a class="btn" href="architecture/jira_data_relationship_map.html">Relationship Map</a></div>
+<div class="card"><h3>Current Status</h3><a class="btn" href="status/jira_knowledge_db_current_status.html">Current Status</a></div>
+<div class="card"><h3>Remote MCP Target</h3><a class="btn" href="architecture/jira_knowledge_mcp_service_target.html">Remote MCP Target</a></div>
+</div></section>
 
-      <div class="card">
-        <span class="tag done">SERVICE CONFIG</span>
-        <h3>M11 서비스 설정 기준</h3>
-        <p>로컬 서비스 설정은 <strong>.env</strong>를 사용하며 <code>JIRA_KNOWLEDGE_DB_PATH</code>, <code>JIRA_RETRIEVAL_ARTIFACT_DIR</code>, <code>BGE_M3_ENDPOINT</code>를 환경별로 주입합니다.</p>
-        <a class="btn" href="status/M11_OPENCODE_MCP_INTEGRATION.html">설정 상세</a>
-      </div>
-    </div>
-  </section>
-
-  <footer class="footer">M0~M11 Functional MVP DONE / PASS · D1~D6 FIXED · next = Sync Contract Decision 7 Source Commit vs Publish · Hub Frame v1 · 2026-08-27</footer>
-</main>
-</body>
-</html>
+<footer class="footer">M0~M11 Functional MVP DONE / PASS · D1~D6 FIXED · current = D7 Source Commit vs Publish Review · 2026-08-27</footer>
+</main></body></html>
