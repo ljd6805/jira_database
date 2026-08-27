@@ -8,10 +8,10 @@ Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 
 
 ```text
 M0~M9   DONE / PASS
-M10     NEXT / DESIGN NOT STARTED
+M10     IMPLEMENTATION PASS / REAL-RUN NEXT
 ```
 
-새 세션에서 M10을 시작할 때는 **[M10 Start Here](docs/status/M10_START_HERE.html)** 를 먼저 읽으세요.
+M10의 구현 상태와 다음 Real-run은 **[M10 Start Here](docs/status/M10_START_HERE.html)** 에서 확인하세요.
 
 ## 1. 전체 흐름
 
@@ -38,7 +38,7 @@ M8  BGE-M3 Embedding                        DONE · REAL-RUN PASS
     ↓
 M9  FAISS + Active Retrieval                DONE · REAL-RUN PASS
     ↓
-M10 Evidence Builder + MCP                  NEXT · DESIGN NOT STARTED
+M10 Evidence Builder + MCP                  IMPLEMENTATION PASS · REAL-RUN NEXT
 ```
 
 ## 2. 핵심 불변 원칙
@@ -50,8 +50,9 @@ M10 Evidence Builder + MCP                  NEXT · DESIGN NOT STARTED
 5. Knowledge / Embedding / Retrieval identity를 서로 섞지 않습니다.
 6. FAISS position을 Knowledge identity로 사용하지 않습니다.
 7. Knowledge는 `ke_` Evidence를 통해 원문까지 round-trip할 수 있어야 합니다.
-8. 설계/코드/Milestone 상태 변경은 문서와 같은 작업 단위에서 동기화합니다.
-9. Documentation Hub의 로컬 링크는 HTML만 사용합니다.
+8. MCP는 검색/근거 복원만 담당하고 생성형 LLM을 포함하지 않습니다.
+9. 설계/코드/Milestone 상태 변경은 문서와 같은 작업 단위에서 동기화합니다.
+10. Documentation Hub의 로컬 링크는 HTML만 사용합니다.
 
 Identity ladder:
 
@@ -78,6 +79,8 @@ Knowledge Item               285
 M5 Raw Evidence Ref          503
 M7 Canonical Evidence Row    502
 Review Attempt                37
+M8 Embedding                 285
+M9 FAISS Vector              285
 ```
 
 M5 raw Evidence 503 중 historical duplicate 1회를 M7에서 canonicalize해 502 row를 저장합니다.
@@ -160,16 +163,6 @@ same-query ranking             PASS
 same-query scores              PASS
 ```
 
-Same-query result:
-
-```text
-vector_exact_equal=True
-max_abs_diff=0
-cosine=1.000000000
-ranking_equal=True
-scores_exact_equal=True
-```
-
 서로 다른 실제 query 2개에서 Rank 1/2는 유효했고 Rank 3에는 noise가 관찰됐습니다. 따라서 global cosine threshold나 reranker는 아직 근거 없이 추가하지 않습니다.
 
 ## 7. 정식 서비스 방향 — DELTA FIRST
@@ -195,50 +188,78 @@ incremental exact index
 
 HNSW/IVF 전환은 실제 latency/RAM/QPS/recall@k 측정 후 결정합니다.
 
-## 8. M10 — NEXT / DESIGN NOT STARTED
+## 8. M10 Evidence Builder + MCP — IMPLEMENTATION PASS
 
-M9 output:
-
-```text
-rank
-score
-faiss_position
-embedding_id
-knowledge_item_id
-category
-```
-
-M10 boundary:
+M10 역할:
 
 ```text
-ki_ → Knowledge statement
-ke_ → Evidence source
-→ Evidence package
+M9
+질문 → Top-3 Knowledge candidate
+        ↓
+M10
+ki_ active/accepted 재검증
+→ ke_ Evidence resolve
+→ 실제 Jira source 복원
+→ Evidence Package
 → MCP
+        ↓
+Agent / LLM 최종 답변
 ```
 
-아직 확정하지 않은 M10 설계 항목:
+확정/구현된 계약:
 
 ```text
-Evidence Package schema
-Evidence resolver contract
-MCP tool surface
-candidate/evidence budget
-quality/integrity Gate
-error contract
+Evidence Package     candidate 중심
+Evidence Type        summary / description / comment / attachment / relationship / custom_field
+Runtime Failure      broken candidate 격리 + warning
+Candidate Budget     M9 Top-3 유지
+MCP Tool             search_jira_knowledge
+                     get_jira_issue
+Stale Guard          active + accepted + content_available 재검증
+MCP Generative LLM   없음
 ```
 
-**새 세션에서는 구현부터 시작하지 않습니다.** [M10 Start Here](docs/status/M10_START_HERE.html)를 읽고 DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC 순서로 진행합니다.
+보안 경계:
+
+```text
+MCP annotation       read_only_hint=true
+SQLite               mode=ro
+PRAGMA               query_only=ON
+External payload     source_path/source_page 제외
+```
+
+검증:
+
+```text
+M10-01 Contract Freeze             PASS
+M10-02 Evidence Resolver           PASS
+M10-03 Candidate Package Builder   PASS
+M10-04 MCP 2-tool boundary         PASS
+GitHub Actions pytest              133/133 PASS
+```
+
+현재 남은 단계는 **M10-05 Real-run Gate**입니다. Git에 없는 실제 M7 SQLite, M9 FAISS artifact, 사내 BGE-M3 endpoint를 연결해 실제 질문이 `FAISS → ki_ → ke_ → source → MCP response`까지 끝까지 통과하는지 검증해야 M10을 DONE으로 판정합니다.
+
+실환경 검증 도구:
+
+```text
+tools/jira_knowledge/validate_m10_real_run.py
+```
+
+이 도구는 실제 질문/Jira 원문을 출력하지 않고 결과 수, Evidence 수, warning/path leak 여부와 PASS/FAIL만 출력합니다.
 
 ## 9. 주요 문서
 
 - [Documentation Hub](docs/index.html)
 - [M10 Start Here](docs/status/M10_START_HERE.html)
+- [M10 쉬운 설계안](docs/M10_EVIDENCE_MCP_DESIGN.html)
+- [M10 Contract Freeze](docs/status/M10_EVIDENCE_MCP_CONTRACT.html)
+- [M10 Resolver / Package PASS](docs/status/M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html)
+- [M10 MCP Implementation PASS](docs/status/M10_MCP_IMPLEMENTATION.html)
 - [Current Status](docs/status/jira_knowledge_db_current_status.html)
 - [Pipeline Overview](docs/PIPELINE_OVERVIEW.html)
 - [Relationship Map](docs/architecture/jira_data_relationship_map.html)
 - [M9 Final Visual](docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html)
-- [M9 Real Validation](docs/M9_REAL_RETRIEVAL_LOG.html)
 - [Documentation Policy](docs/DOCUMENTATION_POLICY.html)
 
 ## 10. 로컬 Pilot Artifact
