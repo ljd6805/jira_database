@@ -3,6 +3,33 @@
 이 파일은 이 repository에서 작업하는 Agent가 반드시 지켜야 하는 프로젝트 규칙이다.
 사람용 상세 문서 정책은 `docs/DOCUMENTATION_POLICY.html`을 따른다.
 
+## 0. 현재 Operational Source of Truth
+
+새 구현/설계 작업 전에 반드시 다음 순서로 현재 맥락을 확인한다.
+
+```text
+docs/index.html
+docs/status/POST_MVP_OPERATIONAL_SERVICE_START_HERE.html
+docs/architecture/jira_operational_two_loop_architecture.html
+docs/architecture/jira_sync_contract.html
+docs/architecture/jira_sync_state_schema_contract.html
+```
+
+현재 운영 아키텍처 기준:
+
+```text
+M0~M11 Functional MVP = DONE / PASS
+Two-Loop Operational Architecture = FROZEN
+Sync Contract = v2
+Operational State Schema = v2
+
+Loop A = Source Sync
+Loop B = Knowledge Processing / Publish
+sync_issue_change = durable backlog boundary
+```
+
+`docs/architecture/jira_sync_state_schema_contract_v1_baseline.html`과 단일 `sync_run`을 전제로 한 과거 표현은 **historical/superseded**이며 구현 기준으로 사용하지 않는다.
+
 ## 1. Documentation Hub는 HTML 전용이다
 
 - `docs/index.html`에서 연결하는 **로컬 문서 anchor는 전부 `.html`** 이어야 한다.
@@ -19,7 +46,7 @@
 - 모든 일반 HTML은 `data-doc-shell="v1"`과 공통 shell CSS/JS를 포함한다.
 - `이전 문서 / 문서 Hub / 다음 문서` 버튼은 항상 유지한다. 첫/마지막 문서는 숨기지 않고 disabled로 표시한다.
 - 새 HTML 작성 후 `python tools/docs/sync_document_shell.py --write`를 실행하고 `--check`를 통과시킨다.
-- Hub 기본 5개 영역 또는 shell 계약을 바꿀 때는 임의 수정하지 말고 Documentation Policy와 Framework 문서를 함께 갱신한다.
+- Hub 기본 영역 또는 shell 계약을 바꿀 때는 임의 수정하지 말고 Documentation Policy와 Framework 문서를 함께 갱신한다.
 
 ## 2. Milestone HTML은 필수 산출물이다
 
@@ -38,6 +65,7 @@
 - 실행 방법 / CLI / 검증 방법
 - Milestone 상태 / Gate / 다음 단계
 - 실제 검증 결과와 수치
+- Loop / Scheduler / Queue / Processing 정책
 
 필요 시 함께 갱신할 Current Source of Truth:
 
@@ -45,8 +73,11 @@
 README.md
 docs/index.html
 docs/PIPELINE_OVERVIEW.html
-docs/DOCUMENTATION_POLICY.html
 docs/status/jira_knowledge_db_current_status.html
+docs/status/POST_MVP_OPERATIONAL_SERVICE_START_HERE.html
+docs/architecture/jira_operational_two_loop_architecture.html
+docs/architecture/jira_sync_contract.html
+docs/architecture/jira_sync_state_schema_contract.html
 docs/architecture/jira_data_relationship_map.html
 ```
 
@@ -85,5 +116,6 @@ pytest tests/test_documentation_current_state.py
 - 압축 fragment loader 회귀
 - 오래된 Milestone 상태로의 퇴행
 - HTML 보존/사용자 승인 규칙 삭제
+- 현재 2-Loop/v2 Source of Truth가 historical v1 문서로 퇴행
 
 문서 테스트가 실패하면 구현 작업도 완료된 것으로 보지 않는다.
