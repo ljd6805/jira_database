@@ -27,6 +27,7 @@ MILESTONE_HTML_DOCS = tuple(
         "M7_SQLITE_MATERIALIZATION.html",
         "M8_EMBEDDING_CHUNK_BGE_M3.html",
         "M9_FAISS_ACTIVE_RETRIEVAL.html",
+        "M10_COMPLETION.html",
     )
 )
 
@@ -34,6 +35,8 @@ STALE_STATUS_MARKERS = (
     "M6 CURRENT", "M7 CURRENT", "M7 NEXT", "M8 BLOCKED",
     "M9 CURRENT", "M9-03 NEXT", "REAL QUERY NEXT", "REBUILD NEXT",
     "M10 NEXT / DESIGN NOT STARTED", "M10 DESIGN IN PROGRESS",
+    "M10 IMPLEMENTATION PASS · REAL-RUN NEXT", "M10-05 REAL-RUN NEXT",
+    "M10-05 NEXT",
 )
 
 
@@ -63,7 +66,7 @@ def test_current_docs_do_not_regress_to_old_status() -> None:
             assert marker not in text, f"{path} contains stale marker: {marker}"
 
 
-def test_current_docs_record_m9_done_and_m10_real_run_next() -> None:
+def test_current_docs_record_m10_done_and_real_run_pass() -> None:
     required = (
         Path("README.md"),
         Path("docs/PIPELINE_OVERVIEW.md"),
@@ -74,8 +77,9 @@ def test_current_docs_record_m9_done_and_m10_real_run_next() -> None:
         text = _read(path); upper = text.upper()
         assert "M8" in text and "DONE" in upper
         assert "M9" in text and "DONE" in upper and "PASS" in upper
-        assert "M10" in text and "IMPLEMENTATION" in upper
-        assert "REAL-RUN" in upper and "NEXT" in upper
+        assert "M10" in text and "DONE" in upper
+        assert "REAL-RUN" in upper and "PASS" in upper
+        assert "M10_REAL_RUN = PASS" in text
 
 
 def test_authoritative_docs_keep_generation_attempt_identity() -> None:
@@ -145,13 +149,17 @@ def test_m9_final_contract_and_real_gate_are_preserved() -> None:
     assert "delta-first" in lower_decision or "delta first" in lower_decision
 
 
-def test_m10_handoff_contract_implementation_and_real_run_docs_are_static_html() -> None:
+def test_m10_completion_and_troubleshooting_docs_are_static_html() -> None:
     paths = (
         Path("docs/status/M10_START_HERE.html"),
         Path("docs/status/M10_EVIDENCE_MCP_CONTRACT.html"),
         Path("docs/status/M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html"),
         Path("docs/status/M10_MCP_IMPLEMENTATION.html"),
         Path("docs/status/M10_REAL_RUN_GATE.html"),
+        Path("docs/status/M10_COMPLETION.html"),
+        Path("docs/status/M10_TROUBLESHOOTING_MCP_IMPORT.html"),
+        Path("docs/status/M10_TROUBLESHOOTING_REAL_RUN_QUERY.html"),
+        Path("docs/status/M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html"),
     )
     for path in paths:
         assert path.is_file()
@@ -161,9 +169,8 @@ def test_m10_handoff_contract_implementation_and_real_run_docs_are_static_html()
 
     handoff = _read(paths[0])
     for token in (
-        "M0~M9 DONE", "M10 IMPLEMENTATION PASS", "REAL-RUN NEXT",
-        "Evidence Package", "knowledge_attempt", "ka_", "attempt_no",
-        "IndexFlatIP", "delta-first",
+        "M0~M10 DONE", "M10_REAL_RUN = PASS", "Evidence Package",
+        "knowledge_attempt", "ka_", "attempt_no",
         "DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC",
     ):
         assert token in handoff
@@ -179,7 +186,7 @@ def test_m10_handoff_contract_implementation_and_real_run_docs_are_static_html()
     implementation = _read(paths[3])
     for token in (
         "M10-04", "search_jira_knowledge", "get_jira_issue",
-        "mode=ro", "query_only", "133", "M10-05", "REAL-RUN NEXT",
+        "mode=ro", "query_only", "M10-05",
     ):
         assert token in implementation
 
@@ -190,6 +197,19 @@ def test_m10_handoff_contract_implementation_and_real_run_docs_are_static_html()
         "M10_REAL_RUN = PASS",
     ):
         assert token in real_run
+
+
+def test_m10_completion_explains_real_run_metrics() -> None:
+    text = _read(Path("docs/status/M10_COMPLETION.html"))
+    for token in (
+        "tool_count: 2", "search_result_count: 3", "evidence_count: 6",
+        "warning_count: 0", "path_leak_count: 0", "issue_lookup_ok: true",
+        "failure_count: 0", "M10_REAL_RUN = PASS",
+        "호출 횟수가 2라는 뜻은 아닙니다",
+        "Issue 6개나 Knowledge 6개라는 뜻이 아닙니다",
+        "ModuleNotFoundError", "McpRuntimeSettingsError",
+    ):
+        assert token in text
 
 
 def test_m10_real_run_validator_exists_and_is_privacy_preserving() -> None:
@@ -205,7 +225,7 @@ def test_m10_real_run_validator_exists_and_is_privacy_preserving() -> None:
     assert 'print(query' not in text and 'print(issue_key' not in text
 
 
-def test_m0_to_m9_visual_docs_exist_and_are_static() -> None:
+def test_m0_to_m10_visual_docs_exist_and_are_static() -> None:
     for path in MILESTONE_HTML_DOCS:
         assert path.is_file()
         text = _read(path); lower = text.lower()
@@ -219,14 +239,16 @@ def test_every_done_or_current_milestone_has_visual_html() -> None:
         assert list(Path("docs/status").glob(f"{milestone}_*.html")), milestone
 
 
-def test_documentation_hub_links_milestones_and_m10_handoff() -> None:
+def test_documentation_hub_links_milestones_completion_and_troubleshooting() -> None:
     index = _read(Path("docs/index.html"))
     for path in MILESTONE_HTML_DOCS:
         assert path.name in index
     for name in (
         "M10_START_HERE.html", "M10_EVIDENCE_MCP_CONTRACT.html",
-        "M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html", "M10_MCP_IMPLEMENTATION.html",
-        "M10_REAL_RUN_GATE.html",
+        "M10_MCP_IMPLEMENTATION.html", "M10_REAL_RUN_GATE.html",
+        "M10_COMPLETION.html", "M10_TROUBLESHOOTING_MCP_IMPORT.html",
+        "M10_TROUBLESHOOTING_REAL_RUN_QUERY.html",
+        "M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html",
     ):
         assert name in index
 
@@ -247,6 +269,10 @@ def test_public_docs_do_not_expose_pilot_issue_keys() -> None:
         Path("docs/status/M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html"),
         Path("docs/status/M10_MCP_IMPLEMENTATION.html"),
         Path("docs/status/M10_REAL_RUN_GATE.html"),
+        Path("docs/status/M10_COMPLETION.html"),
+        Path("docs/status/M10_TROUBLESHOOTING_MCP_IMPORT.html"),
+        Path("docs/status/M10_TROUBLESHOOTING_REAL_RUN_QUERY.html"),
+        Path("docs/status/M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html"),
     )
     pattern = re.compile(r"\b[A-Z][A-Z0-9_]{1,15}-[1-9]\d{3,}\b")
     for path in public_docs:
