@@ -1,48 +1,16 @@
-<!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge 운영 서비스 중 팀 공용 중앙 Remote MCP 목표 아키텍처"><title>Jira Knowledge MCP · 팀 공용 Remote 서비스 목표</title><link rel="stylesheet" href="../status/milestone.css"><style>.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
-<script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="jira_knowledge_operational_service_phase.html">운영 서비스 전체 목표</a><a href="../status/M11_COMPLETION.html">M11 Completion</a><a href="../status/jira_knowledge_db_current_status.html">Current Status</a></nav><header class="hero"><span class="eyebrow">SERVICE COMPONENT TARGET · 2026-08-27</span><h1>Remote MCP는 최종 서비스의<br>중앙 조회 경계입니다.</h1><p>M11의 local stdio는 MVP 호환성 검증용이었습니다. 실제 팀 서비스에서는 중앙 서버가 Jira Knowledge DB, FAISS, BGE-M3 설정을 소유하고 팀원 OpenCode는 Remote MCP URL에 접속합니다. <strong>다만 Remote MCP만으로 서비스가 완성되는 것은 아니며, 지속 Jira 동기화와 증분 Knowledge/Index 갱신이 함께 동작해야 합니다.</strong></p><span class="state">REMOTE MCP = OPERATIONAL SERVICE COMPONENT · NOT THE WHOLE SERVICE</span></header>
-<section><h2>1. 전체 운영 서비스 안에서의 위치</h2><div class="flow">Jira
- ↓ 지속 Project Discovery / Delta Sync
-RAW / Issue Version
- ↓
-Knowledge / Evidence
- ↓
-Embedding / FAISS Delta Update
- ↓
-Central Remote MCP  ← 이 문서의 범위
- ↓
-팀원 OpenCode</div><p>운영 서비스 전체 범위는 <a href="jira_knowledge_operational_service_phase.html">MVP 이후 운영 서비스 단계</a> 문서를 기준으로 합니다.</p></section>
-<section><h2>2. 최종 Remote MCP 구조</h2><div class="flow">팀원 A · OpenCode ─┐
-팀원 B · OpenCode ─┼──── Remote MCP / HTTPS ────┐
-팀원 C · OpenCode ─┘                            │
-                                               ▼
-                                  ┌────────────────────────┐
-                                  │ jira-knowledge MCP     │
-                                  │ 중앙 서버              │
-                                  ├────────────────────────┤
-                                  │ search_jira_knowledge  │
-                                  │ get_jira_issue         │
-                                  └──────────┬─────────────┘
-                                             │
-                  ┌──────────────────────────┼──────────────────────────┐
-                  ▼                          ▼                          ▼
-             SQLite DB                  FAISS Index                BGE-M3 API</div></section>
-<section><h2>3. 팀원 PC와 서버 책임</h2><table><thead><tr><th>팀원 OpenCode</th><th>중앙 서비스</th></tr></thead><tbody><tr><td>Remote MCP URL 설정</td><td>Jira 지속 동기화 파이프라인 실행</td></tr><tr><td>필요한 인증 정보</td><td>SQLite / FAISS 최신 Active 상태 유지</td></tr><tr><td>Tool 호출 / Agent 답변</td><td>BGE-M3 endpoint/secret 관리</td></tr><tr><td>DB/FAISS 로컬 복제 불필요</td><td>MCP Tool 실행 및 Evidence 반환</td></tr><tr><td>jira_database clone 불필요</td><td>서비스 버전/로그/health 관리</td></tr></tbody></table></section>
-<section><h2>4. Transport 방향</h2><div class="grid2"><div class="box good"><b>1순위 · Streamable HTTP</b><p>OpenCode 1.18.12 Remote MCP client가 먼저 시도하고 MCP Python SDK 2.1.1도 서버 transport로 지원합니다.</p></div><div class="box"><b>Fallback · SSE</b><p>OpenCode 1.18.12가 Streamable HTTP 실패 시 시도하는 호환 경로입니다.</p></div></div></section>
-<section><h2>5. 서버 설정</h2><div class="flow">중앙 서버 .env
-JIRA_KNOWLEDGE_DB_PATH=...
-JIRA_RETRIEVAL_ARTIFACT_DIR=...
-BGE_M3_ENDPOINT=...
-BGE_M3_API_KEY=...             optional
-BGE_M3_HEADERS_JSON=...        optional</div><p>실제 값은 저장소에 커밋하지 않습니다.</p></section>
-<section><h2>6. OpenCode 측 목표 설정</h2><div class="flow">{
-  "mcp": {
-    "jira-knowledge": {
-      "type": "remote",
-      "url": "https://.../mcp",
-      "timeout": 30000
-    }
-  }
-}</div><p>실제 사내 URL/token/header는 공개 문서에 기록하지 않습니다.</p></section>
-<section><h2>7. 아직 Freeze하지 않은 것</h2><div class="grid3"><div class="box warn"><b>인증/접근 제어</b><p>Bearer, OAuth, 사내 Proxy와 팀원별 Jira 권한 정책을 운영 설계에서 결정합니다.</p></div><div class="box"><b>배포 방식</b><p>systemd, Docker 등은 서버 환경과 운영 방식 확인 후 결정합니다.</p></div><div class="box"><b>운영 규모</b><p>동시 사용자/QPS/timeout/cache는 팀 Pilot 측정 후 결정합니다.</p></div></div></section>
-<footer>Central Remote MCP = one component of Continuous Jira Knowledge Service · 2026-08-27</footer></main></body></html>
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="2-Loop Jira Knowledge Service에서 Central MCP의 역할과 비책임 경계를 정의한다."><title>Jira Knowledge MCP Service Target · Two-Loop</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1060px;margin:auto;padding:42px 22px 86px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:18px}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}a{color:var(--blue);font-weight:800}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a></p><header class="hero"><div>MCP SERVICE TARGET · 2026-08-28</div><h1>Central MCP는 두 Loop를 실행하지 않습니다.</h1><p>MCP는 마지막 정상 Published Corpus를 읽어 Knowledge와 Evidence를 제공하는 상시 Retrieval Service입니다.</p></header><section class="card"><h2>현재 위치</h2><div class="flow">Loop A · Source Sync
+→ Jira 최신 Source / backlog 생산
+
+Loop B · Knowledge Processing / Publish
+→ backlog 소비 / 새 Published Corpus 생성
+
+Central MCP
+→ Published Corpus만 읽음
+→ search_jira_knowledge
+→ get_jira_issue
+→ Team OpenCode</div></section><section class="card"><h2>MCP 책임</h2><p>자연어 질문을 Embedding하고 FAISS에서 Top-K Knowledge를 찾고, Knowledge DB를 통해 Evidence를 복원하며, Tool 결과로 반환합니다. 생성형 최종 답변은 OpenCode가 작성합니다.</p></section><section class="card warn"><h2>MCP가 하지 않는 것</h2><p>Jira Project Discovery, Delta Sync, Watermark 이동, backlog claim, OpenCode Knowledge Generation, Embedding 생성, Publish orchestration을 하지 않습니다.</p></section><section class="card"><h2>새 Publish 실패 시</h2><div class="flow">Source Head V5
+Loop B V5 Publish 실패
+Published Head V4
+
+MCP
+→ V4 last-known-good 계속 서비스</div><p>따라서 MCP 가용성과 Knowledge 최신성은 별개의 운영 지표입니다.</p></section><section class="card"><h2>운영 연동 지표</h2><p>MCP 자체 health와 함께 외부에서 Source Lag, Publish Lag, Backlog Depth를 보여줄 수 있지만, 이 지표를 계산하기 위해 MCP가 Sync Engine이 될 필요는 없습니다.</p></section><footer>MCP Target · always-on Published Retrieval · Two-Loop independent · 2026-08-28</footer></main></body></html>
