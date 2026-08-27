@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M10 Evidence Builder + MCP 완료 기록. Design, Implementation, CI, 실제 Real-run 모두 PASS"><title>M10 · Evidence Builder + MCP · DONE / PASS</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.flow{white-space:pre-wrap}.top a{display:inline-block;margin:0 8px 10px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_START_HERE.html">M10 Start Here</a><a href="jira_knowledge_db_current_status.html">Current Status</a><a href="M10_REAL_RUN_GATE.html">Real-run Gate</a></nav><header class="hero"><span class="eyebrow">M10 COMPLETION · 2026-08-27</span><h1>검색 결과에 실제 Jira 근거를 붙여<br>MCP로 제공하는 단계까지 완료했습니다.</h1><p>M10은 M9가 찾은 Knowledge 후보를 현재 active/accepted 상태인지 다시 검증하고, <code>ki_ → ke_ → source</code>로 실제 Jira Evidence를 복원해 read-only MCP 2 tools로 제공하는 단계입니다. 설계, 구현, CI, 실제 사내 환경 Real-run이 모두 PASS했습니다.</p><span class="state">M10 DONE / PASS</span></header>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M10 Evidence Builder + MCP 완료 기록. Design, Implementation, CI, 실제 Real-run 모두 PASS"><title>M10 · Evidence Builder + MCP · DONE / PASS</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}.top a{display:inline-block;margin:0 8px 10px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="M10_START_HERE.html">M10 Start Here</a><a href="jira_knowledge_db_current_status.html">Current Status</a><a href="M10_REAL_RUN_GATE.html">Real-run Gate</a></nav><header class="hero"><span class="eyebrow">M10 COMPLETION · 2026-08-27</span><h1>검색 결과에 실제 Jira 근거를 붙여<br>MCP로 제공하는 단계까지 완료했습니다.</h1><p>M10은 M9가 찾은 Knowledge 후보를 현재 active/accepted 상태인지 다시 검증하고, <code>ki_ → ke_ → source</code>로 실제 Jira Evidence를 복원해 read-only MCP 2 tools로 제공하는 단계입니다. 설계, 구현, CI, 실제 사내 환경 Real-run이 모두 PASS했습니다.</p><span class="state">M10 DONE / PASS</span></header>
 <section class="beginner"><span class="badge">한 줄 요약</span><h2>M10에서 무엇이 완성됐나?</h2><div class="flow">질문
 → BGE-M3로 질문 vector 생성
 → FAISS에서 관련 Knowledge Top-3 검색
@@ -9,15 +9,23 @@
 → MCP 2 tools로 Agent에 제공
 → Agent/LLM이 근거를 보고 최종 답변</div><div class="box good"><b>중요:</b> FAISS가 Jira 원문을 직접 검색하는 것은 아닙니다. FAISS는 Knowledge vector를 검색하고, M10이 SQLite에서 실제 Evidence source를 복원합니다.</div></section>
 <section><h2>1. M10 단계별 결과</h2><table><thead><tr><th>단계</th><th>상태</th><th>핵심</th></tr></thead><tbody><tr><td>M10-01 Contract Freeze</td><td>PASS</td><td>Evidence Package, 6종 Resolver, Top-3, failure/stale guard, MCP 2-tool 경계 확정</td></tr><tr><td>M10-02 Evidence Resolver</td><td>PASS</td><td>summary / description / comment / attachment / relationship / custom_field 복원</td></tr><tr><td>M10-03 Candidate Package Builder</td><td>PASS</td><td>정상 후보 유지, 깨진 후보 typed warning 격리</td></tr><tr><td>M10-04 MCP</td><td>PASS</td><td><code>search_jira_knowledge</code>, <code>get_jira_issue</code></td></tr><tr><td>M10-05 Real-run</td><td>PASS</td><td>실제 BGE-M3 + FAISS + SQLite + MCP end-to-end 검증</td></tr></tbody></table></section>
-<section><h2>2. 실제 Real-run 결과</h2><div class="grid3"><div class="box good"><b>2</b><p>MCP tools</p></div><div class="box good"><b>3</b><p>search results</p></div><div class="box good"><b>6</b><p>resolved Evidence</p></div></div><div class="flow">tool_count: 2
+<section><h2>2. 실제 Real-run 결과</h2><div class="flow">tool_count: 2
 search_result_count: 3
 evidence_count: 6
 warning_count: 0
 path_leak_count: 0
 issue_lookup_ok: true
 failure_count: 0
-M10_REAL_RUN = PASS</div></section>
-<section><h2>3. 실제로 검증된 연결</h2><div class="flow">M10_REAL_RUN_QUERY
+M10_REAL_RUN = PASS</div><div class="box good"><b>쉬운 해석:</b><p>질문 하나를 넣었더니 관련 Knowledge 3개를 찾았고, 그 Knowledge들을 뒷받침하는 실제 Jira 근거를 총 6개 복원했습니다. 깨진 후보도 없었고, 내부 경로도 노출되지 않았으며, 검색 결과에서 실제 Issue 조회까지 정상적으로 왕복했습니다.</p></div></section>
+<section><h2>3. 각 숫자의 의미</h2><table><thead><tr><th>항목</th><th>이번 값</th><th>아주 쉽게</th><th>주의할 점</th></tr></thead><tbody><tr><td><code>tool_count</code></td><td>2</td><td>MCP가 Agent에게 제공하는 <b>기능 종류가 2개</b>라는 뜻입니다. <code>search_jira_knowledge</code>와 <code>get_jira_issue</code>입니다.</td><td>Tool을 2번 호출했다는 뜻이 아닙니다.</td></tr><tr><td><code>search_result_count</code></td><td>3</td><td>FAISS가 질문과 가까운 Knowledge 후보를 <b>Top-3</b>로 3개 찾았다는 뜻입니다.</td><td>Jira 원문 3개를 직접 찾았다는 뜻이 아닙니다.</td></tr><tr><td><code>evidence_count</code></td><td>6</td><td>검색된 Knowledge 3개를 뒷받침하는 실제 Jira 근거가 <b>총 6개</b> 복원됐다는 뜻입니다.</td><td>Issue 6개나 Knowledge 6개라는 뜻이 아닙니다. 이 집계만으로는 후보별 Evidence 분배는 알 수 없습니다.</td></tr><tr><td><code>warning_count</code></td><td>0</td><td>Top-3 후보를 Evidence로 복원하는 과정에서 깨진 ref/source/stale 후보가 없었다는 뜻입니다.</td><td>Runtime은 일부 후보 격리가 가능하지만 Completion Gate에서는 0이어야 합니다.</td></tr><tr><td><code>path_leak_count</code></td><td>0</td><td>외부 MCP 응답에 내부 <code>source_path</code>/<code>source_page</code> 같은 로컬 provenance가 노출되지 않았다는 뜻입니다.</td><td>보안 경계 검사입니다.</td></tr><tr><td><code>issue_lookup_ok</code></td><td>true</td><td>검색 결과가 실제 active Jira Issue snapshot으로 다시 연결되어 <code>get_jira_issue</code>가 성공했다는 뜻입니다.</td><td>Knowledge가 원문에서 고립되지 않았음을 확인합니다.</td></tr><tr><td><code>failure_count</code></td><td>0</td><td>Real-run 완료 조건 중 실패한 검사가 하나도 없었다는 뜻입니다.</td><td>최종 PASS를 결정하는 종합 Gate입니다.</td></tr></tbody></table></section>
+<section><h2>4. Tool 2개는 정확히 무엇인가?</h2><div class="grid2"><div class="box"><b>1) search_jira_knowledge</b><p>사용자 질문을 BGE-M3로 vector화하고 FAISS Top-3 Knowledge를 찾은 뒤, 각 Knowledge의 Evidence를 SQLite에서 복원해 구조화된 Package로 반환합니다.</p></div><div class="box"><b>2) get_jira_issue</b><p>검색된 Knowledge가 나온 실제 Jira Issue의 active snapshot을 직접 조회합니다. Agent가 검색 결과의 넓은 문맥을 더 보고 싶을 때 사용할 수 있습니다.</p></div></div><div class="box warn"><b><code>tool_count=2</code>의 뜻</b><p>“MCP 호출 횟수 2회”가 아니라 “MCP가 공개하는 기능 종류가 정확히 2개”라는 뜻입니다.</p></div></section>
+<section><h2>5. Evidence 6개는 무엇인가?</h2><p>Knowledge는 앞 단계에서 Jira 사실을 압축한 검색용 의미 문장입니다. M10은 그 문장을 믿을 수 있도록 실제 Jira 원문 근거를 다시 붙입니다.</p><div class="flow">Knowledge A ─┐
+Knowledge B ─┼─→ 실제 Jira Evidence 합계 = 6
+Knowledge C ─┘
+
+Evidence 종류
+summary / description / comment / attachment / relationship / custom_field</div><p>예를 들어 후보별로 2개 + 3개 + 1개라면 합계가 6이 될 수 있습니다. 하지만 이번 validator 출력은 안전한 aggregate만 남기므로 실제 후보별 분배는 기록하지 않습니다.</p></section>
+<section><h2>6. 실제로 검증된 연결</h2><div class="flow">M10_REAL_RUN_QUERY
         ↓
 사내 BGE-M3 query embedding
         ↓
@@ -36,8 +44,17 @@ MCP search_jira_knowledge
 MCP get_jira_issue
         ↓
 PASS</div></section>
-<section><h2>4. 품질 / 보안 Gate</h2><div class="grid2"><div class="box good"><b>warning 0</b><p>Top-3 후보 중 resolver integrity 문제가 없었습니다.</p></div><div class="box good"><b>path leak 0</b><p><code>source_path</code>/<code>source_page</code> 등 내부 provenance가 외부 payload에 노출되지 않았습니다.</p></div><div class="box good"><b>Issue round-trip 성공</b><p>검색 결과가 <code>get_jira_issue</code>를 통해 실제 active Issue snapshot으로 다시 연결됐습니다.</p></div><div class="box good"><b>Read-only 유지</b><p>MCP ToolAnnotations + SQLite <code>mode=ro</code> + <code>PRAGMA query_only=ON</code> 경계를 유지합니다.</p></div></div></section>
-<section><h2>5. M10 최종 계약</h2><div class="flow">Evidence Package     candidate 중심
+<section><h2>7. 이번 Real-run에서 실제로 겪은 트러블슈팅</h2><table><thead><tr><th>증상</th><th>원인</th><th>해결</th></tr></thead><tbody><tr><td><code>ModuleNotFoundError: No module named 'mcp'</code></td><td>현재 Python 환경에 MCP SDK dependency가 설치되지 않음</td><td>프로젝트 dependency를 현재 interpreter에 다시 설치하고 <code>import mcp</code> 확인</td></tr><tr><td><code>M10_REAL_RUN_QUERY 환경 변수가 비어 있습니다</code></td><td>검증용 실제 검색 질문이 아직 설정되지 않음</td><td>Windows PowerShell에서는 <code>$env:M10_REAL_RUN_QUERY = Read-Host "M10 test query"</code> 사용</td></tr><tr><td><code>McpRuntimeSettingsError</code></td><td>M7 SQLite 또는 M9 FAISS artifact 경로 환경변수가 없거나 실제 경로가 존재하지 않음</td><td><code>Test-Path</code>로 확인 후 <code>JIRA_KNOWLEDGE_DB_PATH</code>, <code>JIRA_RETRIEVAL_ARTIFACT_DIR</code> 설정</td></tr></tbody></table><div class="grid3"><div class="box"><b>MCP 설치</b><p><a href="M10_TROUBLESHOOTING_MCP_IMPORT.html">No module named mcp 가이드</a></p></div><div class="box"><b>Query 설정</b><p><a href="M10_TROUBLESHOOTING_REAL_RUN_QUERY.html">Windows / Linux Query 설정 가이드</a></p></div><div class="box"><b>DB / FAISS 경로</b><p><a href="M10_TROUBLESHOOTING_RUNTIME_SETTINGS.html">McpRuntimeSettingsError 가이드</a></p></div></div></section>
+<section><h2>8. Windows 현재 테스트 / Linux 향후 포팅</h2><div class="grid2"><div class="box"><b>현재 Windows PowerShell</b><div class="flow">$env:M10_REAL_RUN_QUERY = Read-Host "M10 test query"
+$env:JIRA_KNOWLEDGE_DB_PATH = (Resolve-Path "...").Path
+$env:JIRA_RETRIEVAL_ARTIFACT_DIR = (Resolve-Path "...").Path
+python tools/jira_knowledge/validate_m10_real_run.py</div></div><div class="box"><b>향후 Linux</b><div class="flow">read -r -p "M10 test query: " M10_REAL_RUN_QUERY
+export M10_REAL_RUN_QUERY
+export JIRA_KNOWLEDGE_DB_PATH="..."
+export JIRA_RETRIEVAL_ARTIFACT_DIR="..."
+python3 tools/jira_knowledge/validate_m10_real_run.py</div></div></div><p>실제 Query, 절대경로, endpoint/header/token은 공개 문서에 기록하지 않습니다.</p></section>
+<section><h2>9. 품질 / 보안 Gate</h2><div class="grid2"><div class="box good"><b>warning 0</b><p>Top-3 후보 중 resolver integrity 문제가 없었습니다.</p></div><div class="box good"><b>path leak 0</b><p><code>source_path</code>/<code>source_page</code> 등 내부 provenance가 외부 payload에 노출되지 않았습니다.</p></div><div class="box good"><b>Issue round-trip 성공</b><p>검색 결과가 <code>get_jira_issue</code>를 통해 실제 active Issue snapshot으로 다시 연결됐습니다.</p></div><div class="box good"><b>Read-only 유지</b><p>MCP ToolAnnotations + SQLite <code>mode=ro</code> + <code>PRAGMA query_only=ON</code> 경계를 유지합니다.</p></div></div></section>
+<section><h2>10. M10 최종 계약</h2><div class="flow">Evidence Package     candidate 중심
 Evidence Type        summary / description / comment / attachment / relationship / custom_field
 Candidate Budget     M9 Top-3 유지
 Threshold            없음
@@ -47,7 +64,7 @@ Runtime Failure      broken candidate 격리 + typed warning
 MCP Tool             search_jira_knowledge
                      get_jira_issue
 MCP Generative LLM   없음</div></section>
-<section><h2>6. M10 이후에도 유지할 경계</h2><div class="flow">M9 Retrieval
+<section><h2>11. M10 이후에도 유지할 경계</h2><div class="flow">M9 Retrieval
 = 질문과 가까운 Knowledge 후보를 찾음
 
 M10 Evidence/MCP
@@ -55,6 +72,6 @@ M10 Evidence/MCP
 
 Agent / LLM
 = Knowledge + Evidence를 바탕으로 최종 자연어 답변 생성</div><p>검색, 근거 복원, 답변 생성을 한 계층에 섞지 않습니다.</p></section>
-<section><h2>7. 보안 기록 원칙</h2><p>실제 Real-run에서 사용한 Query, Issue key, Jira 원문, 사내 endpoint/header/token, 로컬 절대경로는 공개 문서에 남기지 않습니다. Completion 문서에는 안전한 aggregate만 기록합니다.</p></section>
-<section><h2>8. 다음 단계</h2><div class="box"><b>다음 Milestone은 아직 정의하지 않습니다.</b><p>M10 완료 상태를 먼저 고정한 뒤, 운영화·Agent 연동·retrieval hardening 중 무엇을 다음 Milestone으로 둘지 별도 의사결정으로 정의합니다.</p></div></section>
+<section><h2>12. 보안 기록 원칙</h2><p>실제 Real-run에서 사용한 Query, Issue key, Jira 원문, 사내 endpoint/header/token, 로컬 절대경로는 공개 문서에 남기지 않습니다. Completion 문서에는 안전한 aggregate만 기록합니다.</p></section>
+<section><h2>13. 다음 단계</h2><div class="box"><b>다음 Milestone은 아직 정의하지 않습니다.</b><p>M10 완료 상태를 먼저 고정한 뒤, 운영화·Agent 연동·retrieval hardening 중 무엇을 다음 Milestone으로 둘지 별도 의사결정으로 정의합니다.</p></div></section>
 <footer>M10 Evidence Builder + MCP · DESIGN PASS · IMPLEMENTATION PASS · CI PASS · REAL-RUN PASS · DONE · 2026-08-27</footer></main></body></html>
