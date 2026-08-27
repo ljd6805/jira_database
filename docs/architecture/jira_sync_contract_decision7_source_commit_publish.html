@@ -1,25 +1,23 @@
-<!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sync Contract Decision 7 최종 결정. Source Commit과 Publish를 분리하고 기존 Published Knowledge를 안전하게 유지한다."><title>Sync Contract · Decision 7 Final</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1040px;margin:auto;padding:42px 22px 80px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,54px);line-height:1.12}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:900}section{margin-top:42px}h2{font-size:28px}.flow{white-space:pre-wrap;padding:17px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eaf8f3}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}.footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:800px){.grid2{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">FROZEN Contract</a><a href="jira_sync_contract_easy_guide.html">쉬운 가이드</a></nav><header class="hero"><div>SYNC CONTRACT · DECISION 7 · FINAL · 2026-08-27</div><h1>Source Commit과 Publish는<br>같은 완료가 아닙니다.</h1><p>Jira 최신 원본을 안전하게 확보한 시점과, 그 변경분이 Knowledge·Embedding·FAISS까지 반영되어 실제 검색에 쓰이는 시점을 분리합니다.</p><span class="state">FIXED · SOURCE COMMIT ≠ PUBLISH</span></header><section><h2>1. Source Commit</h2><div class="flow">Jira Source 안전 저장
-→ semantic_v2 source_hash 계산
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="D7 Source Commit vs Publish 결정과 2-Loop 채택 후 실제 실행 경계"><title>Sync Contract · D7 · Source Commit vs Publish</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.76}.wrap{max-width:1050px;margin:auto;padding:42px 22px 86px}.hero{padding:38px;border-radius:24px;background:#eef9f4;border-left:6px solid var(--green)}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}.card{margin-top:18px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:14px}a{color:var(--blue);font-weight:800}.footer{margin-top:48px;font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_contract.html">Sync Contract v2</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop</a></p><header class="hero"><div>D7 · FIXED · 2-LOOP BOUNDARY</div><h1>SOURCE_COMMITTED와 PUBLISHED는 다른 완료 경계입니다.</h1><p>D9 2-Loop 채택으로 D7은 더 명확해졌습니다. Source Commit은 Loop A의 종료 경계이고 Publish는 Loop B의 종료 경계입니다.</p></header><section class="card"><h2>Loop A · SOURCE_COMMITTED</h2><div class="flow">Jira Source 확보
+→ RAW / ANALYSIS / Knowledge Input durable
+→ semantic_v2 hash
 → NEW / CHANGED / UNCHANGED 판정
-→ downstream Work Item durable 저장
-→ SOURCE_COMMITTED</div><p>Project의 책임 Source window가 모두 안전하게 끝나면 Watermark를 upper까지 전진할 수 있습니다.</p></section><section><h2>2. Publish</h2><div class="flow">승인 Knowledge
-→ Evidence resolve
-→ Embedding
-→ FAISS / Mapping 일치
-→ 실제 Retrieval 전환
-→ PUBLISHED</div><p>새 Knowledge가 존재하기만 하는 것으로는 Publish가 아닙니다. 사용자 검색이 새 상태를 일관되게 사용해야 합니다.</p></section><section><h2>3. 기존 Published Knowledge 보호</h2><div class="grid2"><div class="card good"><h3>새 Publish 준비 중</h3><p>기존 Published Knowledge를 계속 제공합니다.</p></div><div class="card good"><h3>Publish 실패</h3><p>Source부터 재수집하지 않고 실패 Stage부터 Resume합니다.</p></div></div><div class="flow">현재 Published = V1
-새 Source V2 = SOURCE_COMMITTED
-V2 Knowledge / Embedding 준비 중
+→ NEW/CHANGED sync_issue_change durable
+→ Project Source window 전체 완료
+→ source_committed + Watermark same transaction</div></section><section class="card"><h2>Loop B · PUBLISHED</h2><div class="flow">pending Work Item
+→ OpenCode Knowledge
+→ Review / Evidence
+→ Knowledge DB
+→ BGE-M3 Embedding
+→ FAISS staging / mapping
+→ 검증
+→ actual Retrieval atomic switch
+→ State publish_status = published</div></section><section class="card"><h2>두 Loop 사이에서 허용되는 상태</h2><div class="flow">Source Head = V2
+Published Head = V1
 
-→ 검색은 V1 유지
+Loop A completed 가능
+Loop B backlog pending 가능
+사용자 Retrieval = V1 유지
 
-V2 전체 준비 완료
-→ Published Head를 V2로 전환
-→ V1은 History 보존</div></section><section><h2>4. Half-Publish 금지</h2><div class="callout"><strong>확정:</strong> DB는 V2인데 FAISS는 V1인 식의 반쪽 상태를 사용자에게 노출하지 않습니다. 새 Published 상태가 완전히 준비된 뒤 한 번에 Retrieval 관점을 전환합니다.</div></section><section><h2>5. Decision 7 최종 규칙</h2><div class="flow">1. SOURCE_COMMITTED와 PUBLISHED를 분리
-2. Source window 전체 성공 후 Watermark advance 가능
-3. Publish 전에는 기존 Published Knowledge 계속 제공
-4. Publish 실패 시 실패 Stage부터 Resume
-5. Source 재수집은 필요 없음
-6. Half-Publish는 허용하지 않음
-7. Jira 삭제/비노출은 기존 Published Knowledge 자동 해제 이벤트가 아님</div></section><footer class="footer">Decision 7 FINAL · reflected in FROZEN Sync Contract · 2026-08-27</footer></main></body></html>
+V2 actual Publish 후
+Published Head = V2</div><p>이 상태는 오류가 아니라 eventual consistency 구간입니다. 운영자는 Source Lag / Publish Lag / Backlog로 관찰합니다.</p></section><section class="card"><h2>Half-Publish 금지</h2><p>Knowledge DB, Embedding, FAISS/Mapping이 서로 다른 세대를 사용자에게 노출하지 않습니다. State의 <code>published</code> 표시는 실제 Retrieval 전환보다 먼저 기록할 수 없습니다.</p></section><footer class="footer">D7 FIXED · Source Commit = Loop A / Publish = Loop B · 2026-08-28</footer></main></body></html>
