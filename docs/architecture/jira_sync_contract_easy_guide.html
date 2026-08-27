@@ -1,55 +1,63 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Continuous Jira Knowledge Service의 2-Loop Sync Contract를 쉬운 비유와 예제로 설명하는 가이드"><title>Sync Contract v2 · 쉬운 가이드 · Two-Loop</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--purple:#6f4bc7;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.8;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 90px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,56px)}section{margin-top:48px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.analogy{display:grid;grid-template-columns:70px 1fr;gap:14px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:15px;margin-top:15px}.emoji{font-size:34px}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}a{color:var(--blue);font-weight:800}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3,.analogy{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_contract.html">공식 Contract v2</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a></p><header class="hero"><div>EASY GUIDE · 2026-08-28</div><h1>Jira 최신화와 AI 지식화는<br>따로 달립니다.</h1><p>2-Loop 구조를 “물류센터” 비유로 이해하면 쉽습니다. Loop A는 Jira에서 새 물건을 받아 창고에 안전하게 입고하는 팀이고, Loop B는 입고된 물건을 검사·가공해 매대에 올리는 팀입니다.</p></header><section><h2>1. 왜 굳이 Loop를 둘로 나눴을까?</h2><div class="analogy"><div class="emoji">🚚</div><div><h3>Loop A = 입고팀</h3><p>Jira에서 무엇이 새로 생겼고 바뀌었는지 계속 가져옵니다. OpenCode가 느리더라도 입고팀은 멈추지 않습니다.</p></div></div><div class="analogy"><div class="emoji">🏭</div><div><h3>Loop B = 가공·진열팀</h3><p>입고된 변경분을 OpenCode로 지식화하고 Embedding/FAISS까지 준비한 뒤 실제 검색 매대에 올립니다.</p></div></div><div class="callout"><strong>핵심:</strong> 입고팀이 먼저 끝나도 가공팀은 아직 일하고 있을 수 있습니다. 이 상태가 정상입니다.</div></section><section><h2>2. 전체 흐름</h2><div class="flow">Loop A · Source Sync
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Continuous Jira Knowledge Service 2-Loop, Source Ready Gate, backlog, Publish를 쉬운 비유로 설명하는 가이드"><title>Sync Contract v2 · 쉬운 가이드 · Two-Loop</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.8;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 90px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,56px)}section{margin-top:48px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.analogy{display:grid;grid-template-columns:70px 1fr;gap:14px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:15px;margin-top:15px}.emoji{font-size:34px}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}a{color:var(--blue);font-weight:800}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3,.analogy{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_contract.html">공식 Contract v2</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a></p><header class="hero"><div>EASY GUIDE · 2026-08-28</div><h1>Jira 최신화와 AI 지식화는<br>따로 달립니다.</h1><p>2-Loop 구조를 물류센터로 생각하면 쉽습니다. Loop A는 Jira 물건을 안전하게 입고하는 팀이고, Loop B는 입고 완료된 물건만 가져가 검사·가공해 검색 매대에 올리는 팀입니다.</p></header><section><h2>1. 왜 두 팀인가?</h2><div class="analogy"><div class="emoji">🚚</div><div><h3>Loop A = 입고팀</h3><p>Jira 변경분을 계속 받아 RAW/ANALYSIS로 정리하고 실제 변화인지 판정합니다. OpenCode가 느려도 멈추지 않습니다.</p></div></div><div class="analogy"><div class="emoji">🏭</div><div><h3>Loop B = 가공·진열팀</h3><p>입고 완료된 변경분을 OpenCode로 지식화하고 Embedding/FAISS까지 준비해 검색 서비스에 Publish합니다.</p></div></div></section><section><h2>2. 전체 흐름</h2><div class="flow">Loop A · Source Sync
 Jira
-→ Project 찾기
-→ 지난 Watermark 이후 변경 후보 읽기
+→ Project Discovery
+→ Delta Download
 → RAW / ANALYSIS / Knowledge Input
 → semantic_v2 hash
 → NEW / CHANGED / UNCHANGED
-→ NEW/CHANGED Work Item 저장
-→ SOURCE_COMMITTED
+→ Work Item row 저장
+→ Project SOURCE_COMMITTED
 → Watermark 이동
+→ Source Ready 도장
 
-             ↓ 작업 대기열
-        sync_issue_change
-             ↓
+           ↓ 처리 가능한 대기열
 
 Loop B · Knowledge Processing / Publish
-대기 Work Item
+Source Ready Work Item
 → OpenCode Knowledge
 → Review / Evidence
 → Knowledge DB
-→ BGE-M3 Embedding
+→ BGE-M3
 → FAISS 준비
 → Atomic Publish
-→ PUBLISHED</div></section><section><h2>3. Watermark = 책갈피</h2><div class="analogy"><div class="emoji">🔖</div><div><p>“이 Project는 Jira를 어디까지 안전하게 읽었지?”를 기억하는 책갈피입니다. Project마다 따로 있습니다.</p></div></div><div class="flow">지난 Watermark = 10:30
+→ PUBLISHED</div></section><section><h2>3. Watermark = 책갈피</h2><div class="analogy"><div class="emoji">🔖</div><div><p>“이 Project는 Jira를 어디까지 안전하게 읽었나?”를 기억하는 책갈피입니다. Project마다 따로 있습니다.</p></div></div><div class="flow">지난 Watermark = 10:30
 Overlap 5분
-→ 이번 시작점 = 10:25
-
+→ lower = 10:25
 이번 Source Run upper = 10:40
 
-모든 Source 후보를 안전하게 처리한 뒤에만
-Watermark = 10:40</div><p>OpenCode가 아직 지식화를 못 했더라도 Source가 안전하게 입고됐다면 Watermark는 전진할 수 있습니다.</p></section><section><h2>4. SOURCE_COMMITTED와 PUBLISHED</h2><div class="grid2"><div class="card good"><h3>SOURCE_COMMITTED</h3><p>Jira 변경분을 안전하게 받아 정리했고, 어떤 변경인지 판정하고, Loop B가 처리할 Work Item까지 저장한 상태입니다.</p></div><div class="card good"><h3>PUBLISHED</h3><p>Knowledge, Review, Embedding, FAISS까지 준비돼 실제 사용자 검색이 새 버전을 보게 된 상태입니다.</p></div></div><div class="flow">Jira V2 확보 = SOURCE_COMMITTED
-검색은 아직 V1
+Project Source 전체 안전 완료 후에만
+Watermark = 10:40</div></section><section><h2>4. Source Ready Gate = 입고 완료 도장</h2><div class="analogy"><div class="emoji">✅</div><div><p>창고 직원이 상자에 이름표를 먼저 붙일 수는 있습니다. 하지만 입고 검수가 끝나 <strong>입고 완료 도장</strong>이 찍히기 전에는 가공팀이 가져가면 안 됩니다. 이것이 Source Ready Gate입니다.</p></div></div><div class="flow">T2
+ABC-1 상자(Work Item) 만들어짐
+→ 아직 Source Ready 아님
 
-OpenCode / Embedding 처리 중...
+같은 Project의 ABC-2 수집 실패 가능
+→ Project 전체 Commit 전까지 Loop B claim 금지
 
-V2 Publish 완료
-→ 검색도 V2</div></section><section><h2>5. Backlog = 처리 대기 상자</h2><div class="analogy"><div class="emoji">📦</div><div><p>Loop A가 Loop B보다 빠르면 대기 상자가 쌓입니다. 이것 자체는 장애가 아니지만 계속 늘어나면 Loop B 처리량이 부족하다는 뜻입니다.</p></div></div><div class="grid3"><div class="card"><h3>Backlog Depth</h3><p>대기 중인 Work Item 개수.</p></div><div class="card"><h3>Oldest Pending Age</h3><p>가장 오래 기다린 변경분의 대기시간.</p></div><div class="card"><h3>Publish Lag</h3><p>Jira 최신 Source와 검색 최신 버전 사이 차이.</p></div></div></section><section><h2>6. 낮에 OpenCode가 느리면?</h2><div class="flow">낮
-Loop A: R101 ✓ R102 ✓ R103 ✓
-Loop B: 느림 → backlog 증가
+T3 Project Source Commit 성공
+→ Watermark 이동
+→ ABC-1 Source Ready 도장
+→ 이제 Loop B가 가져갈 수 있음</div><div class="callout"><strong>정확한 조건:</strong><br><code>last_source_committed_run_id = last_observed_source_run_id</code>인 Work만 Loop B가 처리합니다.</div></section><section><h2>5. SOURCE_COMMITTED와 PUBLISHED</h2><div class="grid2"><div class="card good"><h3>SOURCE_COMMITTED</h3><p>Jira 변경분을 안전하게 받고 Project 단위 검수까지 끝내 Source Ready Work를 넘길 수 있는 상태입니다.</p></div><div class="card good"><h3>PUBLISHED</h3><p>Knowledge, Review, Embedding, FAISS까지 완성되어 실제 사용자 검색이 새 버전을 보는 상태입니다.</p></div></div><div class="flow">Source Head = V2
+Published Head = V1
+→ 정상적인 중간 상태
+→ 사용자는 V1 계속 검색
+
+Loop B가 V2 Publish 완료
+→ Published Head = V2</div></section><section><h2>6. Backlog = 처리 대기 상자</h2><div class="analogy"><div class="emoji">📦</div><div><p>Loop A가 Loop B보다 빠르면 Source Ready 상자가 쌓입니다. 이것은 장애가 아닐 수 있지만 계속 증가하면 Processing 처리량이 부족하다는 뜻입니다.</p></div></div><div class="grid3"><div class="card"><h3>Backlog Depth</h3><p>Source Ready지만 아직 끝나지 않은 Work 수.</p></div><div class="card"><h3>Oldest Pending Age</h3><p>가장 오래 기다린 Work의 대기시간.</p></div><div class="card"><h3>Publish Lag</h3><p>Source Head와 Published Head의 차이.</p></div></div></section><section><h2>7. 낮에 OpenCode가 느리면?</h2><div class="flow">낮
+Loop A: 계속 Source 최신화
+Loop B: 느림
+→ backlog 증가 가능
 
 밤
-Loop A: 계속 독립 실행
-Loop B: 처리량 증가 → backlog 감소</div><p>2-Loop는 느린 OpenCode를 없애지는 않습니다. 대신 그 병목이 Jira 수집까지 막지 못하게 격리합니다.</p></section><section><h2>7. NEW / CHANGED / UNCHANGED</h2><div class="grid3"><div class="card"><h3>NEW</h3><p>처음 보는 jira_id. Work Item을 만듭니다.</p></div><div class="card"><h3>CHANGED</h3><p>같은 jira_id지만 semantic_v2 hash가 다름. 새 Work Item을 만듭니다.</p></div><div class="card"><h3>UNCHANGED</h3><p>같은 semantic state. 새 Work Item 없이 기존 Knowledge/Embedding을 재사용합니다.</p></div></div></section><section><h2>8. Project가 안 보이면?</h2><div class="flow">Project Discovery 전체 성공
+Loop B 처리량 증가
+→ backlog catch-up</div><p>2-Loop는 병목을 없애는 것이 아니라 Jira 최신화에서 격리하고 측정 가능하게 만듭니다.</p></section><section><h2>8. NEW / CHANGED / UNCHANGED</h2><div class="grid3"><div class="card"><h3>NEW</h3><p>처음 보는 jira_id. Work Item 생성.</p></div><div class="card"><h3>CHANGED</h3><p>같은 jira_id지만 semantic_v2 hash가 다름. Work Item 생성 또는 기존 semantic Work 재활성화.</p></div><div class="card"><h3>UNCHANGED</h3><p>같은 semantic state. 새 Work 없이 기존 Knowledge/Embedding 재사용.</p></div></div></section><section><h2>9. Project가 안 보이면?</h2><div class="flow">Project Discovery 전체 성공
 → 기존 Project B가 목록에 없음
-→ B = unavailable
-→ 이번 Source Loop에서 skip
-→ Watermark 유지
-→ 기존 Knowledge/Embedding/FAISS 유지
-→ 검색 계속 가능</div><p>Jira에서 안 보인다는 이유만으로 과거 업무지식을 삭제하지 않습니다.</p></section><section><h2>9. 실패하면 어디부터 다시 하나?</h2><div class="grid2"><div class="card"><h3>Loop A 실패</h3><p>Source cursor와 Watermark를 기준으로 같은 Source Run을 재개하거나 새 Run에서 overlap으로 다시 읽습니다.</p></div><div class="card"><h3>Loop B 실패</h3><p>Knowledge/Embedding/Publish 중 실패한 Stage부터 Work Item을 재개합니다. Jira를 다시 다운로드하지 않습니다.</p></div></div></section><section><h2>10. Run도 두 종류</h2><div class="flow">source_sync_run
-→ Jira Source 최신화 실행 이력
+→ unavailable
+→ Loop A에서 skip / Watermark 유지
+→ 기존 Knowledge / Embedding / FAISS 유지
+→ 검색 계속 가능</div></section><section><h2>10. 실패하면 어디부터 다시 하나?</h2><div class="grid2"><div class="card"><h3>Loop A</h3><p>fixed lower/upper와 stable cursor를 이용해 Source를 재개합니다. Source Commit되지 않은 관찰은 Loop B가 소비하지 않습니다.</p></div><div class="card"><h3>Loop B</h3><p>Knowledge/Embedding/Publish 중 실패 Stage부터 재개합니다. Jira를 다시 다운로드하지 않습니다.</p></div></div></section><section><h2>11. Run도 두 종류</h2><div class="flow">source_sync_run
 → sr_ + UUID4
+→ Jira Source 최신화 실행
 
 processing_run
-→ OpenCode/Embedding/Publish 실행 이력
-→ pr_ + UUID4</div><p>두 Run은 1:1로 대응하지 않습니다. 한 Processing Run이 여러 Source Run에서 쌓인 backlog를 처리할 수 있습니다.</p></section><section><h2>11. 지금 외우면 되는 다섯 문장</h2><div class="card good"><p>① Jira Source 최신화와 AI 지식화는 서로 기다리지 않는다.<br>② Source Commit이 끝나면 Work Item을 남기고 Loop A는 계속 간다.<br>③ Loop B가 느리면 backlog가 쌓이며, 그 자체는 관찰해야 할 상태다.<br>④ 새 Publish가 완성될 때까지 기존 Published Knowledge를 계속 제공한다.<br>⑤ 시스템 최신성은 하나의 Run 상태가 아니라 Source Lag + Publish Lag + Backlog로 본다.</p></div></section><section><h2>12. 아직 남은 결정</h2><div class="card warn"><p>V2→V3→V4가 빠르게 쌓였을 때 미시작 V2/V3 Knowledge Work를 모두 처리할지 최신 pending Version만 처리할지는 아직 별도 결정입니다. Source Version은 모두 보존합니다.</p></div></section><footer class="footer">Sync Contract v2 Easy Guide · Two-Loop · 2026-08-28</footer></main></body></html>
+→ pr_ + UUID4
+→ OpenCode / Embedding / Publish 실행</div><p>둘은 1:1로 대응하지 않습니다.</p></section><section><h2>12. 기억할 여섯 문장</h2><div class="card good"><p>① Jira Source 최신화와 AI 지식화는 서로 기다리지 않는다.<br>② Work Item row가 있다고 바로 처리하지 않는다.<br>③ Project Source Commit까지 끝난 Source Ready Work만 Loop B가 가져간다.<br>④ Source Commit과 Publish는 다른 완료 경계다.<br>⑤ 새 Publish 전까지 기존 Published Knowledge를 계속 제공한다.<br>⑥ 시스템 최신성은 Source Lag + Publish Lag + Backlog로 본다.</p></div></section><section><h2>13. 아직 남은 결정</h2><div class="card warn"><p>V2→V3→V4가 Processing 전에 쌓였을 때 모든 semantic Version을 지식화할지, 아직 시작하지 않은 구버전 Work를 supersede할지는 다음에 결정합니다. Source Version 자체는 모두 보존합니다.</p></div></section><footer class="footer">Sync Contract v2 Easy Guide · Two-Loop · Source Ready Gate · 2026-08-28</footer></main></body></html>
