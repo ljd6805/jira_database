@@ -1,7 +1,7 @@
 # Jira Knowledge Pipeline 전체 아키텍처
 
 기준일: 2026-08-27  
-현재 단계: **M0~M10 DONE / PASS · M11 CURRENT · M11-01~04 PASS**
+현재 단계: **M0~M11 DONE / PASS**
 
 > Documentation Hub가 직접 연결하는 문서는 HTML을 기준으로 합니다. 이 Markdown은 검색/로그/개발 편의용 보조 문서입니다.
 
@@ -32,7 +32,9 @@ FAISS + Active Retrieval               M9 DONE · REAL-RUN PASS
     ↓
 Evidence Builder + MCP                 M10 DONE · REAL-RUN PASS
     ↓
-OpenCode MCP Consumer Pilot            M11 CURRENT · M11-01~04 PASS
+OpenCode MCP Consumer Pilot            M11 DONE · USER REAL-RUN PASS
+    ↓
+중앙 Remote MCP 서비스화                NEXT TARGET · 번호 미정
 ```
 
 ## 2. 핵심 불변 원칙
@@ -47,8 +49,8 @@ RAW → ANALYSIS → KNOWLEDGE → DB → EMBEDDING → RETRIEVAL → EVIDENCE P
 - Identity는 `jira_id → iv_ → kc_ → kg_ → ka_(attempt_no) → ki_ → ke_`를 유지한다.
 - `knowledge_attempt = ka_ + attempt_no` 관계를 유지한다.
 - `FAISS position ≠ embedding_id(emb_) ≠ knowledge_item_id(ki_)`다.
-- MCP는 검색/근거 복원만 담당하고 생성형 LLM은 Agent에 둔다.
-- Local stdio는 Pilot용이고 최종 팀 서비스는 중앙 Remote MCP다.
+- MCP는 검색/근거 복원만 담당하고 생성형 LLM은 외부 Agent에 둔다.
+- Local stdio는 기능/호환성 Pilot이고 최종 팀 서비스는 중앙 Remote MCP다.
 
 ## 3. Pilot 핵심 숫자
 
@@ -80,8 +82,8 @@ M11 OpenCode Consumer Pilot
 OpenCode local stdio 연결
 → Tool 2개 discovery
 → 명시적 Tool call
-→ 자동 Tool selection 검증
-→ Evidence 기반 답변 검증
+→ 일반 업무 질문에서 자동 Tool selection
+→ 후속 근거 요청에서 description/comment Evidence 추적
 
 최종 서비스
 팀원 OpenCode → 중앙 Remote MCP / HTTPS
@@ -119,16 +121,22 @@ failure_count: 0
 M10_REAL_RUN = PASS
 ```
 
-## 7. M11 실제 OpenCode 검증
+## 7. M11 실제 OpenCode 검증 — PASS
 
 ```text
-M11-01 .env service configuration   PASS
-M11-02 local stdio OpenCode 연결    PASS
-M11-03 Tool 2개 discovery           PASS
-M11-04 명시적 Tool call             PASS
-M11-05 자동 Tool selection          NEXT
-M11-06 Evidence 기반 답변           NEXT
+M11-01 .env service configuration                PASS
+M11-02 local stdio OpenCode 연결                 PASS
+M11-03 Tool 2개 discovery                        PASS
+M11-04 명시적 Tool call                          PASS
+M11-05 일반 업무 질문에서 자동 Tool selection    PASS
+M11-06 근거 요청에서 description/comment 추적    PASS
+
+M11 = DONE / PASS
 ```
+
+MCP/Tool 이름을 말하지 않은 일반 업무 질문에서도 OpenCode가 Jira MCP를 스스로 호출했다. 이어진 근거 요청에서는 실제 Jira `description` 또는 `comment` Evidence를 가져와 제시했다.
+
+공개 문서에는 실제 업무 질문, Issue key, Jira 원문을 기록하지 않는다.
 
 별도 subprocess stdio 검증:
 
@@ -138,17 +146,15 @@ tools: get_jira_issue, search_jira_knowledge
 M11_STDIO_HANDSHAKE = PASS
 ```
 
-M11-03/04는 사용자가 실제 OpenCode 환경에서 확인한 Real-run 결과다.
-
 ## 8. Local Pilot과 최종 팀 서비스
 
 ```text
-Local Pilot
+M11 Local Pilot · DONE
 jira_database/.env + SQLite + FAISS + MCP
                 ↓ stdio
              OpenCode
 
-Final Service
+Next Target · Final Service
 팀원 A OpenCode ─┐
 팀원 B OpenCode ─┼── Remote MCP / HTTPS ─→ 중앙 jira-knowledge MCP
 팀원 C OpenCode ─┘                          ├─ SQLite
@@ -167,7 +173,7 @@ OS 환경 변수       .env보다 우선 · CI/진단/일시 override
 명시적 test env    .env를 읽지 않음
 ```
 
-서비스 `.env`:
+최종 Remote 서비스의 중앙 서버 `.env`:
 
 ```text
 JIRA_KNOWLEDGE_DB_PATH
@@ -194,7 +200,7 @@ HNSW / IVF benchmark
 
 ## 11. 보안 기록 원칙
 
-실제 Query, Issue key, Jira 원문, 사내 endpoint/header/token, 로컬 절대경로는 공개 저장소에 기록하지 않는다. Real-run Completion에는 안전한 aggregate만 남긴다.
+실제 Query, Issue key, Jira 원문, 사내 endpoint/header/token, 로컬 절대경로는 공개 저장소에 기록하지 않는다. Real-run Completion에는 안전한 aggregate와 동작 형태만 남긴다.
 
 ## 12. Current Source of Truth
 
@@ -203,10 +209,11 @@ README.md
 docs/index.html
 docs/PIPELINE_OVERVIEW.html
 docs/status/jira_knowledge_db_current_status.html
-docs/status/M10_COMPLETION.html
+docs/status/M11_COMPLETION.html
 docs/status/M11_OPENCODE_MCP_INTEGRATION.html
+docs/status/M10_COMPLETION.html
 docs/architecture/jira_knowledge_mcp_service_target.html
 docs/architecture/jira_data_relationship_map.*
 ```
 
-다음 Gate는 **M11-05 자동 Tool selection**이다. MCP나 Tool 이름을 명시하지 않은 일반 Jira 업무 질문에서 OpenCode Agent가 스스로 `search_jira_knowledge`를 선택하는지 확인한다.
+다음 목표는 **중앙 Remote MCP 서비스화**다. Streamable HTTP, 서버 실행 방식, TLS/인증/접근 제어, logging/health, 동시 사용 검증, 팀원 OpenCode 원격 Pilot의 Completion Gate를 먼저 합의한 뒤 다음 Milestone 번호를 확정한다.
