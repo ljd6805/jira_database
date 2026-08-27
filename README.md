@@ -235,7 +235,8 @@ M10-01 Contract Freeze             PASS
 M10-02 Evidence Resolver           PASS
 M10-03 Candidate Package Builder   PASS
 M10-04 MCP 2-tool boundary         PASS
-GitHub Actions pytest              133/133 PASS
+M10-05 Real-run validator/tests    READY
+GitHub Actions pytest              136/136 PASS
 ```
 
 현재 남은 단계는 **M10-05 Real-run Gate**입니다. Git에 없는 실제 M7 SQLite, M9 FAISS artifact, 사내 BGE-M3 endpoint를 연결해 실제 질문이 `FAISS → ki_ → ke_ → source → MCP response`까지 끝까지 통과하는지 검증해야 M10을 DONE으로 판정합니다.
@@ -252,10 +253,11 @@ tools/jira_knowledge/validate_m10_real_run.py
 
 - [Documentation Hub](docs/index.html)
 - [M10 Start Here](docs/status/M10_START_HERE.html)
-- [M10 쉬운 설계안](docs/M10_EVIDENCE_MCP_DESIGN.html)
+- [M10 쉬운 확정 설계](docs/M10_EVIDENCE_MCP_DESIGN.html)
 - [M10 Contract Freeze](docs/status/M10_EVIDENCE_MCP_CONTRACT.html)
 - [M10 Resolver / Package PASS](docs/status/M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html)
 - [M10 MCP Implementation PASS](docs/status/M10_MCP_IMPLEMENTATION.html)
+- [M10 Real-run Gate](docs/status/M10_REAL_RUN_GATE.html)
 - [Current Status](docs/status/jira_knowledge_db_current_status.html)
 - [Pipeline Overview](docs/PIPELINE_OVERVIEW.html)
 - [Relationship Map](docs/architecture/jira_data_relationship_map.html)
