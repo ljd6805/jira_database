@@ -1,0 +1,70 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Operational Sync State Schema v1 공식 FROZEN Contract. S1~S7 최종 결정을 통합한다."><title>Jira Knowledge Service · Sync State Schema Contract · FROZEN</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 90px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:48px}h2{font-size:30px}.lead{color:var(--muted);max-width:940px}.grid2,.grid3,.grid4{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_contract.html">Sync Contract</a><a href="jira_sync_state_schema_decision7_final_ddl.html">S7 Final DDL</a><a href="jira_sync_state_project_registry_design_draft.html">Decision History</a></nav><header class="hero"><div>CONTINUOUS JIRA KNOWLEDGE SERVICE · OPERATIONAL STATE SCHEMA · 2026-08-27</div><h1>Sync State Schema Contract<br>FROZEN v1</h1><p>Sync Contract D1~D8을 실제 운영 상태 저장소로 옮기기 위해 S1~S7에서 합의한 저장소, 테이블, 컬럼, 상태, Transaction, Migration, ID, DDL을 하나의 구현 기준으로 통합합니다.</p><span class="state">FROZEN BASELINE · S1~S7 APPROVED · NO IMPLEMENTATION YET</span></header>
+<section><h2>1. 책임 경계</h2><div class="grid2"><div class="card good"><h3>Control Plane · State DB</h3><p><code>data/state/collector.db</code>를 Operational Sync State DB로 확장합니다.</p><p>Run, Project 현재 상태, Watermark, Source cursor, Work Item, retry/error를 관리합니다.</p></div><div class="card"><h3>Data Plane · Knowledge DB</h3><p>Issue Version, Generation, Attempt, Knowledge Item, Evidence, Review 등 실제 업무지식과 족보를 보존합니다.</p></div></div><div class="callout"><strong>원칙:</strong> State DB는 “어디까지 진행됐는가”, Knowledge DB는 “무엇이 만들어졌는가”를 답합니다.</div></section>
+<section><h2>2. S1 · 저장소와 Migration</h2><div class="flow">기존 data/state/collector.db 재사용
+→ 의미 없는 그대로 사용 X
+→ explicit versioned migration 필수
+→ legacy table/data 보존
+→ Operational State 확장</div><p>Silent auto-migration은 금지합니다. 기존 DB는 fingerprint를 확인하고 consistent backup, validation, regression Gate를 통과한 뒤에만 v1로 전환합니다.</p></section>
+<section><h2>3. S2 · 4개 Operational Domain Table</h2><div class="grid4"><div class="card"><h3>sync_run</h3><p>전체 Source Sync 범위와 집계 상태.</p></div><div class="card"><h3>project_state</h3><p>Project identity, visibility, Watermark 현재 상태.</p></div><div class="card"><h3>sync_project_run</h3><p>Run×Project Source 처리 이력과 Resume cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>NEW/CHANGED semantic Work Item의 downstream 진행 상태.</p></div></div><p>Migration 감사용 <code>state_schema_migration</code>은 별도 Technical Metadata입니다.</p></section>
+<section><h2>4. S3 · 필수 컬럼과 상태</h2><div class="flow">sync_run
+→ fixed upper
+→ discovery_status / source_status / publish_status / run_status
+
+project_state
+→ project_id / current key,name / visibility
+→ committed_watermark / last source success
+
+sync_project_run
+→ operation_kind / lower / upper
+→ candidate,new,changed,unchanged counts
+→ cursor_updated_at + cursor_jira_id
+→ source_status
+
+sync_issue_change
+→ jira_id + source_hash + semantic_v2
+→ discovered_run / last_attempt_run
+→ Knowledge / Embedding / Publish checkpoint</div><p>UNCHANGED는 Work Item을 만들지 않고 Project 집계와 Source cursor만 남깁니다.</p></section>
+<section><h2>5. S4 · Transaction / Crash Safety</h2><div class="flow">T0 Run Start        → fixed upper durable
+T1 Discovery Commit → 완전한 snapshot만 Registry 반영
+T2 Candidate        → 실제 Source durable 후 count/work/cursor commit
+T3 Project Commit   → source_committed + Watermark SAME transaction
+T4 Downstream       → 실제 산출물 먼저, State completed 나중
+T5 Publish          → 실제 Retrieval 전환 먼저, State published 나중
+T6 Run Finalize     → completed / partial / failed 집계</div><div class="callout"><strong>최우선 불변식:</strong> Watermark는 Source Commit보다 앞서가지 않습니다.</div></section>
+<section><h2>6. S5 · Migration Contract</h2><div class="flow">STATE_SCHEMA_VERSION = 1
+PRAGMA user_version = 1
+
+legacy user_version 0
+→ empty / known legacy / unknown fingerprint 구분
+
+known legacy
+→ explicit migration
+→ SQLite consistent backup
+→ additive new tables
+→ legacy rows 보존
+→ integrity/schema/regression PASS
+→ cutover</div><div class="card warn"><strong>No Guess Backfill</strong><p>Legacy <code>project_runs</code>에서 stable <code>project_id</code>나 committed Watermark를 추정하지 않습니다. 첫 Operational Source Sync부터 정식 상태를 만듭니다.</p></div></section>
+<section><h2>7. S6 · ID / Key</h2><table><thead><tr><th>Entity</th><th>Identity</th></tr></thead><tbody><tr><td>Project</td><td>Jira <code>project_id</code></td></tr><tr><td>Issue</td><td>Jira <code>jira_id</code></td></tr><tr><td>Sync Run</td><td><code>sr_</code> + UUID4 full hex</td></tr><tr><td>Run × Project</td><td><code>(sync_run_id, project_id)</code> composite PK</td></tr><tr><td>Issue Change Work Item</td><td><code>sw_</code> + deterministic full SHA-256</td></tr></tbody></table><div class="flow">Work Item identity material
+jira_id + source_hash + source_hash_profile
+
+UNIQUE(jira_id, source_hash, source_hash_profile)</div><p>State DB 내부 참조는 SQLite FK를 사용하고, Knowledge DB의 <code>iv_</code>/<code>kg_</code>는 cross-DB FK 없이 logical ID로 참조합니다.</p></section>
+<section><h2>8. S7 · DDL / Constraint / Index</h2><p class="lead">실제 CREATE TABLE / CHECK / FK / UNIQUE / INDEX의 구현 기준은 S7 Final 문서를 따릅니다.</p><div class="grid3"><div class="card"><h3>DB가 직접 막음</h3><p>enum 오류, 음수 count, cursor pair 불일치, stage 순서 모순, Work Item 중복.</p></div><div class="card"><h3>StateStore가 막음</h3><p>Source Commit + Watermark 원자성, Project upper와 Run upper 일치.</p></div><div class="card"><h3>Validator가 막음</h3><p>Knowledge logical ID 존재, 실제 Retrieval Publish, Source Head/Published Head 일치.</p></div></div><p><a href="jira_sync_state_schema_decision7_final_ddl.html">S7 Final DDL 전체 보기</a></p></section>
+<section><h2>9. 상태가 다시 과거 semantic state로 돌아올 때</h2><div class="flow">A → B → 다시 A
+
+A Work Item / Knowledge / Embedding 존재
+→ 새 Work Item X
+→ 기존 결과 재사용
+→ Published Head가 B라면 Publish만 재실행
+→ Source Head == Published Head에서 최신</div></section>
+<section><h2>10. 구현 Gate</h2><div class="flow">[ ] Schema Contract와 DDL 일치
+[ ] Migration backup / fingerprint / rollback tests
+[ ] legacy Resume regression PASS
+[ ] Source cursor crash tests
+[ ] source_committed + Watermark atomicity tests
+[ ] duplicate Work Item idempotency tests
+[ ] downstream reconcile tests
+[ ] publish-state ordering tests
+
+전부 PASS 후 구현 Milestone 완료 선언</div></section>
+<section><h2>11. 현재 주의사항</h2><div class="card warn"><p>이 문서는 현재 합의된 <strong>FROZEN BASELINE</strong>입니다. 구현 전 상위 아키텍처가 변경되면 변경 이유와 영향 범위를 별도 Decision 문서로 남기고 Contract를 명시적으로 revision합니다. 조용히 의미를 바꾸지 않습니다.</p></div></section><footer class="footer">Sync State Schema Contract v1 · S1~S7 FROZEN BASELINE · 2026-08-27</footer></main></body></html>
