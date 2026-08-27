@@ -6,33 +6,45 @@ A1 Discovery Commit
 
 A2 Per-Candidate
 actual Source files durable
-→ NEW/CHANGED Work Item upsert
+→ Work Item row INSERT/UPSERT
+→ last_observed_source_run_id = current
 → count + stable cursor SAME State transaction
+→ 아직 Processing eligibility 없음
 
 A3 Project Commit
-source_project_run.source_status = source_committed
-+
-project_state.committed_watermark = upper
-→ SAME State transaction
+같은 State transaction에서
+1. source_project_run.source_status = source_committed
+2. project_state.committed_watermark = upper
+3. 이번 Project/Run에서 관찰된 Work Item의
+   last_source_committed_run_id = current
+   last_source_committed_at = now
+→ COMMIT
 
 A4 Source Run Finalize
-→ discovery/source/run status 집계</div></section><section class="card"><h2>Loop B · Processing Transaction</h2><div class="flow">B0 Processing Run Start
+→ discovery/source/run status 집계</div></section><section class="card good"><h2>Source Ready Gate</h2><div class="flow">Loop B claim 가능 조건
+last_source_committed_run_id IS NOT NULL
+AND
+last_source_committed_run_id = last_observed_source_run_id</div><p>A2에서 row가 만들어져도 A3 Project Commit 전에는 gate가 닫혀 있습니다. Project Source가 partial/failed이면 그 관찰은 Processing 대상으로 승격되지 않습니다.</p></section><section class="card"><h2>Loop B · Processing Transaction</h2><div class="flow">B0 Processing Run Start
 → processing_run row durable
 
-B1 Knowledge
+B1 Claim
+→ Source Ready Gate를 통과한 Work Item만 선택
+
+B2 Knowledge
 actual Knowledge DB result first
 → State knowledge_status = completed second
 
-B2 Embedding
+B3 Embedding
 actual vector/artifact first
 → State embedding_status = completed second
 
-B3 Publish
+B4 Publish
 actual Retrieval active switch first
 → verify
 → State publish_status = published second
 
-B4 Processing Run Finalize
-→ selected / published / failed counts + run status</div></section><section class="card warn"><h2>두 Loop를 하나의 Transaction으로 묶지 않습니다</h2><p>Loop A의 Source Commit 이후 Loop B는 나중에, 별도 프로세스/스케줄로 실행될 수 있습니다. 두 Loop 사이의 durable transaction boundary는 <code>sync_issue_change</code> Work Item입니다.</p></section><section class="card"><h2>최우선 불변식</h2><div class="flow">Watermark는 Source Commit보다 먼저 가지 않는다.
+B5 Processing Run Finalize
+→ selected / published / failed counts + run status</div></section><section class="card warn"><h2>두 Loop를 하나의 Transaction으로 묶지 않습니다</h2><p>Loop A의 Project Source Commit 이후 Loop B는 나중에 별도 프로세스/스케줄로 실행될 수 있습니다. 두 Loop 사이의 durable 경계는 <code>sync_issue_change</code> row + Source Ready Gate입니다.</p></section><section class="card"><h2>최우선 불변식</h2><div class="flow">Watermark는 Source Commit보다 먼저 가지 않는다.
+Processing은 아직 Commit되지 않은 Source 관찰을 소비하지 않는다.
 State completed/published는 실제 durable 결과보다 먼저 가지 않는다.
-Loop A 성공은 Loop B 성공을 기다리지 않는다.</div></section><footer>S4 current · Two-Loop transaction boundaries · 2026-08-28</footer></main></body></html>
+Loop A 성공은 Loop B 성공을 기다리지 않는다.</div></section><footer>S4 current · Two-Loop transaction boundaries · Source Ready Gate · 2026-08-28</footer></main></body></html>
