@@ -1,83 +1,67 @@
-<!doctype html>
-<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M0~M11 MVP 이후 지속 동기화되는 Jira Knowledge Service 운영 단계 목표"><title>Jira Knowledge · MVP 이후 운영 서비스 단계</title><link rel="stylesheet" href="../status/milestone.css"><style>.grid2,.grid3{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
-<script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="../status/M11_COMPLETION.html">M11 Completion</a><a href="jira_knowledge_mcp_service_target.html">Remote MCP Target</a><a href="../status/jira_knowledge_db_current_status.html">Current Status</a></nav><header class="hero"><span class="eyebrow">POST-MVP SERVICE PHASE · 2026-08-27</span><h1>M0~M11은 MVP였습니다.<br>이제 Jira 변화가 자동으로 서비스에 반영되어야 합니다.</h1><p>최종 목표는 한 번 만들어 둔 검색 DB가 아니라, Jira의 프로젝트·이슈·댓글·관계 변화가 지속적으로 Knowledge DB와 Embedding/FAISS에 반영되고 팀원들이 중앙 MCP로 항상 최신 지식을 조회하는 운영 서비스입니다.</p><span class="state">M0~M11 = FUNCTIONAL MVP DONE · NEXT = CONTINUOUS JIRA KNOWLEDGE SERVICE</span></header>
-<section><h2>1. 초반 목표와 지금의 위치</h2><div class="grid2"><div class="box good"><b>초기 수집기 설계부터 있던 목표</b><p>인증 계정이 접근 가능한 Jira 프로젝트 전체를 발견하고, 실패 격리·checkpoint·재개 가능한 수집기를 만드는 것이 출발점이었습니다.</p></div><div class="box"><b>MVP에서 일부러 미룬 것</b><p>자동 주기 스케줄러와 실행 간 증분 동기화는 초기 수집기 범위에서 명시적으로 제외했습니다. M0~M11에서 핵심 기능을 검증한 뒤 운영 단계에서 다루기 위한 경계였습니다.</p></div></div><div class="flow">M0~M11
-수집 → 정규화 → Knowledge → SQLite → Embedding → FAISS → Evidence/MCP → OpenCode
-= 기능이 실제로 되는지 검증한 MVP
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge Operational Service의 2-Loop 목표 아키텍처와 구현 단계"><title>Jira Knowledge Operational Service Phase · Two-Loop</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78}.wrap{max-width:1160px;margin:auto;padding:42px 22px 90px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}section{margin-top:48px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a> · <a href="jira_sync_state_schema_contract.html">State Schema v2</a></p><header class="hero"><div>OPERATIONAL SERVICE TARGET · 2026-08-28</div><h1>Continuous Jira Knowledge Service<br>2-Loop Operational Phase</h1><p>Functional MVP를 지속 운영 서비스로 확장합니다. Source 최신화와 Knowledge/Embedding/Publish를 독립 실행하고, Central MCP는 마지막 정상 Published Corpus만 제공합니다.</p></header><section><h2>1. 목표 아키텍처</h2><div class="flow">Jira Server
+   ↓
+[Loop A · SOURCE SYNC]
+source_sync_run
+→ Discovery
+→ Delta / Initial / Catch-up
+→ RAW / ANALYSIS / Knowledge Input
+→ semantic_v2
+→ SOURCE_COMMITTED / Watermark
+→ sync_issue_change backlog
 
-이후 운영 서비스
-Jira 변화 감지 → 변경분만 재처리 → 검색 인덱스 갱신 → 중앙 MCP로 계속 제공</div></section>
-<section><h2>2. 운영 서비스의 전체 목표</h2><div class="flow">Jira
-  ↓ 주기적 Project Discovery
-새 프로젝트 / 기존 프로젝트 / 접근 상태 확인
-  ↓
-Delta Issue Sync
-신규 이슈 / 수정 이슈 / 댓글·관계·필드 변화
-  ↓
-RAW / Issue Version 갱신
-source_hash 동일 → reuse
-source_hash 변경 → 새 Issue Version
-  ↓
-Knowledge 재생성
-변경된 Version만 Generation / Attempt / Item / Evidence 갱신
-  ↓
-Embedding / FAISS Delta Update
-변경 없는 Knowledge 재사용
-변경/추가 Knowledge만 embed + index 반영
-  ↓
+   ↓ durable backlog
+
+[Loop B · KNOWLEDGE PROCESSING / PUBLISH]
+processing_run
+→ OpenCode Knowledge
+→ Review / Evidence
+→ Knowledge DB
+→ BGE-M3
+→ FAISS staging
+→ Atomic Publish
+
+   ↓
+Published Corpus
+   ↓
 Central Remote MCP
-팀원 OpenCode가 최신 Active Knowledge 조회</div></section>
-<section><h2>3. 반드시 서비스해야 하는 네 축</h2><div class="grid2"><div class="box good"><b>A. 지속적인 Jira 업데이트</b><p>마지막 성공 동기화 지점을 기준으로 신규/수정 이슈를 반복 수집하고, 실패 후 재개 가능해야 합니다. 운영 기본은 full rebuild가 아니라 delta-first입니다.</p></div><div class="box good"><b>B. Project 추가·변화 반영</b><p>동기화 때마다 접근 가능한 프로젝트를 다시 discovery하여 새 프로젝트를 자동 발견하는 방향이 기본입니다. 프로젝트 제거/권한 상실 시 기존 지식 처리 정책은 별도 보안 결정이 필요합니다.</p></div><div class="box good"><b>C. 변경사항의 하위 파이프라인 전파</b><p>Jira 변경이 RAW에만 머물면 안 됩니다. Issue Version → Knowledge → Embedding → FAISS Active Retrieval까지 변경분이 끝까지 반영돼야 합니다.</p></div><div class="box good"><b>D. 팀 공용 MCP 서비스</b><p>중앙 서버가 DB/FAISS/.env/BGE 설정을 소유하고 팀원 OpenCode는 Remote MCP endpoint를 소비합니다. local stdio는 MVP 검증용으로 종료합니다.</p></div></div></section>
-<section><h2>4. Project Discovery의 운영 해석</h2><div class="flow">매 Sync 시작
    ↓
-현재 서비스 계정이 조회 가능한 프로젝트 목록 discovery
+Team OpenCode
    ↓
-기존 project registry와 비교
-   ├─ 신규 project   → 초기 ingest 대상
-   ├─ 기존 project   → delta sync 대상
-   └─ 사라진 project → 권한/삭제 상태 판단 필요</div><p>따라서 프로젝트 추가를 매번 사람이 config에 등록하는 방식보다, Jira API의 project discovery를 서비스 동기화의 첫 단계로 재사용하는 것이 현재 설계와 잘 맞습니다.</p></section>
-<section><h2>5. Delta Sync의 기본 원칙</h2><table><thead><tr><th>상태</th><th>운영 처리</th></tr></thead><tbody><tr><td>unchanged</td><td>기존 Issue Version / Knowledge / Embedding 재사용</td></tr><tr><td>new</td><td>RAW 저장 → Version → Knowledge → Embedding → FAISS 추가</td></tr><tr><td>changed</td><td>새 RAW/Issue Version → 새 Generation/Item/Evidence → 기존 Active 교체 → Embedding/Index 갱신</td></tr><tr><td>removed / no access</td><td>즉시 삭제로 단정하지 않음. 서비스 계정 권한 상실·Jira 삭제를 구분하는 정책을 먼저 Freeze</td></tr></tbody></table><div class="box warn"><b>중요:</b><p>전체 프로젝트·전체 이슈를 매번 다시 Knowledge/Embedding 처리하는 구조는 운영 기본이 아닙니다. 전체 rebuild는 복구·마이그레이션·검증용 경로로 남깁니다.</p></div></section>
-<section><h2>6. 기존 Identity 설계를 그대로 활용합니다</h2><div class="flow">jira_id
- ↓
-issue_version · iv_
-  source_hash 동일 → 기존 Version 재사용
-  source_hash 변경 → 새 Version
- ↓
-knowledge_generation · kg_
- ↓
-knowledge_attempt · ka_ + attempt_no
- ↓
-knowledge_item · ki_
- ↓
-knowledge_evidence · ke_
+Users</div></section><section><h2>2. Loop A의 운영 책임</h2><div class="grid3"><div class="card"><h3>Discovery</h3><p>현재 visible Project scope를 완전하게 파악하고 project_id Registry를 유지합니다.</p></div><div class="card"><h3>Delta-first</h3><p>Project별 Watermark + 5분 overlap + fixed upper로 변경 후보만 읽습니다.</p></div><div class="card"><h3>Source Commit</h3><p>semantic change classification과 durable Work Item을 저장한 뒤 Watermark를 전진합니다.</p></div></div><p>Loop A는 OpenCode, Embedding, FAISS 완료를 기다리지 않습니다.</p></section><section><h2>3. Loop B의 운영 책임</h2><div class="grid3"><div class="card"><h3>Backlog Consume</h3><p>pending/failed Work Item을 선택해 독립 Processing Run으로 처리합니다.</p></div><div class="card"><h3>Knowledge</h3><p>OpenCode 생성, Review, Evidence, Knowledge DB lineage를 담당합니다.</p></div><div class="card"><h3>Publish</h3><p>Embedding/FAISS를 staging에서 검증하고 실제 Retrieval active view를 atomic하게 전환합니다.</p></div></div><p>Loop B는 Jira Source를 다시 다운로드하지 않고 Loop A의 durable Source/Work Item을 소비합니다.</p></section><section><h2>4. Central MCP의 책임</h2><div class="callout"><strong>MCP는 Sync Engine이 아닙니다.</strong> Source Loop나 Processing Loop를 실행하지 않고 현재 Published Corpus를 읽어 Knowledge + Evidence를 Tool로 제공합니다.</div><div class="flow">Published Corpus
+→ FAISS Top-K
+→ Knowledge DB
+→ Evidence Resolver
+→ search_jira_knowledge / get_jira_issue
+→ OpenCode</div><p>새 Publish가 실패해도 MCP는 last-known-good Published Corpus를 계속 제공합니다.</p></section><section><h2>5. State Plane</h2><table><thead><tr><th>Table</th><th>책임</th></tr></thead><tbody><tr><td>source_sync_run</td><td>Loop A 실행 이력 / fixed upper / Source 상태</td></tr><tr><td>project_state</td><td>Project identity / visibility / committed Watermark</td></tr><tr><td>source_project_run</td><td>Source Run×Project lower/upper/count/cursor</td></tr><tr><td>sync_issue_change</td><td>두 Loop 사이 durable semantic backlog + downstream checkpoint</td></tr><tr><td>processing_run</td><td>Loop B 실행 이력 / 처리량 / 실패</td></tr></tbody></table><p>State DB는 기존 <code>data/state/collector.db</code>를 explicit migration으로 확장합니다.</p></section><section><h2>6. Data Plane</h2><div class="flow">Knowledge DB
+Issue / Issue Version
+→ Knowledge Generation
+→ Attempt / Review
+→ Knowledge Item
+→ Evidence
 
-Active Retrieval은 최신 accepted Generation만 사용
-History는 감사/재현을 위해 보존</div><p>즉 M6~M10에서 만든 Version/Generation/Attempt/Active 구분은 MVP용 임시 구조가 아니라 지속 업데이트를 가능하게 하기 위한 운영 기반입니다.</p></section>
-<section><h2>7. Embedding / FAISS 운영 방향</h2><div class="flow">Knowledge statement hash 동일
-→ 기존 embedding 재사용
+Embedding / Retrieval artifacts
+→ BGE-M3 vectors
+→ FAISS index / mapping
+→ Published active pointer</div><p>State Plane과 Data Plane은 stable logical ID로 연결하며 cross-DB physical FK는 요구하지 않습니다.</p></section><section><h2>7. 독립 Scheduling</h2><div class="grid2"><div class="card good"><h3>Source Scheduler</h3><p>Jira freshness 요구를 기준으로 cadence를 정합니다. OpenCode 상태에 영향받지 않습니다.</p></div><div class="card good"><h3>Processing Scheduler / Worker</h3><p>Backlog/처리량/OpenCode latency를 기준으로 실행합니다. 야간 catch-up 같은 정책을 별도로 적용할 수 있습니다.</p></div></div><div class="card warn"><p>정확한 시간대별 cadence/concurrency는 아직 Freeze하지 않습니다. 먼저 실제 processing_run 데이터로 처리량을 측정합니다.</p></div></section><section><h2>8. 운영 KPI</h2><div class="grid3"><div class="card"><h3>Source Lag</h3><p>Project watermark 최신성.</p></div><div class="card"><h3>Publish Lag</h3><p>Source Head와 Published Head 차이.</p></div><div class="card"><h3>Backlog Depth</h3><p>대기 Work Item 수.</p></div><div class="card"><h3>Oldest Pending Age</h3><p>최장 대기시간.</p></div><div class="card"><h3>Processing Throughput</h3><p>시간당 Published 수.</p></div><div class="card"><h3>Latency / Error</h3><p>시간대/Stage별 Processing 성능.</p></div></div></section><section><h2>9. 장애 격리 원칙</h2><table><thead><tr><th>장애</th><th>영향 범위</th><th>계속 가능한 것</th></tr></thead><tbody><tr><td>Jira 장애</td><td>Loop A</td><td>Loop B backlog 처리 + MCP Retrieval</td></tr><tr><td>OpenCode 장애</td><td>Loop B Knowledge</td><td>Loop A Source Sync + MCP Retrieval</td></tr><tr><td>Embedding 장애</td><td>Loop B Embedding</td><td>Loop A + 기존 Published Retrieval</td></tr><tr><td>Publish 장애</td><td>Loop B Publish</td><td>Loop A + 기존 Published Retrieval</td></tr></tbody></table></section><section><h2>10. 구현 Milestone 순서</h2><div class="flow">Phase A · State Foundation
+→ State Schema v2 migration
+→ source_sync_run / project_state / source_project_run
+→ processing_run / sync_issue_change
+→ crash / resume tests
 
-새/변경 Knowledge
-→ BGE-M3 embedding 생성
-→ vector cache 확인
-→ Active FAISS mapping 갱신
+Phase B · Loop A
+→ Project Discovery registry
+→ Delta Source Sync
+→ semantic_v2 classification
+→ Work Item producer
 
-obsolete Knowledge
-→ active retrieval에서 제거 또는 tombstone
+Phase C · Loop B
+→ backlog consumer
+→ OpenCode / Review
+→ Knowledge DB
+→ Embedding / FAISS / Publish
 
-full index rebuild
-→ 유지보수 / 복구 / migration 경로</div><p>정확한 index update 구현은 다음 단계에서 Freeze합니다. 현재 확정된 원칙은 <strong>delta-first</strong>이며, HNSW/IVF 같은 index 교체는 실제 규모와 latency 측정 뒤 결정합니다.</p></section>
-<section><h2>8. 중앙 MCP는 운영 파이프라인의 마지막 서비스 경계입니다</h2><div class="flow">[Background Sync Pipeline]
-Jira → RAW → Knowledge DB → Embedding/FAISS
-                     │
-                     │ 최신 Active corpus
-                     ▼
-            [Central Remote MCP]
-                     │ HTTPS
-          ┌──────────┼──────────┐
-          ▼          ▼          ▼
-      OpenCode A  OpenCode B  OpenCode C</div><p>Remote MCP 서버화만 먼저 해도 Jira 데이터가 갱신되지 않으면 결국 오래된 지식을 서비스하게 됩니다. 따라서 Remote MCP는 지속 동기화 파이프라인과 함께 운영 서비스로 설계해야 합니다.</p></section>
-<section><h2>9. 운영 자동화와 관찰성</h2><div class="grid3"><div class="box"><b>Scheduling</b><p>얼마나 자주 동기화할지는 아직 Freeze하지 않습니다. 다만 수동 실행만으로 서비스하지 않는 것이 목표입니다.</p></div><div class="box"><b>Checkpoint / Retry</b><p>실패한 project/issue부터 재개하고 이미 성공한 변경분을 불필요하게 다시 처리하지 않아야 합니다.</p></div><div class="box"><b>Observability</b><p>sync run, 신규/변경 project/issue 수, Knowledge/Embedding update 수, 실패·지연·MCP health를 운영자가 확인할 수 있어야 합니다.</p></div></div></section>
-<section><h2>10. 서비스화에서 새로 반드시 결정해야 할 보안 항목</h2><div class="grid2"><div class="box warn"><b>프로젝트 권한 상실</b><p>서비스 계정이 더 이상 특정 프로젝트를 조회하지 못할 때 과거에 수집한 지식을 계속 검색 가능하게 둘지 즉시 비활성화할지 정책이 필요합니다.</p></div><div class="box warn"><b>팀원별 Jira 권한</b><p>초기 MVP는 사용자별 Jira 권한 재현을 범위 밖으로 두었습니다. 중앙 MCP를 팀에 제공할 때 모든 사용자가 동일 접근권한인지, 사용자별 필터링이 필요한지 반드시 결정해야 합니다.</p></div></div></section>
-<section><h2>11. 운영 서비스 Completion Gate 초안</h2><table><thead><tr><th>Gate</th><th>성공 조건</th></tr></thead><tbody><tr><td>Project Sync</td><td>새 접근 가능 프로젝트가 다음 sync에서 자동 발견되고 ingest 대상이 됨</td></tr><tr><td>Issue Delta</td><td>변경 이슈만 새 Version/Knowledge로 전파되고 unchanged는 재사용됨</td></tr><tr><td>Evidence Freshness</td><td>수정된 description/comment가 최신 Active Evidence에 반영됨</td></tr><tr><td>Vector Freshness</td><td>변경 Knowledge만 embedding/index가 갱신되고 obsolete vector가 Active 검색에서 제외됨</td></tr><tr><td>Recovery</td><td>중간 실패 후 checkpoint에서 안전하게 재개 가능</td></tr><tr><td>Remote MCP</td><td>별도 팀원 OpenCode 프로젝트에서 중앙 endpoint로 Tool discovery/call 성공</td></tr><tr><td>Fresh Query</td><td>Jira 변경 후 sync 완료 뒤 MCP 검색에서 새 Active Knowledge가 조회됨</td></tr><tr><td>Security</td><td>secret/path 비노출 및 합의된 project/user 접근 정책 준수</td></tr><tr><td>Operations</td><td>sync/MCP health와 실패 상태를 운영자가 확인 가능</td></tr></tbody></table></section>
-<section><h2>12. 아직 Milestone 번호를 붙이지 않는 이유</h2><p>다음 단계가 단순한 Remote MCP 구현이 아니라 <strong>동기화·증분 처리·검색 갱신·서비스·운영</strong>을 포함한다는 점을 먼저 복원했습니다. 다음 대화에서 이 전체 범위를 어떤 Milestone들로 나눌지 결정한 뒤 번호를 확정합니다.</p></section>
-<footer>M0~M11 Functional MVP DONE · next phase = Continuous Jira Knowledge Service · 2026-08-27</footer></main></body></html>
+Phase D · Service / Operations
+→ Central Remote MCP
+→ Source/Publish/Backlog monitoring
+→ scheduling/retry/health
+→ team pilot</div></section><section><h2>11. 아직 다음 결정으로 남긴 것</h2><div class="grid2"><div class="card warn"><h3>Intermediate Version supersede</h3><p>미시작 구버전 Knowledge Work를 건너뛸지 결정.</p></div><div class="card warn"><h3>Multi-worker Queue</h3><p>Worker 병렬화 시 claim/lease 설계.</p></div><div class="card warn"><h3>Remote MCP Auth</h3><p>사용자별 Jira 권한 재현 여부와 인증.</p></div><div class="card warn"><h3>Exact cadence</h3><p>측정 후 Source/Processing 실행 정책 확정.</p></div></div></section><footer class="footer">Operational Service Phase · Two-Loop FROZEN · implementation next after doc/schema sync · 2026-08-28</footer></main></body></html>
