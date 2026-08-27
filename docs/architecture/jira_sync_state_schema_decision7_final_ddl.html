@@ -1,0 +1,242 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sync State Schema Decision 7. S1~S6을 실제 SQLite CREATE TABLE, CHECK, UNIQUE, FK, INDEX로 번역한 Schema Freeze 후보"><title>Sync State Schema · S7 · Final DDL Candidate</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1220px;margin:auto;padding:42px 22px 90px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:48px}h2{font-size:29px}.lead{color:var(--muted);max-width:970px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e9eeff;color:#2548b5;font-size:11px;font-weight:900}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:860px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_state_schema_decision6_id_key_strategy.html">← S6 Final</a><a href="jira_sync_state_project_registry_design_draft.html">Schema Board</a></nav><header class="hero"><div>SYNC STATE / PROJECT REGISTRY · SCHEMA DECISION 7 · 2026-08-27</div><h1>이제 실제 SQLite Schema로<br>내려갑니다.</h1><p>S1~S6에서 고정한 저장소, 4개 Domain Table, 컬럼/상태, crash safety, migration, ID/Key 규칙을 실제 DDL과 Index/Constraint로 번역한 최종 Freeze 후보입니다.</p><span class="state">S1~S6 FIXED · S7 REVIEWING · FINAL DDL CANDIDATE</span></header>
+<section><h2>1. S7의 원칙</h2><div class="grid2"><div class="card good"><h3>DB가 직접 막아야 하는 것</h3><p>PK/FK, enum, 음수 count, cursor pair 불일치, 동일 semantic Work Item 중복, 잘못된 stage dependency처럼 데이터 자체가 모순되는 상태.</p></div><div class="card"><h3>Application Transaction이 막아야 하는 것</h3><p><code>source_committed + Watermark</code> 동시 commit, 실제 Retrieval publish 후 State published 기록, Knowledge DB logical ID 존재 확인처럼 여러 저장소/행을 아우르는 운영 불변식.</p></div></div><div class="callout"><strong>핵심:</strong> SQLite CHECK로 억지로 모든 업무 흐름을 구현하지 않습니다. DDL은 구조적 모순을 차단하고, S4 Transaction Contract는 StateStore repository method와 테스트로 강제합니다.</div></section>
+<section><h2>2. 전체 Schema 구성</h2><div class="flow">Legacy MVP Tables · 그대로 보존
+collection_runs
+project_runs
+issue_checkpoints
+artifacts
+
+Operational Domain Tables · 4개
+sync_run
+project_state
+sync_project_run
+sync_issue_change
+
+Technical Metadata · 1개
+state_schema_migration
+
+PRAGMA user_version = 1</div><p><code>state_schema_migration</code>은 S2의 4개 Domain Table에 포함되지 않는 Migration 감사용 기술 메타데이터입니다.</p></section>
+<section><h2>3. Technical Metadata DDL</h2><pre>CREATE TABLE IF NOT EXISTS state_schema_migration (
+    migration_id TEXT PRIMARY KEY,
+    from_version INTEGER NOT NULL CHECK(from_version &gt;= 0),
+    to_version INTEGER NOT NULL CHECK(to_version &gt; from_version),
+    applied_at TEXT NOT NULL,
+    source_fingerprint TEXT NOT NULL,
+    backup_name TEXT
+);</pre><p>Legacy → v1 Migration의 적용 사실을 기록합니다. 실제 Migration 완료 시점에만 row와 <code>PRAGMA user_version = 1</code>을 확정합니다.</p></section>
+<section><h2>4. sync_run DDL</h2><pre>CREATE TABLE IF NOT EXISTS sync_run (
+    sync_run_id TEXT PRIMARY KEY
+        CHECK(length(sync_run_id) = 35 AND substr(sync_run_id, 1, 3) = 'sr_'),
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    upper_bound TEXT NOT NULL,
+    discovery_status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(discovery_status IN ('pending','running','completed','failed')),
+    source_status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(source_status IN ('pending','running','completed','partial','failed')),
+    publish_status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(publish_status IN ('pending','running','completed','partial','failed','not_required')),
+    run_status TEXT NOT NULL DEFAULT 'running'
+        CHECK(run_status IN ('running','completed','partial','failed')),
+    error_summary TEXT,
+    CHECK(
+        (run_status = 'running' AND finished_at IS NULL)
+        OR
+        (run_status IN ('completed','partial','failed') AND finished_at IS NOT NULL)
+    )
+);</pre><div class="callout"><strong>ID 형식:</strong> <code>sr_</code> + UUID4 full hex = 35자. 시간 정렬은 ID가 아니라 <code>started_at</code>로 수행합니다.</div></section>
+<section><h2>5. project_state DDL</h2><pre>CREATE TABLE IF NOT EXISTS project_state (
+    project_id TEXT PRIMARY KEY,
+    current_key TEXT NOT NULL CHECK(length(current_key) &gt; 0),
+    current_name TEXT NOT NULL,
+    visibility_state TEXT NOT NULL
+        CHECK(visibility_state IN ('visible','unavailable')),
+    first_seen_run_id TEXT NOT NULL REFERENCES sync_run(sync_run_id),
+    last_seen_run_id TEXT NOT NULL REFERENCES sync_run(sync_run_id),
+    last_seen_at TEXT NOT NULL,
+    unavailable_since TEXT,
+    committed_watermark TEXT,
+    last_source_success_run_id TEXT REFERENCES sync_run(sync_run_id),
+    last_source_success_at TEXT,
+    last_error TEXT,
+    CHECK(
+        (visibility_state = 'visible' AND unavailable_since IS NULL)
+        OR
+        (visibility_state = 'unavailable' AND unavailable_since IS NOT NULL)
+    ),
+    CHECK(
+        (committed_watermark IS NULL
+         AND last_source_success_run_id IS NULL
+         AND last_source_success_at IS NULL)
+        OR
+        (committed_watermark IS NOT NULL
+         AND last_source_success_run_id IS NOT NULL
+         AND last_source_success_at IS NOT NULL)
+    )
+);</pre><p><code>current_key</code>는 Index는 만들지만 UNIQUE는 걸지 않습니다. authoritative identity는 오직 <code>project_id</code>입니다.</p></section>
+<section><h2>6. sync_project_run DDL</h2><pre>CREATE TABLE IF NOT EXISTS sync_project_run (
+    sync_run_id TEXT NOT NULL REFERENCES sync_run(sync_run_id),
+    project_id TEXT NOT NULL REFERENCES project_state(project_id),
+    operation_kind TEXT NOT NULL
+        CHECK(operation_kind IN ('initial_ingest','delta','catchup','skip_unavailable')),
+    lower_bound TEXT,
+    upper_bound TEXT NOT NULL,
+    source_status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(source_status IN (
+            'pending','running','source_committed','partial','failed','skipped_unavailable'
+        )),
+    started_at TEXT,
+    finished_at TEXT,
+    candidate_count INTEGER NOT NULL DEFAULT 0 CHECK(candidate_count &gt;= 0),
+    new_count INTEGER NOT NULL DEFAULT 0 CHECK(new_count &gt;= 0),
+    changed_count INTEGER NOT NULL DEFAULT 0 CHECK(changed_count &gt;= 0),
+    unchanged_count INTEGER NOT NULL DEFAULT 0 CHECK(unchanged_count &gt;= 0),
+    cursor_updated_at TEXT,
+    cursor_jira_id TEXT,
+    error_message TEXT,
+    PRIMARY KEY(sync_run_id, project_id),
+    CHECK(
+        (cursor_updated_at IS NULL AND cursor_jira_id IS NULL)
+        OR
+        (cursor_updated_at IS NOT NULL AND cursor_jira_id IS NOT NULL)
+    ),
+    CHECK(new_count + changed_count + unchanged_count &lt;= candidate_count),
+    CHECK(
+        source_status != 'source_committed'
+        OR new_count + changed_count + unchanged_count = candidate_count
+    ),
+    CHECK(
+        (operation_kind IN ('delta','catchup') AND lower_bound IS NOT NULL)
+        OR
+        (operation_kind IN ('initial_ingest','skip_unavailable') AND lower_bound IS NULL)
+    ),
+    CHECK(
+        (operation_kind = 'skip_unavailable' AND source_status = 'skipped_unavailable')
+        OR
+        (operation_kind != 'skip_unavailable' AND source_status != 'skipped_unavailable')
+    ),
+    CHECK(
+        (source_status IN ('pending','running') AND finished_at IS NULL)
+        OR
+        (source_status IN ('source_committed','partial','failed','skipped_unavailable')
+         AND finished_at IS NOT NULL)
+    )
+);</pre><div class="callout"><strong>S4와 연결:</strong> DDL 자체는 Watermark를 자동 갱신하지 않습니다. <code>source_status='source_committed'</code> 갱신과 <code>project_state.committed_watermark=upper_bound</code>는 반드시 같은 StateStore Transaction method에서 실행합니다.</div></section>
+<section><h2>7. sync_issue_change DDL</h2><pre>CREATE TABLE IF NOT EXISTS sync_issue_change (
+    work_item_id TEXT PRIMARY KEY
+        CHECK(length(work_item_id) = 67 AND substr(work_item_id, 1, 3) = 'sw_'),
+    project_id TEXT NOT NULL REFERENCES project_state(project_id),
+    jira_id TEXT NOT NULL,
+    observed_issue_key TEXT NOT NULL,
+    jira_updated_at TEXT,
+    source_hash TEXT NOT NULL CHECK(length(source_hash) &gt; 0),
+    source_hash_profile TEXT NOT NULL
+        CHECK(source_hash_profile = 'semantic_v2'),
+    change_kind TEXT NOT NULL CHECK(change_kind IN ('new','changed')),
+    discovered_run_id TEXT NOT NULL REFERENCES sync_run(sync_run_id),
+    last_attempt_run_id TEXT REFERENCES sync_run(sync_run_id),
+    source_committed_at TEXT NOT NULL,
+    issue_version_id TEXT,
+    knowledge_generation_id TEXT,
+    knowledge_status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(knowledge_status IN ('pending','running','completed','failed')),
+    embedding_status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(embedding_status IN ('pending','running','completed','failed')),
+    publish_status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(publish_status IN ('pending','running','published','failed')),
+    error_stage TEXT CHECK(error_stage IS NULL OR error_stage IN ('knowledge','embedding','publish')),
+    error_message TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    published_at TEXT,
+    UNIQUE(jira_id, source_hash, source_hash_profile),
+    CHECK(embedding_status = 'pending' OR knowledge_status = 'completed'),
+    CHECK(publish_status = 'pending' OR embedding_status = 'completed'),
+    CHECK(
+        (publish_status = 'published' AND published_at IS NOT NULL)
+        OR
+        (publish_status != 'published' AND published_at IS NULL)
+    ),
+    CHECK(
+        error_stage IS NULL
+        OR (error_stage = 'knowledge' AND knowledge_status = 'failed')
+        OR (error_stage = 'embedding' AND embedding_status = 'failed')
+        OR (error_stage = 'publish' AND publish_status = 'failed')
+    )
+);</pre><div class="grid2"><div class="card good"><h3>DB가 막는 것</h3><p>Knowledge가 완료되지 않았는데 Embedding이 진행되는 상태, Embedding이 완료되지 않았는데 Publish가 진행되는 상태, 같은 semantic state Work Item 중복.</p></div><div class="card"><h3>Application이 확인하는 것</h3><p><code>issue_version_id</code>, <code>knowledge_generation_id</code>가 실제 Knowledge DB에 존재하는지와 실제 Retrieval active pointer가 무엇인지.</p></div></div></section>
+<section><h2>8. 과거 semantic state가 다시 현재가 되는 경우</h2><p class="lead">예: 같은 Issue의 Source가 <code>A → B → 다시 A</code>로 돌아올 수 있습니다. A의 Work Item은 deterministic identity 때문에 이미 존재합니다.</p><div class="flow">과거
+A Work Item → Knowledge/Embedding 완료 → Published
+
+현재
+B가 active Published
+Jira Source가 다시 A로 변경
+        ↓
+A Work Item 새 row 생성 X
+A의 Knowledge / Embedding 재사용
+        ↓
+Source Head A != 현재 Published Head B
+        ↓
+A Work Item의 Publish stage를 재개/재활성화
+        ↓
+Atomic Publish → Published Head A</div><div class="callout"><strong>D7 원칙 유지:</strong> Work Item의 과거 <code>published</code> 이력만 보고 “서비스가 최신”이라고 판단하지 않습니다. <strong>현재 Source Head와 실제 Published Head의 일치 여부</strong>가 최종 기준입니다. 재활성화 시 기존 Knowledge/Embedding은 재사용하고 Publish만 다시 수행할 수 있습니다.</div></section>
+<section><h2>9. 추천 Index</h2><pre>CREATE INDEX IF NOT EXISTS ix_sync_run_started_at
+    ON sync_run(started_at);
+
+CREATE INDEX IF NOT EXISTS ix_sync_run_status_started
+    ON sync_run(run_status, started_at);
+
+CREATE INDEX IF NOT EXISTS ix_project_state_visibility
+    ON project_state(visibility_state);
+
+CREATE INDEX IF NOT EXISTS ix_project_state_current_key
+    ON project_state(current_key);
+
+CREATE INDEX IF NOT EXISTS ix_sync_project_run_status
+    ON sync_project_run(sync_run_id, source_status);
+
+CREATE INDEX IF NOT EXISTS ix_sync_project_run_project_history
+    ON sync_project_run(project_id, sync_run_id);
+
+CREATE INDEX IF NOT EXISTS ix_sync_issue_change_discovered_run
+    ON sync_issue_change(discovered_run_id);
+
+CREATE INDEX IF NOT EXISTS ix_sync_issue_change_project_updated
+    ON sync_issue_change(project_id, updated_at);
+
+CREATE INDEX IF NOT EXISTS ix_sync_issue_change_knowledge_status
+    ON sync_issue_change(knowledge_status, updated_at);
+
+CREATE INDEX IF NOT EXISTS ix_sync_issue_change_embedding_status
+    ON sync_issue_change(embedding_status, updated_at);
+
+CREATE INDEX IF NOT EXISTS ix_sync_issue_change_publish_status
+    ON sync_issue_change(publish_status, updated_at);</pre><p>Index는 예상 운영 조회를 기준으로 최소한만 둡니다. 실제 운영 데이터량/쿼리 계획을 측정한 뒤 추가할 수 있습니다.</p></section>
+<section><h2>10. DDL이 일부러 강제하지 않는 것</h2><table><thead><tr><th>규칙</th><th>강제 위치</th></tr></thead><tbody><tr><td><code>sync_project_run.upper_bound == sync_run.upper_bound</code></td><td>StateStore write method + test</td></tr><tr><td><code>source_committed + Watermark</code> same transaction</td><td>S4 Transaction method</td></tr><tr><td>ISO-8601 timestamp semantic validation</td><td>Python model/parser</td></tr><tr><td>Knowledge DB logical ID 실제 존재</td><td>Downstream reconcile/validation</td></tr><tr><td>실제 FAISS/manifest active pointer와 published 상태 일치</td><td>Publish verification</td></tr><tr><td>Current Source Head == Published Head 여부</td><td>Service freshness/reconciliation logic</td></tr></tbody></table><p>이 규칙들을 SQL Trigger로 숨겨 넣지 않습니다. 중요한 운영 경계는 명시적 코드 경로와 테스트에서 보이게 유지합니다.</p></section>
+<section><h2>11. Schema v1 초기화 / Migration 순서</h2><div class="flow">PRAGMA foreign_keys = ON
+PRAGMA journal_mode = WAL
+
+legacy fingerprint / backup / migration ownership
+        ↓
+BEGIN IMMEDIATE
+→ state_schema_migration + 4 domain tables + indexes 생성
+→ schema fingerprint 검증
+→ migration history 기록
+→ PRAGMA user_version = 1
+COMMIT
+        ↓
+post-migration integrity + regression Gate
+        ↓
+Operational Sync 허용</div><div class="callout"><strong>주의:</strong> Migration의 실제 SQLite pragma/transaction 세부 순서는 구현 테스트에서 검증합니다. S5의 “backup first / fail-closed / validation before cutover”가 우선 계약입니다.</div></section>
+<section><h2>12. S7 추천 결론</h2><div class="card good"><span class="badge">PROPOSED · FREEZE CANDIDATE</span><div class="flow">Operational Domain Tables = 4
+Technical Migration Metadata = 1
+State Schema Version = 1
+
+PK / FK / UNIQUE / CHECK = 위 DDL
+Indexes = 예상 운영 조회용 최소 Index
+
+DB Constraint
+→ 구조적 모순 차단
+
+S4 Transaction + Application Validation
+→ cross-row / cross-DB / Publish 불변식 강제</div><p>이 DDL을 승인하면 S1~S7을 하나의 공식 <strong>Sync State Schema Contract FROZEN HTML</strong>로 통합하고, 이후부터는 설계가 아니라 <strong>Migration + StateStore 구현</strong> 단계로 넘어갑니다.</p></div></section><footer class="footer">S7 REVIEWING · Final SQLite DDL Candidate · next approval = Schema Contract Freeze · 2026-08-27</footer></main></body></html>
