@@ -1,0 +1,134 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Sync State Schema Decision 4. Source cursor, Project Watermark, downstream checkpoint, Publish 상태의 transaction boundary와 crash safety를 검토한다."><title>Sync State Schema · S4 · Transaction Boundary</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 88px}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(35px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:47px}h2{font-size:29px}.lead{color:var(--muted);max-width:940px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e9eeff;color:#2548b5;font-size:11px;font-weight:900}.footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← Documentation Hub</a><a href="jira_sync_state_schema_decision3_columns_status.html">← S3 Final</a><a href="jira_sync_contract.html">FROZEN Sync Contract</a></nav><header class="hero"><div>SYNC STATE / PROJECT REGISTRY · SCHEMA DECISION 4 · 2026-08-27</div><h1>프로그램이 어느 순간 죽어도<br>Watermark가 앞서가면 안 됩니다.</h1><p>S4는 파일, State DB, Knowledge DB, Embedding/FAISS가 서로 다른 저장소라는 현실을 전제로, 어떤 상태들을 같은 SQLite Transaction으로 묶고 어떤 순서로 durable하게 확정할지 결정합니다.</p><span class="state">S1~S3 FIXED · S4 REVIEWING · CRASH SAFETY / TRANSACTION BOUNDARY</span></header>
+<section><h2>1. 가장 위험한 사고</h2><div class="grid2"><div class="card bad"><h3>Watermark가 먼저 이동</h3><div class="flow">watermark = 10:40 저장 ✓
+마지막 Issue Source 저장 ✗
+프로세스 종료
+
+다음 Run
+→ 10:40 이후부터 시작
+→ 누락 가능</div></div><div class="card good"><h3>반드시 원하는 상태</h3><div class="flow">Project Source 전체 안전 완료
+        ↓
+source_committed 표시
++ watermark = upper
+        ↓
+같은 SQLite transaction commit</div></div></div><div class="callout"><strong>S4의 최우선 불변식:</strong> <code>sync_project_run.source_status = source_committed</code>와 <code>project_state.committed_watermark = upper_bound</code>는 반드시 같은 State DB Transaction에서 함께 성공하거나 함께 rollback되어야 합니다.</div></section>
+<section><h2>2. 모든 것을 한 Transaction에 넣지는 않습니다</h2><p class="lead">Jira API 호출, RAW/ANALYSIS 파일 저장, Knowledge DB 쓰기, Embedding API, FAISS 파일 교체는 서로 다른 시스템입니다. 하나의 SQLite Transaction으로 전부 묶을 수 없고, 수분 동안 DB lock을 잡는 것도 좋지 않습니다.</p><div class="flow">잘못된 생각
+BEGIN TRANSACTION
+→ Jira API 수십 번
+→ 파일 수백 개 저장
+→ LLM
+→ Embedding API
+→ FAISS
+→ COMMIT
+
+문제
+→ 너무 긴 transaction
+→ 외부 시스템은 rollback 불가
+→ crash 시 복구가 오히려 어려움</div><div class="callout"><strong>추천:</strong> 긴 전역 Transaction 대신 <strong>작은 durable commit point</strong>를 단계별로 둡니다.</div></section>
+<section><h2>3. T0 · Sync Run 시작 Transaction</h2><div class="flow">Run 시작 시
+1. sync_run_id 생성
+2. fixed upper_bound 결정
+3. sync_run row 저장
+
+같은 transaction
+→ run_status = running
+→ discovery_status = pending
+→ upper_bound 고정</div><p>같은 Run을 Resume할 때는 이 row의 <code>upper_bound</code>를 다시 사용합니다. Run 도중 새 upper를 만들지 않습니다.</p></section>
+<section><h2>4. T1 · Project Discovery Commit</h2><p class="lead">D6에 따라 Discovery가 중간 실패했는데 일부 Project를 unavailable로 바꾸면 안 됩니다.</p><div class="flow">Jira Project Discovery
+→ 모든 page 조회 완료
+→ 전체 결과 검증
+
+SUCCESS인 경우에만 State DB transaction 시작
+→ 새 project_state insert
+→ visible Project last_seen 갱신
+→ 이전 Registry에는 있지만 이번에 없는 Project unavailable 갱신
+→ sync_project_run 대상 row 생성
+→ discovery_status = completed
+COMMIT
+
+Discovery 실패
+→ visibility 변경 없음
+→ discovery_status = failed만 기록</div><div class="callout"><strong>불변식:</strong> Project Registry의 visible/unavailable 비교 결과는 <strong>완전한 Discovery snapshot</strong>을 얻었을 때만 commit합니다.</div></section>
+<section><h2>5. T2 · 후보 Issue 하나의 Source Checkpoint</h2><p class="lead">후보는 D2의 <code>updated ASC, jira_id ASC</code> 순서로 처리합니다. 파일은 먼저 안전하게 저장하고, 그 다음 State DB에서 cursor와 분류 결과를 함께 commit합니다.</p><div class="flow">후보 ABC-42 처리
+
+① Jira Source 수집
+② RAW / ANALYSIS / Knowledge Input 등 필요한 Source 산출물 파일 저장
+③ semantic_v2 source_hash 계산
+④ NEW / CHANGED / UNCHANGED 판정
+        ↓
+⑤ State DB 짧은 transaction
+   NEW/CHANGED → sync_issue_change upsert
+   분류 count  → new/changed/unchanged_count +1
+   resume cursor → cursor_updated_at / cursor_jira_id = ABC-42
+COMMIT</div><div class="grid2"><div class="card"><h3>파일 저장 후 DB commit 전에 죽음</h3><p>cursor가 이동하지 않았으므로 같은 후보를 다시 처리합니다. 파일 저장과 Work Item 생성은 idempotent하게 재실행합니다.</p></div><div class="card"><h3>DB commit 후 죽음</h3><p>cursor가 ABC-42까지 이동했으므로 같은 lower/upper 재조회 후 그 다음 후보부터 Resume합니다.</p></div></div><div class="callout"><strong>현재 기반:</strong> RawStore는 임시 파일에 쓰고 <code>fsync</code> 후 <code>os.replace</code>로 교체합니다. 운영 구현에서는 이 atomic-write 패턴을 유지합니다. 극단적인 전원 장애 durability가 요구되면 parent-directory fsync까지 추가 검토합니다.</div></section>
+<section><h2>6. T3 · Project Source Commit + Watermark · 가장 중요</h2><div class="flow">모든 후보 처리 완료 확인
+        ↓
+BEGIN State DB TRANSACTION
+
+sync_project_run
+  source_status = source_committed
+  finished_at = now
+  counts 최종 확정
+
+project_state
+  committed_watermark = sync_project_run.upper_bound
+  last_source_success_run_id = current run
+  last_source_success_at = now
+  last_error = NULL
+
+COMMIT</div><div class="callout"><strong>Watermark 규칙:</strong> 이 Transaction 밖에서 Watermark를 먼저 또는 따로 갱신하지 않습니다.</div><table><thead><tr><th>Crash 시점</th><th>결과</th></tr></thead><tbody><tr><td>Transaction 전</td><td>Project는 running/partial 상태, Watermark 이전 값 → same-run Resume.</td></tr><tr><td>Transaction 도중</td><td>SQLite rollback → source_committed와 Watermark 둘 다 이전 상태.</td></tr><tr><td>Commit 후</td><td>Source window는 안전 완료. Watermark upper로 이동. Downstream은 별도 Resume 가능.</td></tr></tbody></table></section>
+<section><h2>7. T4 · Downstream Stage Checkpoint</h2><p class="lead">Knowledge DB, Embedding artifact, FAISS는 State DB와 다른 저장소이므로 분산 Transaction을 만들지 않습니다. 대신 각 Stage의 실제 산출물을 먼저 durable하게 만들고, 확인 후 State DB status를 완료로 바꿉니다.</p><div class="flow">예: Knowledge Stage
+
+Knowledge DB에 deterministic ID로 결과 저장 / 검증
+        ↓
+성공 확인
+        ↓
+State DB transaction
+sync_issue_change
+  issue_version_id = ...
+  knowledge_generation_id = ...
+  knowledge_status = completed
+  last_attempt_run_id = current run
+COMMIT</div><div class="callout"><strong>Crash gap 처리:</strong> 실제 산출물은 만들어졌는데 State status 갱신 전에 죽을 수 있습니다. 다음 Resume은 deterministic ID/산출물 존재를 먼저 확인하고, 이미 완성된 결과라면 재생성하지 않고 State를 reconcile합니다.</div><p>Embedding도 같은 원칙입니다: vector/artifact를 먼저 만들고 검증한 뒤 <code>embedding_status = completed</code>를 기록합니다.</p></section>
+<section><h2>8. T5 · Publish는 실제 전환이 Commit Point</h2><p class="lead">D7에서 Half-Publish를 금지했습니다. 따라서 State DB의 <code>publish_status = published</code>가 진실의 원천이 아니라, 실제 Retrieval이 새 세대를 보도록 전환된 시점이 먼저입니다.</p><div class="flow">새 Knowledge / Embedding / FAISS mapping
+→ staging에서 전부 준비
+→ 검증 PASS
+
+실제 Publish Commit Point
+→ active pointer / manifest / atomic artifact swap
+  (구체 방식은 후속 결정)
+
+전환 성공 확인 후
+→ State DB publish_status = published
+→ published_at 기록</div><div class="grid2"><div class="card bad"><h3>금지</h3><p><code>publish_status = published</code>를 먼저 기록하고 실제 FAISS 전환을 나중에 하는 순서.</p></div><div class="card good"><h3>허용</h3><p>실제 Retrieval 전환 → 검증 → State에 published 기록.</p></div></div><p>전환 성공 후 State 기록 전에 crash가 나면 Resume 시 현재 active pointer를 확인해 이미 Publish된 사실을 reconcile합니다.</p></section>
+<section><h2>9. T6 · Run Finalize</h2><div class="flow">Project Source 상태 + Work Item Publish 상태 집계
+        ↓
+State DB transaction
+sync_run.discovery_status
+sync_run.source_status
+sync_run.publish_status
+sync_run.run_status
+sync_run.finished_at
+COMMIT</div><p>Run이 partial/failed여도 이미 commit된 Project Watermark나 Published Knowledge를 rollback하지 않습니다. D5의 fail-forward 원칙을 유지합니다.</p></section>
+<section><h2>10. S4 추천 결론</h2><div class="card good"><span class="badge">PROPOSED</span><h3>짧은 Transaction + 명확한 commit point를 사용한다.</h3><div class="flow">T0 Run start
+→ sync_run + fixed upper
+
+T1 Discovery commit
+→ 전체 discovery 성공 후 Registry 상태 반영
+
+T2 Per-candidate checkpoint
+→ durable Source 파일 후
+→ classification + count + resume cursor를 한 transaction
+
+T3 Project Source Commit
+→ source_committed + Watermark advance를 반드시 한 transaction
+
+T4 Downstream checkpoint
+→ 실제 durable 산출물 확인 후 stage completed
+
+T5 Publish
+→ 실제 active Retrieval 전환이 먼저
+→ 검증 후 State = published
+
+T6 Run finalize
+→ completed / partial / failed 집계</div></div><div class="callout"><strong>가장 중요한 한 줄:</strong> Watermark는 Source Commit보다 절대 먼저 가지 않으며, State의 completed/published 표시는 실제 durable 산출물보다 절대 먼저 가지 않습니다.</div><p>이 안을 확정하면 다음 S5에서는 <strong>Schema Migration versioning과 migration Gate</strong>를 구체화한 뒤 Schema Freeze 준비로 넘어갑니다.</p></section><footer class="footer">S4 REVIEWING · transaction boundary / crash safety · no implementation yet · 2026-08-27</footer></main></body></html>
