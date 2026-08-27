@@ -1,7 +1,7 @@
 # Jira Knowledge Pipeline 전체 아키텍처
 
-기준일: 2026-08-26  
-현재 단계: **M0~M9 DONE / PASS · M10 NEXT / DESIGN NOT STARTED**
+기준일: 2026-08-27  
+현재 단계: **M0~M9 DONE / PASS · M10 IMPLEMENTATION PASS / REAL-RUN NEXT**
 
 ## 1. 전체 흐름
 
@@ -28,7 +28,7 @@ BGE-M3 Embedding                       M8 DONE · REAL-RUN PASS
     ↓
 FAISS + Active Retrieval               M9 DONE · REAL-RUN PASS
     ↓
-Evidence Builder + MCP                 M10 NEXT · DESIGN NOT STARTED
+Evidence Builder + MCP                 M10 IMPLEMENTATION PASS · REAL-RUN NEXT
 ```
 
 ---
@@ -71,6 +71,21 @@ FAISS Index Artifact fi_
 ```text
 FAISS position ≠ embedding_id ≠ knowledge_item_id
 ```
+
+### MCP는 검색/근거 계층
+
+```text
+MCP
+→ BGE-M3 query embedding
+→ M9 retrieval
+→ M10 Evidence resolve
+→ structured Evidence Package
+
+Agent / LLM
+→ Evidence Package를 읽고 최종 자연어 답변
+```
+
+MCP 내부에 별도 생성형 LLM을 두지 않는다.
 
 ---
 
@@ -167,45 +182,20 @@ index.mapping.jsonl
 index.manifest.json
 ```
 
-Real Build:
+Real Build / Rebuild / Query:
 
 ```text
 vector_count                  285
 dimension                    1024
-mapping_failure_count           0
-hash_failure_count              0
-normalization_failure_count     0
+mapping/hash/norm failure       0
+same rc_                       PASS
+same fi_                       PASS
+same-query vector              PASS
+same-query ranking             PASS
+same-query scores              PASS
 ```
 
-Rebuild:
-
-```text
-same rc_          PASS
-same fi_          PASS
-same source SHA   PASS
-same mapping SHA  PASS
-```
-
-Real Query:
-
-```text
-Case 1: Rank 1/2 유효, Rank 3 noise
-Case 2: Rank 1/2 유효, Rank 3 noise
-```
-
-Same-query reproducibility:
-
-```text
-vector_exact_equal=True
-max_abs_diff=0
-cosine=1.000000000
-ranking_equal=True
-scores_exact_equal=True
-```
-
-```text
-M9 = DONE / PASS
-```
+실제 Query 2건에서 Rank 1/2는 유효했고 Rank 3에는 noise가 관찰됐다. 따라서 global cosine threshold나 reranker는 아직 임의 추가하지 않는다.
 
 ---
 
@@ -232,62 +222,163 @@ Scale-up 시 `IndexHNSWFlat` / `IndexIVFFlat`을 Flat exact 결과와 `recall@k 
 
 ---
 
-## 8. M10 · Evidence Builder + MCP — NEXT
+## 8. M10 Evidence Builder + MCP — IMPLEMENTATION PASS
 
-M9 output:
-
-```text
-rank
-score
-faiss_position
-embedding_id
-knowledge_item_id
-category
-```
-
-M10 책임:
+### 아주 쉽게
 
 ```text
-ki_ → Knowledge statement
-ke_ → Evidence source
-→ Evidence package
-→ MCP
+M9
+“질문과 가까운 Knowledge는 이것입니다.”
+        ↓
+M10
+“그 Knowledge의 실제 Jira 근거는 이 설명/댓글/관계입니다.”
+        ↓
+Agent
+Knowledge + Evidence를 보고 최종 답변
 ```
 
-M10에서 아직 결정하지 않은 항목:
+### M10-01 Contract Freeze
 
 ```text
-Evidence Package schema
-Evidence resolver contract
-MCP tool surface
-candidate/evidence budget
-quality/integrity Gate
-error contract
+Evidence Package       candidate 중심
+Evidence Resolver      M7의 6종 ref 계약 재사용
+Runtime Failure        broken candidate 격리 + warning
+Candidate Budget       M9 Top-3 유지
+MCP Tool Surface       2 tools
+Stale Guard            active accepted 재검증
 ```
 
-M10에서는 Evidence 없이 LLM 답변만 만드는 것을 완료로 보지 않는다. `ki_ → ke_ → Jira source` round-trip이 핵심이다.
+### M10-02 / M10-03 Evidence
+
+```text
+M9 RetrievalCandidate
+  ↓
+ki_ active/accepted/content_available 확인
+  ↓
+ke_ Evidence
+  ↓
+summary / description / comment / attachment / relationship / custom_field
+  ↓
+EvidencePackage
+```
+
+주요 typed failure:
+
+```text
+KNOWLEDGE_NOT_FOUND
+STALE_RETRIEVAL_INDEX
+EVIDENCE_SOURCE_MISSING
+EVIDENCE_REF_INVALID
+CATEGORY_MISMATCH
+```
+
+### M10-04 MCP
+
+외부 tool은 정확히 2개다.
+
+```text
+search_jira_knowledge(query, top_k=3)
+get_jira_issue(issue_key)
+```
+
+보안 경계:
+
+```text
+Tool annotation
+read_only_hint = true
+open_world_hint = false
+
+SQLite
+mode=ro
+PRAGMA query_only=ON
+
+External payload
+source_path/source_page 제외
+```
+
+MCP 내부에는 생성형 LLM이 없다.
+
+CI:
+
+```text
+MCP Client tools/list         PASS
+search tool call              PASS
+get issue tool call           PASS
+SQLite write rejection        PASS
+path leak synthetic Gate      PASS
+GitHub Actions pytest         133/133 PASS
+```
 
 ---
 
-## 9. 새 세션 시작 규칙
+## 9. M10-05 Real-run — NEXT
+
+현재 구현을 실제 로컬 artifact와 사내 BGE-M3에 연결하는 마지막 Gate다.
 
 ```text
-1. docs/status/M10_START_HERE.html 읽기
-2. Current Status / Pipeline / M9 Final Log 확인
-3. M10 책임 경계 확인
-4. Evidence Package / Resolver / MCP 계약 설계
-5. 사용자 승인 후 구현
+실제 질문
+→ 실제 BGE-M3 query embedding
+→ 실제 M9 index
+→ Top-3 ki_
+→ 실제 M7 SQLite
+→ ke_ / Jira source
+→ Evidence Package
+→ MCP response
 ```
 
-프로세스:
+실행 도구:
+
+```text
+tools/jira_knowledge/validate_m10_real_run.py
+```
+
+필요 환경:
+
+```text
+JIRA_KNOWLEDGE_DB_PATH
+JIRA_RETRIEVAL_ARTIFACT_DIR
+BGE_M3_ENDPOINT
+BGE_M3_API_KEY       optional
+BGE_M3_HEADERS_JSON  optional
+M10_REAL_RUN_QUERY
+```
+
+검증 도구는 실제 query/Issue key/Jira 원문을 stdout에 출력하지 않고 다음 안전한 집계만 남긴다.
+
+```text
+tool_count
+search_result_count
+evidence_count
+warning_count
+path_leak_count
+issue_lookup_ok
+failure_count
+M10_REAL_RUN = PASS / FAIL
+```
+
+Real-run에서 `warning_count=0`, `path_leak_count=0`, 검색 결과/Evidence 존재, `get_jira_issue` round-trip이 모두 확인돼야 M10을 DONE으로 판정한다.
+
+---
+
+## 10. 작업 프로세스
 
 ```text
 DESIGN → IMPLEMENTATION → VALIDATION → DOCUMENTATION SYNC
 ```
 
+M10 현재 위치:
+
+```text
+DESIGN          PASS
+IMPLEMENTATION  PASS
+CI VALIDATION   PASS
+REAL-RUN        NEXT
+COMPLETION      BLOCKED UNTIL REAL-RUN PASS
+```
+
 ---
 
-## 10. Current Source of Truth
+## 11. Current Source of Truth
 
 ```text
 README.md
@@ -295,15 +386,8 @@ docs/PIPELINE_OVERVIEW.md
 docs/index.html
 docs/status/jira_knowledge_db_current_status.html
 docs/status/M10_START_HERE.html
+docs/status/M10_EVIDENCE_MCP_CONTRACT.html
+docs/status/M10_EVIDENCE_RESOLVER_IMPLEMENTATION.html
+docs/status/M10_MCP_IMPLEMENTATION.html
 docs/architecture/jira_data_relationship_map.*
-```
-
-M9 final records:
-
-```text
-docs/M9_FAISS_ACTIVE_RETRIEVAL.md
-docs/M9_DECISION_LOG.md
-docs/M9_REAL_RETRIEVAL_LOG.md
-docs/status/M9_FAISS_ACTIVE_RETRIEVAL.html
-docs/M9_REAL_RETRIEVAL_LOG.html
 ```
