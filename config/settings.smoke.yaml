@@ -1,0 +1,5 @@
+# Real smoke test 전용 local override입니다.
+# Jira URL/계정/비밀번호는 기존 .env를 그대로 사용하고,
+# 모든 runtime artifact만 production/pilot data와 분리합니다.
+storage:
+  data_root: "./data_smoke"
