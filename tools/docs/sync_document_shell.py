@@ -25,8 +25,8 @@ HUB_SECTIONS = (
 HREF_PATTERN = re.compile(r'<a\b[^>]*\bhref=["\']([^"\']+)["\']', re.IGNORECASE)
 TITLE_PATTERN = re.compile(r"<title>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 STYLE_PATTERN = re.compile(r"<style\b[^>]*>.*?</style>", re.IGNORECASE | re.DOTALL)
-POLICY_MARKER = "DOCUMENT SHELL V1 · 고정 프레임"
-AGENT_MARKER = "Document Shell v1 고정 규칙"
+POLICY_MARKER = "DOCUMENT SHELL · 개정 1 · 고정 프레임"
+AGENT_MARKER = "Document Shell · 개정 1 고정 규칙"
 
 
 def _all_documents() -> list[Path]:
@@ -93,7 +93,7 @@ def _inject_framework_note(text: str) -> str:
         raise ValueError("Hub reference section heading not found")
     note = (
         '<p class="framework-note"><strong>문서 UI 규칙:</strong> '
-        '<a class="btn" href="DOCUMENT_FRAMEWORK_STANDARD_2026-08-27.html">Document Framework v1</a> '
+        '<a class="btn" href="DOCUMENT_FRAMEWORK_STANDARD_2026-08-27.html">문서 UI 프레임 · 개정 1</a> '
         '<a class="btn alt" href="DOCUMENTATION_POLICY.html">Documentation Policy</a></p>'
     )
     return text[: match.end()] + note + text[match.end() :]
@@ -126,9 +126,9 @@ def _ensure_policy_rules(text: str) -> str:
     if marker not in text:
         raise ValueError("Documentation Policy section 2 marker not found")
     section = (
-        '<section id="document-shell-v1"><h2>1.5. DOCUMENT SHELL V1 · 고정 프레임</h2>'
+        '<section id="document-shell-v1"><h2>1.5. DOCUMENT SHELL · 개정 1 · 고정 프레임</h2>'
         '<div class="callout good"><strong>2026-08-27 고정 규칙</strong><br>'
-        'Hub는 <code>assets/hub-frame.css</code>의 v1 구조를 사용하고, 모든 일반 HTML 문서는 '
+        'Hub는 <code>assets/hub-frame.css</code>의 문서 UI 프레임 개정 1 구조를 사용하고, 모든 일반 HTML 문서는 '
         '<code>assets/document-shell.css</code> + <code>document-navigation.js</code>를 사용합니다.</div>'
         '<ul><li>모든 문서는 <strong>이전 문서 / 문서 Hub / 다음 문서</strong> 세 버튼을 항상 표시합니다.</li>'
         '<li>첫/마지막 문서도 버튼을 숨기지 않고 disabled 상태로 자리를 유지합니다.</li>'
@@ -146,9 +146,9 @@ def _ensure_agent_rules(text: str) -> str:
     if marker not in text:
         raise ValueError("AGENTS.md section 2 marker not found")
     rules = (
-        "## 1.1 Document Shell v1 고정 규칙\n\n"
-        "- `docs/index.html`은 `data-hub-frame=\"v1\"` 구조와 `docs/assets/hub-frame.css`를 사용한다.\n"
-        "- 모든 일반 HTML은 `data-doc-shell=\"v1\"`과 공통 shell CSS/JS를 포함한다.\n"
+        "## 1.1 Document Shell · 개정 1 고정 규칙\n\n"
+        "- `docs/index.html`은 내부 식별자 `data-hub-frame=\"v1\"` 구조와 `docs/assets/hub-frame.css`를 사용한다.\n"
+        "- 모든 일반 HTML은 내부 식별자 `data-doc-shell=\"v1\"`과 공통 shell CSS/JS를 포함한다.\n"
         "- `이전 문서 / 문서 Hub / 다음 문서` 버튼은 항상 유지한다. 첫/마지막 문서는 숨기지 않고 disabled로 표시한다.\n"
         "- 새 HTML 작성 후 `python tools/docs/sync_document_shell.py --write`를 실행하고 `--check`를 통과시킨다.\n"
         "- Hub 기본 5개 영역 또는 shell 계약을 바꿀 때는 임의 수정하지 말고 Documentation Policy와 Framework 문서를 함께 갱신한다.\n\n"
@@ -227,16 +227,16 @@ def check_all() -> int:
     errors: list[str] = []
     hub = HUB.read_text(encoding="utf-8")
     if 'data-hub-frame="v1"' not in hub or 'assets/hub-frame.css' not in hub:
-        errors.append("docs/index.html: hub frame v1 marker/assets missing")
+        errors.append("docs/index.html: hub frame internal marker/assets missing")
     if re.search(r"<style\b", hub, flags=re.IGNORECASE):
         errors.append("docs/index.html: inline <style> is forbidden; use assets/hub-frame.css")
     for section_id, _ in HUB_SECTIONS:
         if f'id="{section_id}"' not in hub:
             errors.append(f"docs/index.html: missing fixed section {section_id}")
     if POLICY_MARKER not in POLICY.read_text(encoding="utf-8"):
-        errors.append("docs/DOCUMENTATION_POLICY.html: shell v1 rule missing")
+        errors.append("docs/DOCUMENTATION_POLICY.html: Document Shell 개정 1 rule missing")
     if AGENT_MARKER not in AGENTS.read_text(encoding="utf-8"):
-        errors.append("AGENTS.md: shell v1 rule missing")
+        errors.append("AGENTS.md: Document Shell 개정 1 rule missing")
     for path in _all_documents():
         text = path.read_text(encoding="utf-8")
         for token in _expected_shell_tokens(path):
@@ -249,14 +249,14 @@ def check_all() -> int:
         for error in errors:
             print(f"- {error}")
         return 1
-    print(f"DOCUMENT_SHELL_CHECK = PASS docs={len(_all_documents())} hub_frame=v1")
+    print(f"DOCUMENT_SHELL_CHECK = PASS docs={len(_all_documents())} hub_frame_revision=1")
     return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Jira Knowledge HTML 문서 shell v1 동기화/검증")
+    parser = argparse.ArgumentParser(description="Jira Knowledge HTML 문서 shell 개정 1 동기화/검증")
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--write", action="store_true", help="모든 HTML 문서를 shell v1로 동기화")
+    mode.add_argument("--write", action="store_true", help="모든 HTML 문서를 shell 개정 1로 동기화")
     mode.add_argument("--check", action="store_true", help="동기화 상태만 검증")
     args = parser.parse_args()
     return write_all() if args.write else check_all()
