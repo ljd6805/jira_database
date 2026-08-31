@@ -1,20 +1,431 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge 2-Loop 운영 서비스의 ID, State, Knowledge, Embedding, Retrieval 관계 지도"><title>Jira Knowledge Relationship Map · Two-Loop</title><style>:root{--bg:#0e1728;--panel:#15243c;--text:#edf4ff;--muted:#a9b8ce;--line:#334963;--blue:#64d3ff;--green:#60d39a;--purple:#ba9cff;--amber:#ffc76a}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.65}.wrap{max-width:1220px;margin:auto;padding:40px 22px 90px}.hero{padding:36px;border:1px solid var(--line);border-radius:24px;background:linear-gradient(130deg,#15243c,#223c67)}h1{font-size:clamp(34px,5vw,56px);margin:8px 0}.lane{margin-top:28px;padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}.lane h2{margin-top:0}.track{display:flex;gap:10px;align-items:center;overflow:auto;padding-bottom:6px}.node{min-width:150px;padding:14px;border:1px solid var(--line);border-radius:13px;background:#101e33;text-align:center}.node b{display:block}.node small{color:var(--muted)}.arr{font-weight:900;color:var(--blue)}.source{border-top:4px solid var(--blue)}.queue{border-top:4px solid var(--amber)}.process{border-top:4px solid var(--purple)}.service{border-top:4px solid var(--green)}.flow{white-space:pre-wrap;padding:16px;border-radius:13px;background:#09111f;color:#dff2ff;font:13px/1.7 Consolas,monospace;overflow:auto}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}.card p{color:var(--muted)}a{color:#dff2ff;font-weight:800}.footer{margin-top:50px;color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}.track{align-items:stretch}.node{min-width:135px}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a></p><header class="hero"><div>IDENTITY / DATA RELATIONSHIP MAP · 2026-08-28</div><h1>Source, Work, Knowledge, Vector가<br>어떻게 이어지는가?</h1><p>2-Loop 운영 구조의 핵심 ID와 저장소 관계를 한 장에 정리합니다.</p></header><section class="lane source"><h2>Loop A · Source Sync</h2><div class="track"><div class="node"><b>Jira Project</b><small>project_id</small></div><div class="arr">→</div><div class="node"><b>Source Run</b><small>sr_</small></div><div class="arr">→</div><div class="node"><b>Project Run</b><small>(sr_, project_id)</small></div><div class="arr">→</div><div class="node"><b>Jira Issue</b><small>jira_id</small></div><div class="arr">→</div><div class="node"><b>semantic hash</b><small>semantic_v2</small></div></div><div class="flow">project_state
-project_id → visibility → committed_watermark
+<!doctype html>
+<html data-doc-shell="v1" lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Jira Knowledge 2-Loop의 Operational State DB v3와 실제 Knowledge DB v1 전체 테이블, PK/FK, logical reference, Source Ready/Latest-Only Gate를 시각화한 DB Deep Dive">
+  <title>Jira Knowledge Relationship Map · Two-Loop</title>
+  <link rel="stylesheet" href="jira_data_relationship_map.css">
+  <style>
+    .top-links{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 14px}.top-links a{color:#dff2ff;font-weight:800;text-decoration:none}.section{margin:22px 0}.section-title{font-size:27px;margin:0 0 8px}.section-lead{color:var(--muted);max-width:1180px;margin:0 0 16px}.status-grid,.db-boundary,.flow-grid,.concept-grid{display:grid;gap:14px}.status-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.db-boundary{grid-template-columns:1fr 90px 1fr}.flow-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.concept-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.status-card,.db-card,.flow-step,.concept-card,.catalog-card,.warning-box,.good-box,.source-box{background:var(--panel);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:18px;box-shadow:var(--shadow)}.status-card b,.concept-card b{display:block;margin-bottom:6px}.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:900;margin-bottom:9px}.badge.current{background:rgba(100,211,255,.14);color:#9be7ff;border:1px solid rgba(100,211,255,.36)}.badge.done{background:rgba(97,214,181,.12);color:#8cf0d0;border:1px solid rgba(97,214,181,.32)}.badge.note{background:rgba(255,207,112,.12);color:#ffe0a5;border:1px solid rgba(255,207,112,.28)}.db-card h3,.catalog-card h3{margin:0 0 8px}.db-card ul,.catalog-card ul{margin:8px 0 0 18px;color:var(--muted)}.boundary-arrow{display:grid;place-items:center;font-size:28px;font-weight:900;color:var(--plan)}.flow-step{position:relative;min-height:145px}.flow-step .no{width:29px;height:29px;border-radius:50%;display:grid;place-items:center;background:#24345f;color:#fff;font-weight:900;margin-bottom:9px}.flow-step b{display:block;margin-bottom:5px}.flow-step p{margin:0;color:var(--muted);font-size:13px}.flow-step:not(:last-child)::after{content:'→';position:absolute;right:-14px;top:58px;color:#81dfff;font-size:24px;font-weight:900;z-index:2}.legend-line{display:flex;gap:18px;flex-wrap:wrap;margin:10px 8px 15px;color:var(--muted);font-size:13px}.line-sample{display:inline-block;width:45px;vertical-align:middle;margin-right:7px;border-top:3px solid rgba(216,230,255,.72)}.line-sample.logical{border-top-style:dashed;border-color:#ffcf70}.edge-logical{stroke:#ffcf70!important;stroke-dasharray:8 6}.label-tag-logical{stroke:#ffcf70!important}.catalog{display:grid;gap:15px}.catalog-card{padding:0;overflow:hidden}.catalog-head{display:grid;grid-template-columns:1.15fr 1.3fr 1fr 1fr;gap:0;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)}.catalog-head>div{padding:15px;border-right:1px solid rgba(255,255,255,.06)}.catalog-head>div:last-child{border-right:0}.catalog-head .name{font:700 16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#dff2ff}.catalog-head small{display:block;color:var(--muted);margin-top:4px}.catalog-body{padding:16px}.catalog-body p{color:var(--muted)}.schema-table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:13px}.schema-table{width:100%;min-width:900px;border-collapse:collapse;font-size:13px}.schema-table th,.schema-table td{padding:9px 11px;border-bottom:1px solid rgba(255,255,255,.07);border-right:1px solid rgba(255,255,255,.05);vertical-align:top;text-align:left}.schema-table th{background:#1b2b49;color:#eaf3ff;position:sticky;top:0}.schema-table td{color:var(--muted)}.schema-table td:first-child{color:#dff2ff;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.schema-table tr:last-child td{border-bottom:0}.key{color:#8bdfff;font-weight:800}.fk{color:#8cf0d0;font-weight:800}.logical-ref{color:#ffdc93;font-weight:800}.danger{color:#ff9f9f;font-weight:800}.details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.mini-detail{padding:13px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)}.mini-detail b{display:block;margin-bottom:4px}.mini-detail span{color:var(--muted);font-size:13px}.code-block{white-space:pre-wrap;background:#07101d;border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:16px;color:#dff2ff;font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow:auto}.good-box{border-left:5px solid #61d6b5;background:rgba(97,214,181,.07)}.warning-box{border-left:5px solid #ffcf70;background:rgba(255,207,112,.07)}.source-box{border-left:5px solid #64d3ff}.matrix td:first-child,.matrix th:first-child{white-space:nowrap}.trace{display:grid;grid-template-columns:repeat(7,minmax(145px,1fr));gap:10px;overflow:auto;padding-bottom:7px}.trace-node{min-width:145px;padding:14px;border-radius:13px;background:#101e33;border:1px solid var(--line);position:relative}.trace-node b{display:block}.trace-node small{color:var(--muted)}.trace-node:not(:last-child)::after{content:'→';position:absolute;right:-15px;top:42%;color:#81dfff;font-size:21px;font-weight:900}.faq details{background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:13px 15px;margin:8px 0}.faq summary{cursor:pointer;font-weight:900}.faq p{color:var(--muted)}.source-list li{margin:8px 0;color:var(--muted)}.source-list a{color:#9be7ff}.note-text{color:var(--muted);font-size:13px}.table-count{font-size:12px;color:var(--muted);font-weight:700}.map-note{padding:11px 14px;border-radius:12px;background:rgba(255,207,112,.07);border:1px solid rgba(255,207,112,.2);color:#ffe2aa;margin:10px 8px}.owner-a{color:#8bdfff}.owner-b{color:#c1b2ff}.owner-both{color:#ffe0a5}
+    @media(max-width:1100px){.status-grid,.concept-grid{grid-template-columns:repeat(2,1fr)}.flow-grid{grid-template-columns:1fr 1fr}.flow-step::after{display:none}.catalog-head{grid-template-columns:1fr 1fr}.db-boundary{grid-template-columns:1fr}.boundary-arrow{transform:rotate(90deg)}}
+    @media(max-width:720px){.status-grid,.concept-grid,.flow-grid,.details-grid,.catalog-head{grid-template-columns:1fr}.trace{grid-template-columns:repeat(7,160px)}.section-title{font-size:23px}}
+  </style>
+  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
+  <script defer src="jira_data_relationship_router.js"></script>
+  <script defer src="jira_data_relationship_map.data_a.js"></script>
+  <script defer src="jira_data_relationship_map.data_b.js"></script>
+  <script defer src="jira_data_relationship_map.data_c.js"></script>
+  <script defer src="jira_data_relationship_map.js"></script>
+</head>
+<body>
+<main class="wrap">
+  <nav class="top-links">
+    <a href="../index.html">← Documentation Hub</a>
+    <a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a>
+    <a href="jira_sync_state_schema_contract.html">State Schema v3</a>
+    <a href="jira_sync_state_schema_decision7_final_ddl.html">Final DDL v3</a>
+    <a href="../status/M7_SQLITE_MATERIALIZATION.html">M7 Knowledge DB</a>
+  </nav>
 
-source_project_run
-source_run_id + project_id → lower / upper / cursor / counts / source_status</div></section><section class="lane queue"><h2>Durable Boundary · Backlog</h2><div class="track"><div class="node"><b>NEW / CHANGED</b><small>classification</small></div><div class="arr">→</div><div class="node"><b>Work Item</b><small>sw_</small></div><div class="arr">→</div><div class="node"><b>Stage State</b><small>knowledge / embedding / publish</small></div></div><div class="flow">work_item_id = sw_ + SHA256(
-  jira_id + source_hash + source_hash_profile
-)
+  <header class="hero">
+    <div class="eyebrow">DB SCHEMA DEEP DIVE · TWO-LOOP · 2026-08-31</div>
+    <h1>Jira Knowledge DB를<br>테이블부터 연결까지 이해하기</h1>
+    <p>이 문서는 단순한 관계 그림이 아닙니다. <strong>Operational State DB v3와 실제 Knowledge DB v1의 모든 핵심 테이블</strong>을 분리해서 보고, 각 row가 무엇을 뜻하는지, 누가 쓰고 읽는지, PK/FK가 어디로 이어지는지, 두 DB 사이에서 무엇이 물리 FK이고 무엇이 logical reference인지까지 추적합니다.</p>
+    <div class="pill-row">
+      <span class="pill current-pill">State DB v3 · FROZEN / IMPLEMENT THIS</span>
+      <span class="pill">Knowledge DB v1 · M7 IMPLEMENTED / REAL-RUN PASS</span>
+      <span class="pill">Source Ready + Latest-Only</span>
+      <span class="pill">Physical FK ≠ Cross-DB Logical Ref</span>
+    </div>
+  </header>
 
-first_discovered_source_run_id → sr_
-last_observed_source_run_id    → sr_
-last_processing_run_id         → pr_</div></section><section class="lane process"><h2>Loop B · Knowledge Processing / Publish</h2><div class="track"><div class="node"><b>Processing Run</b><small>pr_</small></div><div class="arr">→</div><div class="node"><b>Issue Version</b><small>iv_</small></div><div class="arr">→</div><div class="node"><b>Generation</b><small>kg_</small></div><div class="arr">→</div><div class="node"><b>Attempt</b><small>ka_</small></div><div class="arr">→</div><div class="node"><b>Knowledge Item</b><small>ki_</small></div><div class="arr">→</div><div class="node"><b>Evidence</b><small>ke_</small></div></div><div class="flow">jira_id + source_hash → iv_
-iv_ + knowledge contract → kg_
-kg_ + attempt_no → ka_
-ka_ + category + ordinal → ki_
-ki_ + evidence_ref → ke_</div></section><section class="lane process"><h2>Embedding / Retrieval Artifact</h2><div class="track"><div class="node"><b>Knowledge Item</b><small>ki_</small></div><div class="arr">→</div><div class="node"><b>Embedding Contract</b><small>ec_</small></div><div class="arr">→</div><div class="node"><b>Embedding</b><small>emb_</small></div><div class="arr">→</div><div class="node"><b>Retrieval Contract</b><small>rc_</small></div><div class="arr">→</div><div class="node"><b>FAISS Artifact</b><small>fi_</small></div></div><div class="flow">FAISS position ≠ emb_ ≠ ki_
+  <section class="section">
+    <h2 class="section-title">0. 먼저 결론: 이 프로젝트에는 DB를 두 덩어리로 봐야 한다</h2>
+    <p class="section-lead">가장 중요한 구분입니다. <strong>State DB는 파이프라인을 운영하는 장부</strong>이고, <strong>Knowledge DB는 실제 지식과 근거를 저장하는 창고</strong>입니다. FAISS/Embedding은 별도 artifact 영역입니다.</p>
+    <div class="status-grid">
+      <div class="status-card"><span class="badge current">CURRENT DESIGN</span><b>Operational State DB · collector.db</b><span class="note-text">2-Loop v3 운영 기준. Source Run, Watermark, Work Item backlog, Processing Run, Latest-Only 상태를 관리합니다.</span></div>
+      <div class="status-card"><span class="badge done">IMPLEMENTED / PASS</span><b>Knowledge DB · SQLite Schema v1</b><span class="note-text">M7에서 15개 테이블을 실제 구현했고 30 Issue / 285 Item / 502 canonical Evidence로 real-run 검증했습니다.</span></div>
+      <div class="status-card"><span class="badge note">NOT A DB TABLE</span><b>Embedding / FAISS Artifacts</b><span class="note-text">Knowledge Item을 BGE-M3 vector로 만들고 FAISS index/mapping으로 저장합니다. DB table과 동일시하지 않습니다.</span></div>
+    </div>
+  </section>
 
-physical position은 identity가 아니며 mapping을 통해 ki_로 되돌아갑니다.</div></section><section class="lane service"><h2>상시 Retrieval Service</h2><div class="track"><div class="node"><b>User Question</b><small>natural language</small></div><div class="arr">→</div><div class="node"><b>FAISS</b><small>Top-3</small></div><div class="arr">→</div><div class="node"><b>ki_</b><small>Knowledge</small></div><div class="arr">→</div><div class="node"><b>ke_</b><small>Evidence</small></div><div class="arr">→</div><div class="node"><b>MCP</b><small>Tool</small></div><div class="arr">→</div><div class="node"><b>OpenCode</b><small>Final answer</small></div></div></section><section><h2>Source Head와 Published Head</h2><div class="grid2"><div class="card"><h3>Source Head</h3><p>Loop A가 가장 최근 안전하게 Source Commit한 semantic state.</p></div><div class="card"><h3>Published Head</h3><p>현재 FAISS/MCP가 실제 사용자에게 제공하는 state.</p></div></div><div class="flow">Source Head V5
-Published Head V3
-→ sw_ backlog에 V4/V5 처리 필요
-→ Retrieval은 V3 last-known-good 유지</div></section><section><h2>저장소 경계</h2><div class="grid3"><div class="card"><h3>State DB</h3><p>sr_, pr_, project_state, source cursor, sw_ 단계 상태.</p></div><div class="card"><h3>Knowledge DB</h3><p>iv_, kg_, ka_, ki_, ke_ 및 Review.</p></div><div class="card"><h3>Artifact Files</h3><p>RAW, ANALYSIS, Embedding/FAISS 결과물과 mapping.</p></div></div></section><footer class="footer">Relationship Map · Two-Loop current architecture · 2026-08-28</footer></main></body></html>
+  <section class="section">
+    <h2 class="section-title">1. DB 용어를 이 문서에서 어떻게 읽을까?</h2>
+    <div class="concept-grid">
+      <div class="concept-card"><b>row</b><span class="note-text">테이블의 가로 한 줄. 예: <code>sync_issue_change</code> row 하나 = 처리해야 할 semantic Work Item 한 건.</span></div>
+      <div class="concept-card"><b>PK · Primary Key</b><span class="note-text">그 row를 유일하게 식별하는 대표 ID. 같은 PK row는 둘 존재할 수 없습니다.</span></div>
+      <div class="concept-card"><b>FK · Foreign Key</b><span class="note-text">같은 SQLite DB 안의 다른 table row를 DB가 직접 검증하며 가리키는 연결입니다.</span></div>
+      <div class="concept-card"><b>Logical Reference</b><span class="note-text">다른 DB의 ID를 문자열로 보관하는 연결. SQLite FK가 아니므로 애플리케이션 검증이 필요합니다.</span></div>
+    </div>
+  </section>
+
+  <section class="panel" id="interactive-map">
+    <div class="toolbar">
+      <div class="tabs">
+        <button class="tab active" data-view="state">State DB v3</button>
+        <button class="tab" data-view="crossdb">State ↔ Knowledge</button>
+        <button class="tab" data-view="schema">Knowledge DB v1</button>
+        <button class="tab" data-view="issue">Evidence Round-trip</button>
+        <button class="tab" data-view="entity">Current Entity</button>
+        <button class="tab" data-view="pipeline">M0~M11 Pipeline</button>
+      </div>
+      <div class="toggles">
+        <button class="toggle on" data-group="db">DB</button>
+        <button class="toggle on" data-group="issue">Issue</button>
+        <button class="toggle on" data-group="knowledge">Knowledge</button>
+        <button class="toggle on" data-group="evidence">Evidence</button>
+        <button class="toggle on" data-group="review">Review</button>
+      </div>
+    </div>
+    <h2 id="viewTitle">Operational State DB v3</h2>
+    <p class="help" id="viewHelp">테이블을 클릭하면 우측에서 역할을 확인할 수 있습니다. 마우스를 올리면 해당 테이블의 연결만 강조됩니다.</p>
+    <div class="legend-line"><span><i class="line-sample"></i>같은 DB의 FK / 운영 의존성</span><span><i class="line-sample logical"></i>DB를 넘는 Logical Reference</span></div>
+    <div class="map-note">그림이 복잡할수록 <strong>한 테이블 위에 마우스를 올려 연결만 강조</strong>해서 보세요. 모바일에서는 억지로 축소하지 않고 가로 스크롤합니다.</div>
+    <div class="map-grid">
+      <div class="svg-box"><svg id="networkSvg" viewBox="0 0 1320 920" role="img" aria-label="Jira Knowledge DB interactive relationship map"></svg></div>
+      <aside class="side">
+        <div class="card"><h3>선택한 테이블</h3><div id="infoPanel"><div class="info-body">표에서 테이블을 선택하세요.</div></div></div>
+        <div class="mini"><h4>읽는 순서</h4><ol><li>State DB v3</li><li>State ↔ Knowledge</li><li>Knowledge DB v1</li><li>Evidence Round-trip</li></ol></div>
+        <div class="mini"><h4>핵심</h4><p><code>sync_issue_change</code>가 두 Loop 사이의 durable Work backlog입니다. 하지만 row가 있다고 즉시 처리하는 것이 아니라 Source Ready + Latest 조건을 통과해야 합니다.</p></div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">2. 두 Loop가 실제로 어떤 테이블을 통과하는가</h2>
+    <div class="flow-grid">
+      <div class="flow-step"><div class="no">1</div><b>source_sync_run</b><p>Loop A 실행을 생성하고 fixed upper와 전체 run 상태를 잡습니다.</p></div>
+      <div class="flow-step"><div class="no">2</div><b>project_state + source_project_run</b><p>프로젝트의 장기 Watermark와 이번 Run의 cursor/count를 분리해 기록합니다.</p></div>
+      <div class="flow-step"><div class="no">3</div><b>sync_issue_change</b><p>NEW/CHANGED semantic 상태를 Work Item row로 durable하게 기록합니다.</p></div>
+      <div class="flow-step"><div class="no">4</div><b>Source Ready + Latest Gate</b><p>Project Source Commit 완료 + 최신 Work인지 확인한 row만 claim할 수 있습니다.</p></div>
+      <div class="flow-step"><div class="no">5</div><b>processing_run → Knowledge DB</b><p>Loop B가 Work를 지식화·검증·Embedding·Publish하고 상태를 다시 Work row에 기록합니다.</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="state-db">
+    <h2 class="section-title">3. Operational State DB v3 · 테이블별 상세</h2>
+    <p class="section-lead">현재 Final DDL v3의 Operational Domain은 5개입니다. <code>state_schema_migration</code>은 기술 메타 테이블이고, 기존 MVP의 <code>collection_runs/project_runs/issue_checkpoints/artifacts</code>는 migration 호환을 위해 보존됩니다.</p>
+
+    <div class="catalog">
+      <article class="catalog-card">
+        <div class="catalog-head"><div><span class="name">source_sync_run</span><small>Loop A 전체 Run 장부</small></div><div><b>row 1개 의미</b><small>Jira Source Sync 전체 실행 한 번</small></div><div><b class="owner-a">주로 쓰는 쪽</b><small>Scheduler A / Source Sync</small></div><div><b>주로 읽는 쪽</b><small>Loop A, 운영 모니터링, 다른 State table FK</small></div></div>
+        <div class="catalog-body">
+          <div class="details-grid"><div class="mini-detail"><b>왜 필요한가?</b><span>프로젝트별 세부 진행과 별개로 “이번 Source Sync 실행 자체”의 시작/종료/상한/성공 여부가 필요합니다.</span></div><div class="mini-detail"><b>누가 참조하나?</b><span><code>project_state</code>, <code>source_project_run</code>, <code>sync_issue_change</code>의 Source lineage가 이 Run ID를 FK로 가리킵니다.</span></div></div>
+          <div class="schema-table-wrap"><table class="schema-table"><thead><tr><th>column</th><th>constraint / type</th><th>뜻</th><th>어디서 참고?</th></tr></thead><tbody>
+            <tr><td>source_run_id</td><td><span class="key">PK</span> · TEXT · <code>sr_ + UUID4</code></td><td>Source Run identity</td><td>여러 State table의 FK</td></tr>
+            <tr><td>started_at</td><td>NOT NULL</td><td>실행 시작</td><td>운영/지연 분석</td></tr>
+            <tr><td>finished_at</td><td>nullable</td><td>실행 종료</td><td>run_status 완료 여부 CHECK</td></tr>
+            <tr><td>upper_bound</td><td>NOT NULL</td><td>이번 Run이 볼 fixed upper</td><td>각 Project upper 계약</td></tr>
+            <tr><td>discovery_status</td><td>pending/running/completed/failed</td><td>Project Discovery 상태</td><td>Run 완료 판정</td></tr>
+            <tr><td>source_status</td><td>pending/running/completed/partial/failed</td><td>Source 처리 aggregate</td><td>운영 상태</td></tr>
+            <tr><td>run_status</td><td>running/completed/partial/failed</td><td>최종 Run 상태</td><td>Scheduler/Monitoring</td></tr>
+            <tr><td>error_summary</td><td>nullable</td><td>Run-level 오류 요약</td><td>운영 진단</td></tr>
+          </tbody></table></div>
+        </div>
+      </article>
+
+      <article class="catalog-card">
+        <div class="catalog-head"><div><span class="name">project_state</span><small>Project 장기 상태 / Watermark</small></div><div><b>row 1개 의미</b><small>Jira Project 하나의 현재 운영 상태</small></div><div><b class="owner-a">주로 쓰는 쪽</b><small>Project Discovery / Source Commit</small></div><div><b>주로 읽는 쪽</b><small>다음 Delta 계산, Source Lag, source_project_run</small></div></div>
+        <div class="catalog-body">
+          <p><strong>핵심:</strong> Run이 끝나도 사라지지 않는 Project의 장기 기억입니다. 특히 <code>committed_watermark</code>가 “여기까지는 안전하게 Source Commit했다”를 뜻합니다.</p>
+          <div class="schema-table-wrap"><table class="schema-table"><thead><tr><th>column</th><th>constraint / reference</th><th>뜻</th><th>사용처</th></tr></thead><tbody>
+            <tr><td>project_id</td><td><span class="key">PK</span></td><td>authoritative Project identity</td><td>source_project_run / Work Item FK</td></tr>
+            <tr><td>current_key</td><td>NOT NULL</td><td>현재 Jira project key</td><td>API/JQL locator</td></tr>
+            <tr><td>current_name</td><td>NOT NULL</td><td>현재 이름</td><td>표시/운영</td></tr>
+            <tr><td>visibility_state</td><td>visible / unavailable</td><td>현재 접근 가능 여부</td><td>수집 대상 판단</td></tr>
+            <tr><td>first_seen_source_run_id</td><td><span class="fk">FK → source_sync_run</span></td><td>처음 발견 Run</td><td>lineage</td></tr>
+            <tr><td>last_seen_source_run_id</td><td><span class="fk">FK → source_sync_run</span></td><td>마지막 발견 Run</td><td>visibility freshness</td></tr>
+            <tr><td>last_seen_at</td><td>NOT NULL</td><td>마지막 관찰 시각</td><td>운영</td></tr>
+            <tr><td>unavailable_since</td><td>nullable</td><td>접근 불가 시작</td><td>visibility CHECK</td></tr>
+            <tr><td>committed_watermark</td><td>nullable</td><td>마지막 안전한 Source 경계</td><td>다음 Delta lower / Source Lag</td></tr>
+            <tr><td>last_source_success_run_id</td><td><span class="fk">FK → source_sync_run</span></td><td>마지막 Source 성공 Run</td><td>Watermark provenance</td></tr>
+            <tr><td>last_source_success_at</td><td>nullable</td><td>마지막 Source 성공 시각</td><td>Source Lag</td></tr>
+            <tr><td>last_error</td><td>nullable</td><td>최근 Project 오류</td><td>운영 진단</td></tr>
+          </tbody></table></div>
+        </div>
+      </article>
+
+      <article class="catalog-card">
+        <div class="catalog-head"><div><span class="name">source_project_run</span><small>Run × Project 진행 checkpoint</small></div><div><b>row 1개 의미</b><small>특정 Source Run에서 특정 Project를 읽는 작업 한 건</small></div><div><b class="owner-a">주로 쓰는 쪽</b><small>Loop A Collector</small></div><div><b>주로 읽는 쪽</b><small>재시작/복구, Source Commit, 운영</small></div></div>
+        <div class="catalog-body">
+          <p><code>project_state</code>가 “오래 기억하는 상태”라면 이 테이블은 “이번 실행에서 어디까지 갔는지”입니다. 둘을 섞지 않는 것이 crash recovery의 핵심입니다.</p>
+          <div class="schema-table-wrap"><table class="schema-table"><thead><tr><th>column</th><th>constraint / reference</th><th>뜻</th><th>사용처</th></tr></thead><tbody>
+            <tr><td>source_run_id</td><td><span class="key">PK 일부</span> · <span class="fk">FK → source_sync_run</span></td><td>이번 Source Run</td><td>composite identity</td></tr>
+            <tr><td>project_id</td><td><span class="key">PK 일부</span> · <span class="fk">FK → project_state</span></td><td>대상 Project</td><td>composite identity</td></tr>
+            <tr><td>operation_kind</td><td>initial_ingest/delta/catchup/skip_unavailable</td><td>수집 방식</td><td>lower_bound 규칙</td></tr>
+            <tr><td>lower_bound</td><td>nullable</td><td>Delta 시작 경계</td><td>delta/catchup</td></tr>
+            <tr><td>upper_bound</td><td>NOT NULL</td><td>이번 Project fixed upper</td><td>Source Commit</td></tr>
+            <tr><td>source_status</td><td>pending/running/source_committed/partial/failed/skipped_unavailable</td><td>Project 단위 Source 상태</td><td>Ready Gate/Run 판정</td></tr>
+            <tr><td>started_at / finished_at</td><td>시간</td><td>Project 처리 시간</td><td>운영</td></tr>
+            <tr><td>candidate_count</td><td>INTEGER ≥ 0</td><td>관찰 후보 수</td><td>정합성 CHECK</td></tr>
+            <tr><td>new_count / changed_count / unchanged_count</td><td>INTEGER ≥ 0</td><td>분류 결과</td><td>Source Commit completeness</td></tr>
+            <tr><td>cursor_updated_at</td><td>cursor pair</td><td>마지막 처리 updated</td><td>중단 후 재개</td></tr>
+            <tr><td>cursor_jira_id</td><td>cursor pair</td><td>tie-breaker Jira ID</td><td>중단 후 재개</td></tr>
+            <tr><td>error_message</td><td>nullable</td><td>Project 오류</td><td>복구/운영</td></tr>
+          </tbody></table></div>
+        </div>
+      </article>
+
+      <article class="catalog-card" id="work-item-table">
+        <div class="catalog-head"><div><span class="name">sync_issue_change</span><small>Work Item / Durable Backlog</small></div><div><b>row 1개 의미</b><small>특정 Jira Issue의 특정 semantic 상태를 처리할 작업 한 건</small></div><div><b class="owner-both">쓰는 쪽</b><small>Loop A 생성/Ready · Loop B Stage 갱신</small></div><div><b>읽는 쪽</b><small>Loop B claim, Monitoring, Reconciliation</small></div></div>
+        <div class="catalog-body">
+          <div class="good-box"><strong>이 테이블이 질문하셨던 “Work Item DB table”입니다.</strong><div class="note-text">정확한 테이블명은 <code>sync_issue_change</code>이고, row 하나가 Work Item 하나입니다. v3에서는 단순 queue가 아니라 Source lineage + Latest-Only supersede + Knowledge/Embedding/Publish checkpoint까지 함께 보관합니다.</div></div>
+          <div class="schema-table-wrap"><table class="schema-table"><thead><tr><th>column</th><th>constraint / reference</th><th>뜻</th><th>누가/언제 사용?</th></tr></thead><tbody>
+            <tr><td>work_item_id</td><td><span class="key">PK</span> · <code>sw_ + SHA-256</code></td><td>Work identity</td><td>Loop A deterministic UPSERT / Loop B claim</td></tr>
+            <tr><td>project_id</td><td><span class="fk">FK → project_state</span></td><td>소속 Project</td><td>필터/lineage</td></tr>
+            <tr><td>jira_id</td><td>NOT NULL</td><td>authoritative Issue identity</td><td>Latest-Only 같은 Issue 묶기</td></tr>
+            <tr><td>observed_issue_key</td><td>NOT NULL</td><td>관찰 당시 human key</td><td>표시/trace</td></tr>
+            <tr><td>jira_updated_at</td><td>nullable</td><td>Jira update 시각</td><td>진단/정렬</td></tr>
+            <tr><td>source_hash</td><td>NOT NULL</td><td>semantic source hash</td><td>Version identity/reconciliation</td></tr>
+            <tr><td>source_hash_profile</td><td><code>semantic_v2</code></td><td>Hash 계약 버전</td><td>UNIQUE identity material</td></tr>
+            <tr><td>change_kind</td><td>new / changed</td><td>변경 분류</td><td>Loop B 업무 문맥</td></tr>
+            <tr><td>first_discovered_source_run_id</td><td><span class="fk">FK → source_sync_run</span></td><td>처음 발견한 Run</td><td>Source lineage</td></tr>
+            <tr><td>last_observed_source_run_id</td><td><span class="fk">FK → source_sync_run</span></td><td>가장 최근 관찰 Run</td><td><strong>Ready Gate 오른쪽 값</strong></td></tr>
+            <tr><td>last_source_committed_run_id</td><td><span class="fk">FK → source_sync_run</span> · nullable</td><td>Source Commit이 확인된 Run</td><td><strong>Ready Gate 왼쪽 값</strong></td></tr>
+            <tr><td>last_source_committed_at</td><td>nullable</td><td>Gate가 열린 시각</td><td>Backlog age</td></tr>
+            <tr><td>last_observed_at</td><td>NOT NULL</td><td>마지막 관찰 시각</td><td>운영</td></tr>
+            <tr><td>work_status</td><td>pending/running/published/failed/superseded</td><td>Work 전체 lifecycle</td><td><strong>Latest-Only claim 조건</strong></td></tr>
+            <tr><td>superseded_by_work_item_id</td><td><span class="fk">SELF FK → sync_issue_change</span></td><td>더 최신 Work가 무엇인지</td><td>stale Work 차단</td></tr>
+            <tr><td>superseded_at</td><td>nullable</td><td>구버전 무효화 시각</td><td>History/Audit</td></tr>
+            <tr><td>supersede_reason</td><td><code>newer_source_version</code></td><td>무효화 이유</td><td>구조화 운영 로그</td></tr>
+            <tr><td>last_processing_run_id</td><td><span class="fk">FK → processing_run</span></td><td>마지막 처리 Run</td><td>Loop B lineage</td></tr>
+            <tr><td>issue_version_id</td><td><span class="logical-ref">LOGICAL → Knowledge DB.issue_version</span></td><td>생성/재사용된 Version ID</td><td>cross-DB reconciliation</td></tr>
+            <tr><td>knowledge_generation_id</td><td><span class="logical-ref">LOGICAL → Knowledge DB.knowledge_generation</span></td><td>지식 생성 ID</td><td>cross-DB reconciliation</td></tr>
+            <tr><td>knowledge_status</td><td>pending/running/completed/failed</td><td>지식화 단계</td><td>Loop B checkpoint</td></tr>
+            <tr><td>embedding_status</td><td>pending/running/completed/failed</td><td>Embedding 단계</td><td>Loop B checkpoint</td></tr>
+            <tr><td>publish_status</td><td>pending/running/published/failed</td><td>Publish 단계</td><td>Retrieval 활성화 상태</td></tr>
+            <tr><td>error_stage / error_message</td><td>nullable</td><td>실패 단계/요약</td><td>retry/운영</td></tr>
+            <tr><td>created_at / updated_at</td><td>NOT NULL</td><td>row lifecycle 시각</td><td>Backlog/감사</td></tr>
+            <tr><td>last_published_at</td><td>nullable</td><td>마지막 publish 시각</td><td>Publish Lag/History</td></tr>
+          </tbody></table></div>
+          <p><span class="key">UNIQUE</span> <code>(jira_id, source_hash, source_hash_profile)</code> 때문에 같은 semantic 상태를 무한히 새 row로 만들지 않습니다.</p>
+        </div>
+      </article>
+
+      <article class="catalog-card">
+        <div class="catalog-head"><div><span class="name">processing_run</span><small>Loop B 실행 장부</small></div><div><b>row 1개 의미</b><small>Backlog를 골라 처리하는 Loop B 실행 한 번</small></div><div><b class="owner-b">주로 쓰는 쪽</b><small>Scheduler/Worker B</small></div><div><b>주로 읽는 쪽</b><small>Work Item lineage, throughput/backlog monitoring</small></div></div>
+        <div class="catalog-body">
+          <div class="schema-table-wrap"><table class="schema-table"><thead><tr><th>column</th><th>constraint</th><th>뜻</th><th>사용처</th></tr></thead><tbody>
+            <tr><td>processing_run_id</td><td><span class="key">PK</span> · <code>pr_ + UUID4</code></td><td>Processing Run identity</td><td>Work Item FK</td></tr>
+            <tr><td>started_at / finished_at</td><td>시간</td><td>실행 구간</td><td>운영</td></tr>
+            <tr><td>run_status</td><td>running/completed/partial/failed</td><td>실행 결과</td><td>Scheduler/Monitoring</td></tr>
+            <tr><td>selected_count</td><td>≥ 0</td><td>이번 Run이 선택한 Work 수</td><td>throughput</td></tr>
+            <tr><td>published_count</td><td>≥ 0</td><td>publish 완료 수</td><td>throughput</td></tr>
+            <tr><td>failed_count</td><td>≥ 0</td><td>실패 수</td><td>운영</td></tr>
+            <tr><td>superseded_count</td><td>≥ 0 · v3</td><td>처리 중 더 최신 Work 때문에 무효화된 수</td><td>Latest-Only 관찰</td></tr>
+            <tr><td>backlog_before / backlog_after</td><td>nullable ≥ 0</td><td>Run 전후 backlog</td><td>소진 속도</td></tr>
+            <tr><td>error_summary</td><td>nullable</td><td>Run 오류 요약</td><td>운영 진단</td></tr>
+          </tbody></table></div>
+        </div>
+      </article>
+
+      <article class="catalog-card">
+        <div class="catalog-head"><div><span class="name">state_schema_migration</span><small>Technical Metadata</small></div><div><b>row 1개 의미</b><small>State schema migration 한 번</small></div><div><b>쓰는 쪽</b><small>DB migration/bootstrap</small></div><div><b>읽는 쪽</b><small>startup validation / audit</small></div></div>
+        <div class="catalog-body"><p><code>migration_id</code> PK, <code>from_version</code>, <code>to_version</code>, <code>applied_at</code>, <code>source_fingerprint</code>, <code>backup_name</code>을 저장합니다. 비즈니스/Loop 데이터가 아니라 DB 자체 진화 기록입니다.</p></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="ready-latest-gate">
+    <h2 class="section-title">4. Source Ready Gate는 v3에서 “Latest Gate”까지 합쳐서 본다</h2>
+    <p class="section-lead">row가 존재한다는 것과 Loop B가 가져가도 된다는 것은 다릅니다. v3는 Source Commit뿐 아니라 “더 최신 Work가 이미 생겼는가?”까지 검사합니다.</p>
+    <div class="code-block">Loop B claimable =
+
+last_source_committed_run_id IS NOT NULL
+AND last_source_committed_run_id = last_observed_source_run_id
+AND work_status IN ('pending','failed')
+AND superseded_by_work_item_id IS NULL</div>
+    <div class="db-boundary" style="margin-top:14px">
+      <div class="warning-box"><strong>Gate가 없으면</strong><p class="note-text">ABC-123 V2 row가 먼저 생긴 뒤 Project Source Commit이 실패해도 Loop B가 V2를 처리할 수 있습니다. 더 나쁜 경우 V3가 이미 발견됐는데 V2가 늦게 publish되어 최신 Knowledge를 덮을 수 있습니다.</p></div>
+      <div class="boundary-arrow">→</div>
+      <div class="good-box"><strong>Gate + Latest-Only가 있으면</strong><p class="note-text">Project Source Commit 전에는 CLOSED. V3가 Commit되면 V2 pending/failed/running은 <code>superseded</code>로 표시되고 V3만 claim 가능합니다. Running V2 응답이 늦게 와도 publish 직전 latestness를 다시 확인해 stale publish를 막습니다.</p></div>
+    </div>
+    <div class="code-block">T3 Project Source Commit · SAME State DB transaction
+
+1) source_project_run.source_status = source_committed
+2) project_state.committed_watermark = upper
+3) 새 Work Item Ready Gate OPEN
+4) 같은 jira_id의 이전 pending/failed/running Work
+   → work_status = superseded
+   → superseded_by_work_item_id = new work_item_id
+5) COMMIT</div>
+  </section>
+
+  <section class="section" id="knowledge-db">
+    <h2 class="section-title">5. Knowledge DB v1 · 실제 구현된 15개 테이블</h2>
+    <p class="section-lead">아래는 M6 논리 계약을 M7에서 실제 SQLite로 materialize한 schema입니다. 2-Loop 운영 모델에서는 주로 Loop B가 만드는/사용하는 Data Plane으로 보면 됩니다. 단, 이 DB의 <code>pipeline_run</code>은 M7 이전 파이프라인의 observation scope라는 점을 뒤의 “통합 경계”에서 따로 설명합니다.</p>
+
+    <div class="schema-table-wrap"><table class="schema-table matrix"><thead><tr><th>table</th><th>row 한 줄의 의미</th><th>PK / UNIQUE</th><th>주요 FK / 연결</th><th>누가 쓰나</th><th>누가 읽나 / 왜?</th></tr></thead><tbody>
+      <tr><td>pipeline_run</td><td>기존 M0~M7 관찰 Run 한 번</td><td>PK run_id</td><td>여러 source/knowledge table이 run_id FK</td><td>M7 Loader</td><td>Source provenance / Evidence resolver</td></tr>
+      <tr><td>issue</td><td>Jira Issue의 장기 identity 하나</td><td>PK jira_id · UNIQUE issue_key</td><td>issue_version, knowledge_generation</td><td>Loader</td><td>Version/Generation 연결, Issue lookup</td></tr>
+      <tr><td>issue_version</td><td>Issue의 immutable semantic 상태 하나</td><td>PK issue_version_id · UNIQUE(jira_id,source_hash)</td><td>FK issue, pipeline_run</td><td>Loader / Knowledge materialization</td><td>Generation, summary/description Evidence</td></tr>
+      <tr><td>issue_version_observation</td><td>특정 Run에서 어떤 Version을 봤는지 한 건</td><td>PK(run_id,jira_id)</td><td>FK pipeline_run, issue, issue_version</td><td>Loader</td><td>A→B→A chronology / key 변경</td></tr>
+      <tr><td>comment</td><td>특정 Run에서 관찰한 Comment 하나</td><td>PK(run_id,issue_key,comment_id)</td><td>FK pipeline_run</td><td>Loader</td><td>Evidence resolver</td></tr>
+      <tr><td>attachment</td><td>특정 Run의 Attachment metadata 하나</td><td>PK(run_id,attachment_id)</td><td>FK pipeline_run</td><td>Loader</td><td>Evidence resolver</td></tr>
+      <tr><td>relationship</td><td>특정 Run의 canonical Jira 관계 edge 하나</td><td>PK(run_id,relationship_id)</td><td>FK pipeline_run</td><td>Loader</td><td>Evidence resolver / graph context</td></tr>
+      <tr><td>custom_field_catalog</td><td>특정 Run의 Custom Field 정의 하나</td><td>PK(run_id,field_id)</td><td>FK pipeline_run</td><td>Loader</td><td>Field metadata lookup</td></tr>
+      <tr><td>custom_field_value</td><td>특정 Run/Issue의 실제 Custom Field 값 하나</td><td>PK(run_id,issue_key,field_id)</td><td>FK pipeline_run</td><td>Loader</td><td>Evidence resolver</td></tr>
+      <tr><td>knowledge_generation</td><td>Issue Version + Knowledge Contract 조합의 generation 하나</td><td>PK knowledge_generation_id · active jira_id partial UNIQUE index</td><td>FK issue_version, issue, pipeline_run, accepted_attempt_id</td><td>Knowledge materializer</td><td>Active corpus 선택, Attempt lineage, Work logical ref</td></tr>
+      <tr><td>knowledge_attempt</td><td>Generation 내부 실제 retry attempt 하나</td><td>PK knowledge_attempt_id · UNIQUE(generation,attempt_no)</td><td>FK knowledge_generation</td><td>Knowledge/Review pipeline</td><td>Item/Review lineage, accepted Attempt</td></tr>
+      <tr><td>knowledge_item</td><td>검색 가능한 지식 statement 하나</td><td>PK knowledge_item_id · UNIQUE(attempt,category,ordinal)</td><td>FK knowledge_attempt</td><td>Knowledge materializer</td><td>M8 Embedding, Retrieval, Evidence</td></tr>
+      <tr><td>knowledge_evidence</td><td>Knowledge Item의 원문 근거 ref 하나</td><td>PK knowledge_evidence_id · UNIQUE(item,ordinal/ref)</td><td>FK knowledge_item, pipeline_run</td><td>Materializer</td><td>M10 Evidence resolver / MCP</td></tr>
+      <tr><td>knowledge_review</td><td>Attempt에 대한 Reviewer 결과 한 건</td><td>PK integer · UNIQUE attempt</td><td>FK knowledge_attempt</td><td>Review pipeline</td><td>품질 Gate / Audit</td></tr>
+      <tr><td>review_finding</td><td>Review의 개별 finding 하나</td><td>PK integer · composite UNIQUE</td><td>FK knowledge_review</td><td>Review pipeline</td><td>문제 분석 / Audit history</td></tr>
+    </tbody></table></div>
+
+    <h3>5-1. Source / Version 영역</h3>
+    <div class="catalog">
+      <article class="catalog-card"><div class="catalog-head"><div><span class="name">pipeline_run</span></div><div><b>columns</b><small>run_id, status, generated_at, analysis_schema_version, knowledge_input_schema_version</small></div><div><b>FK from</b><small>issue_version, observation, comment, attachment, relationship, custom fields, generation, evidence</small></div><div><b>한마디</b><small>“어느 관찰 Run에서 왔나?”</small></div></div><div class="catalog-body"><p>M7 Knowledge DB에서 Source provenance의 중심입니다. <strong>그러나 v3 State DB의 <code>source_sync_run</code>과 자동으로 같은 테이블/ID라고 가정하면 안 됩니다.</strong></p></div></article>
+      <article class="catalog-card"><div class="catalog-head"><div><span class="name">issue</span></div><div><b>columns</b><small>jira_id, issue_key, project_key</small></div><div><b>identity</b><small>jira_id authoritative · issue_key locator</small></div><div><b>참조</b><small>issue_version / knowledge_generation</small></div></div><div class="catalog-body"><p>Jira Issue 자체의 장기 identity입니다. 화면에 보이는 KEY가 아니라 Jira ID를 authoritative identity로 둡니다.</p></div></article>
+      <article class="catalog-card"><div class="catalog-head"><div><span class="name">issue_version</span></div><div><b>columns</b><small>issue_version_id, jira_id, source_hash, source_run_id, source_issue_key, summary, description, format, issue_type, status, priority, created_at, updated_at, source_path</small></div><div><b>identity</b><small>UNIQUE(jira_id, source_hash)</small></div><div><b>참조</b><small>observation / generation</small></div></div><div class="catalog-body"><p>같은 Issue의 내용이 의미적으로 바뀔 때만 새 Version이 생깁니다. A→B→A라면 마지막 A는 최초 A Version을 재사용하고, 시간 순서는 Observation이 기록합니다.</p></div></article>
+      <article class="catalog-card"><div class="catalog-head"><div><span class="name">issue_version_observation</span></div><div><b>columns</b><small>run_id, jira_id, observed_issue_key, issue_version_id</small></div><div><b>PK</b><small>(run_id, jira_id)</small></div><div><b>목적</b><small>Version 복제 없이 chronology 보존</small></div></div><div class="catalog-body"><p>“Run X에서 Jira 10001은 Version A였다”라는 temporal mapping입니다.</p></div></article>
+    </div>
+
+    <h3>5-2. Evidence가 실제 원문으로 돌아가기 위한 Source Entity 영역</h3>
+    <div class="schema-table-wrap"><table class="schema-table"><thead><tr><th>table</th><th>PK</th><th>주요 columns</th><th>Evidence ref 예</th><th>중요한 특징</th></tr></thead><tbody>
+      <tr><td>comment</td><td>(run_id, issue_key, comment_id)</td><td>sequence, author, created/updated, body, format, source_path/page</td><td><code>comment:5001</code></td><td>Comment Evidence가 핵심 round-trip 대상</td></tr>
+      <tr><td>attachment</td><td>(run_id, attachment_id)</td><td>issue_key, filename, author, size, mime, content_available, source_path</td><td><code>attachment:7001</code></td><td>현재는 metadata 중심</td></tr>
+      <tr><td>relationship</td><td>(run_id, relationship_id)</td><td>category/type/text, source_issue_key, target_issue_key, derived, source_path</td><td><code>relationship:9001</code></td><td>canonical source→target edge</td></tr>
+      <tr><td>custom_field_catalog</td><td>(run_id, field_id)</td><td>field_name, schema_type/items/custom/custom_id</td><td>정의 lookup</td><td>Field schema metadata</td></tr>
+      <tr><td>custom_field_value</td><td>(run_id, issue_key, field_id)</td><td>actual_type, value_kind, display/value IDs JSON, user_keys_json, value_shape_json, source_path</td><td><code>custom_field:customfield_12345</code></td><td>값이 실제 있는 field만 저장</td></tr>
+    </tbody></table></div>
+    <div class="warning-box"><strong>눈여겨볼 점</strong><div class="note-text"><code>comment/attachment/relationship/custom_field_value</code>가 모두 <code>issue</code>에 물리 FK로 연결된 것은 아닙니다. 현재 M7 DDL은 <code>pipeline_run</code> FK와 issue_key/ID 조합을 사용하며, Evidence integrity는 exact ref + type-specific resolver까지 합쳐서 보장합니다.</div></div>
+
+    <h3>5-3. Knowledge / Review 영역</h3>
+    <div class="catalog">
+      <article class="catalog-card"><div class="catalog-head"><div><span class="name">knowledge_generation</span></div><div><b>row 의미</b><small>Issue Version + Knowledge Contract의 지식화 lineage</small></div><div><b>주요 columns</b><small>kg_id, issue_version_id, jira_id, source_run_id/key/hash, contract/schema/skill/runtime/model, accepted_attempt_id, state</small></div><div><b>관계</b><small>Version 1:N Generation · Generation 1:N Attempt</small></div></div><div class="catalog-body"><p>원문이 같아도 extraction contract가 바뀌면 새 Generation이 가능합니다. <code>state='active'</code>는 jira_id당 하나만 허용하는 partial UNIQUE index가 있습니다.</p></div></article>
+      <article class="catalog-card"><div class="catalog-head"><div><span class="name">knowledge_attempt</span></div><div><b>row 의미</b><small>실제 생성/검증/리뷰 retry 한 번</small></div><div><b>주요 columns</b><small>attempt_id, generation_id, attempt_no, content_hash, content_available, validator_status, generated_at</small></div><div><b>관계</b><small>Attempt 1:N Item · Attempt 0..1 Review</small></div></div><div class="catalog-body"><p>Generation과 Attempt를 분리해 “지식 계약의 identity”와 “실행 retry”를 섞지 않습니다.</p></div></article>
+      <article class="catalog-card"><div class="catalog-head"><div><span class="name">knowledge_item</span></div><div><b>row 의미</b><small>검색 가능한 지식 statement 하나</small></div><div><b>columns</b><small>knowledge_item_id, knowledge_attempt_id, category, ordinal, statement</small></div><div><b>관계</b><small>Item 1:N Evidence · M8 embedding input</small></div></div><div class="catalog-body"><p>6 category를 하나의 generic table로 저장합니다: issue_summary, problem_or_goal, key_findings, actions_and_decisions, outcomes, open_items.</p></div></article>
+      <article class="catalog-card"><div class="catalog-head"><div><span class="name">knowledge_evidence</span></div><div><b>row 의미</b><small>지식 문장 하나의 exact 원문 근거 하나</small></div><div><b>columns</b><small>evidence_id, item_id, ordinal, evidence_ref, evidence_type, source_run_id, source_issue_key, source_entity_key</small></div><div><b>관계</b><small>type-specific source resolver</small></div></div><div class="catalog-body"><p>다른 여러 Source table을 하나의 polymorphic SQLite FK로 억지 연결하지 않고, <code>evidence_type + exact evidence_ref</code>로 resolver가 실제 Source를 검증합니다.</p></div></article>
+      <article class="catalog-card"><div class="catalog-head"><div><span class="name">knowledge_review</span></div><div><b>row 의미</b><small>Attempt 한 번의 Reviewer 결과</small></div><div><b>columns</b><small>review_id, attempt_id, schema/hash, score, verdict, critical_error, major_issue_count, 6 quality scores</small></div><div><b>관계</b><small>UNIQUE(attempt) · 1:N Finding</small></div></div><div class="catalog-body"><p>PASS/REGENERATE와 factual/evidence/certainty/classification/retrieval/language 점수를 저장합니다.</p></div></article>
+      <article class="catalog-card"><div class="catalog-head"><div><span class="name">review_finding</span></div><div><b>row 의미</b><small>Review 안의 구체적 defect/finding 하나</small></div><div><b>columns</b><small>finding_id, review_id, group, severity, audit_category, ordinal, finding_type, location, message</small></div><div><b>관계</b><small>FK → knowledge_review</small></div></div><div class="catalog-body"><p>단순 score만 남기지 않고 무엇이 문제였는지 audit history를 query 가능한 row로 보존합니다.</p></div></article>
+    </div>
+  </section>
+
+  <section class="section" id="fk-matrix">
+    <h2 class="section-title">6. 테이블 연결을 FK 관점에서 다시 보기</h2>
+    <p class="section-lead">ERD를 볼 때는 “선이 있다”보다 <strong>DB가 직접 강제하는 FK인지, 애플리케이션이 검증하는 logical link인지</strong>가 더 중요합니다.</p>
+    <div class="schema-table-wrap"><table class="schema-table matrix"><thead><tr><th>From</th><th>column</th><th>To</th><th>종류</th><th>왜 연결?</th></tr></thead><tbody>
+      <tr><td>project_state</td><td>first/last_seen_source_run_id, last_source_success_run_id</td><td>source_sync_run</td><td><span class="fk">Physical FK</span></td><td>Project의 Source lineage</td></tr>
+      <tr><td>source_project_run</td><td>source_run_id</td><td>source_sync_run</td><td><span class="fk">Physical FK</span></td><td>어느 전체 Run의 Project 작업인지</td></tr>
+      <tr><td>source_project_run</td><td>project_id</td><td>project_state</td><td><span class="fk">Physical FK</span></td><td>어느 Project인지</td></tr>
+      <tr><td>sync_issue_change</td><td>project_id</td><td>project_state</td><td><span class="fk">Physical FK</span></td><td>Work의 Project</td></tr>
+      <tr><td>sync_issue_change</td><td>first/last_observed/committed run IDs</td><td>source_sync_run</td><td><span class="fk">Physical FK</span></td><td>Ready Gate와 Source lineage</td></tr>
+      <tr><td>sync_issue_change</td><td>last_processing_run_id</td><td>processing_run</td><td><span class="fk">Physical FK</span></td><td>Loop B lineage</td></tr>
+      <tr><td>sync_issue_change</td><td>superseded_by_work_item_id</td><td>sync_issue_change</td><td><span class="fk">Self FK</span></td><td>구버전 → 최신 Work 추적</td></tr>
+      <tr><td>sync_issue_change</td><td>issue_version_id</td><td>Knowledge DB.issue_version</td><td><span class="logical-ref">Logical Ref</span></td><td>cross-DB Version reconciliation</td></tr>
+      <tr><td>sync_issue_change</td><td>knowledge_generation_id</td><td>Knowledge DB.knowledge_generation</td><td><span class="logical-ref">Logical Ref</span></td><td>cross-DB Knowledge lineage</td></tr>
+      <tr><td>issue_version</td><td>jira_id</td><td>issue</td><td><span class="fk">Physical FK</span></td><td>Issue 1:N Version</td></tr>
+      <tr><td>issue_version</td><td>source_run_id</td><td>pipeline_run</td><td><span class="fk">Physical FK</span></td><td>canonical source provenance</td></tr>
+      <tr><td>issue_version_observation</td><td>run_id / jira_id / issue_version_id</td><td>pipeline_run / issue / issue_version</td><td><span class="fk">Physical FK ×3</span></td><td>Run chronology</td></tr>
+      <tr><td>knowledge_generation</td><td>issue_version_id / jira_id / source_run_id</td><td>issue_version / issue / pipeline_run</td><td><span class="fk">Physical FK</span></td><td>Generation provenance</td></tr>
+      <tr><td>knowledge_generation</td><td>accepted_attempt_id</td><td>knowledge_attempt</td><td><span class="fk">Physical FK</span></td><td>어느 Attempt가 승인본인지</td></tr>
+      <tr><td>knowledge_attempt</td><td>knowledge_generation_id</td><td>knowledge_generation</td><td><span class="fk">Physical FK</span></td><td>Generation 1:N Retry</td></tr>
+      <tr><td>knowledge_item</td><td>knowledge_attempt_id</td><td>knowledge_attempt</td><td><span class="fk">Physical FK</span></td><td>Attempt 1:N Item</td></tr>
+      <tr><td>knowledge_evidence</td><td>knowledge_item_id / source_run_id</td><td>knowledge_item / pipeline_run</td><td><span class="fk">Physical FK</span></td><td>Item의 Evidence와 source scope</td></tr>
+      <tr><td>knowledge_review</td><td>knowledge_attempt_id</td><td>knowledge_attempt</td><td><span class="fk">Physical FK</span></td><td>Attempt 0..1 Review</td></tr>
+      <tr><td>review_finding</td><td>knowledge_review_id</td><td>knowledge_review</td><td><span class="fk">Physical FK</span></td><td>Review 1:N Finding</td></tr>
+    </tbody></table></div>
+  </section>
+
+  <section class="section" id="cross-db">
+    <h2 class="section-title">7. 가장 중요한 경계: State DB와 Knowledge DB는 “같은 SQLite 테이블 묶음”이 아니다</h2>
+    <div class="db-boundary">
+      <div class="db-card"><span class="badge current">collector.db · State</span><h3>Control Plane</h3><ul><li>source_sync_run</li><li>project_state</li><li>source_project_run</li><li><strong>sync_issue_change</strong></li><li>processing_run</li></ul><p class="note-text">무엇을 언제 처리할지, 처리해도 안전한지, 어느 stage까지 갔는지를 관리합니다.</p></div>
+      <div class="boundary-arrow">⇄</div>
+      <div class="db-card"><span class="badge done">Knowledge SQLite v1</span><h3>Data Plane</h3><ul><li>issue / issue_version / observation</li><li>source entities</li><li>knowledge_generation / attempt / item</li><li>knowledge_evidence</li><li>review / finding</li></ul><p class="note-text">실제 지식 내용, Version, Evidence, Review history를 저장합니다.</p></div>
+    </div>
+    <div class="warning-box"><strong>Cross-DB FK는 없습니다.</strong><div class="note-text"><code>sync_issue_change.issue_version_id</code>와 <code>knowledge_generation_id</code>는 다른 SQLite DB의 row를 가리키는 <strong>logical reference</strong>입니다. 따라서 DB 엔진이 FK 무결성을 자동 보장하지 못하며, 애플리케이션의 existence/reconciliation validation이 필요합니다.</div></div>
+  </section>
+
+  <section class="section" id="integration-gap">
+    <h2 class="section-title">8. 현재 문서들을 합쳐 보니 드러나는 Integration Seam</h2>
+    <div class="warning-box"><strong><code>source_sync_run</code>과 Knowledge DB의 <code>pipeline_run</code> 관계는 별도 명시가 필요합니다.</strong><p class="note-text">현재 State DDL v3는 운영 Source Run을 <code>source_sync_run.source_run_id (sr_...)</code>로 정의합니다. 반면 이미 구현된 Knowledge DB v1은 기존 M0~M7 observation scope를 <code>pipeline_run.run_id</code>로 저장하고 <code>issue_version.source_run_id</code> 등이 이를 FK로 참조합니다. 현재 검토한 문서/코드에는 두 Run identity 사이의 별도 mapping table 또는 “둘은 항상 동일 ID다”라는 계약이 명시돼 있지 않습니다.</p></div>
+    <div class="good-box"><strong>이 문서에서는 억지로 같은 것으로 그리지 않았습니다.</strong><p class="note-text">확실히 연결된 것은 Work Item의 <code>jira_id + source_hash</code>, 그리고 Loop B가 채우는 <code>issue_version_id / knowledge_generation_id</code> logical reference입니다. 실제 v3 구현 전에 Run identity를 어떻게 연결할지는 별도 설계 결정으로 Freeze하는 편이 안전합니다.</p></div>
+  </section>
+
+  <section class="section" id="one-issue-trace">
+    <h2 class="section-title">9. Jira Issue 하나가 실제로 테이블을 지나가는 예</h2>
+    <p class="section-lead">예를 들어 Jira <code>ABC-123</code>, <code>jira_id=10001</code>의 내용이 바뀌어 <code>source_hash=H_B</code>가 됐다고 가정합니다.</p>
+    <div class="trace">
+      <div class="trace-node"><b>source_sync_run</b><small>sr_101<br>fixed upper 결정</small></div>
+      <div class="trace-node"><b>source_project_run</b><small>ABC Project<br>candidate 처리</small></div>
+      <div class="trace-node"><b>sync_issue_change</b><small>sw_HB<br>jira_id=10001<br>hash=H_B</small></div>
+      <div class="trace-node"><b>Ready + Latest</b><small>Source Commit 후 OPEN<br>구버전 supersede</small></div>
+      <div class="trace-node"><b>issue_version</b><small>iv_HB<br>logical ref 저장</small></div>
+      <div class="trace-node"><b>kg → ka → ki</b><small>Generation<br>Attempt<br>Knowledge Items</small></div>
+      <div class="trace-node"><b>ke → Embedding → Publish</b><small>Evidence 검증<br>FAISS 활성화<br>Work published</small></div>
+    </div>
+    <div class="code-block">State DB
+sw_HB: jira_id=10001, source_hash=H_B
+        last_observed_source_run_id=sr_101
+        last_source_committed_run_id=sr_101
+        work_status=pending
+        ↓ Loop B claim
+
+Knowledge DB
+issue(jira_id=10001)
+  → issue_version(iv_HB, source_hash=H_B)
+  → knowledge_generation(kg_...)
+  → knowledge_attempt(ka_...)
+  → knowledge_item(ki_...)
+  → knowledge_evidence(ke_...)
+
+State DB로 checkpoint 회신
+sw_HB.issue_version_id = iv_HB      # logical reference
+sw_HB.knowledge_generation_id = kg_...
+sw_HB.knowledge_status = completed
+sw_HB.embedding_status = completed
+sw_HB.publish_status = published
+sw_HB.work_status = published</div>
+  </section>
+
+  <section class="section" id="evidence-roundtrip">
+    <h2 class="section-title">10. Knowledge Item에서 Jira 원문까지 되돌아가는 길</h2>
+    <p class="section-lead">RAG에서 중요한 것은 “좋은 문장을 저장했다”가 아니라 <strong>그 문장이 어떤 Jira 원문에서 나왔는지 다시 증명할 수 있는가</strong>입니다.</p>
+    <div class="code-block">Knowledge Item (ki_)
+  ↓ 1:N
+Knowledge Evidence (ke_)
+  ↓ evidence_type + evidence_ref
+  ├─ summary / description → issue_version
+  ├─ comment:5001         → comment(run_id, issue_key, comment_id)
+  ├─ attachment:7001      → attachment(run_id, attachment_id)
+  ├─ relationship:9001    → relationship(run_id, relationship_id)
+  └─ custom_field:...     → custom_field_value(run_id, issue_key, field_id)
+  ↓
+ANALYSIS / RAW source_path
+  ↓
+MCP Evidence Package</div>
+    <div class="good-box"><strong>M7/M10에서 이 round-trip은 실제 데이터로 검증되었습니다.</strong><div class="note-text">M7은 502 canonical Evidence row의 integrity를 만들었고, M10은 resolver를 통해 실제 source를 복원해 MCP evidence package로 제공했습니다.</div></div>
+  </section>
+
+  <section class="section faq">
+    <h2 class="section-title">11. 자주 헷갈리는 질문</h2>
+    <details open><summary>Q. Work Item이라는 table이 따로 있나요?</summary><p>이름이 <code>work_item</code>인 table은 없습니다. <strong><code>sync_issue_change</code> table의 row 하나가 Work Item 하나</strong>입니다.</p></details>
+    <details><summary>Q. Jira Issue 하나 = Work Item 하나인가요?</summary><p>아닙니다. Work Item은 <code>jira_id + source_hash + source_hash_profile</code>의 특정 semantic 상태를 나타냅니다. 같은 Issue가 A→B로 바뀌면 A/B Work가 존재할 수 있고, v3 Latest-Only 정책은 아직 처리되지 않은 구버전을 supersede합니다.</p></details>
+    <details><summary>Q. State DB의 issue_version_id는 FK인가요?</summary><p>State DB 안에서는 아닙니다. Knowledge DB의 <code>issue_version</code>을 가리키는 logical reference입니다.</p></details>
+    <details><summary>Q. FAISS도 SQLite table인가요?</summary><p>아닙니다. FAISS는 vector index artifact입니다. Knowledge identity는 <code>ki_</code>이고 FAISS physical position은 identity가 아니므로 mapping을 통해 Knowledge Item으로 돌아옵니다.</p></details>
+    <details><summary>Q. 왜 source_sync_run과 source_project_run을 둘 다 두나요?</summary><p><code>source_sync_run</code>은 전체 실행, <code>source_project_run</code>은 그 실행 속 Project별 세부 작업입니다. 프로젝트 하나의 실패/재개 상태를 다른 Project와 분리하기 위해 필요합니다.</p></details>
+    <details><summary>Q. project_state와 source_project_run의 차이는?</summary><p><code>project_state</code>는 Run을 넘어 유지되는 장기 Watermark/visibility 기억이고, <code>source_project_run</code>은 이번 Run의 cursor/count/status입니다.</p></details>
+  </section>
+
+  <section class="section source-box">
+    <h2 class="section-title">12. 이 문서가 사용하는 Source of Truth</h2>
+    <p class="section-lead">이 페이지는 기존 자료를 임의로 재해석한 것이 아니라 현재 저장소의 계약/코드를 결합한 학습용 map입니다.</p>
+    <ul class="source-list">
+      <li><a href="jira_sync_state_schema_decision7_final_ddl.html">State Schema S7 · Final DDL v3</a> — Operational State DB 컬럼/FK/CHECK/Latest-Only 기준</li>
+      <li><a href="jira_sync_state_schema_contract.html">State Schema Contract v3</a> — 2-Loop State 계약</li>
+      <li><a href="jira_operational_two_loop_architecture.html">Operational Two-Loop Architecture</a> — Loop A/B와 Source Ready 경계</li>
+      <li><a href="../status/M6_DB_LOGICAL_SCHEMA_COMPLETION.html">M6 DB Logical Schema</a> — Knowledge entity/identity 논리 설계</li>
+      <li><a href="../status/M7_SQLITE_MATERIALIZATION.html">M7 SQLite Materialization</a> — Knowledge DB v1 실구현/real-run 검증</li>
+      <li><code>src/jira_collector/knowledge_db/schema.py</code> — Knowledge DB v1 실제 CREATE TABLE source</li>
+      <li><code>.opencode/skills/html-diagram-visual-qa/SKILL.md</code> — 복잡한 관계도 routing/label/visual QA 기준</li>
+    </ul>
+  </section>
+
+  <footer class="footer-note">Jira Knowledge Relationship Map · DB Schema Deep Dive · State DB v3 + Knowledge DB v1 · 2026-08-31</footer>
+</main>
+</body>
+</html>
