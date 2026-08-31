@@ -9,6 +9,7 @@
 
 ```text
 docs/index.html
+docs/VERSION_TERMINOLOGY_GUIDE.html
 docs/status/POST_MVP_OPERATIONAL_SERVICE_START_HERE.html
 docs/architecture/jira_operational_two_loop_architecture.html
 docs/architecture/jira_sync_contract.html
@@ -20,15 +21,20 @@ docs/architecture/jira_sync_state_schema_contract.html
 ```text
 M0~M11 Functional MVP = DONE / PASS
 Two-Loop Operational Architecture = FROZEN
-Sync Contract = v2
-Operational State Schema = v2
+D10 Latest-Only Processing = FIXED
+현재 운영 규칙 = Sync Contract · 개정 3
+현재 Operational State 설계 = 개정 3
 
 Loop A = Source Sync
 Loop B = Knowledge Processing / Publish
-sync_issue_change = durable backlog boundary
+sync_issue_change = durable latest-only backlog boundary
 ```
 
-`docs/architecture/jira_sync_state_schema_contract_v1_baseline.html`과 단일 `sync_run`을 전제로 한 과거 표현은 **historical/superseded**이며 구현 기준으로 사용하지 않는다.
+`docs/architecture/jira_sync_contract_v2_baseline.html`,
+`docs/architecture/jira_sync_state_schema_contract_v1_baseline.html`,
+`docs/architecture/jira_sync_state_schema_contract_v2_baseline.html`과 단일 `sync_run`을 전제로 한 과거 표현은 **historical/superseded**이며 구현 기준으로 사용하지 않는다.
+
+사람용 문서에서 bare `v1/v2/v3` 표현을 남발하지 않는다. 같은 대상 안에서만 개정 번호를 비교하며 `docs/VERSION_TERMINOLOGY_GUIDE.html`을 따른다. 단, 코드 상수·DB `PRAGMA user_version`·내부 식별자 `data-doc-shell="v1"`·`semantic_v2`처럼 기술적으로 고정된 이름은 그대로 사용한다.
 
 ## 1. Documentation Hub는 HTML 전용이다
 
@@ -40,13 +46,13 @@ sync_issue_change = durable backlog boundary
 - README.md, AGENTS.md, Skill 문서는 도구/저장소 동작을 위한 운영 Markdown으로 유지할 수 있다.
 - legacy non-log Markdown은 기존 테스트/참조 호환 때문에 일시 보존할 수 있지만 새 Hub 링크 대상으로 사용하지 않는다.
 
-## 1.1 Document Shell v1 고정 규칙
+## 1.1 Document Shell · 개정 1 고정 규칙
 
-- `docs/index.html`은 `data-hub-frame="v1"` 구조와 `docs/assets/hub-frame.css`를 사용한다.
-- 모든 일반 HTML은 `data-doc-shell="v1"`과 공통 shell CSS/JS를 포함한다.
+- `docs/index.html`은 내부 식별자 `data-hub-frame="v1"` 구조와 `docs/assets/hub-frame.css`를 사용한다.
+- 모든 일반 HTML은 내부 식별자 `data-doc-shell="v1"`과 공통 shell CSS/JS를 포함한다.
 - `이전 문서 / 문서 Hub / 다음 문서` 버튼은 항상 유지한다. 첫/마지막 문서는 숨기지 않고 disabled로 표시한다.
 - 새 HTML 작성 후 `python tools/docs/sync_document_shell.py --write`를 실행하고 `--check`를 통과시킨다.
-- Hub 기본 영역 또는 shell 계약을 바꿀 때는 임의 수정하지 말고 Documentation Policy와 Framework 문서를 함께 갱신한다.
+- Hub 기본 5개 영역 또는 shell 계약을 바꿀 때는 임의 수정하지 말고 Documentation Policy와 Framework 문서를 함께 갱신한다.
 
 ## 2. Milestone HTML은 필수 산출물이다
 
@@ -105,6 +111,7 @@ docs/architecture/jira_data_relationship_map.html
 ```text
 pytest tests/test_documentation_hub_html_only.py
 pytest tests/test_documentation_current_state.py
+pytest tests/test_document_shell_consistency.py
 ```
 
 문서 테스트는 다음 회귀를 막아야 한다.
@@ -116,6 +123,7 @@ pytest tests/test_documentation_current_state.py
 - 압축 fragment loader 회귀
 - 오래된 Milestone 상태로의 퇴행
 - HTML 보존/사용자 승인 규칙 삭제
-- 현재 2-Loop/v2 Source of Truth가 historical v1 문서로 퇴행
+- 현재 Two-Loop + D10 Latest-Only + Sync Contract 개정 3 / State 설계 개정 3이 historical 문서로 퇴행
+- 버전 숫자를 대상 없이 써서 State DB / Knowledge DB / 문서 UI를 같은 버전 계열처럼 오해시키는 회귀
 
 문서 테스트가 실패하면 구현 작업도 완료된 것으로 보지 않는다.
