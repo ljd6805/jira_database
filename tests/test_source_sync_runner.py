@@ -16,4 +16,6 @@ def test_source_sync_runner_help_is_available() -> None:
     assert "Loop A(Source Sync)" in result.stdout
     assert "--resume-source-run-id" in result.stdout
     assert "--max-issues-per-project" in result.stdout
+    assert "--project-key" in result.stdout
+    assert "Smoke 전용" in result.stdout
     assert "테스트/파일럿 전용" in result.stdout
