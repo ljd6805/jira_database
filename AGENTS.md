@@ -54,6 +54,16 @@ sync_issue_change = durable latest-only backlog boundary
 - 새 HTML 작성 후 `python tools/docs/sync_document_shell.py --write`를 실행하고 `--check`를 통과시킨다.
 - Hub 기본 5개 영역 또는 shell 계약을 바꿀 때는 임의 수정하지 말고 Documentation Policy와 Framework 문서를 함께 갱신한다.
 
+## 1.2 시각화는 설명을 대체하지 않고 보강한다
+
+- **시각화는 설명을 대체하지 않고 보강한다.** 디자인/레이아웃/ERD/다이어그램 개선은 기존 설명 위에 이해를 돕는 시각 계층을 추가하는 작업으로 본다.
+- 리팩터링 전 문서에 존재하던 **기존의 유효한 설명**, 표, 예시, 주의사항, Decision 이유, Source of Truth 링크를 디자인 개선만을 이유로 임의 삭제하거나 과도하게 축약하지 않는다.
+- 기본 읽기 순서는 가능하면 **그림 → 상세 설명 → 관계/표 → 쉬운 예시 → Source of Truth** 로 구성한다.
+- 복잡해서 시인성이 떨어지면 설명을 지우는 대신 그림을 여러 장으로 분리하거나 카드/표와 역할을 나눈다.
+- 내용 삭제/축약은 예외다. **사용자가 명시적으로 삭제/축약을 요청**했거나, 코드/DDL/검증 결과와 비교해 **오래되어 틀린 내용**임이 확인된 경우에만 수행한다.
+- 틀린 내용을 제거하거나 대체할 때는 무엇을 왜 바꿨는지 **삭제 이유를 문서에 남긴다**. historical 의미가 있으면 삭제보다 superseded/historical 표시를 우선한다.
+- 시각 리팩터링 완료 전에는 before/after를 비교해 설명 coverage가 줄지 않았는지 확인한다. 정당한 이유 없는 정보 손실은 0건이어야 한다.
+
 ## 2. Milestone HTML은 필수 산출물이다
 
 - 각 Milestone `M<N>`이 `CURRENT`가 되는 시점부터 `docs/status/M<N>_*.html` 정적 HTML 시각 문서를 유지한다.
@@ -112,6 +122,7 @@ docs/architecture/jira_data_relationship_map.html
 pytest tests/test_documentation_hub_html_only.py
 pytest tests/test_documentation_current_state.py
 pytest tests/test_document_shell_consistency.py
+pytest tests/test_documentation_content_preservation_rule.py
 ```
 
 문서 테스트는 다음 회귀를 막아야 한다.
@@ -123,6 +134,7 @@ pytest tests/test_document_shell_consistency.py
 - 압축 fragment loader 회귀
 - 오래된 Milestone 상태로의 퇴행
 - HTML 보존/사용자 승인 규칙 삭제
+- 시각화/레이아웃 개선 과정에서 기존 설명·표·예시가 조용히 사라지는 정보 손실
 - 현재 Two-Loop + D10 Latest-Only + Sync Contract 개정 3 / State 설계 개정 3이 historical 문서로 퇴행
 - 버전 숫자를 대상 없이 써서 State DB / Knowledge DB / 문서 UI를 같은 버전 계열처럼 오해시키는 회귀
 
