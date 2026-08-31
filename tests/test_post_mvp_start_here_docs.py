@@ -16,14 +16,15 @@ def test_post_mvp_start_here_exists_and_is_html() -> None:
     assert "Latest-Only" in text
 
 
-def test_next_session_starts_from_v3_implementation_gate() -> None:
+def test_next_session_starts_from_state_foundation_then_loop_a() -> None:
     text = START_HERE.read_text(encoding="utf-8")
     for token in (
-        "Sync Contract v3",
-        "State Schema v3",
-        "D10 Latest-Only",
-        "Documentation Shell / Registry / pytest Gate PASS",
-        "State Schema v3 explicit Migration",
+        "현재 운영 Sync 규칙 · 개정 3",
+        "현재 Operational State 설계 · 개정 3",
+        "State Migration / StateStore foundation",
+        "IMPLEMENTED",
+        "실제 로컬 collector.db Migration",
+        "Loop A Delta Source Sync integration",
         "Source Ready",
         "superseded",
         "stale guard",
@@ -35,12 +36,10 @@ def test_handoff_preserves_full_operational_service_scope() -> None:
     text = START_HERE.read_text(encoding="utf-8")
     upper = text.upper()
     assert "SOURCE SYNC" in upper
+    assert "OPENCODE" in upper
     for token in (
-        "OpenCode",
-        "Embedding",
-        "FAISS",
-        "Atomic Publish",
-        "Structured Logging",
+        "Knowledge / Embedding / Atomic Publish",
+        "Structured Logging / Lag / Backlog Monitoring",
         "Remote MCP Operations / Team Pilot",
     ):
         assert token in text
@@ -51,11 +50,16 @@ def test_handoff_preserves_source_history_latest_only_policy() -> None:
     for token in (
         "Source History",
         "모두 보존",
-        "latest + source-ready Work",
+        "Source-ready",
         "superseded",
-        "Jira 원문은 로그에 기록하지 않습니다",
     ):
         assert token in text
+
+    implementation = Path(
+        "docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html"
+    ).read_text(encoding="utf-8")
+    assert "Jira 본문/댓글" in implementation
+    assert "기록하지 않고" in implementation
 
 
 def test_handoff_does_not_prematurely_freeze_next_milestone_number() -> None:
