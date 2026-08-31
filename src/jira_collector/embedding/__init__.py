@@ -33,6 +33,13 @@ from .corpus import (
     load_active_embedding_corpus,
     load_embedding_corpus_file,
 )
+from .operational import (
+    OperationalEmbeddingResult,
+    OperationalEmbeddingWorker,
+    StaleEmbeddingWorkError,
+    export_generation_corpus_atomic,
+    load_generation_embedding_corpus,
+)
 from .runner import EmbeddingRunResult, embed_corpus_file, embed_corpus_rows
 
 __all__ = [
@@ -53,6 +60,9 @@ __all__ = [
     "EmbeddingRuntimeSettings",
     "EmbeddingSettingsError",
     "OpenAICompatibleEmbeddingClient",
+    "OperationalEmbeddingResult",
+    "OperationalEmbeddingWorker",
+    "StaleEmbeddingWorkError",
     "TEXT_PROFILE_STATEMENT_V1",
     "build_embedding_artifact_rows",
     "embed_corpus_file",
@@ -60,8 +70,10 @@ __all__ = [
     "embedding_id",
     "export_embedding_artifact_atomic",
     "export_embedding_corpus",
+    "export_generation_corpus_atomic",
     "load_active_embedding_corpus",
     "load_embedding_corpus_file",
     "load_embedding_settings",
+    "load_generation_embedding_corpus",
     "partition_batches",
 ]
