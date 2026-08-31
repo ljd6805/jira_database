@@ -1,0 +1,128 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Loop B Latest-Only Single Worker의 OpenCode Knowledge/Review checkpoint 구현 결과">
+  <title>Loop B · Latest-Only Knowledge Worker · Implementation</title>
+  <style>
+    :root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 92px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:46px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}}
+  </style>
+  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
+</head>
+<body><main class="wrap">
+<p><a href="../index.html">← Documentation Hub</a> · <a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현</a> · <a href="../architecture/jira_sync_contract_decision10_latest_only_processing.html">D10 Latest-Only</a> · <a href="POST_MVP_OPERATIONAL_SERVICE_START_HERE.html">Latest Handoff</a></p>
+<header class="hero"><div>LOOP B IMPLEMENTATION · KNOWLEDGE STAGE · 2026-08-31</div><h1>최신 Source만 OpenCode로 보내는<br>Single Worker를 구현했습니다.</h1><p><code>sync_issue_change</code>의 Source-ready + latest Work만 claim하고, OpenCode Orchestrator 결과를 staging에서 검증한 뒤 최신성을 다시 확인해 canonical Knowledge/Review로 승격합니다.</p><span class="state">IMPLEMENTED · CI PASS · REAL OPENCODE RUN PENDING · EMBEDDING/PUBLISH NEXT</span></header>
+<section><h2>1. 실제 구현</h2><div class="grid2"><div class="card good"><h3>Loop B Knowledge Worker</h3><p><code>src/jira_collector/knowledge_processing.py</code>. latest backlog 조회, claim, OpenCode, validator/review, stale guard, canonical promotion, State checkpoint를 구현했습니다.</p></div><div class="card good"><h3>OpenCode Adapter</h3><p><code>opencode run --agent jira-knowledge-orchestrator</code>를 비대화형으로 실행하며 stdout 문구가 아니라 실제 JSON artifact를 성공 기준으로 사용합니다.</p></div><div class="card good"><h3>운영 Runner</h3><p><code>tools/run_knowledge_worker.py</code>. model profile, timeout, attach URL, 처리 limit를 명시적으로 받습니다.</p></div><div class="card good"><h3>Regression</h3><p>정상 처리, stale-inflight, 실패, 재선택 방지, A→B→A stale-running 복구를 실제 SQLite로 검증합니다.</p></div></div></section>
+<section><h2>2. 한 Work의 처리 순서</h2><div class="flow">State DB
+latest + Source-ready Knowledge Work 조회
+→ processing_run 생성
+→ claim_work_item
+→ knowledge_status = running
+
+OpenCode staging
+→ data/knowledge/runs/&lt;source_run&gt;/staging/&lt;processing_run&gt;/&lt;work&gt;/...
+→ jira-knowledge-orchestrator
+→ Worker → Python Validator → Reviewer
+→ final Review PASS 확인
+
+Latest-Only Gate
+→ OpenCode 응답 직후 work_item_is_latest 재검사
+→ stale이면 canonical 승격 금지
+
+Canonical Knowledge
+→ data/knowledge/runs/&lt;source_run&gt;/issues/&lt;issue&gt;.json
+→ reviews/*.review.attemptN.json
+→ AtomicTextWriter로 승격
+
+State checkpoint
+→ iv_ 계산
+→ Knowledge Contract 기반 kg_ 계산
+→ knowledge_status = completed
+→ Embedding/Publish가 남았으므로 work_status = pending</div></section>
+<section><h2>3. 왜 staging이 필요한가?</h2><div class="grid2"><div class="card good"><h3>정상 결과</h3><p>OpenCode가 쓴 파일을 바로 공식 Knowledge로 취급하지 않습니다. JSON/Reviewer/latest 검증 후 canonical 위치로 원자 승격합니다.</p></div><div class="card warn"><h3>느린 동안 Source 변경</h3><p>V2 OpenCode가 돌던 중 V3가 Commit되면 V2 staging 결과는 남을 수 있지만 canonical Knowledge로 승격되지 않습니다.</p></div></div><div class="flow">V2 OpenCode 시작
+        ↓ 느림
+Loop A가 V3 Source Commit
+        ↓
+V2 = superseded
+        ↓
+V2 OpenCode 결과 도착
+        ↓
+latest re-check = false
+        ↓
+canonical promotion X
+Embedding X
+Publish X</div></section>
+<section><h2>4. 성공 판정은 LLM 마지막 문장이 아니다</h2><p>OpenCode exit code만으로도 충분하지 않습니다. 아래를 모두 확인합니다.</p><table><thead><tr><th>Gate</th><th>검증</th></tr></thead><tbody><tr><td>OpenCode</td><td>프로세스 exit 0</td></tr><tr><td>Knowledge JSON</td><td>Schema 0.1 핵심 필드 / issue_key / Evidence ref 검증</td></tr><tr><td>Review</td><td>최종 Attempt 존재, verdict=PASS, score≥8.5, critical=false, major=0</td></tr><tr><td>Latest</td><td>Source Ready + not superseded + 현재 jira_id의 latest Work</td></tr><tr><td>Promotion</td><td>staging → canonical atomic write</td></tr><tr><td>State</td><td>실제 artifact가 먼저, knowledge_status=completed가 나중</td></tr></tbody></table></section>
+<section><h2>5. Knowledge Generation identity</h2><div class="flow">issue_version_id
+= iv_(jira_id + source_hash)
+
+Knowledge Contract
+knowledge_schema_version
+skill_version
+runtime_version
+model_profile
+        ↓
+logical_hash
+        ↓
+knowledge_generation_id = kg_(iv_ + contract)</div><p><code>model_profile</code>을 runner에서 필수로 받습니다. OpenCode 설정/Worker/Reviewer 모델 구성이 바뀌었는데 같은 <code>kg_</code>로 섞이는 것을 막기 위해서입니다.</p></section>
+<section><h2>6. A → B → A와 stale-running</h2><div class="flow">A Knowledge 처리 시작
+knowledge_status = running
+        ↓
+B Source Commit
+A work_status = superseded
+        ↓
+나중에 Jira가 다시 A semantic state
+A의 같은 sw_ 재활성화
+work_status = pending
+knowledge_status = running (과거 stale checkpoint)
+        ↓
+새 Worker는 running도 retryable로 간주
+        ↓
+A를 다시 검증 처리
+→ knowledge_status = completed</div><p>이미 완성된 Knowledge/Embedding을 가진 Published A가 돌아오는 경우는 기존 artifact 재사용 정책이 유지됩니다. 이 보강은 <strong>완료되지 않은 stale-running</strong>이 다시 최신이 되는 경우를 위한 것입니다.</p></section>
+<section><h2>7. Processing Run 상태</h2><p>현재 구현은 Knowledge checkpoint까지만 완료합니다. 따라서 Knowledge가 성공해도 아직 Embedding/Publish가 남아 있으면 <code>processing_run.run_status = partial</code>입니다.</p><div class="flow">Knowledge 성공
+→ Work knowledge_status = completed
+→ Work 다시 pending (다음 stage resume용)
+→ processing_run = partial
+
+Work 0
+→ processing_run = completed
+
+선택 Work 전부 superseded
+→ processing_run = completed
+
+선택 Work 전부 Knowledge 실패
+→ processing_run = failed</div><p>Embedding/Publish가 연결된 뒤에는 한 Processing Run이 끝까지 PUBLISHED를 만드는 최종 형태로 확장합니다.</p></section>
+<section><h2>8. 실행 방법</h2><pre># model_profile은 반드시 명시
+python tools/run_knowledge_worker.py \
+  --model-profile internal-opencode-knowledge-v1
+
+# 이미 opencode serve를 띄워 재사용하는 경우
+python tools/run_knowledge_worker.py \
+  --model-profile internal-opencode-knowledge-v1 \
+  --opencode-attach http://localhost:4096
+
+# 순차 처리 수 조정
+python tools/run_knowledge_worker.py \
+  --model-profile internal-opencode-knowledge-v1 \
+  --limit 3</pre><p>초기 구현은 Single Worker입니다. <code>--limit 3</code>도 병렬 실행이 아니라 한 Processing Run에서 순차로 최대 3개를 처리합니다.</p></section>
+<section><h2>9. 자동 테스트</h2><table><thead><tr><th>검증</th><th>결과</th></tr></thead><tbody><tr><td>latest + Source-ready Work 선택</td><td>PASS</td></tr><tr><td>Knowledge staging → canonical promotion</td><td>PASS</td></tr><tr><td>iv_ / kg_ State checkpoint</td><td>PASS</td></tr><tr><td>OpenCode 중 새 Source Commit → stale 차단</td><td>PASS</td></tr><tr><td>실패 → knowledge/work failed</td><td>PASS</td></tr><tr><td>Knowledge completed Work 재선택 방지</td><td>PASS</td></tr><tr><td>OpenCode agent/timeout/prompt 구성</td><td>PASS</td></tr><tr><td>Reviewer non-PASS 차단</td><td>PASS</td></tr><tr><td>A→B→A stale-running 재시도</td><td>PASS</td></tr><tr><td>runner --help</td><td>PASS</td></tr></tbody></table></section>
+<section><h2>10. 아직 완료라고 말하지 않는 것</h2><div class="grid2"><div class="card warn"><h3>Real OpenCode Run</h3><p>사내 OpenCode 1.18.12 환경에서 실제 Work를 처리한 실행 결과는 아직 없습니다.</p></div><div class="card warn"><h3>Operational Knowledge DB</h3><p>Loop A의 per-Issue incremental artifact를 Knowledge DB에 materialize하는 운영 loader는 다음 구현입니다.</p></div><div class="card warn"><h3>Embedding</h3><p>새 Knowledge Generation을 BGE-M3 incremental embedding으로 연결하지 않았습니다.</p></div><div class="card warn"><h3>Atomic Publish</h3><p>FAISS staging/mapping 검증과 active Published Head 전환은 아직 연결 전입니다.</p></div></div></section>
+<section><h2>11. 다음 구현</h2><div class="flow">DONE
+State foundation
+→ semantic_v2
+→ Loop A Delta Source Sync
+→ Loop B latest-only Knowledge Worker
+
+NEXT · DATA PLANE
+Operational per-Issue Knowledge DB materialization
+→ accepted Knowledge/Evidence lineage
+→ incremental BGE-M3
+→ FAISS staging/mapping
+→ latest re-check
+→ Atomic Publish
+→ work_status = published</div></section>
+<footer class="footer">Loop B Knowledge Worker · IMPLEMENTED / CI PASS · REAL OPENCODE RUN PENDING · Data Plane NEXT · 2026-08-31</footer>
+</main></body></html>
