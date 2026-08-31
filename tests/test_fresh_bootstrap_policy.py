@@ -22,7 +22,7 @@ def test_fresh_bootstrap_policy_is_documented_and_current() -> None:
     for token in (
         "Fresh Bootstrap",
         "data_smoke",
-        "Formal Real Test",
+        "정식 Real Test",
         "Full Initial Ingest",
         "Migration",
         "compatibility",
