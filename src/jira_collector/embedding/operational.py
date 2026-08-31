@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Protocol
 
 from jira_collector.knowledge_db import KnowledgeDbError, connect_database
-from jira_collector.state_store import StateStore
+from jira_collector.state_store import StateStore, utc_now_iso
 
 from .artifact import export_embedding_artifact_atomic
 from .client import OpenAICompatibleEmbeddingClient, partition_batches
@@ -36,6 +36,18 @@ class OperationalEmbeddingResult:
     embedding_contract_hash: str
     corpus_path: Path
     embedding_path: Path
+
+
+@dataclass(frozen=True)
+class OperationalEmbeddingRunResult:
+    processing_run_id: str
+    status: str
+    selected_count: int
+    embedding_completed_count: int
+    failed_count: int
+    superseded_count: int
+    embedding_backlog_before: int
+    embedding_backlog_after: int
 
 
 _CATEGORY_ORDER = (
@@ -188,6 +200,68 @@ class OperationalEmbeddingWorker:
         self.client = client
         self.rate_limiter = rate_limiter
 
+    def run(self, *, limit: int = 1) -> OperationalEmbeddingRunResult:
+        """Knowledge 완료 + Embedding 미완료 latest Work를 Single Worker로 처리합니다."""
+
+        if limit <= 0:
+            raise ValueError("limit은 1 이상이어야 합니다.")
+        backlog_before = self._count_embedding_backlog()
+        selected = self._list_embedding_work(limit=limit)
+        processing_run_id = self.state.create_processing_run(
+            selected_count=len(selected),
+            backlog_before=backlog_before,
+        )
+
+        completed_count = 0
+        failed_count = 0
+        superseded_count = 0
+        errors: list[str] = []
+
+        for work_item_id in selected:
+            if not self.state.claim_work_item(work_item_id, processing_run_id):
+                superseded_count += 1
+                continue
+            try:
+                self.process_work(work_item_id)
+                self._release_after_embedding(work_item_id, processing_run_id)
+                completed_count += 1
+            except StaleEmbeddingWorkError:
+                superseded_count += 1
+            except Exception as exc:
+                work = self.state.get_work_item(work_item_id)
+                if work.get("work_status") == "superseded":
+                    superseded_count += 1
+                else:
+                    failed_count += 1
+                    errors.append(f"{work_item_id}: {str(exc)[:500]}")
+
+        backlog_after = self._count_embedding_backlog()
+        status = self._run_status(
+            selected_count=len(selected),
+            completed_count=completed_count,
+            failed_count=failed_count,
+            superseded_count=superseded_count,
+        )
+        self.state.finish_processing_run(
+            processing_run_id,
+            run_status=status,
+            published_count=0,
+            failed_count=failed_count,
+            superseded_count=superseded_count,
+            backlog_after=backlog_after,
+            error_summary="; ".join(errors) if errors else None,
+        )
+        return OperationalEmbeddingRunResult(
+            processing_run_id=processing_run_id,
+            status=status,
+            selected_count=len(selected),
+            embedding_completed_count=completed_count,
+            failed_count=failed_count,
+            superseded_count=superseded_count,
+            embedding_backlog_before=backlog_before,
+            embedding_backlog_after=backlog_after,
+        )
+
     def process_work(self, work_item_id: str) -> OperationalEmbeddingResult:
         work = self.state.get_work_item(work_item_id)
         self._validate_work(work)
@@ -254,6 +328,75 @@ class OperationalEmbeddingWorker:
             )
             raise
 
+    def _list_embedding_work(self, *, limit: int) -> list[str]:
+        with self.state.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT work_item_id
+                FROM sync_issue_change
+                WHERE last_source_committed_run_id IS NOT NULL
+                  AND last_source_committed_run_id = last_observed_source_run_id
+                  AND work_status IN ('pending','failed')
+                  AND knowledge_status = 'completed'
+                  AND embedding_status IN ('pending','failed')
+                  AND superseded_by_work_item_id IS NULL
+                ORDER BY last_source_committed_at, created_at, work_item_id
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [str(row["work_item_id"]) for row in rows]
+
+    def _count_embedding_backlog(self) -> int:
+        with self.state.connect() as connection:
+            row = connection.execute(
+                """
+                SELECT COUNT(*)
+                FROM sync_issue_change
+                WHERE last_source_committed_run_id IS NOT NULL
+                  AND last_source_committed_run_id = last_observed_source_run_id
+                  AND work_status IN ('pending','failed')
+                  AND knowledge_status = 'completed'
+                  AND embedding_status IN ('pending','failed')
+                  AND superseded_by_work_item_id IS NULL
+                """
+            ).fetchone()
+        return int(row[0]) if row is not None else 0
+
+    def _release_after_embedding(self, work_item_id: str, processing_run_id: str) -> None:
+        with self.state.connect() as connection:
+            connection.execute(
+                """
+                UPDATE sync_issue_change
+                SET work_status = 'pending', updated_at = ?
+                WHERE work_item_id = ?
+                  AND last_processing_run_id = ?
+                  AND work_status = 'running'
+                  AND knowledge_status = 'completed'
+                  AND embedding_status = 'completed'
+                  AND last_source_committed_run_id = last_observed_source_run_id
+                  AND superseded_by_work_item_id IS NULL
+                """,
+                (utc_now_iso(), work_item_id, processing_run_id),
+            )
+
+    @staticmethod
+    def _run_status(
+        *,
+        selected_count: int,
+        completed_count: int,
+        failed_count: int,
+        superseded_count: int,
+    ) -> str:
+        if selected_count == 0 or superseded_count == selected_count:
+            return "completed"
+        if failed_count == selected_count:
+            return "failed"
+        if completed_count or failed_count:
+            # Publish가 아직 남아 있으므로 successful Embedding Run도 전체 Processing 관점에서는 partial입니다.
+            return "partial"
+        return "failed"
+
     @staticmethod
     def _validate_work(work: dict[str, object]) -> None:
         if work.get("knowledge_status") != "completed":
@@ -273,6 +416,7 @@ class OperationalEmbeddingWorker:
 
 __all__ = [
     "OperationalEmbeddingResult",
+    "OperationalEmbeddingRunResult",
     "OperationalEmbeddingWorker",
     "StaleEmbeddingWorkError",
     "export_generation_corpus_atomic",
