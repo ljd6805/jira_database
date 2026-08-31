@@ -8,6 +8,28 @@ from .source_sync import DiscoveredProject, OperationalSourceSync, SourceSyncErr
 from .state_store import StateStore
 
 
+def validate_smoke_project_options(
+    *,
+    project_key: str | None,
+    resume_source_run_id: str | None,
+    data_root: Path,
+) -> None:
+    """--project-key Smoke Run의 production 오염 방지 규칙을 검증합니다."""
+
+    if not project_key:
+        return
+    if resume_source_run_id:
+        raise ValueError(
+            "--project-key Smoke Run은 --resume-source-run-id와 함께 사용할 수 없습니다. "
+            "실패하면 data_smoke를 비우고 새 Smoke Run으로 다시 실행하십시오."
+        )
+    if data_root.resolve().name != "data_smoke":
+        raise ValueError(
+            "--project-key는 격리된 Smoke 전용입니다. "
+            "--local-config config/settings.smoke.yaml을 사용하십시오."
+        )
+
+
 class SmokeProjectSourceSync(OperationalSourceSync):
     """Smoke 전용: Project Discovery 결과 중 지정 Project 하나만 Source Sync합니다.
 
