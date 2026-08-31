@@ -1,10 +1,11 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="2-Loop Operational State Schema v3 SQLite DDL. Latest-Only Processing, Source Ready Gate, supersede lifecycle 포함"><title>State Schema S7 · Final DDL v3 · Latest-Only</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.74}.wrap{max-width:1180px;margin:auto;padding:42px 22px 90px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:20px}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow,pre{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.68 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:48px;color:#66748a;font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">Schema Contract v3</a> · <a href="jira_sync_state_schema_contract_v2_baseline.html">v2 Historical</a></p><header class="hero"><div>S7 · FINAL DDL · REVISED 2026-08-31</div><h1>2-Loop Operational State Schema v3<br>SQLite DDL</h1><p>v2의 Source Ready Gate에 <strong>Latest-Only Work lifecycle / supersede</strong>를 추가한 현재 구현 기준입니다.</p></header><section class="card"><h2>1. 전체 구성</h2><div class="flow">Legacy MVP · 보존
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="현재 2-Loop Operational State Schema 개정 3의 실제 SQLite DDL. Latest-Only, Source Ready, supersede lifecycle 포함"><title>현재 Operational State DB · 실제 DDL · 개정 3</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.74}.wrap{max-width:1180px;margin:auto;padding:42px 22px 90px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:20px}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow,pre{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.68 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:48px;color:#66748a;font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">현재 State 설계 · 개정 3</a> · <a href="jira_sync_state_schema_contract_v2_baseline.html">과거 State 설계 · 개정 2</a></p><header class="hero"><div>S7 · FINAL DDL · CURRENT · 2026-08-31</div><h1>현재 Operational State DB<br>실제 SQLite DDL · 개정 3</h1><p>2-Loop Source Ready + Latest-Only Processing을 구현하기 위한 현재 DDL입니다. 여기서 <strong>개정 3은 Operational State DB 계열의 개정 번호</strong>이며 Knowledge DB Schema 개정 1과 별도입니다.</p></header>
+<section class="card"><h2>1. 전체 구성</h2><div class="flow">Legacy MVP · 기존 호환 데이터
 collection_runs
 project_runs
 issue_checkpoints
 artifacts
 
-Operational Domain · 5개
+현재 Operational Domain · 5개
 source_sync_run
 project_state
 source_project_run
@@ -14,14 +15,17 @@ processing_run
 Technical Metadata
 state_schema_migration
 
-PRAGMA user_version = 3</div></section><section class="card"><h2>2. Migration Metadata</h2><pre>CREATE TABLE IF NOT EXISTS state_schema_migration (
+SQLite technical schema marker
+PRAGMA user_version = 3</div></section>
+<section class="card"><h2>2. Migration Metadata</h2><pre>CREATE TABLE IF NOT EXISTS state_schema_migration (
     migration_id TEXT PRIMARY KEY,
     from_version INTEGER NOT NULL CHECK(from_version &gt;= 0),
     to_version INTEGER NOT NULL CHECK(to_version &gt; from_version),
     applied_at TEXT NOT NULL,
     source_fingerprint TEXT NOT NULL,
     backup_name TEXT
-);</pre></section><section class="card"><h2>3. source_sync_run</h2><pre>CREATE TABLE IF NOT EXISTS source_sync_run (
+);</pre></section>
+<section class="card"><h2>3. source_sync_run · Loop A 한 번의 실행</h2><pre>CREATE TABLE IF NOT EXISTS source_sync_run (
     source_run_id TEXT PRIMARY KEY
         CHECK(length(source_run_id) = 35 AND substr(source_run_id,1,3) = 'sr_'),
     started_at TEXT NOT NULL,
@@ -36,7 +40,8 @@ PRAGMA user_version = 3</div></section><section class="card"><h2>2. Migration Me
     error_summary TEXT,
     CHECK((run_status='running' AND finished_at IS NULL)
        OR (run_status IN ('completed','partial','failed') AND finished_at IS NOT NULL))
-);</pre></section><section class="card"><h2>4. project_state</h2><pre>CREATE TABLE IF NOT EXISTS project_state (
+);</pre></section>
+<section class="card"><h2>4. project_state · Project 장기 상태 / Watermark</h2><pre>CREATE TABLE IF NOT EXISTS project_state (
     project_id TEXT PRIMARY KEY,
     current_key TEXT NOT NULL CHECK(length(current_key) &gt; 0),
     current_name TEXT NOT NULL,
@@ -53,7 +58,8 @@ PRAGMA user_version = 3</div></section><section class="card"><h2>2. Migration Me
        OR (visibility_state='unavailable' AND unavailable_since IS NOT NULL)),
     CHECK((committed_watermark IS NULL AND last_source_success_run_id IS NULL AND last_source_success_at IS NULL)
        OR (committed_watermark IS NOT NULL AND last_source_success_run_id IS NOT NULL AND last_source_success_at IS NOT NULL))
-);</pre></section><section class="card"><h2>5. source_project_run</h2><pre>CREATE TABLE IF NOT EXISTS source_project_run (
+);</pre></section>
+<section class="card"><h2>5. source_project_run · Source Run × Project 진행 상태</h2><pre>CREATE TABLE IF NOT EXISTS source_project_run (
     source_run_id TEXT NOT NULL REFERENCES source_sync_run(source_run_id),
     project_id TEXT NOT NULL REFERENCES project_state(project_id),
     operation_kind TEXT NOT NULL
@@ -79,7 +85,8 @@ PRAGMA user_version = 3</div></section><section class="card"><h2>2. Migration Me
        OR new_count + changed_count + unchanged_count = candidate_count),
     CHECK((operation_kind IN ('delta','catchup') AND lower_bound IS NOT NULL)
        OR (operation_kind IN ('initial_ingest','skip_unavailable') AND lower_bound IS NULL))
-);</pre></section><section class="card"><h2>6. processing_run · v3</h2><pre>CREATE TABLE IF NOT EXISTS processing_run (
+);</pre></section>
+<section class="card"><h2>6. processing_run · Loop B 한 번의 실행</h2><pre>CREATE TABLE IF NOT EXISTS processing_run (
     processing_run_id TEXT PRIMARY KEY
         CHECK(length(processing_run_id) = 35 AND substr(processing_run_id,1,3) = 'pr_'),
     started_at TEXT NOT NULL,
@@ -96,7 +103,8 @@ PRAGMA user_version = 3</div></section><section class="card"><h2>2. Migration Me
     CHECK(published_count + failed_count + superseded_count &lt;= selected_count),
     CHECK((run_status='running' AND finished_at IS NULL)
        OR (run_status IN ('completed','partial','failed') AND finished_at IS NOT NULL))
-);</pre></section><section class="card"><h2>7. sync_issue_change · Latest-Only Durable Backlog</h2><pre>CREATE TABLE IF NOT EXISTS sync_issue_change (
+);</pre></section>
+<section class="card"><h2>7. sync_issue_change · Work Item / Latest-Only durable backlog</h2><pre>CREATE TABLE IF NOT EXISTS sync_issue_change (
     work_item_id TEXT PRIMARY KEY
         CHECK(length(work_item_id) = 67 AND substr(work_item_id,1,3) = 'sw_'),
     project_id TEXT NOT NULL REFERENCES project_state(project_id),
@@ -158,16 +166,14 @@ PRAGMA user_version = 3</div></section><section class="card"><h2>2. Migration Me
 );</pre><div class="warn card"><strong>Loop B Claim Gate</strong><div class="flow">last_source_committed_run_id IS NOT NULL
 AND last_source_committed_run_id = last_observed_source_run_id
 AND work_status IN ('pending','failed')
-AND superseded_by_work_item_id IS NULL</div></div><div class="warn card"><strong>T3 Source Commit + Supersede</strong><div class="flow">같은 State DB transaction에서
-1. source_project_run.source_status = source_committed
+AND superseded_by_work_item_id IS NULL</div></div><div class="warn card"><strong>Project Source Commit + Supersede · 같은 State DB transaction</strong><div class="flow">1. source_project_run.source_status = source_committed
 2. project_state.committed_watermark = upper
 3. 새 Work Item Source Ready open
-4. 같은 jira_id의 이전 work_status IN ('pending','failed','running')
+4. 같은 jira_id의 이전 미완료 Work
    → work_status = superseded
    → superseded_by_work_item_id = new work_item_id
-   → superseded_at = now
-   → supersede_reason = newer_source_version
-5. COMMIT</div><p>Published 과거 Work는 History이므로 이 업데이트 대상에서 제외합니다.</p></div><div class="warn card"><strong>In-flight stale guard</strong><p>Running Work가 superseded되면 외부 OpenCode 호출은 기본적으로 강제 취소하지 않습니다. Worker는 응답 후 row를 다시 읽고 <code>work_status='superseded'</code>이면 Active Knowledge/Embedding/Publish를 중단하고 구조화 로그를 남깁니다.</p></div></section><section class="card"><h2>8. Index</h2><pre>CREATE INDEX IF NOT EXISTS ix_source_sync_run_started_at
+5. COMMIT</div><p>Published 과거 Work는 History로 보존합니다.</p></div></section>
+<section class="card"><h2>8. Index</h2><pre>CREATE INDEX IF NOT EXISTS ix_source_sync_run_started_at
     ON source_sync_run(started_at);
 CREATE INDEX IF NOT EXISTS ix_project_state_visibility
     ON project_state(visibility_state);
@@ -188,8 +194,9 @@ CREATE INDEX IF NOT EXISTS ix_sync_issue_change_embedding_status
 CREATE INDEX IF NOT EXISTS ix_sync_issue_change_publish_status
     ON sync_issue_change(publish_status);
 CREATE INDEX IF NOT EXISTS ix_sync_issue_change_last_processing_run
-    ON sync_issue_change(last_processing_run_id);</pre></section><section class="card"><h2>9. DB 밖에서 강제하는 규칙</h2><div class="flow">Source actual files durable → State checkpoint second
-T3: source_committed + Watermark + Ready Gate + supersede SAME transaction
+    ON sync_issue_change(last_processing_run_id);</pre></section>
+<section class="card"><h2>9. DB 밖에서 강제하는 규칙</h2><div class="flow">Source actual files durable → State checkpoint second
+Project Commit: source_committed + Watermark + Ready + supersede SAME transaction
 Loop B claim = Source Ready + Latest only
 claim 직전 latestness check
 OpenCode 응답 직후 latestness re-check
@@ -197,4 +204,5 @@ Knowledge/Embedding actual output → State completed second
 Publish 직전 latestness re-check
 actual Retrieval switch → State published second
 superseded/stale event structured logging
-Jira body/comment text는 log에 쓰지 않음</div></section><section class="card"><h2>10. 아직 DDL에 넣지 않는 것</h2><p><strong>Multi-worker lease/ownership</strong>은 초기 Single Worker 이후 실제 병렬 요구가 확인될 때 별도 결정합니다.</p></section><footer class="footer">S7 current · Final SQLite DDL v3 · Latest-Only Processing · 2026-08-31</footer></main></body></html>
+Jira body/comment text는 log에 쓰지 않음</div></section>
+<section class="card"><h2>10. 아직 DDL에 넣지 않는 것</h2><p><strong>Multi-worker lease/ownership</strong>은 초기 Single Worker 이후 실제 병렬 요구가 확인될 때 별도 결정합니다.</p></section><footer class="footer">현재 Operational State DB · 실제 SQLite DDL · 개정 3 · 2026-08-31</footer></main></body></html>
