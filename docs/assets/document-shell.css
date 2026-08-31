@@ -5,6 +5,12 @@
   --doc-shell-line: #d9e2ef;
   --doc-shell-primary: #3157d5;
   --doc-shell-shadow: 0 8px 24px rgba(31, 49, 84, 0.10);
+  --doc-version-current-bg: #eaf8f3;
+  --doc-version-current-text: #0e6c4d;
+  --doc-version-history-bg: #fff6e9;
+  --doc-version-history-text: #8a5400;
+  --doc-version-info-bg: #edf3ff;
+  --doc-version-info-text: #2447b8;
 }
 
 .doc-global-nav {
@@ -70,6 +76,108 @@
   opacity: .72;
 }
 
+/*
+ * Version language helper
+ * -----------------------
+ * 사람용 문서에서 v1/v2/v3를 숫자만 보고 최신성으로 오해하지 않도록
+ * 공통 shell이 "무엇의 버전인지"와 "현재/과거 상태"를 먼저 보여준다.
+ */
+.doc-version-context {
+  width: min(100%, 1120px);
+  margin: -6px auto 22px;
+  font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+}
+
+.doc-version-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 11px 13px;
+  border: 1px solid var(--doc-shell-line);
+  border-radius: 12px;
+  background: var(--doc-version-info-bg);
+  color: var(--doc-version-info-text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.doc-version-status strong {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.doc-version-status.is-current {
+  background: var(--doc-version-current-bg);
+  color: var(--doc-version-current-text);
+  border-color: #b8dfd0;
+}
+
+.doc-version-status.is-historical {
+  background: var(--doc-version-history-bg);
+  color: var(--doc-version-history-text);
+  border-color: #ead2aa;
+}
+
+.doc-version-help {
+  overflow: hidden;
+  border: 1px solid var(--doc-shell-line);
+  border-radius: 12px;
+  background: rgba(255,255,255,.94);
+  color: var(--doc-shell-text);
+  box-shadow: 0 5px 16px rgba(31,49,84,.06);
+}
+
+.doc-version-help summary {
+  padding: 10px 13px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 850;
+  color: var(--doc-shell-primary);
+  list-style-position: inside;
+}
+
+.doc-version-help__body {
+  padding: 0 13px 13px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #59677d;
+}
+
+.doc-version-help__lead {
+  margin: 0 0 9px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: #f5f7fb;
+  color: #344259;
+  font-weight: 800;
+}
+
+.doc-version-help__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.doc-version-help__item {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #e3e9f2;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.doc-version-help__item b {
+  display: block;
+  margin-bottom: 2px;
+  color: #263750;
+}
+
+.doc-version-help code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 html[data-doc-shell="v1"] a.back[href$="index.html"],
 html[data-doc-shell="v1"] .top > a[href$="index.html"] {
   display: none !important;
@@ -88,8 +196,13 @@ html[data-doc-shell="v1"] .top > a[href$="index.html"] {
     font-size: 11px;
   }
   .doc-global-nav--top { top: 4px; }
+  .doc-version-context { margin-top: -8px; }
+  .doc-version-status { display: block; }
+  .doc-version-status strong { display: block; margin-bottom: 3px; }
+  .doc-version-help__grid { grid-template-columns: 1fr; }
 }
 
 @media print {
-  .doc-global-nav { display: none !important; }
+  .doc-global-nav,
+  .doc-version-context { display: none !important; }
 }
