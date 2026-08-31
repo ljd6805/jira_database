@@ -50,7 +50,7 @@ def test_handoff_preserves_source_history_latest_only_policy() -> None:
     for token in (
         "Source History",
         "모두 보존",
-        "Source-ready",
+        "Source Ready",
         "superseded",
     ):
         assert token in text
