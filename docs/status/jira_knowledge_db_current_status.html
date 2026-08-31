@@ -1,40 +1,13 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M11 완료, State/Loop A/Loop B Knowledge Worker 구현, Data Plane integration이 다음 단계"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge 구현</a><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현</a><a href="OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html">State 구현</a><a href="../architecture/jira_sync_contract.html">현재 Sync 규칙</a><a href="POST_MVP_OPERATIONAL_SERVICE_START_HERE.html">Handoff</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-31</span><h1>Loop A에 이어<br>Loop B Knowledge Worker까지 구현했습니다.</h1><p>M0~M11 Functional MVP와 2-Loop + Latest-Only 계약은 유지됩니다. <strong>Operational State foundation, semantic_v2, Loop A Delta Source Sync, Loop B latest-only Knowledge Worker까지 코드/자동 테스트로 구현</strong>했습니다.</p><span class="state">STATE DONE · LOOP A DONE · LOOP B KNOWLEDGE DONE · DATA PLANE NEXT</span></header><div class="kpis"><div class="kpi"><b>285</b><span>MVP Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>Loop A</b><span>Delta Source Sync CI PASS</span></div><div class="kpi"><b>Loop B</b><span>Knowledge Worker CI PASS</span></div><div class="kpi"><b>NEXT</b><span>Operational Data Plane</span></div></div><section><h2>1. 현재 완료 상태</h2><div class="grid4"><div class="box good"><b>M0~M11</b><p>Jira → Knowledge → BGE-M3 → FAISS → Evidence/MCP → OpenCode 실제 검증 완료.</p></div><div class="box good"><b>Operational State · 개정 3</b><p>Schema/Migration/StateStore + Source Ready + Latest-Only 상태 API 구현.</p></div><div class="box good"><b>Loop A</b><p>Project Discovery → Delta → semantic_v2 → Source Commit / Resume 구현 및 CI PASS.</p></div><div class="box good"><b>Loop B Knowledge</b><p>latest claim → OpenCode staging → validator/reviewer → stale guard → canonical Knowledge checkpoint 구현 및 CI PASS.</p></div></div></section><section><h2>2. 구현된 코드</h2><div class="flow">State Foundation
-src/jira_collector/state_schema.py
-src/jira_collector/state_store.py
-tools/migrate_state_v3.py
-
-Loop A
-src/jira_collector/source_sync.py
-src/jira_collector/knowledge_input/builder.py
-tools/run_source_sync.py
-
-Loop B · Knowledge stage
-src/jira_collector/knowledge_processing.py
-→ latest + Source-ready Knowledge backlog
-→ opencode run --agent jira-knowledge-orchestrator
-→ staging output
-→ deterministic Knowledge validator
-→ final Review PASS gate
-→ OpenCode 응답 후 latestness re-check
-→ canonical Knowledge/Review atomic promotion
-→ iv_ / kg_ State checkpoint
-→ stale-running A→B→A retry
-
-tools/run_knowledge_worker.py
-→ --model-profile 필수
-→ --opencode-attach 선택
-→ Single Worker 순차 처리</div><p><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 상세</a> · <a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge 상세</a></p></section><section><h2>3. 현재 2-Loop 실행 경계</h2><div class="flow">Loop A · IMPLEMENTED
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M11 완료, State/Loop A/Loop B Knowledge/Knowledge DB/Incremental Embedding 구현, Atomic Publish가 다음 단계"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html">Incremental Embedding</a><a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge</a><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A</a><a href="OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html">State</a><a href="POST_MVP_OPERATIONAL_SERVICE_START_HERE.html">Handoff</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-31</span><h1>Loop B가 Knowledge를 넘어<br>Incremental Embedding까지 왔습니다.</h1><p>M0~M11 Functional MVP는 <strong>DONE / PASS</strong>입니다. 운영 경로는 <strong>State foundation → semantic_v2 → Loop A Delta Source Sync → Loop B latest-only Knowledge → per-Work Knowledge DB materialization → Incremental BGE-M3 staging</strong>까지 코드와 자동 테스트로 구현했습니다.</p><span class="state">TWO-LOOP · D10 LATEST-ONLY · EMBEDDING STAGING CI PASS · ATOMIC PUBLISH NEXT</span></header><div class="kpis"><div class="kpi"><b>M0~M11</b><span>DONE / PASS</span></div><div class="kpi"><b>Loop A</b><span>Delta Source Sync CI PASS</span></div><div class="kpi"><b>Loop B</b><span>Knowledge + DB + Embedding CI PASS</span></div><div class="kpi"><b>NEXT</b><span>Retrieval / Atomic Publish</span></div></div><section><h2>1. 현재 완료 상태</h2><div class="grid4"><div class="box good"><b>Operational State · 개정 3</b><p>Migration/StateStore, Source Ready Gate, latest-only supersede/stale guard.</p></div><div class="box good"><b>Loop A</b><p>Project Discovery, Watermark-5m, fixed upper, stable Delta, semantic_v2, Resume.</p></div><div class="box good"><b>Loop B Knowledge + DB</b><p>OpenCode staging/Review PASS 후 per-Work candidate Generation을 Knowledge DB에 idempotent materialize.</p></div><div class="box good"><b>Incremental Embedding</b><p>candidate Generation의 accepted Knowledge Item만 BGE-M3 staging하고 latestness를 반복 확인.</p></div></div></section><section><h2>2. 현재 운영 경로</h2><div class="flow">Loop A · IMPLEMENTED / CI PASS
 Jira
-→ fixed upper / Project Discovery
+→ Project Discovery
 → Delta / semantic_v2
 → Source History durable
 → SOURCE_COMMITTED + Watermark + Source Ready
-→ latest-only sync_issue_change
+→ latest-only sync_issue_change backlog
 
-                 ↓
-
-Loop B · Knowledge stage IMPLEMENTED
-latest + Source-ready Work claim
+Loop B · Knowledge · IMPLEMENTED / CI PASS
+latest + Source-ready Work
 → OpenCode Orchestrator
 → staging Knowledge / Reviews
 → Validator + Reviewer PASS
@@ -42,32 +15,56 @@ latest + Source-ready Work claim
 → canonical Knowledge
 → knowledge_status = completed
 
-                 ↓ NEXT
+Loop B · Knowledge DB · IMPLEMENTED / CI PASS
+→ per-Work Issue Version / Generation / Attempt / Item / Evidence / Review
+→ candidate + accepted_attempt_id
+→ active 전환은 아직 하지 않음
 
-Operational Data Plane
-Knowledge DB incremental materialization
-→ BGE-M3 incremental Embedding
-→ FAISS staging / mapping
+Loop B · Incremental Embedding · IMPLEMENTED / CI PASS
+→ candidate Generation corpus
+→ BGE-M3
 → latest re-check
-→ Atomic Publish
-→ work_status = published</div></section><section><h2>4. Loop B Knowledge 안전 규칙</h2><div class="grid2"><div class="box good"><b>Staging first</b><p>OpenCode가 쓴 파일은 바로 공식 Knowledge가 아닙니다. staging에 둔 뒤 검증을 통과해야 canonical로 승격합니다.</p></div><div class="box good"><b>Latest after OpenCode</b><p>OpenCode가 느린 동안 더 최신 Source가 들어오면 구버전 결과는 canonical Knowledge로 승격하지 않습니다.</p></div><div class="box good"><b>Artifact first, State second</b><p>실제 Knowledge/Review 파일을 durable하게 만든 뒤에만 <code>knowledge_status=completed</code>를 기록합니다.</p></div><div class="box good"><b>Generation identity</b><p><code>model_profile</code>을 명시적으로 받아 <code>iv_ + Knowledge Contract → kg_</code>를 결정합니다.</p></div></div></section><section><h2>5. Source History / Latest-Only</h2><div class="flow">Source History
+→ Work별 corpus.jsonl / embeddings.jsonl atomic staging
+→ latest re-check
+→ embedding_status = completed
+→ work_status = pending
+
+NEXT · Retrieval / Publish
+→ Published snapshot 구성
+→ FAISS + mapping staging
+→ latest re-check
+→ coherent Atomic Publish
+→ Knowledge active 정합화
+→ State publish_status = published</div></section><section><h2>3. Incremental Embedding 안전 규칙</h2><div class="grid2"><div class="box good"><b>Candidate를 직접 임베딩</b><p>운영 Materializer는 Publish 전이므로 Generation을 active로 만들지 않습니다. Embedding은 해당 candidate의 accepted attempt를 직접 읽습니다.</p></div><div class="box good"><b>Slow API stale guard</b><p>BGE-M3 응답 뒤 최신 Source인지 다시 확인합니다. 새 Version이 들어왔으면 구버전은 completed로 만들지 않습니다.</p></div><div class="box good"><b>Artifact first</b><p>corpus/embedding 파일을 atomic 저장한 뒤에만 <code>embedding_status=completed</code>를 기록합니다.</p></div><div class="box good"><b>Stage-local Processing Run</b><p>Embedding 완료 후 Work는 다시 pending으로 풀려 다음 Publish Processing Run이 이어받습니다.</p></div></div></section><section><h2>4. Source History / Latest-Only</h2><div class="flow">Source History
 A → B → C → D
 모두 보존
 
-AI Processing
+AI / Data Plane
 B pending/running → newer Source로 superseded 가능
-C pending          → superseded
-D latest + Source-ready → OpenCode 처리</div><p>중간 Version은 삭제하지 않습니다. 지식화 대상에서 제외된 이유는 State/structured log로 추적합니다.</p></section><section><h2>6. semantic_v2</h2><div class="box good"><b>Jira updated는 후보 신호이지 semantic identity가 아닙니다.</b><p>Issue/Comment <code>updated_at</code>, 경로, 실행 범위 파생값은 hash에서 제외하고 실제 업무 의미 데이터는 hash에 유지합니다.</p></div></section><section><h2>7. 자동 검증</h2><table><thead><tr><th>항목</th><th>결과</th></tr></thead><tbody><tr><td>State Migration / backup / rollback / fail-closed</td><td>PASS</td></tr><tr><td>Initial/Delta/Watermark -5m/stable JQL</td><td>PASS</td></tr><tr><td>timestamp-only → UNCHANGED / meaningful → CHANGED</td><td>PASS</td></tr><tr><td>Discovery failure isolation / same-run Resume</td><td>PASS</td></tr><tr><td>Loop B latest + Source-ready selection</td><td>PASS</td></tr><tr><td>Knowledge staging → canonical promotion</td><td>PASS</td></tr><tr><td>OpenCode 중 newer Source → stale result 차단</td><td>PASS</td></tr><tr><td>OpenCode failure → retryable failed state</td><td>PASS</td></tr><tr><td>Reviewer non-PASS 차단</td><td>PASS</td></tr><tr><td>A→B→A stale-running reactivation</td><td>PASS</td></tr><tr><td>Source/Knowledge runner entrypoints</td><td>PASS</td></tr></tbody></table></section><section><h2>8. 실제 환경 Gate</h2><div class="grid2"><div class="box warn"><b>실제 collector.db Migration</b><p>실제 사용 중인 <code>data/state/collector.db</code>는 이 원격 작업에서 Migration하지 않았습니다.</p></div><div class="box warn"><b>실제 사내 Jira Loop A</b><p>자동 테스트는 PASS지만 사내 Jira endpoint에서 새 Source runner 실행 실적은 아직 없습니다.</p></div><div class="box warn"><b>실제 사내 OpenCode Loop B</b><p>OpenCode CLI invocation은 테스트했지만 사내 OpenCode 1.18.12에서 실제 Work를 처리한 결과는 아직 없습니다.</p></div><div class="box warn"><b>Publish</b><p>Operational Knowledge DB/Embedding/FAISS/active pointer 연결 전이므로 전체 Loop B가 PUBLISHED까지 완료된 상태는 아닙니다.</p></div></div></section><section><h2>9. 실행 명령</h2><pre># State Migration
+C pending         → superseded
+D latest + Source-ready
+  → Knowledge
+  → Knowledge DB candidate
+  → Embedding staging
+  → Publish 준비</div><p>중간 Version은 삭제하지 않습니다. 제외 이유는 State와 Structured Logging으로 추적합니다.</p></section><section><h2>5. 자동 검증</h2><table><thead><tr><th>항목</th><th>결과</th></tr></thead><tbody><tr><td>State Migration / backup / rollback / fail-closed</td><td>PASS</td></tr><tr><td>Initial/Delta/Watermark -5m/stable JQL</td><td>PASS</td></tr><tr><td>timestamp-only → UNCHANGED / meaningful → CHANGED</td><td>PASS</td></tr><tr><td>Loop B Knowledge staging / Reviewer PASS / stale guard</td><td>PASS</td></tr><tr><td>per-Work Knowledge DB candidate materialization / idempotency</td><td>PASS</td></tr><tr><td>candidate Generation → deterministic Embedding corpus</td><td>PASS</td></tr><tr><td>Embedding success → artifact first / State completed second</td><td>PASS</td></tr><tr><td>BGE-M3 호출 중 newer Source → old completion 차단</td><td>PASS</td></tr><tr><td>Embedding API failure → retryable failed</td><td>PASS</td></tr><tr><td>Embedding Processing Run claim/release</td><td>PASS</td></tr><tr><td>전체 GitHub Actions 회귀</td><td>PASS</td></tr></tbody></table></section><section><h2>6. 실제 환경 Gate</h2><div class="grid2"><div class="box warn"><b>실제 collector.db Migration</b><p>실사용 <code>data/state/collector.db</code>의 backup/migration은 사용자 환경에서 별도 실행해야 합니다.</p></div><div class="box warn"><b>실제 Jira Loop A</b><p>자동 테스트는 PASS지만 사내 Jira endpoint 운영 실행은 아직 확인하지 않았습니다.</p></div><div class="box warn"><b>실제 OpenCode</b><p>사내 OpenCode에서 latest Work를 실제 처리한 Real Run은 아직 별도 Gate입니다.</p></div><div class="box warn"><b>실제 BGE-M3</b><p>이번 Incremental Embedding PASS는 fake client 기반입니다. 사내 BGE-M3 endpoint Real Run은 아직 하지 않았습니다.</p></div></div></section><section><h2>7. 실행 명령</h2><pre># State
 python tools/migrate_state_v3.py --database data/state/collector.db
 
 # Loop A
 python tools/run_source_sync.py
 
-# Loop B · Knowledge stage
+# Loop B Knowledge
 python tools/run_knowledge_worker.py \
   --model-profile internal-opencode-knowledge-v1
 
-# 이미 opencode serve를 띄운 경우
-python tools/run_knowledge_worker.py \
-  --model-profile internal-opencode-knowledge-v1 \
-  --opencode-attach http://localhost:4096</pre></section><section><h2>10. 현재 다음 구현</h2><div class="box next"><b>Operational Data Plane Integration</b><p>현재 incremental Work 하나를 기존 full-run loader에 억지로 넣지 않고, per-Work Knowledge DB materializer를 만들어 <strong>Issue Version / Generation / Attempt / Knowledge Item / Evidence / Review → BGE-M3 → FAISS staging → Atomic Publish</strong>로 이어갑니다.</p></div><p>Publish 직전에도 latestness를 다시 확인하고, stale이면 새 active view로 전환하지 않습니다.</p></section><section><h2>11. 구현 순서</h2><table><thead><tr><th>순서</th><th>작업</th><th>현재</th></tr></thead><tbody><tr><td>1</td><td>Operational State foundation</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>2</td><td>semantic_v2</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>3</td><td>Loop A Delta Source Sync</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>4</td><td>Loop B latest-only Knowledge Worker</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>5</td><td>Operational Knowledge DB materialization</td><td><strong>NEXT</strong></td></tr><tr><td>6</td><td>Incremental BGE-M3 / FAISS / Atomic Publish</td><td>계획</td></tr><tr><td>7</td><td>Lag / Backlog / Supersede Monitoring</td><td>계획</td></tr><tr><td>8</td><td>Remote MCP Operations / Team Pilot</td><td>계획</td></tr></tbody></table></section><footer>State + Loop A + Loop B Knowledge IMPLEMENTED / CI PASS · REAL ENV GATES PENDING · DATA PLANE NEXT · 2026-08-31</footer></main></body></html>
+# Loop B Incremental Embedding
+python tools/run_embedding_worker.py \
+  --knowledge-db data/knowledge_db/your.sqlite3 \
+  --artifact-root data/embedding/operational \
+  --limit 1</pre><p><a href="OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html">Incremental Embedding 상세 구현 보고서</a></p></section><section><h2>8. 현재 다음 구현</h2><div class="box next"><b>Retrieval staging + Atomic Publish</b><p>FAISS 파일만 교체하는 것으로 끝내지 않습니다. Knowledge DB active Generation과 Retrieval artifact가 서로 다른 durability domain에 있으므로, 사용자가 항상 하나의 일관된 Published snapshot만 보게 하는 publish bundle/pointer 경계를 먼저 구현해야 합니다.</p></div><div class="flow">Embedding staging DONE
+→ Published snapshot corpus 구성
+→ FAISS / mapping / manifest staging
+→ latestness check
+→ coherent active bundle switch
+→ Knowledge active/historical state 정합화
+→ MCP smoke validation
+→ State publish_status = published</div></section><section><h2>9. 구현 순서</h2><table><thead><tr><th>순서</th><th>작업</th><th>현재</th></tr></thead><tbody><tr><td>1</td><td>Operational State foundation</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>2</td><td>semantic_v2</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>3</td><td>Loop A Delta Source Sync</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>4</td><td>Loop B latest-only Knowledge Worker</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>5</td><td>per-Work Knowledge DB materialization</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>6</td><td>Incremental BGE-M3 staging</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>7</td><td>FAISS staging / Atomic Publish</td><td><strong>NEXT</strong></td></tr><tr><td>8</td><td>Lag / Backlog / Supersede Monitoring</td><td>계획</td></tr><tr><td>9</td><td>Remote MCP Operations / Team Pilot</td><td>계획</td></tr></tbody></table></section><footer>M0~M11 DONE / PASS · State + Loop A + Loop B Knowledge/DB/Embedding IMPLEMENTED / CI PASS · ATOMIC PUBLISH NEXT · 2026-08-31</footer></main></body></html>
