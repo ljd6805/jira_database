@@ -15,13 +15,16 @@ D10 Latest-Only Processing              FIXED
 State Migration / StateStore foundation IMPLEMENTED · CI PASS
 semantic_v2 source hash                 IMPLEMENTED · CI PASS
 Loop A Delta Source Sync                IMPLEMENTED · CI PASS
+Loop B Latest-Only Knowledge Worker     IMPLEMENTED · CI PASS
 실제 local collector.db Migration        NOT RUN YET
 실제 사내 Jira Loop A Run               NOT RUN YET
-Loop B Latest-Only Worker               NEXT
+실제 사내 OpenCode Knowledge Run        NOT RUN YET
+Operational Data Plane Integration      NEXT
 ```
 
 현재 최상위 기준 문서:
 
+- [Loop B Latest-Only Knowledge Worker 구현 보고서](docs/status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html)
 - [Loop A Delta Source Sync 구현 보고서](docs/status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html)
 - [Operational State 개정 3 구현 보고서](docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html)
 - [현재 운영 Sync Contract · 개정 3](docs/architecture/jira_sync_contract.html)
@@ -65,7 +68,7 @@ M11 OpenCode MCP Integration               DONE · USER REAL-RUN PASS
 Jira Source 최신화와 느리고 변동성이 큰 OpenCode 지식화를 하나의 직렬 Run으로 묶지 않습니다.
 
 ```text
-Loop A · SOURCE SYNC                         IMPLEMENTED
+Loop A · SOURCE SYNC                         IMPLEMENTED / CI PASS
 source_sync_run
 → Jira serverInfo / fixed upper
 → Project Discovery
@@ -83,14 +86,21 @@ source_sync_run
 
               ↓ latest-only durable backlog
 
-Loop B · KNOWLEDGE PROCESSING / PUBLISH      NEXT
+Loop B · KNOWLEDGE STAGE                     IMPLEMENTED / CI PASS
 processing_run
-→ latest + source-ready Work Item만 claim
-→ OpenCode Knowledge Generation
+→ latest + source-ready Work Item claim
+→ OpenCode jira-knowledge-orchestrator
+→ staging Knowledge / Review
+→ Python Validator + final Reviewer PASS
 → latestness re-check
-→ Review / Evidence
-→ Knowledge DB
-→ BGE-M3 Embedding
+→ stale이면 canonical 승격 중단
+→ 최신이면 canonical Knowledge/Review atomic promotion
+→ iv_ / kg_ State checkpoint
+→ knowledge_status = completed
+
+Loop B · DATA PLANE                          NEXT
+→ per-Work Knowledge DB materialization
+→ BGE-M3 incremental Embedding
 → FAISS staging / mapping
 → latestness re-check
 → Atomic Publish
@@ -125,27 +135,57 @@ src/jira_collector/source_sync.py
 → same-run Resume
 ```
 
-실행 도구:
+실행:
 
 ```bash
-# legacy State DB라면 먼저
 python tools/migrate_state_v3.py --database data/state/collector.db
-
-# 새 Source Sync Run
 python tools/run_source_sync.py
-
-# 실패한 같은 Source Run Resume
 python tools/run_source_sync.py --resume-source-run-id sr_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# 테스트/파일럿 전용 candidate 상한
+# 테스트/파일럿 전용
 python tools/run_source_sync.py --max-issues-per-project 30
 ```
 
-운영에서는 `--max-issues-per-project`를 생략해 전체 Delta window를 처리합니다.
-
 상세: [Loop A Implementation](docs/status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html)
 
-## 4. semantic_v2 — IMPLEMENTED
+## 4. Loop B Latest-Only Knowledge Worker — IMPLEMENTED
+
+`sync_issue_change`에서 Source-ready + latest Work만 Single Worker로 Knowledge checkpoint까지 처리합니다.
+
+```text
+src/jira_collector/knowledge_processing.py
+→ latest/source-ready Knowledge backlog 조회
+→ claim_work_item
+→ knowledge_status = running
+→ opencode run --agent jira-knowledge-orchestrator
+→ Work별 staging 경로에 Knowledge/Review 생성
+→ deterministic Knowledge validation
+→ final Review PASS 확인
+→ OpenCode 응답 후 latestness 재확인
+→ stale이면 canonical promotion 중단
+→ 최신이면 canonical Knowledge/Review 승격
+→ iv_ / kg_ 계산
+→ knowledge_status = completed
+→ Embedding/Publish가 남아 있으므로 work_status = pending
+```
+
+OpenCode stdout 문구가 아니라 **실제 JSON artifact + Python Validator + Reviewer PASS + latestness**가 성공 기준입니다.
+
+실행:
+
+```bash
+python tools/run_knowledge_worker.py \
+  --model-profile internal-opencode-knowledge-v1
+
+python tools/run_knowledge_worker.py \
+  --model-profile internal-opencode-knowledge-v1 \
+  --opencode-attach http://localhost:4096
+```
+
+`model_profile`은 Knowledge Generation identity에 포함되는 운영 계약 이름이므로 필수입니다.
+
+상세: [Loop B Knowledge Worker](docs/status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html)
+
+## 5. semantic_v2 — IMPLEMENTED
 
 Jira `updated`는 Delta candidate trigger이고 semantic identity가 아닙니다.
 
@@ -168,7 +208,7 @@ source_hash에 유지
 
 따라서 timestamp만 바뀌거나 이번 run의 package 범위만 달라져도 UNCHANGED이고, 실제 업무 의미가 바뀌어야 CHANGED가 됩니다.
 
-## 5. Latest-Only Processing
+## 6. Latest-Only Processing
 
 ```text
 Source History
@@ -177,12 +217,14 @@ Source History
 
 Knowledge Processing
 A already Published
-B pending → superseded
-C pending → superseded
-D latest  → process
+B pending/running → superseded 가능
+C pending         → superseded
+D latest          → process
 ```
 
-구버전 Work가 이미 OpenCode 처리 중이면 외부 호출을 기본적으로 강제 취소하지 않습니다. 응답 후 최신성을 다시 검사하고 stale이면 Active Knowledge 저장, Embedding, Publish를 중단합니다.
+구버전 Work가 이미 OpenCode 처리 중이면 외부 호출을 강제 취소하지 않습니다. 응답 후 최신성을 다시 검사하고 stale이면 canonical Knowledge 승격, Embedding, Publish를 중단합니다.
+
+A→B→A처럼 미완료 stale-running A가 다시 최신이 되면 retryable checkpoint로 처리합니다. 이미 완성된 artifact가 있으면 기존 재사용 정책을 유지합니다.
 
 구조화 로그:
 
@@ -196,7 +238,7 @@ work_item_reactivated
 
 로그에는 Jira 원문/댓글 본문을 넣지 않고 identity/run/stage/reason/timestamp만 기록합니다.
 
-## 6. Operational State foundation — IMPLEMENTED
+## 7. Operational State foundation — IMPLEMENTED
 
 ```text
 src/jira_collector/state_schema.py
@@ -212,12 +254,7 @@ src/jira_collector/state_store.py
 
 tools/migrate_state_v3.py
 → legacy collector.db explicit migration
-
-tests/test_state_schema_v3.py
-→ migration / rollback / Latest-Only regression
 ```
-
-### Silent migration 금지
 
 새/빈 DB는 현재 Operational State 설계로 초기화하지만, 기존 known legacy `collector.db`는 일반 실행에서 자동 변경하지 않습니다.
 
@@ -228,30 +265,34 @@ legacy collector.db
 → explicit migration 필요
 ```
 
-실제 Migration 명령:
+> 실제 사용 중인 `data/state/collector.db`가 Migration됐다고 간주하지 않습니다. 실제 환경에서 writer를 중지하고 backup 결과와 기존 Resume 동작을 확인해야 합니다.
 
-```bash
-python tools/migrate_state_v3.py --database data/state/collector.db
-```
+## 8. 안전 경계
 
-> 이 기능은 구현됐지만, 저장소 원격 작업만으로 실제 사용 중인 `data/state/collector.db`가 Migration됐다고 간주하지 않습니다. 실제 환경에서 writer를 중지하고 backup 결과와 기존 Resume 동작을 확인해야 합니다.
-
-## 7. T3 Source Commit 원자성
+Loop A T3:
 
 ```text
 BEGIN
-
 source_project_run.source_status = source_committed
 project_state.committed_watermark = upper
 현재 Work Item = Source Ready
 이전 pending/failed/running Work = superseded
-
 COMMIT
 ```
 
-이 Transaction이 실패하면 Watermark/Ready/Supersede가 함께 rollback됩니다.
+Loop B Knowledge:
 
-## 8. Same-Run Resume
+```text
+staging artifact 먼저
+→ Validator/Reviewer
+→ latestness re-check
+→ canonical artifact durable
+→ State knowledge_status=completed 나중
+```
+
+Publish 단계에서도 actual active switch가 State `published`보다 먼저여야 합니다.
+
+## 9. Same-Run Resume
 
 ```text
 Source Run fixed upper = 최초 한 번 결정
@@ -260,15 +301,13 @@ candidate B 실패 → Watermark 유지
 
 resume(source_run_id)
 → 같은 fixed upper
-→ 완료된 Discovery snapshot 재사용
+→ 완료 Discovery snapshot 재사용
 → cursor 이전 candidate skip
 → B부터 재시도
 → Project 전체 성공 후 Watermark 전진
 ```
 
-새 Run으로 복구해야 할 때는 기존 committed Watermark - 5분 overlap 규칙으로 다시 읽습니다.
-
-## 9. Identity
+## 10. Identity
 
 ```text
 Jira identity
@@ -291,11 +330,9 @@ fi_   FAISS Index Artifact
 FAISS position ≠ emb_ ≠ ki_
 ```
 
-`sw_`는 `jira_id + source_hash + source_hash_profile`에서 결정적으로 생성합니다. 같은 semantic state를 여러 Source Run에서 다시 만나도 같은 Work Item을 재사용합니다.
+Loop B Knowledge Generation은 `iv_ + Knowledge Contract(knowledge schema / skill / runtime / model_profile)`로 `kg_`를 결정합니다.
 
-## 10. 현재 Operational State DB 구조
-
-기존 `data/state/collector.db`를 **명시적 Versioned Migration**으로 확장하는 설계입니다.
+## 11. 현재 Operational State DB 구조
 
 ```text
 STATE_SCHEMA_VERSION = 3
@@ -308,24 +345,13 @@ source_project_run
 sync_issue_change
 processing_run
 
-Latest-Only lifecycle
-work_status
-superseded_by_work_item_id
-superseded_at
-supersede_reason
-
-processing_run
-superseded_count
-
 Technical Metadata
 state_schema_migration
 ```
 
 기존 `collection_runs`, `project_runs`, `issue_checkpoints`, `artifacts`는 첫 Migration에서 삭제하거나 의미를 바꾸지 않습니다.
 
-과거 Operational State 설계 개정 1/2는 실제 배포 전에 후속 결정으로 대체된 historical baseline입니다.
-
-## 11. 현재 운영 Sync 규칙
+## 12. 현재 운영 Sync 규칙
 
 ```text
 D1  Project별 committed Watermark
@@ -340,79 +366,45 @@ D9  Two-Loop Operational Architecture
 D10 Latest-Only Knowledge Processing
 ```
 
-Delta Source Query 계약:
+## 13. 구현 검증
 
 ```text
-lower = committed_watermark - 5m
-upper = source_sync_run 시작 시 고정
-
-updated >= lower
-updated < upper
-ORDER BY updated ASC, id ASC
+State Migration / backup / rollback / fail-closed       PASS
+Initial Ingest / Jira fixed upper                       PASS
+Watermark - 5m / stable Delta JQL                       PASS
+timestamp-only → UNCHANGED                              PASS
+meaningful change → CHANGED + supersede                 PASS
+Discovery failure isolation / same-run Resume           PASS
+semantic_v2 package-scope metadata stability            PASS
+Loop B latest + Source-ready selection                  PASS
+Knowledge staging → canonical promotion                 PASS
+OpenCode 중 newer Source → stale result 차단             PASS
+OpenCode failure → retryable failed state               PASS
+Reviewer non-PASS 차단                                  PASS
+A→B→A stale-running retry                               PASS
+Source/Knowledge runner entrypoints                     PASS
 ```
 
-Loop B Claim Gate:
-
-```text
-last_source_committed_run_id IS NOT NULL
-AND last_source_committed_run_id = last_observed_source_run_id
-AND work_status IN ('pending','failed')
-AND superseded_by_work_item_id IS NULL
-```
-
-## 12. 구현 검증
-
-State foundation과 Loop A 자동 테스트가 CI에서 통과했습니다.
-
-```text
-새 DB 초기화 / 기존 Collector API                PASS
-known legacy → explicit migration                PASS
-SQLite backup / legacy row 보존                  PASS
-migration rerun no-op                             PASS
-unknown schema fail-closed                        PASS
-Watermark + Ready Gate rollback                   PASS
-running 구버전 supersede / stale guard            PASS
-A → B → A artifact reuse                          PASS
-Initial Ingest / Jira fixed upper                 PASS
-Watermark - 5m / stable JQL                       PASS
-timestamp-only → UNCHANGED                        PASS
-meaningful change → CHANGED + supersede           PASS
-Discovery success absence → unavailable           PASS
-Discovery failure → visibility unchanged          PASS
-same-run cursor Resume                            PASS
-semantic_v2 package-scope metadata stability      PASS
-Source Sync runner entrypoint                     PASS
-```
-
-아직 별도 Real Environment Gate:
+아직 Real Environment Gate:
 
 ```text
 실제 사용 중 collector.db Migration   PENDING
 실제 사내 Jira Loop A Run             PENDING
+실제 사내 OpenCode Knowledge Run      PENDING
 ```
 
-## 13. 운영 최신성 / Backpressure
+## 14. 운영 최신성 / Backpressure
 
 ```text
 Source Lag
-→ Jira Source를 어디까지 안전하게 읽었나?
-
 Publish Lag
-→ Source Head와 Published Head가 얼마나 차이나나?
-
 Latest Backlog Depth
-→ 실제로 처리해야 하는 최신 Work Item이 몇 개인가?
-
 Oldest Latest Pending Age
-→ 가장 오래 기다리는 최신 Work는 얼마나 오래됐나?
-
 Supersede Ratio
-→ 중간 Source Version이 얼마나 자주 최신 Version에 밀리는가?
+OpenCode Latency / Error / Throughput
 ```
 
-추가로 Processing Throughput, OpenCode latency/error를 시간대별로 측정합니다.
-
-## 14. MVP 핵심 숫자
+## 15. MVP 핵심 숫자
 
 ```text
 Issue                         30
@@ -421,7 +413,6 @@ Attachment metadata           79
 Canonical Relationship         6
 Custom Field Catalog         220
 Custom Field Values          447
-
 Knowledge Item               285
 M5 Raw Evidence Ref          503
 M7 Canonical Evidence Row    502
@@ -430,7 +421,7 @@ M8 Embedding                 285
 M9 FAISS Vector              285
 ```
 
-## 15. M7 Knowledge DB SQLite — DONE / PASS
+## 16. M7 Knowledge DB SQLite — DONE / PASS
 
 ```text
 Issue / Generation       30 / 30
@@ -453,7 +444,7 @@ Issue
          └─ Knowledge Review
 ```
 
-## 16. M8 BGE-M3 — DONE / PASS
+## 17. M8 BGE-M3 — DONE / PASS
 
 ```text
 Knowledge Item 1개 = Embedding Unit 1개
@@ -466,7 +457,7 @@ embedding_rows      285
 batch_count           5
 ```
 
-## 17. M9 FAISS — DONE / PASS
+## 18. M9 FAISS — DONE / PASS
 
 ```text
 Index       IndexFlatIP
@@ -478,7 +469,7 @@ Reranker    none
 Mapping     FAISS position → emb_ → ki_
 ```
 
-## 18. M10 Evidence + MCP — DONE / PASS
+## 19. M10 Evidence + MCP — DONE / PASS
 
 ```text
 질문 → BGE-M3 → FAISS Top-3 Knowledge
@@ -498,7 +489,7 @@ get_jira_issue
 
 MCP에는 생성형 LLM이 없습니다.
 
-## 19. M11 OpenCode Integration — DONE / PASS
+## 20. M11 OpenCode Integration — DONE / PASS
 
 ```text
 M11-01 .env service configuration                PASS
@@ -511,10 +502,9 @@ M11-06 description/comment Evidence 추적         PASS
 
 [M11 Completion](docs/status/M11_COMPLETION.html)
 
-서비스 설정 키는 `.env.example`과 M11 문서에서 관리합니다:
-`JIRA_KNOWLEDGE_DB_PATH`, `JIRA_RETRIEVAL_ARTIFACT_DIR`, `BGE_M3_ENDPOINT`.
+서비스 설정 키는 `.env.example`과 M11 문서에서 관리합니다: `JIRA_KNOWLEDGE_DB_PATH`, `JIRA_RETRIEVAL_ARTIFACT_DIR`, `BGE_M3_ENDPOINT`.
 
-## 20. Central Remote MCP
+## 21. Central Remote MCP
 
 Central MCP는 두 Loop를 실행하는 엔진이 아닙니다.
 
@@ -530,30 +520,28 @@ Central MCP
 
 새 Processing/Publish가 실패해도 마지막 정상 Published Corpus를 계속 제공합니다.
 
-상세: [MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)
-
-## 21. 다음 구현 순서
+## 22. 다음 구현 순서
 
 ```text
 Operational State foundation               IMPLEMENTED / CI PASS
 semantic_v2                                 IMPLEMENTED / CI PASS
 Loop A Delta Source Sync                    IMPLEMENTED / CI PASS
-Loop B latest-only Single Worker            NEXT
-Knowledge / Review / Evidence               LATER
-Embedding / Atomic Publish                  LATER
-Structured Logging / Monitoring             LATER
-Central Remote MCP Operations               LATER
+Loop B latest-only Knowledge Worker         IMPLEMENTED / CI PASS
+Operational per-Work Knowledge DB           NEXT
+Incremental BGE-M3 / FAISS / Atomic Publish LATER
+Monitoring / Remote MCP Operations          LATER
 ```
 
-Loop B에서는 `sync_issue_change`의 latest + source-ready Work를 Single Worker로 claim하고, OpenCode 응답 후와 Publish 직전에 latestness를 다시 확인합니다.
+다음 구현에서는 기존 M7 full-run loader를 억지로 재사용하지 않고, **현재 Work Item 하나를 Knowledge DB에 incremental materialize하는 전용 경로**를 만든 뒤 Embedding/Publish로 이어갑니다.
 
 Multi-worker claim/lease와 외부 MQ, 정확한 cadence/concurrency는 실제 Single Worker 처리량을 측정한 뒤 결정합니다.
 
-## 22. 주요 문서
+## 23. 주요 문서
 
 - [Documentation Hub](docs/index.html)
-- [Loop A Delta Source Sync 구현 보고서](docs/status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html)
-- [Operational State 개정 3 구현 보고서](docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html)
+- [Loop B Knowledge Worker](docs/status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html)
+- [Loop A Delta Source Sync](docs/status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html)
+- [Operational State 구현 보고서](docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html)
 - [현재 운영 Sync 규칙](docs/architecture/jira_sync_contract.html)
 - [D10 Latest-Only](docs/architecture/jira_sync_contract_decision10_latest_only_processing.html)
 - [현재 Operational State 설계](docs/architecture/jira_sync_state_schema_contract.html)
@@ -568,7 +556,7 @@ Multi-worker claim/lease와 외부 MQ, 정확한 cadence/concurrency는 실제 S
 - [버전 표기 가이드](docs/VERSION_TERMINOLOGY_GUIDE.html)
 - [Documentation Policy](docs/DOCUMENTATION_POLICY.html)
 
-## 23. 로컬 MVP Artifact
+## 24. 로컬 MVP Artifact
 
 ```text
 M7 SQLite
