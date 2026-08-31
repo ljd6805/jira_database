@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sqlite3
 from pathlib import Path
 
 import pytest
@@ -109,7 +108,7 @@ def _settings() -> EmbeddingRuntimeSettings:
     )
 
 
-def _prepare_state(tmp_path: Path) -> tuple[StateStore, str]:
+def _prepare_state(tmp_path: Path, *, release_after_knowledge: bool = False) -> tuple[StateStore, str]:
     state = StateStore(tmp_path / "collector.db")
     source_run_id = state.create_source_sync_run("2026-08-31T01:00:00+00:00")
     state.upsert_visible_project(
@@ -146,6 +145,16 @@ def _prepare_state(tmp_path: Path) -> tuple[StateStore, str]:
         issue_version_id="iv_test",
         knowledge_generation_id="kg_test",
     )
+    if release_after_knowledge:
+        with state.connect() as connection:
+            connection.execute(
+                """
+                UPDATE sync_issue_change
+                SET work_status='pending'
+                WHERE work_item_id=? AND knowledge_status='completed'
+                """,
+                (work_item_id,),
+            )
     return state, work_item_id
 
 
@@ -261,6 +270,42 @@ def test_operational_embedding_success_marks_completed_and_writes_artifacts(
     work = state.get_work_item(work_item_id)
     assert work["embedding_status"] == "completed"
     assert work["work_status"] == "running"
+
+
+def test_embedding_run_claims_releases_and_records_partial_processing_run(tmp_path: Path) -> None:
+    state, work_item_id = _prepare_state(tmp_path, release_after_knowledge=True)
+    knowledge_db = tmp_path / "knowledge.sqlite3"
+    _prepare_knowledge_db(knowledge_db)
+    worker = OperationalEmbeddingWorker(
+        state,
+        knowledge_db,
+        tmp_path / "embedding",
+        _settings(),
+        client=FakeClient(),
+        rate_limiter=FakeLimiter(),
+    )
+
+    result = worker.run(limit=1)
+
+    assert result.selected_count == 1
+    assert result.embedding_completed_count == 1
+    assert result.failed_count == 0
+    assert result.superseded_count == 0
+    assert result.status == "partial"
+    assert result.embedding_backlog_before == 1
+    assert result.embedding_backlog_after == 0
+    work = state.get_work_item(work_item_id)
+    assert work["embedding_status"] == "completed"
+    assert work["work_status"] == "pending"
+    assert work["last_processing_run_id"] == result.processing_run_id
+    with state.connect() as connection:
+        run = connection.execute(
+            "SELECT * FROM processing_run WHERE processing_run_id=?",
+            (result.processing_run_id,),
+        ).fetchone()
+    assert run is not None
+    assert run["run_status"] == "partial"
+    assert run["published_count"] == 0
 
 
 def test_newer_source_during_embedding_blocks_old_completion(tmp_path: Path) -> None:
