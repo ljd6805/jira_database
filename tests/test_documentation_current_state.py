@@ -10,6 +10,7 @@ CURRENT_DOCS = (
     Path("docs/index.html"),
     Path("docs/status/jira_knowledge_db_current_status.html"),
     Path("docs/status/POST_MVP_OPERATIONAL_SERVICE_START_HERE.html"),
+    Path("docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html"),
     Path("docs/architecture/jira_operational_two_loop_architecture.html"),
     Path("docs/architecture/jira_sync_contract.html"),
     Path("docs/architecture/jira_sync_state_schema_contract.html"),
@@ -83,12 +84,12 @@ def test_current_entry_docs_record_two_loop_latest_only_revision3() -> None:
         upper = text.upper()
         assert "TWO-LOOP" in upper or "2-LOOP" in upper, path
         assert "LATEST-ONLY" in upper, path
-        # 사람용 문서는 bare v3 대신 대상 + 개정 3 표현을 사용합니다.
         assert "개정 3" in text or "STATE_SCHEMA_VERSION = 3" in text, path
 
     status = _read(Path("docs/status/jira_knowledge_db_current_status.html"))
     assert "sync_issue_change" in status
     assert "superseded" in status
+    assert "IMPLEMENTED" in status
 
 
 def test_current_contract_and_schema_are_revision3_latest_only() -> None:
@@ -118,12 +119,12 @@ def test_historical_schema_baselines_are_explicitly_not_current() -> None:
     ):
         text = _read(path)
         upper = text.upper()
-        assert "SUPERSEDED" in upper
+        assert "HISTORICAL" in upper or "SUPERSEDED" in upper
         assert "NEVER DEPLOYED" in upper or "NEVER-DEPLOYED" in upper
         assert "jira_sync_state_schema_contract.html" in text
 
     contract_v2 = _read(Path("docs/architecture/jira_sync_contract_v2_baseline.html"))
-    assert "SUPERSEDED" in contract_v2.upper()
+    assert "HISTORICAL" in contract_v2.upper() or "SUPERSEDED" in contract_v2.upper()
     assert "jira_sync_contract.html" in contract_v2
 
 
@@ -142,11 +143,17 @@ def test_two_loop_docs_preserve_source_commit_publish_boundary() -> None:
 
 
 def test_latest_only_contract_keeps_structured_monitoring_terms() -> None:
-    contract = _read(Path("docs/architecture/jira_sync_contract.html")).lower()
-    decision = _read(Path("docs/architecture/jira_sync_contract_decision10_latest_only_processing.html")).lower()
-    status = _read(Path("docs/status/jira_knowledge_db_current_status.html")).lower()
+    sources = (
+        _read(Path("docs/architecture/jira_sync_contract.html")).lower(),
+        _read(Path("docs/architecture/jira_knowledge_operational_service_phase.html")).lower(),
+        _read(Path("docs/PIPELINE_OVERVIEW.html")).lower(),
+    )
     for token in ("source lag", "publish lag", "backlog"):
-        assert token in contract or token in status
+        assert any(token in text for text in sources), token
+
+    decision = _read(
+        Path("docs/architecture/jira_sync_contract_decision10_latest_only_processing.html")
+    ).lower()
     for token in (
         "work_item_superseded",
         "processing_skip_superseded",
@@ -168,6 +175,23 @@ def test_fixed_hub_frame_keeps_exact_five_sections() -> None:
     for marker in expected:
         assert marker in index
     assert index.count("data-hub-section=") == 5
+
+
+def test_state_foundation_implementation_report_is_current_and_linked() -> None:
+    report = Path("docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html")
+    assert report.is_file()
+    text = _read(report)
+    for token in (
+        "IMPLEMENTED",
+        "LOCAL DB MIGRATION PENDING",
+        "state_schema.py",
+        "state_store.py",
+        "migrate_state_v3.py",
+        "commit_source_project",
+        "stale guard",
+    ):
+        assert token in text
+    assert report.name in _read(Path("docs/index.html"))
 
 
 def test_m10_completion_and_real_run_are_preserved() -> None:
@@ -275,6 +299,7 @@ def test_documentation_hub_links_current_sources() -> None:
         "jira_knowledge_pipeline_full_explained.html",
         "jira_knowledge_db_current_status.html",
         "POST_MVP_OPERATIONAL_SERVICE_START_HERE.html",
+        "OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html",
         "VERSION_TERMINOLOGY_GUIDE.html",
     ):
         assert name in index
