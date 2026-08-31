@@ -51,6 +51,11 @@ Jira → Project Discovery → fixed upper / Watermark-5m
 → SOURCE_COMMITTED + Watermark + Source Ready
 → latest-only Work backlog
 
+Latest-Only Source History
+→ Source Version은 모두 보존
+→ newer Source가 Commit되면 이전 미완료 Work는 superseded
+→ superseded Work는 Loop B의 비싼 AI 처리 대상에서 제외
+
 Loop B · Knowledge Automation · IMPLEMENTED
 latest Work → Python Prompt
 → opencode run --agent jira-knowledge-orchestrator
