@@ -12,19 +12,21 @@ def test_post_mvp_start_here_exists_and_is_html() -> None:
     assert "<!doctype html>" in text.lower()
     assert "M0~M11" in text
     assert "Functional MVP" in text
-    assert "Continuous Jira Knowledge Service" in text
+    assert "TWO-LOOP" in text.upper() or "2-LOOP" in text.upper()
+    assert "Latest-Only" in text
 
 
-def test_next_session_starts_from_sync_contract_not_implementation() -> None:
+def test_next_session_starts_from_v3_implementation_gate() -> None:
     text = START_HERE.read_text(encoding="utf-8")
     for token in (
-        "첫 작업 = Sync Contract 설계",
-        "코드부터 만들지 않습니다",
-        "Project Discovery",
-        "Issue Delta Detection",
-        "checkpoint",
-        "resume",
-        "source_hash",
+        "Sync Contract v3",
+        "State Schema v3",
+        "D10 Latest-Only",
+        "Documentation Shell / Registry / pytest Gate PASS",
+        "State Schema v3 explicit Migration",
+        "Source Ready",
+        "superseded",
+        "stale guard",
     ):
         assert token in text
 
@@ -32,18 +34,33 @@ def test_next_session_starts_from_sync_contract_not_implementation() -> None:
 def test_handoff_preserves_full_operational_service_scope() -> None:
     text = START_HERE.read_text(encoding="utf-8")
     for token in (
-        "지속적인 Jira 업데이트",
-        "Project 추가",
+        "Source Sync",
+        "OpenCode",
         "Embedding",
         "FAISS",
-        "중앙 MCP 서비스",
-        "운영 자동화",
-        "팀원별 Jira 권한",
+        "Atomic Publish",
+        "Structured Logging",
+        "Remote MCP Operations / Team Pilot",
     ):
         assert token in text
 
 
-def test_handoff_does_not_freeze_next_milestone_number() -> None:
+def test_handoff_preserves_source_history_latest_only_policy() -> None:
     text = START_HERE.read_text(encoding="utf-8")
-    assert "M12, M13 같은 번호를 아직 확정하지 않았습니다" in text
-    assert "첫 운영 Milestone 번호" in text
+    for token in (
+        "Source History",
+        "모두 보존",
+        "latest + source-ready Work",
+        "superseded",
+        "Jira 원문은 로그에 기록하지 않습니다",
+    ):
+        assert token in text
+
+
+def test_handoff_does_not_prematurely_freeze_next_milestone_number() -> None:
+    text = START_HERE.read_text(encoding="utf-8")
+    # The handoff names implementation phases, but must not claim a new numbered milestone is current.
+    assert "M12 CURRENT" not in text
+    assert "M13 CURRENT" not in text
+    assert "M12 DONE" not in text
+    assert "M13 DONE" not in text
