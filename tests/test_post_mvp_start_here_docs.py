@@ -12,25 +12,21 @@ def test_post_mvp_start_here_exists_and_is_html() -> None:
     assert "<!doctype html>" in text.lower()
     assert "M0~M11" in text
     assert "Functional MVP" in text
-    assert "TWO-LOOP" in text.upper() or "2-LOOP" in text.upper()
     assert "Latest-Only" in text
 
 
-def test_next_session_starts_after_state_and_loop_a_implementation() -> None:
+def test_next_session_starts_after_loop_b_knowledge_implementation() -> None:
     text = START_HERE.read_text(encoding="utf-8")
     for token in (
-        "현재 운영 Sync 규칙 · 개정 3",
-        "현재 Operational State 설계 · 개정 3",
         "State Migration / StateStore foundation",
         "semantic_v2 source hash",
         "Loop A Delta Source Sync",
+        "Loop B Latest-Only Knowledge Worker",
         "IMPLEMENTED",
         "실제 local collector.db Migration",
         "실제 사내 Jira Loop A Run",
-        "Loop B Latest-Only Single Worker",
-        "Source Ready",
-        "superseded",
-        "stale guard",
+        "실제 사내 OpenCode Knowledge Run",
+        "Operational Data Plane Integration",
     ):
         assert token in text
 
@@ -38,12 +34,14 @@ def test_next_session_starts_after_state_and_loop_a_implementation() -> None:
 def test_handoff_preserves_full_operational_service_scope() -> None:
     text = START_HERE.read_text(encoding="utf-8")
     upper = text.upper()
-    assert "SOURCE SYNC" in upper
+    assert "LOOP A" in upper
+    assert "LOOP B" in upper
     assert "OPENCODE" in upper
     for token in (
-        "Knowledge / Review / Evidence",
-        "BGE-M3 / FAISS staging / Atomic Publish",
-        "Structured Logging / Lag / Backlog Monitoring",
+        "Knowledge DB incremental materialization",
+        "BGE-M3",
+        "FAISS staging",
+        "Atomic Publish",
         "Remote MCP Operations / Team Pilot",
     ):
         assert token in text
@@ -56,19 +54,16 @@ def test_handoff_preserves_source_history_latest_only_policy() -> None:
         "모두 보존",
         "Source-ready",
         "superseded",
+        "latestness",
     ):
         assert token in text
 
-    implementation = Path(
-        "docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html"
-    ).read_text(encoding="utf-8")
-    assert "Jira 본문/댓글" in implementation
-    assert "기록하지 않고" in implementation
 
-
-def test_handoff_links_loop_a_implementation_report() -> None:
+def test_handoff_links_current_implementation_reports() -> None:
     text = START_HERE.read_text(encoding="utf-8")
     assert "LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html" in text
+    assert "LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html" in text
+    assert "OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html" in text
 
 
 def test_handoff_does_not_prematurely_freeze_next_milestone_number() -> None:
