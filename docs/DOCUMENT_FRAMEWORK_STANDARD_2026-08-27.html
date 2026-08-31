@@ -21,20 +21,30 @@
 → 현재/과거 상태 확인
 → 무엇의 버전인지 확인
 → 같은 대상 안에서만 개정 번호 비교</pre><p>Historical/Baseline 문서는 공통 Shell이 “과거 설계 보관본 · 현재 구현 기준 아님” 상태를 추가로 표시합니다.</p></section>
+<section><h2>3.5. 시각화와 설명은 함께 보존</h2><div class="callout"><strong>시각화는 설명을 대체하지 않고 보강한다.</strong><br>새 그림이나 더 좋은 레이아웃을 만들었다는 이유로 기존의 유효한 설명을 지우지 않습니다. 시각화는 빠른 이해를 돕고, 상세 설명은 검증과 복기를 담당합니다.</div><pre>권장 읽기 구조
+
+그림
+→ 상세 설명
+→ 관계/표
+→ 쉬운 예시
+→ Source of Truth</pre><p>복잡하면 설명을 없애는 대신 diagram을 분리하거나 카드/표와 역할을 나눕니다. 내용 삭제/축약은 사용자가 명시적으로 삭제/축약을 요청했거나 오래되어 틀린 내용임이 확인된 경우에만 허용하며, 삭제 이유를 문서에 남깁니다.</p></section>
 <section><h2>4. Hub의 고정 골격</h2><pre>1. 지금 어디부터 읽나?           # hub-start
 2. 전체를 한 줄씩만 보면        # hub-roadmap
 3. 운영 서비스 핵심              # hub-service
 4. Milestone Visual Documents     # hub-milestones
 5. Architecture / Policy          # hub-reference</pre><p>새 문서가 추가되면 알맞은 영역에 카드/링크를 추가합니다. 기본 5개 영역 자체를 매번 재배치하거나 새 스타일을 임의로 만들지 않습니다.</p></section>
-<section><h2>5. 단일 원본</h2><table><thead><tr><th>파일</th><th>책임</th></tr></thead><tbody><tr><td><code>docs/assets/hub-frame.css</code></td><td>Documentation Hub의 고정 레이아웃/스타일</td></tr><tr><td><code>docs/assets/document-shell.css</code></td><td>모든 일반 문서의 공통 탐색 UI + 버전 도움말 스타일</td></tr><tr><td><code>docs/assets/document-navigation.js</code></td><td>이전/Hub/다음 버튼과 버전 문맥 도움말 생성</td></tr><tr><td><code>docs/assets/document-registry.js</code></td><td>문서 순서. 동기화 도구가 자동 생성</td></tr><tr><td><code>tools/docs/sync_document_shell.py</code></td><td>기존/신규 HTML에 shell을 적용하고 Registry를 갱신</td></tr><tr><td><code>tests/test_document_shell_consistency.py</code></td><td>프레임 회귀 방지</td></tr></tbody></table></section>
+<section><h2>5. 단일 원본</h2><table><thead><tr><th>파일</th><th>책임</th></tr></thead><tbody><tr><td><code>docs/assets/hub-frame.css</code></td><td>Documentation Hub의 고정 레이아웃/스타일</td></tr><tr><td><code>docs/assets/document-shell.css</code></td><td>모든 일반 문서의 공통 탐색 UI + 버전 도움말 스타일</td></tr><tr><td><code>docs/assets/document-navigation.js</code></td><td>이전/Hub/다음 버튼과 버전 문맥 도움말 생성</td></tr><tr><td><code>docs/assets/document-registry.js</code></td><td>문서 순서. 동기화 도구가 자동 생성</td></tr><tr><td><code>tools/docs/sync_document_shell.py</code></td><td>기존/신규 HTML에 shell을 적용하고 Registry를 갱신</td></tr><tr><td><code>tests/test_document_shell_consistency.py</code></td><td>프레임 회귀 방지</td></tr><tr><td><code>tests/test_documentation_content_preservation_rule.py</code></td><td>시각화 개선 중 기존 설명 삭제 회귀 방지</td></tr></tbody></table></section>
 <section><h2>6. 새 문서를 만드는 방법</h2><pre>1. docs/templates/STANDARD_DOCUMENT_TEMPLATE.html 복사
 2. 제목 / 본문 / 목적에 맞는 시각 요소 작성
-3. 현재/과거 상태 + 대상 + 개정 번호 순서로 버전 표기
-4. docs/index.html의 알맞은 영역에 HTML 링크 추가
-5. python tools/docs/sync_document_shell.py --write
-6. python tools/docs/sync_document_shell.py --check
-7. pytest tests/test_document_shell_consistency.py
-8. 관련 문서 Gate까지 통과 후 commit</pre></section>
-<section><h2>7. 기존 문서 처리</h2><p>2026-08-27 migration에서 <code>docs/index.html</code>을 제외한 기존 HTML 전체를 Document Shell 대상으로 삼았습니다. 2026-08-31부터는 공통 버전 도움말도 같은 Shell에서 제공합니다. 과거 문서 본문은 이력 보존을 위해 무조건 다시 쓰지 않지만, <strong>현재 문서처럼 오해될 수 있는 상태/버전 표현은 명확히 교정</strong>합니다.</p></section>
+3. 기존 문서를 개선하는 경우 before/after 설명 coverage 확인
+4. 그림 → 상세 설명 → 관계/표 → 쉬운 예시 → Source of Truth 구조 우선
+5. 현재/과거 상태 + 대상 + 개정 번호 순서로 버전 표기
+6. docs/index.html의 알맞은 영역에 HTML 링크 추가
+7. python tools/docs/sync_document_shell.py --write
+8. python tools/docs/sync_document_shell.py --check
+9. pytest tests/test_document_shell_consistency.py
+10. pytest tests/test_documentation_content_preservation_rule.py
+11. 관련 문서 Gate까지 통과 후 commit</pre></section>
+<section><h2>7. 기존 문서 처리</h2><p>2026-08-27 migration에서 <code>docs/index.html</code>을 제외한 기존 HTML 전체를 Document Shell 대상으로 삼았습니다. 2026-08-31부터는 공통 버전 도움말도 같은 Shell에서 제공합니다. 과거 문서 본문은 이력 보존을 위해 무조건 다시 쓰지 않지만, <strong>현재 문서처럼 오해될 수 있는 상태/버전 표현은 명확히 교정</strong>합니다. 현재 문서를 디자인 개선할 때도 기존의 유효한 설명을 임의로 제거하지 않습니다.</p></section>
 <section><h2>8. 변경이 필요할 때</h2><div class="callout"><strong>문서 UI 프레임 개정 1을 바꾸는 것은 일반 문서 편집이 아닙니다.</strong><br>Hub 기본 영역, 버튼 계약, Registry 방식, 공통 asset 경로, 버전 도움말 규칙을 바꾸려면 <code>DOCUMENTATION_POLICY.html</code>과 이 문서를 함께 갱신하고 회귀 테스트도 같이 수정합니다.</div></section>
 </main></body></html>

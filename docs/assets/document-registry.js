@@ -105,10 +105,6 @@ window.JIRA_DOCUMENT_REGISTRY = Object.freeze([
     "title": "현재 Operational Architecture · Two-Loop · Source Ready + Latest-Only"
   },
   {
-    "path": "status/VERSION_LANGUAGE_REALIGNMENT_2026-08-31.html",
-    "title": "Version Language Realignment · 2026-08-31"
-  },
-  {
     "path": "architecture/jira_sync_contract_decision_draft.html",
     "title": "Sync Contract · Decision Board · D1~D10"
   },
@@ -143,6 +139,10 @@ window.JIRA_DOCUMENT_REGISTRY = Object.freeze([
   {
     "path": "architecture/jira_knowledge_mcp_service_target.html",
     "title": "Jira Knowledge MCP Service Target · Two-Loop"
+  },
+  {
+    "path": "status/VERSION_LANGUAGE_REALIGNMENT_2026-08-31.html",
+    "title": "Version Language Realignment · 2026-08-31"
   },
   {
     "path": "HTML_DOCUMENT_ENRICHMENT_2026-08-26.html",
