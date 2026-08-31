@@ -1,40 +1,56 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · Two-Loop Overview</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.72}.wrap{max-width:1120px;margin:auto;padding:38px 22px 84px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.warn{border-left-color:var(--amber);background:#fff7e9}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style><link rel="stylesheet" href="assets/document-shell.css" data-doc-shell="v1"><script defer src="assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a><a href="architecture/jira_operational_two_loop_architecture.html">2-Loop Architecture</a><a href="architecture/jira_sync_state_schema_contract.html">State Schema v2</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-28</div><h1>Jira Knowledge Pipeline<br>MVP → 2-Loop 운영 서비스</h1><p>M0~M11 Functional MVP는 완료됐고, 지속 운영은 Source Sync와 Knowledge Processing/Publish를 독립 Loop로 수행합니다.</p></header><section><h2>1. 전체 흐름</h2><div class="flow">Functional MVP · DONE
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · Two-Loop Latest-Only Overview</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.72}.wrap{max-width:1120px;margin:auto;padding:38px 22px 84px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.warn{border-left-color:var(--amber);background:#fff7e9}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style><link rel="stylesheet" href="assets/document-shell.css" data-doc-shell="v1"><script defer src="assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a><a href="architecture/jira_sync_contract.html">Sync Contract v3</a><a href="architecture/jira_sync_state_schema_contract.html">State Schema v3</a><a href="architecture/jira_knowledge_operational_service_phase.html">Operational Service</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-31</div><h1>Jira Knowledge Pipeline<br>MVP → 2-Loop + Latest-Only</h1><p>M0~M11 Functional MVP는 완료됐고, 지속 운영은 Source Sync와 Latest-Only Knowledge Processing/Publish를 독립 Loop로 수행합니다.</p></header><section><h2>1. 전체 흐름</h2><div class="flow">Functional MVP · DONE / PASS
 Jira → RAW → ANALYSIS → Knowledge Input → Knowledge/Review
 → SQLite → BGE-M3 → FAISS → Evidence/MCP → OpenCode
 
-Operational Service · TWO-LOOP
+Operational Service · TWO-LOOP + LATEST-ONLY
 
 Loop A · SOURCE SYNC
 source_sync_run
-→ Project Discovery
-→ Delta / Initial / Catch-up
+→ Project Discovery / Delta / Initial / Catch-up
 → RAW / ANALYSIS / Knowledge Input
 → semantic_v2
 → NEW / CHANGED / UNCHANGED
-→ sync_issue_change backlog
-→ SOURCE_COMMITTED / Watermark
+→ Source History 모두 보존
+→ sync_issue_change
+→ SOURCE_COMMITTED / Watermark / Source Ready
+→ 이전 미완료 Work superseded
 
 Loop B · KNOWLEDGE PROCESSING / PUBLISH
 processing_run
-→ backlog
-→ OpenCode / Review / Evidence
-→ Knowledge DB
+→ latest + source-ready Work만 claim
+→ OpenCode
+→ latestness re-check
+→ Review / Evidence / Knowledge DB
 → BGE-M3 / FAISS staging
+→ latestness re-check
 → Atomic Publish
 
 Always-on
-Published Corpus → Central MCP → Team OpenCode</div></section><section><h2>2. 현재 Contract</h2><div class="grid"><div class="card"><h3>Sync Contract v2</h3><p>D1~D7 유지, D8 Loop-local revision, D9 Two-Loop FIXED.</p></div><div class="card"><h3>State Schema v2</h3><p>5개 Operational Domain Table + explicit migration.</p></div><div class="card"><h3>Historical v1</h3><p>단일 sync_run 설계는 구현 전 superseded. 감사 이력으로만 보존.</p></div></div></section><section><h2>3. State / Data 경계</h2><div class="grid"><div class="card"><h3>State DB</h3><p>source_sync_run, project_state, source_project_run, sync_issue_change, processing_run.</p></div><div class="card"><h3>Knowledge DB</h3><p>Issue Version, Generation, Attempt, Knowledge Item, Evidence, Review.</p></div><div class="card"><h3>Retrieval</h3><p>Embedding/FAISS artifact와 Published active view.</p></div></div></section><section><h2>4. 운영 최신성</h2><div class="flow">Source Lag
+Published Corpus → Central Remote MCP → Team OpenCode</div></section><section><h2>2. 현재 Contract</h2><div class="grid"><div class="card"><h3>Sync Contract v3</h3><p>D1~D10. D9 Two-Loop, D10 Latest-Only FIXED.</p></div><div class="card"><h3>State Schema v3</h3><p>5개 Domain Table + Source Ready + work_status/supersede lifecycle.</p></div><div class="card"><h3>Historical v1/v2</h3><p>구 Schema는 실제 배포 전에 superseded. 감사 이력으로만 보존.</p></div></div></section><section><h2>3. Source History vs Knowledge Processing</h2><div class="flow">Source History
+V1 → V2 → V3 → V4
+모두 보존
+
+Knowledge Processing
+V2 pending → superseded
+V3 pending → superseded
+V4 latest  → process</div><p>중간 버전의 존재와 supersede 이유는 State DB와 구조화 로그에서 확인할 수 있습니다.</p></section><section><h2>4. State / Data 경계</h2><div class="grid"><div class="card"><h3>State DB</h3><p>source_sync_run, project_state, source_project_run, sync_issue_change, processing_run.</p></div><div class="card"><h3>Knowledge DB</h3><p>Issue Version, Generation, Attempt, Knowledge Item, Evidence, Review.</p></div><div class="card"><h3>Retrieval</h3><p>Embedding/FAISS artifact와 last-known-good Published active view.</p></div></div></section><section><h2>5. 운영 최신성</h2><div class="flow">Source Lag
 = Jira를 어디까지 안전하게 읽었나?
 
 Publish Lag
 = Source Head와 Published Head가 얼마나 차이나나?
 
-Backlog
-= Loop B가 아직 처리하지 못한 semantic Work가 얼마나 있나?</div><p>시스템 전체를 하나의 run_status로 표현하지 않습니다.</p></section><section><h2>5. 장애 격리</h2><table><thead><tr><th>장애</th><th>영향</th><th>계속 동작</th></tr></thead><tbody><tr><td>Jira</td><td>Loop A</td><td>Loop B backlog + Retrieval</td></tr><tr><td>OpenCode</td><td>Loop B Knowledge</td><td>Loop A + Retrieval</td></tr><tr><td>Embedding/Publish</td><td>Loop B downstream</td><td>Loop A + last-known-good Retrieval</td></tr></tbody></table></section><section><h2>6. 다음 작업</h2><div class="callout warn"><strong>Intermediate Version supersede 정책</strong><br>V2→V3→V4가 Processing 전에 쌓인 경우 미시작 V2/V3까지 지식화할지, 최신 pending만 처리할지를 구현 전에 결정합니다. Source Version은 모두 보존합니다.</div><div class="flow">정책 Freeze
-→ State Schema v2 Migration / StateStore
+Latest Backlog
+= 실제로 처리해야 하는 최신 Work가 얼마나 있나?
+
+Supersede Ratio
+= 중간 Source Version이 얼마나 자주 최신 Version에 밀리나?</div></section><section><h2>6. Logging</h2><div class="flow">work_item_superseded
+processing_skip_superseded
+stale_inflight_detected
+latest_processing_started</div><p>로그에는 Jira 원문을 넣지 않고 ID/hash/run/stage/reason/timestamp만 기록합니다.</p></section><section><h2>7. 장애 격리</h2><table><thead><tr><th>장애</th><th>영향</th><th>계속 동작</th></tr></thead><tbody><tr><td>Jira</td><td>Loop A</td><td>Loop B latest backlog + Retrieval</td></tr><tr><td>OpenCode</td><td>Loop B Knowledge</td><td>Loop A + Retrieval</td></tr><tr><td>Embedding/Publish</td><td>Loop B downstream</td><td>Loop A + last-known-good Retrieval</td></tr></tbody></table></section><section><h2>8. 다음 작업</h2><div class="callout"><strong>Runtime 구현 전 문서 Gate</strong><br>Document Shell / Registry / pytest를 현재 v3 계약 기준으로 PASS시킨 뒤 구현합니다.</div><div class="flow">State Schema v3 explicit Migration / StateStore
 → Loop A Delta Sync
-→ backlog producer
-→ Loop B Single Worker
-→ Knowledge/Embedding/Publish
-→ lag/backlog monitoring
-→ Remote MCP Operations</div></section><footer>Pipeline Overview · Two-Loop current architecture · 2026-08-28</footer></main></body></html>
+→ Source Ready + supersede transaction
+→ Loop B latest-only Single Worker
+→ OpenCode stale guard
+→ Knowledge / Embedding / Atomic Publish
+→ Structured Logging / Lag / Latest Backlog Monitoring
+→ Remote MCP Operations</div><p>Multi-worker lease, 외부 MQ, 정확한 cadence/concurrency는 Single Worker 측정 후 결정합니다.</p></section><section><h2>9. 주요 운영 서비스 문서</h2><p><a href="architecture/jira_knowledge_operational_service_phase.html">Operational Service Phase</a> · <a href="architecture/jira_knowledge_mcp_service_target.html">MCP Service Target</a></p></section><footer>Pipeline Overview · Two-Loop + Latest-Only · Contract v3 / Schema v3 · 2026-08-31</footer></main></body></html>
