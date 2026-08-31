@@ -226,6 +226,41 @@ def test_semantic_v2_ignores_issue_and_comment_updated_at_only(tmp_path: Path) -
     assert second_package["comments"][0]["updated_at"] == "comment-updated-later"
 
 
+def test_semantic_v2_ignores_relationship_package_scope_metadata(tmp_path: Path) -> None:
+    """상대 package 존재 여부가 달라도 같은 Jira 관계는 같은 semantic hash를 가져야 합니다."""
+
+    data_root = tmp_path / "data"
+    run = _analysis_fixture(data_root)
+    builder = IssueKnowledgeInputBuilder(data_root)
+
+    first_package = _package(builder.build_run("run1"))
+    assert first_package["relationships"][0]["other_package_available"] is False
+
+    issue_rows = _read_jsonl(run / "issues.jsonl")
+    issue_rows.append(
+        {
+            "run_id": "run1",
+            "project_key": "ABC",
+            "issue_key": "ABC-9",
+            "jira_id": "9",
+            "summary": "other",
+            "description_text": None,
+            "description_format": "null",
+            "issue_type": "Task",
+            "status": "Open",
+            "priority": "Major",
+            "created_at": "c9",
+            "updated_at": "u9",
+            "source_path": str(data_root / "raw" / "runs" / "run1" / "ABC-9" / "issue.json"),
+        }
+    )
+    _write_jsonl(run / "issues.jsonl", issue_rows)
+
+    second_package = _package(builder.build_run("run1"))
+    assert second_package["relationships"][0]["other_package_available"] is True
+    assert first_package["source_hash"] == second_package["source_hash"]
+
+
 def test_semantic_v2_changes_hash_for_meaningful_content(tmp_path: Path) -> None:
     """업무 의미가 바뀌면 semantic_v2 hash가 반드시 바뀌는지 확인합니다."""
 
