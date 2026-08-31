@@ -1,4 +1,4 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S4 · Transaction Boundary · Two-Loop</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1080px;margin:auto;padding:42px 22px 86px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:18px}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}a{color:var(--blue);font-weight:800}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">Schema v2</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop</a></p><header class="hero"><div>S4 · FIXED · REFRAMED FOR TWO-LOOP</div><h1>짧은 Commit Point 원칙은 유지하고, Loop별 Transaction으로 분리합니다.</h1></header><section class="card"><h2>Loop A · Source Transaction</h2><div class="flow">A0 Source Run Start
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S4 · Transaction Boundary · Current</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1080px;margin:auto;padding:42px 22px 86px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:18px}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}a{color:var(--blue);font-weight:800}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">현재 Operational State 설계 · 개정 3</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop</a></p><header class="hero"><div>S4 · CURRENT TRANSACTION BOUNDARY</div><h1>짧은 Commit Point 원칙을 유지하고,<br>Ready + supersede를 같은 transaction에서 확정합니다.</h1></header><section class="card"><h2>Loop A · Source Transaction</h2><div class="flow">A0 Source Run Start
 → source_sync_run + fixed upper durable
 
 A1 Discovery Commit
@@ -11,40 +11,54 @@ actual Source files durable
 → count + stable cursor SAME State transaction
 → 아직 Processing eligibility 없음
 
-A3 Project Commit
-같은 State transaction에서
+A3 Project Commit · 핵심
+같은 State DB transaction에서
 1. source_project_run.source_status = source_committed
 2. project_state.committed_watermark = upper
-3. 이번 Project/Run에서 관찰된 Work Item의
+3. 새 Work Item
    last_source_committed_run_id = current
    last_source_committed_at = now
+4. 같은 jira_id의 이전 미완료 Work
+   work_status IN (pending, failed, running)
+   → work_status = superseded
+   → superseded_by_work_item_id = new work
+   → superseded_at = now
 → COMMIT
 
 A4 Source Run Finalize
-→ discovery/source/run status 집계</div></section><section class="card good"><h2>Source Ready Gate</h2><div class="flow">Loop B claim 가능 조건
+→ discovery/source/run status 집계</div></section><section class="card"><h2>Source Ready + Latest Gate</h2><div class="flow">Loop B claim 가능
 last_source_committed_run_id IS NOT NULL
-AND
-last_source_committed_run_id = last_observed_source_run_id</div><p>A2에서 row가 만들어져도 A3 Project Commit 전에는 gate가 닫혀 있습니다. Project Source가 partial/failed이면 그 관찰은 Processing 대상으로 승격되지 않습니다.</p></section><section class="card"><h2>Loop B · Processing Transaction</h2><div class="flow">B0 Processing Run Start
+AND last_source_committed_run_id = last_observed_source_run_id
+AND work_status IN ('pending','failed')
+AND superseded_by_work_item_id IS NULL</div><p>A2에서 row가 만들어져도 A3 Project Commit 전에는 Source Ready가 닫혀 있습니다. A3에서 더 최신 Work가 확정되면 이전 미완료 Work의 latest 자격도 같은 순간에 제거합니다.</p></section><section class="card"><h2>Loop B · Processing Transaction</h2><div class="flow">B0 Processing Run Start
 → processing_run row durable
 
 B1 Claim
-→ Source Ready Gate를 통과한 Work Item만 선택
+→ latest + Source Ready Work만 선택
 
-B2 Knowledge
+B2 OpenCode 호출 전 latestness check
+
+B3 Knowledge
 actual Knowledge DB result first
-→ State knowledge_status = completed second
+→ OpenCode 응답 후 latestness re-check
+→ stale이면 Active 처리 중단
+→ 최신이면 State knowledge_status = completed
 
-B3 Embedding
+B4 Embedding
 actual vector/artifact first
 → State embedding_status = completed second
 
-B4 Publish
-actual Retrieval active switch first
+B5 Publish
+Publish 직전 latestness re-check
+→ actual Retrieval active switch first
 → verify
-→ State publish_status = published second
+→ State publish_status/work_status = published second
 
-B5 Processing Run Finalize
-→ selected / published / failed counts + run status</div></section><section class="card warn"><h2>두 Loop를 하나의 Transaction으로 묶지 않습니다</h2><p>Loop A의 Project Source Commit 이후 Loop B는 나중에 별도 프로세스/스케줄로 실행될 수 있습니다. 두 Loop 사이의 durable 경계는 <code>sync_issue_change</code> row + Source Ready Gate입니다.</p></section><section class="card"><h2>최우선 불변식</h2><div class="flow">Watermark는 Source Commit보다 먼저 가지 않는다.
-Processing은 아직 Commit되지 않은 Source 관찰을 소비하지 않는다.
+B6 Processing Run Finalize
+→ selected / published / failed / superseded counts</div></section><section class="card warn"><h2>두 Loop를 하나의 Transaction으로 묶지 않습니다</h2><p>Loop A Source Commit 이후 Loop B는 나중에 별도 프로세스/스케줄로 실행될 수 있습니다. 두 Loop 사이의 durable 경계는 <code>sync_issue_change</code> row + Ready/Latest 조건입니다.</p></section><section class="card"><h2>최우선 불변식</h2><div class="flow">Watermark는 Source Commit보다 먼저 가지 않는다.
+Ready Gate는 Source Commit보다 먼저 열리지 않는다.
+새 latest Work와 old-work supersede는 같은 State transaction에서 확정한다.
+Loop B는 superseded Work를 claim하지 않는다.
+stale in-flight 결과는 Publish하지 않는다.
 State completed/published는 실제 durable 결과보다 먼저 가지 않는다.
-Loop A 성공은 Loop B 성공을 기다리지 않는다.</div></section><footer>S4 current · Two-Loop transaction boundaries · Source Ready Gate · 2026-08-28</footer></main></body></html>
+Loop A 성공은 Loop B 성공을 기다리지 않는다.</div></section><footer>S4 current · Operational State 개정 3 · Ready + Latest transaction boundary · 2026-08-31</footer></main></body></html>
