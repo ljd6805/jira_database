@@ -8,7 +8,10 @@ from jira_collector.jira_client import JiraClient, JiraClientError
 from jira_collector.raw_store import RawStore
 from jira_collector.settings import SettingsError, load_settings
 from jira_collector.source_sync import OperationalSourceSync, SourceSyncError
-from jira_collector.source_sync_smoke import SmokeProjectSourceSync
+from jira_collector.source_sync_smoke import (
+    SmokeProjectSourceSync,
+    validate_smoke_project_options,
+)
 from jira_collector.state_schema import StateMigrationRequiredError, StateSchemaError
 from jira_collector.state_store import StateStore
 
@@ -53,21 +56,6 @@ def _configure_logging(level_name: str) -> None:
     )
 
 
-def _validate_smoke_project_options(args: argparse.Namespace, data_root: Path) -> None:
-    if not args.project_key:
-        return
-    if args.resume_source_run_id:
-        raise ValueError(
-            "--project-key Smoke Run은 --resume-source-run-id와 함께 사용할 수 없습니다. "
-            "실패하면 data_smoke를 비우고 새 Smoke Run으로 다시 실행하십시오."
-        )
-    if data_root.resolve().name != "data_smoke":
-        raise ValueError(
-            "--project-key는 격리된 Smoke 전용입니다. "
-            "--local-config config/settings.smoke.yaml을 사용하십시오."
-        )
-
-
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -77,7 +65,11 @@ def main(argv: list[str] | None = None) -> int:
             dotenv_path=args.dotenv,
         )
         _configure_logging(settings.logging.level)
-        _validate_smoke_project_options(args, settings.storage.data_root)
+        validate_smoke_project_options(
+            project_key=args.project_key,
+            resume_source_run_id=args.resume_source_run_id,
+            data_root=settings.storage.data_root,
+        )
 
         state_path = settings.storage.state_root / "collector.db"
         raw_store = RawStore(
