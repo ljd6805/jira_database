@@ -35,14 +35,14 @@ SOURCE_COMMITTED
 + 현재 Work Source Ready
 + 이전 미완료 Work superseded
 
-COMMIT</div></div><p>아직 Project 전체 Source Commit이 되지 않은 새 Version 때문에 기존 정상 Work가 먼저 무효화되는 것을 막습니다.</p></section><section><h2>5. Latest-Only</h2><div class="flow">Source History
+COMMIT</div></div><p>아직 Project 전체 Source Commit이 되지 않은 새 Source 상태 때문에 기존 정상 Work가 먼저 무효화되는 것을 막습니다.</p></section><section><h2>5. Latest-Only</h2><div class="flow">Source History
 상태 A → B → C → D
 모두 보존
 
 Loop B
 B pending → superseded
 C pending → superseded
-D latest  → process</div><p>Running 구버전의 OpenCode 응답이 늦게 도착하면 최신성을 다시 검사하고 stale이면 Knowledge/Embedding/Publish를 중단합니다.</p></section><section><h2>6. 실제 로컬 DB는 아직 Migration 전</h2><div class="box warn"><b>코드 구현 완료와 실제 파일 변경을 구분합니다.</b><p>원격 저장소에서 <code>data/state/collector.db</code>를 직접 변경하지 않았습니다. 실제 환경에서 writer를 중지하고 아래 명령을 실행한 뒤 backup과 기존 Resume을 확인해야 합니다.</p></div><pre>python tools/migrate_state_v3.py --database data/state/collector.db</pre></section><section><h2>7. 다음 구현 · Loop A</h2><div class="box next"><b>기존 Jira Collector를 새 State Plane에 연결</b><p>Project Discovery → project_id Registry → Project Watermark → fixed upper → Delta query → semantic_v2 → candidate checkpoint → T3 Source Commit을 실제 수집 흐름에 연결합니다.</p></div><div class="flow">Project Discovery
+D latest + Source-ready → process</div><p><strong>Source-ready</strong>이면서 같은 Jira Issue의 최신 Work만 실제 AI 처리 대상으로 봅니다. Running 구버전의 OpenCode 응답이 늦게 도착하면 최신성을 다시 검사하고 stale이면 Knowledge/Embedding/Publish를 중단합니다.</p></section><section><h2>6. 실제 로컬 DB는 아직 Migration 전</h2><div class="box warn"><b>코드 구현 완료와 실제 파일 변경을 구분합니다.</b><p>원격 저장소에서 <code>data/state/collector.db</code>를 직접 변경하지 않았습니다. 실제 환경에서 writer를 중지하고 아래 명령을 실행한 뒤 backup과 기존 Resume을 확인해야 합니다.</p></div><pre>python tools/migrate_state_v3.py --database data/state/collector.db</pre></section><section><h2>7. 다음 구현 · Loop A</h2><div class="box next"><b>기존 Jira Collector를 새 State Plane에 연결</b><p>Project Discovery → project_id Registry → Project Watermark → fixed upper → Delta query → semantic_v2 → candidate checkpoint → T3 Source Commit을 실제 수집 흐름에 연결합니다.</p></div><div class="flow">Project Discovery
 → project_id 기반 project_state
 → initial / delta / catch-up 분기
 → lower = committed_watermark - 5m
