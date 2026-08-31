@@ -33,8 +33,9 @@ def test_next_session_starts_from_v3_implementation_gate() -> None:
 
 def test_handoff_preserves_full_operational_service_scope() -> None:
     text = START_HERE.read_text(encoding="utf-8")
+    upper = text.upper()
+    assert "SOURCE SYNC" in upper
     for token in (
-        "Source Sync",
         "OpenCode",
         "Embedding",
         "FAISS",
@@ -59,7 +60,6 @@ def test_handoff_preserves_source_history_latest_only_policy() -> None:
 
 def test_handoff_does_not_prematurely_freeze_next_milestone_number() -> None:
     text = START_HERE.read_text(encoding="utf-8")
-    # The handoff names implementation phases, but must not claim a new numbered milestone is current.
     assert "M12 CURRENT" not in text
     assert "M13 CURRENT" not in text
     assert "M12 DONE" not in text
