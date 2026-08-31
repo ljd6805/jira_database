@@ -106,7 +106,7 @@ window.JIRA_DOCUMENT_REGISTRY = Object.freeze([
   },
   {
     "path": "PIPELINE_OVERVIEW.html",
-    "title": "Jira Knowledge Pipeline · Two-Loop Overview"
+    "title": "Jira Knowledge Pipeline · Two-Loop Latest-Only Overview"
   },
   {
     "path": "architecture/jira_data_relationship_map.html",
@@ -114,7 +114,7 @@ window.JIRA_DOCUMENT_REGISTRY = Object.freeze([
   },
   {
     "path": "architecture/jira_knowledge_operational_service_phase.html",
-    "title": "Jira Knowledge Operational Service Phase · Two-Loop"
+    "title": "Jira Knowledge Operational Service Phase · Two-Loop Latest-Only"
   },
   {
     "path": "architecture/jira_knowledge_mcp_service_target.html",
