@@ -1,0 +1,39 @@
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="D10 Latest-Only Knowledge Processing 정책. Source History는 모두 보존하고 최신 Source Version만 지식화한다."><title>Sync Contract · D10 · Latest-Only Processing</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;line-height:1.78}.wrap{max-width:1080px;margin:auto;padding:42px 22px 90px}.hero,.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:20px}.hero{border-left:6px solid var(--green)}.card{margin-top:18px}.warn{border-left:5px solid var(--amber);background:#fff7e9}.good{border-left:5px solid var(--green);background:#eef9f4}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_contract.html">Sync Contract v3</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a></p><header class="hero"><div>D10 · FIXED · LATEST-ONLY KNOWLEDGE PROCESSING</div><h1>Source History는 모두 보존하고,<br>지식화는 최신 Version만 합니다.</h1><p>Loop A가 빠르고 Loop B가 느려 같은 Jira Issue의 여러 semantic Source Version이 backlog에 쌓여도, OpenCode/Embedding/Publish는 최신 Source Version만 처리합니다.</p></header><section class="card good"><h2>1. 최종 정책</h2><div class="flow">Source History
+V1 → V2 → V3 → V4
+모두 보존
+
+Knowledge Processing
+V1 이미 Published
+V2 pending → superseded
+V3 pending → superseded
+V4 latest  → process</div><p><strong>중간 Version을 지식화하지 않는다고 Source History를 삭제하는 것은 아닙니다.</strong> RAW/ANALYSIS/source_hash/Issue Version 관찰 이력은 계속 남습니다.</p></section><section class="card"><h2>2. 새 Version이 Source Commit될 때</h2><div class="flow">같은 jira_id의 새 Source Version V4가 SOURCE_COMMITTED
+→ V4 Source Ready
+→ 아직 완료되지 않은 이전 Work Item(V2/V3)을 찾음
+→ work_status = superseded
+→ superseded_by_work_item_id = V4 Work Item
+→ superseded_at = now
+→ 구조화 로그 기록</div><p>이미 Published된 과거 Version은 History로 남기며 supersede 대상이 아닙니다. 대상은 아직 Processing 가치가 남아 있던 pending/failed/running Work입니다.</p></section><section class="card warn"><h2>3. 이미 OpenCode가 처리 중이면?</h2><p>OpenCode 호출을 강제로 취소하는 것은 기본 정책으로 삼지 않습니다. 사내 API 호출은 이미 비용과 시간이 발생했고 안전한 취소 보장이 없을 수 있기 때문입니다.</p><div class="flow">V2 processing 시작
+↓
+그 사이 V3 SOURCE_COMMITTED
+↓
+V2 work_status = superseded
+↓
+OpenCode V2 응답 도착
+↓
+최신성 재검증
+↓
+V2가 최신 아님
+→ Active Knowledge로 저장하지 않음
+→ Embedding 하지 않음
+→ Publish 하지 않음
+→ stale_inflight 로그</div><p>가능한 경우 Knowledge DB에 쓰기 전에 버립니다. 다만 외부 호출 완료와 Source Commit이 정확히 겹치는 극단적 race에서 후보 산출물이 잠시 저장되더라도 절대 Active/Published로 승격하지 않습니다.</p></section><section class="card"><h2>4. Loop B Claim 조건</h2><div class="flow">Source Ready
+AND work_status IN ('pending','failed')
+AND superseded_by_work_item_id IS NULL
+
+→ claim 가능</div><p>Worker는 claim 직전, OpenCode 결과를 받은 직후, 그리고 Publish 직전에 최신성을 다시 확인합니다.</p></section><section class="card"><h2>5. Logging / Monitoring</h2><p>중간 Version은 지식화하지 않는 대신 운영에서 왜 건너뛰었는지 추적 가능해야 합니다. 로그에는 Jira 본문을 넣지 않고 identity와 상태만 기록합니다.</p><table><thead><tr><th>Event</th><th>의미</th></tr></thead><tbody><tr><td><code>work_item_superseded</code></td><td>더 최신 Source Version이 Source Commit되어 구버전 Work를 대체함</td></tr><tr><td><code>processing_skip_superseded</code></td><td>Worker가 이미 superseded된 Work를 건너뜀</td></tr><tr><td><code>stale_inflight_detected</code></td><td>처리 중 새 Version이 들어와 결과를 폐기함</td></tr><tr><td><code>latest_processing_started</code></td><td>최신 Work의 Processing 시작</td></tr></tbody></table><p>권장 필드: timestamp, jira_id, project_id, old/new work_item_id, source_run_id, processing_run_id, stage, reason. Jira 원문/댓글 본문은 로그에 남기지 않습니다.</p></section><section class="card"><h2>6. 운영 지표</h2><div class="flow">superseded_work_count
+stale_inflight_count
+latest_backlog_depth
+oldest_latest_pending_age
+processing_throughput
+OpenCode latency/error
+Publish Lag</div><p>특히 supersede 비율이 높으면 Loop A와 Loop B의 처리량 차이가 크다는 뜻이므로 OpenCode 병목을 운영에서 바로 볼 수 있습니다.</p></section><section class="card"><h2>7. 이 정책이 해결하는 것</h2><ul><li>느린 OpenCode가 이미 가치가 떨어진 중간 Version을 계속 처리하는 낭비를 막습니다.</li><li>Jira Source History는 잃지 않습니다.</li><li>사용자 검색에는 항상 마지막으로 안전하게 Published된 Knowledge만 노출합니다.</li><li>중간 변경과 supersede는 로그/지표로 운영 관찰이 가능합니다.</li></ul></section><footer>D10 FIXED · Source History all retained · Latest-only Knowledge Processing · 2026-08-31</footer></main></body></html>
