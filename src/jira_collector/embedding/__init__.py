@@ -35,6 +35,7 @@ from .corpus import (
 )
 from .operational import (
     OperationalEmbeddingResult,
+    OperationalEmbeddingRunResult,
     OperationalEmbeddingWorker,
     StaleEmbeddingWorkError,
     export_generation_corpus_atomic,
@@ -61,6 +62,7 @@ __all__ = [
     "EmbeddingSettingsError",
     "OpenAICompatibleEmbeddingClient",
     "OperationalEmbeddingResult",
+    "OperationalEmbeddingRunResult",
     "OperationalEmbeddingWorker",
     "StaleEmbeddingWorkError",
     "TEXT_PROFILE_STATEMENT_V1",
