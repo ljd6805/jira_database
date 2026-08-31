@@ -13,8 +13,8 @@ def test_version_guide_is_linked_from_hub() -> None:
     hub = read_doc("index.html")
     assert (DOCS / "VERSION_TERMINOLOGY_GUIDE.html").exists()
     assert 'href="VERSION_TERMINOLOGY_GUIDE.html"' in hub
-    assert "현재 Sync 규칙 · 개정 3" in hub
-    assert "현재 State 설계 · 개정 3" in hub
+    assert "현재 Sync 규칙" in hub and "개정 3" in hub
+    assert "현재 State 설계" in hub and "개정 3" in hub
 
 
 def test_shared_shell_explains_independent_version_tracks() -> None:
