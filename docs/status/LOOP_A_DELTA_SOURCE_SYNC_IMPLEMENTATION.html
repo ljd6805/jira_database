@@ -1,0 +1,181 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Continuous Jira Knowledge Service Loop A Delta Source Sync 구현 결과와 검증 상태">
+  <title>Loop A · Delta Source Sync · Implementation</title>
+  <style>
+    :root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 92px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,56px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:46px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}}
+  </style>
+  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
+</head>
+<body><main class="wrap">
+  <p><a href="../index.html">← Documentation Hub</a> · <a href="OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html">State Foundation</a> · <a href="../architecture/jira_sync_contract.html">현재 Sync 규칙</a> · <a href="POST_MVP_OPERATIONAL_SERVICE_START_HERE.html">Latest Handoff</a></p>
+
+  <header class="hero">
+    <div>LOOP A IMPLEMENTATION · 2026-08-31</div>
+    <h1>Jira Source Sync를<br>실제 운영 상태 흐름에 연결했습니다.</h1>
+    <p>Project Discovery, Project별 Watermark, 5분 overlap, fixed upper, stable Delta order, 이슈 단위 RAW/정제/Knowledge Input, <strong>semantic_v2</strong>, NEW/CHANGED/UNCHANGED, Source Commit, Resume을 하나의 Loop A 구현으로 연결했습니다.</p>
+    <span class="state">IMPLEMENTED · CI PASS · REAL JIRA ENV GATE PENDING</span>
+  </header>
+
+  <section><h2>1. 이번 구현 범위</h2><div class="grid2">
+    <div class="card good"><h3>Operational Source Sync</h3><p><code>src/jira_collector/source_sync.py</code>에 기존 파일럿 Collector와 분리된 운영용 Loop A를 추가했습니다.</p></div>
+    <div class="card good"><h3>semantic_v2 실제 구현</h3><p><code>issue.updated_at</code>, <code>comment.updated_at</code>, 경로, package-scope 파생값은 hash에서 제외하고 실제 업무 의미 변화만 분류에 사용합니다.</p></div>
+    <div class="card good"><h3>실행 도구</h3><p><code>tools/run_source_sync.py</code>로 새 Source Run과 같은 Run Resume을 실행할 수 있습니다.</p></div>
+    <div class="card good"><h3>Regression Tests</h3><p><code>tests/test_operational_source_sync.py</code>와 Knowledge Input hash 테스트가 실제 SQLite/파일로 계약을 검증합니다.</p></div>
+  </div></section>
+
+  <section><h2>2. 실제 Loop A 흐름</h2><div class="flow">Jira /serverInfo
+→ Jira server clock 기준 fixed upper 생성
+→ source_sync_run
+→ Project Discovery 전체 성공
+→ project_id Registry 반영
+→ initial / delta / catch-up / unavailable 분기
+
+Project별
+→ lower = committed_watermark - 5m   (delta/catch-up)
+→ upper = Source Run fixed upper
+→ updated >= lower AND updated < upper
+→ ORDER BY updated ASC, id ASC
+→ candidate detail + comments RAW 저장
+→ Issue / Comment / Structure Parser 재사용
+→ 이슈 단위 ANALYSIS 저장
+→ Knowledge Input package 저장
+→ semantic_v2 hash
+→ NEW / CHANGED / UNCHANGED
+→ record_source_candidate()
+→ Project 전체 안전 완료
+→ commit_source_project()
+→ SOURCE_COMMITTED + Watermark + Source Ready + supersede</div></section>
+
+  <section><h2>3. fixed upper는 Jira 시간 기준</h2><p>Source Run 시작 시 <code>/serverInfo</code>를 읽고 Jira server time을 분 단위 경계로 고정합니다. JQL에는 Jira timezone으로 표현하고, State DB에는 UTC ISO 시각으로 저장합니다.</p><div class="flow">예시
+Jira serverTime = 2026-08-31 20:40:42 +09:00
+fixed upper     = 2026-08-31 20:40 +09:00
+State DB upper = 2026-08-31T11:40:00+00:00</div><p>Resume할 때는 새 현재시각을 만들지 않고 최초 Run의 <code>upper_bound</code>와 저장된 server timezone 정보를 그대로 재사용합니다.</p></section>
+
+  <section><h2>4. Delta Query</h2><div class="flow">Initial Ingest
+project = "ABC"
+AND updated < "2026-08-31 20:40"
+ORDER BY updated ASC, id ASC
+
+Delta / Catch-up
+project = "ABC"
+AND updated >= "2026-08-31 20:35"
+AND updated <  "2026-08-31 20:50"
+ORDER BY updated ASC, id ASC</div><p>첫 Ingest에는 lower가 없습니다. 운영 기본은 전체 window이며 <code>--max-issues-per-project</code>는 테스트/파일럿 전용입니다.</p></section>
+
+  <section><h2>5. semantic_v2 구현</h2><table><thead><tr><th>값</th><th>Package 보존</th><th>Hash 포함</th></tr></thead><tbody>
+    <tr><td>Issue/Comment 실제 내용</td><td>예</td><td><strong>예</strong></td></tr>
+    <tr><td>created_at / author / 업무 context</td><td>예</td><td><strong>예</strong></td></tr>
+    <tr><td>issue.updated_at</td><td>예</td><td>아니오</td></tr>
+    <tr><td>comment.updated_at</td><td>예</td><td>아니오</td></tr>
+    <tr><td>source_path / source_page</td><td>예</td><td>아니오</td></tr>
+    <tr><td>other_package_available</td><td>예</td><td>아니오</td></tr>
+  </tbody></table><div class="card good"><p><strong>의미:</strong> Jira timestamp만 움직이거나 이번 run의 package 범위만 달라져도 CHANGED가 되지 않습니다. 실제 내용이 바뀌면 hash가 달라집니다.</p></div></section>
+
+  <section><h2>6. Project Discovery 안전 규칙</h2><div class="grid2">
+    <div class="card good"><h3>Discovery 완전 성공</h3><p>그때만 visible Project Registry를 갱신하고, 기존 Registry에만 남은 Project를 <code>unavailable</code>로 표시합니다.</p></div>
+    <div class="card warn"><h3>Discovery 실패</h3><p>기존 Project visibility를 전혀 바꾸지 않고 Source Run을 실패 처리합니다.</p></div>
+  </div><p>Project identity는 <code>project_id</code>이고 key/name은 변경 가능한 metadata입니다.</p></section>
+
+  <section><h2>7. Project 단위 실패 격리</h2><div class="flow">Project A
+candidate 1 ✓
+candidate 2 ✓
+Source Commit ✓
+Watermark 전진
+
+Project B
+candidate 1 ✓
+candidate 2 ✗
+Source Commit X
+Watermark 유지
+cursor는 candidate 1까지 durable
+
+Project C
+계속 진행</div><p>한 Project 실패 때문에 다른 Project의 정상 Source Commit을 되돌리지 않습니다.</p></section>
+
+  <section><h2>8. Same-Run Resume</h2><div class="flow">첫 시도
+fixed upper = 20:40
+ABC-1 완료 → cursor durable
+ABC-2 detail 실패
+Watermark 이동 안 함
+
+resume(source_run_id)
+→ 같은 fixed upper = 20:40
+→ 같은 Discovery snapshot
+→ ABC-1 cursor 이전이므로 skip
+→ ABC-2부터 재시도
+→ 성공 후 Project Source Commit
+→ Watermark = 20:40</div><p>같은 Run 재개가 불가능한 경우에는 이후 새 Run이 기존 committed Watermark - 5분 overlap부터 다시 잡도록 계약이 유지됩니다.</p></section>
+
+  <section><h2>9. 저장되는 파일</h2><div class="flow">data/raw/runs/&lt;sr_...&gt;/
+├─ server_info.json
+├─ project_discovery/
+│  ├─ page_0001.json ...
+│  └─ snapshot.json
+└─ projects/&lt;KEY&gt;/
+   ├─ issue_search/page_0001.json ...
+   └─ issues/&lt;ISSUE&gt;/
+      ├─ issue.json
+      └─ comments/page_*.json
+
+data/analysis/&lt;sr_...&gt;/projects/&lt;KEY&gt;/issues/&lt;ISSUE&gt;/analysis.json
+
+data/knowledge_input/runs/&lt;sr_...&gt;/issues/&lt;ISSUE&gt;.json</div><p>State cursor는 위 실제 산출물이 durable하게 저장된 뒤에만 전진합니다.</p></section>
+
+  <section><h2>10. 자동 테스트 결과</h2><table><thead><tr><th>검증</th><th>결과</th></tr></thead><tbody>
+    <tr><td>Initial Ingest / fixed upper / NEW Work</td><td>PASS</td></tr>
+    <tr><td>Watermark - 5m Delta JQL</td><td>PASS</td></tr>
+    <tr><td>timestamp-only 변경 → UNCHANGED</td><td>PASS</td></tr>
+    <tr><td>의미 있는 내용 변경 → CHANGED</td><td>PASS</td></tr>
+    <tr><td>이전 pending Work supersede</td><td>PASS</td></tr>
+    <tr><td>성공 Discovery의 Project 부재 → unavailable + Watermark 유지</td><td>PASS</td></tr>
+    <tr><td>Discovery 실패 → 기존 visibility 유지</td><td>PASS</td></tr>
+    <tr><td>중간 실패 후 same-run cursor Resume</td><td>PASS</td></tr>
+    <tr><td>relationship package-scope metadata hash 제외</td><td>PASS</td></tr>
+    <tr><td>운영 runner --help / import path</td><td>PASS</td></tr>
+  </tbody></table></section>
+
+  <section><h2>11. 실행 방법</h2><pre># 1) 기존 legacy collector.db라면 먼저 명시적 Migration
+python tools/migrate_state_v3.py --database data/state/collector.db
+
+# 2) 새 Source Sync Run
+python tools/run_source_sync.py
+
+# 3) 실패한 같은 Run Resume
+python tools/run_source_sync.py --resume-source-run-id sr_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# 테스트/파일럿에서만 후보 수 제한
+python tools/run_source_sync.py --max-issues-per-project 30</pre></section>
+
+  <section><h2>12. 아직 완료라고 말하지 않는 것</h2><div class="grid2">
+    <div class="card warn"><h3>REAL LOCAL Migration</h3><p>실제 사용 중인 <code>data/state/collector.db</code>의 backup/migration/resume 확인은 사용 환경에서 아직 실행하지 않았습니다.</p></div>
+    <div class="card warn"><h3>REAL Jira Run</h3><p>가짜 Jira 응답 기반 자동 테스트는 PASS지만 사내 Jira에 대해 새 Loop A runner를 실제 실행한 결과는 아직 없습니다.</p></div>
+    <div class="card warn"><h3>Loop B</h3><p>StateStore 기반은 있지만 OpenCode latest-only Worker orchestration은 다음 구현 단위입니다.</p></div>
+    <div class="card warn"><h3>Scheduler / Monitoring</h3><p>주기 실행과 Source Lag/Backlog 운영 화면은 아직 구현하지 않았습니다.</p></div>
+  </div></section>
+
+  <section><h2>13. 다음 구현</h2><div class="flow">현재 완료
+State Foundation
++ semantic_v2
++ Loop A Delta Source Sync
++ same-run Resume
++ execution runner
++ automated CI
+
+NEXT
+Loop B latest-only Single Worker
+→ claim latest + source-ready Work
+→ OpenCode 호출
+→ 응답 직후 stale guard
+→ Knowledge / Review / Evidence
+→ Embedding
+→ Publish 직전 stale guard
+→ Atomic Publish</div></section>
+
+  <footer class="footer">Loop A Delta Source Sync · IMPLEMENTED / CI PASS · REAL JIRA ENV GATE PENDING · 2026-08-31</footer>
+</main></body></html>
