@@ -41,8 +41,8 @@ STALE_STATUS_MARKERS = (
     "M10 NEXT / DESIGN NOT STARTED", "M10 DESIGN IN PROGRESS",
     "M10 IMPLEMENTATION PASS · REAL-RUN NEXT", "M10-05 REAL-RUN NEXT",
     "M10-05 NEXT", "M11 CURRENT", "M11-05 AUTO TOOL SELECTION NEXT",
-    "M11-05 NEXT", "M11-06 NEXT",
-    "TWO-LOOP REVIEW CURRENT", "S7 FINAL DDL = REVIEWING",
+    "M11-05 NEXT", "M11-06 NEXT", "TWO-LOOP REVIEW CURRENT",
+    "INTERMEDIATE VERSION POLICY", "S7 FINAL DDL = REVIEWING",
 )
 
 
@@ -72,10 +72,8 @@ def test_current_docs_do_not_regress_to_old_status() -> None:
             assert marker not in text, f"{path} contains stale marker: {marker}"
 
 
-def test_current_docs_record_two_loop_v2_as_source_of_truth() -> None:
+def test_current_entry_docs_record_two_loop_latest_only_v3() -> None:
     required = (
-        Path("README.md"),
-        Path("docs/PIPELINE_OVERVIEW.html"),
         Path("docs/index.html"),
         Path("docs/status/jira_knowledge_db_current_status.html"),
         Path("docs/status/POST_MVP_OPERATIONAL_SERVICE_START_HERE.html"),
@@ -84,12 +82,15 @@ def test_current_docs_record_two_loop_v2_as_source_of_truth() -> None:
         text = _read(path)
         upper = text.upper()
         assert "TWO-LOOP" in upper or "2-LOOP" in upper, path
-        assert "SOURCE" in upper and "PROCESSING" in upper, path
-        assert "sync_issue_change" in text, path
-        assert "v2" in text or "V2" in text, path
+        assert "LATEST-ONLY" in upper, path
+        assert "V3" in upper, path
+
+    status = _read(Path("docs/status/jira_knowledge_db_current_status.html"))
+    assert "sync_issue_change" in status
+    assert "superseded" in status
 
 
-def test_current_contract_and_schema_separate_source_and_processing_runs() -> None:
+def test_current_contract_and_schema_are_v3_latest_only() -> None:
     contract = _read(Path("docs/architecture/jira_sync_contract.html"))
     schema = _read(Path("docs/architecture/jira_sync_state_schema_contract.html"))
     ddl = _read(Path("docs/architecture/jira_sync_state_schema_decision7_final_ddl.html"))
@@ -98,25 +99,31 @@ def test_current_contract_and_schema_separate_source_and_processing_runs() -> No
         assert "source_sync_run" in text
         assert "processing_run" in text
         assert "sync_issue_change" in text
+        assert "superseded" in text
 
-    assert "STATE_SCHEMA_VERSION = 2" in schema
-    assert "PRAGMA user_version = 2" in schema
+    assert "D10" in contract and "Latest-Only" in contract
+    assert "STATE_SCHEMA_VERSION = 3" in schema
+    assert "PRAGMA user_version = 3" in schema
     assert "CREATE TABLE IF NOT EXISTS source_sync_run" in ddl
     assert "CREATE TABLE IF NOT EXISTS processing_run" in ddl
     assert "CREATE TABLE IF NOT EXISTS sync_issue_change" in ddl
+    assert "work_status" in ddl and "superseded_by_work_item_id" in ddl
 
 
-def test_historical_v1_is_explicitly_superseded_and_not_current() -> None:
-    historical = _read(Path("docs/architecture/jira_sync_state_schema_contract_v1_baseline.html"))
-    upper = historical.upper()
-    assert "SUPERSEDED" in upper
-    assert "NEVER DEPLOYED" in upper or "NEVER-DEPLOYED" in upper
-    assert "jira_sync_state_schema_contract.html" in historical
+def test_historical_schema_baselines_are_explicitly_not_current() -> None:
+    for path in (
+        Path("docs/architecture/jira_sync_state_schema_contract_v1_baseline.html"),
+        Path("docs/architecture/jira_sync_state_schema_contract_v2_baseline.html"),
+    ):
+        text = _read(path)
+        upper = text.upper()
+        assert "SUPERSEDED" in upper
+        assert "NEVER DEPLOYED" in upper or "NEVER-DEPLOYED" in upper
+        assert "jira_sync_state_schema_contract.html" in text
 
-    agents = _read(Path("AGENTS.md"))
-    assert "historical/superseded" in agents
-    assert "jira_operational_two_loop_architecture.html" in agents
-    assert "jira_sync_state_schema_contract.html" in agents
+    contract_v2 = _read(Path("docs/architecture/jira_sync_contract_v2_baseline.html"))
+    assert "SUPERSEDED" in contract_v2.upper()
+    assert "jira_sync_contract.html" in contract_v2
 
 
 def test_two_loop_docs_preserve_source_commit_publish_boundary() -> None:
@@ -133,15 +140,19 @@ def test_two_loop_docs_preserve_source_commit_publish_boundary() -> None:
         assert "backlog" in text.lower()
 
 
-def test_two_loop_observability_terms_are_kept() -> None:
-    required = (
-        Path("docs/architecture/jira_operational_two_loop_architecture.html"),
-        Path("docs/status/jira_knowledge_db_current_status.html"),
-    )
-    for path in required:
-        text = _read(path).lower()
-        for token in ("source lag", "publish lag", "backlog", "oldest pending"):
-            assert token in text, f"{path} missing {token}"
+def test_latest_only_contract_keeps_structured_monitoring_terms() -> None:
+    contract = _read(Path("docs/architecture/jira_sync_contract.html")).lower()
+    decision = _read(Path("docs/architecture/jira_sync_contract_decision10_latest_only_processing.html")).lower()
+    status = _read(Path("docs/status/jira_knowledge_db_current_status.html")).lower()
+    for token in ("source lag", "publish lag", "backlog"):
+        assert token in contract or token in status
+    for token in (
+        "work_item_superseded",
+        "processing_skip_superseded",
+        "stale_inflight_detected",
+        "latest_processing_started",
+    ):
+        assert token in decision
 
 
 def test_fixed_hub_frame_keeps_exact_five_sections() -> None:
@@ -253,13 +264,13 @@ def test_documentation_hub_links_all_milestone_completion_docs() -> None:
         assert path.name in index
 
 
-def test_documentation_hub_links_current_two_loop_sources() -> None:
+def test_documentation_hub_links_current_sources() -> None:
     index = _read(Path("docs/index.html"))
     for name in (
-        "jira_operational_two_loop_architecture.html",
         "jira_sync_contract.html",
+        "jira_sync_contract_decision10_latest_only_processing.html",
         "jira_sync_state_schema_contract.html",
-        "jira_sync_contract_easy_guide.html",
+        "jira_operational_two_loop_architecture.html",
         "jira_knowledge_pipeline_full_explained.html",
         "jira_knowledge_db_current_status.html",
         "POST_MVP_OPERATIONAL_SERVICE_START_HERE.html",
