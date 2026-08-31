@@ -13,20 +13,24 @@ def test_post_mvp_start_here_exists_and_is_html() -> None:
     assert "M0~M11" in text
     assert "Functional MVP" in text
     assert "Latest-Only" in text
+    assert "개정 3" in text
 
 
-def test_next_session_starts_after_loop_b_knowledge_implementation() -> None:
+def test_next_session_starts_after_knowledge_db_and_embedding_implementation() -> None:
     text = START_HERE.read_text(encoding="utf-8")
     for token in (
         "State Migration / StateStore foundation",
         "semantic_v2 source hash",
         "Loop A Delta Source Sync",
-        "Loop B Latest-Only Knowledge Worker",
+        "Loop B Knowledge Automation",
+        "per-Work Knowledge DB materialization",
+        "Incremental BGE-M3 staging",
         "IMPLEMENTED",
         "실제 local collector.db Migration",
         "실제 사내 Jira Loop A Run",
         "실제 사내 OpenCode Knowledge Run",
-        "Operational Data Plane Integration",
+        "실제 jira-knowledge-extraction Skill load",
+        "Atomic Publish",
     ):
         assert token in text
 
@@ -38,10 +42,11 @@ def test_handoff_preserves_full_operational_service_scope() -> None:
     assert "LOOP B" in upper
     assert "OPENCODE" in upper
     for token in (
-        "Knowledge DB incremental materialization",
+        "per-Work Knowledge DB materialization",
         "BGE-M3",
-        "FAISS staging",
+        "FAISS",
         "Atomic Publish",
+        "Structured Logging",
         "Remote MCP Operations / Team Pilot",
     ):
         assert token in text
@@ -50,20 +55,32 @@ def test_handoff_preserves_full_operational_service_scope() -> None:
 def test_handoff_preserves_source_history_latest_only_policy() -> None:
     text = START_HERE.read_text(encoding="utf-8")
     for token in (
-        "Source History",
-        "모두 보존",
+        "latest Work",
         "Source-ready",
-        "superseded",
         "latestness",
+        "superseded",
     ):
         assert token in text
 
 
-def test_handoff_links_current_implementation_reports() -> None:
+def test_handoff_records_opencode_automation_real_run_and_scheduler_separately() -> None:
     text = START_HERE.read_text(encoding="utf-8")
-    assert "LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html" in text
+    for token in (
+        "Loop B Knowledge Automation",
+        "Real Internal OpenCode Run",
+        "Continuous",
+        "NOT IMPLEMENTED",
+        "jira-knowledge-extraction",
+        "Skill",
+    ):
+        assert token in text
+
+
+def test_handoff_links_current_implementation_and_easy_guide() -> None:
+    text = START_HERE.read_text(encoding="utf-8")
     assert "LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html" in text
-    assert "OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html" in text
+    assert "OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html" in text
+    assert "jira_loop_b_opencode_automation_easy_guide.html" in text
 
 
 def test_handoff_does_not_prematurely_freeze_next_milestone_number() -> None:
