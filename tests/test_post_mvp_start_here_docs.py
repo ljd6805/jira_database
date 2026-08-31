@@ -16,15 +16,18 @@ def test_post_mvp_start_here_exists_and_is_html() -> None:
     assert "Latest-Only" in text
 
 
-def test_next_session_starts_from_state_foundation_then_loop_a() -> None:
+def test_next_session_starts_after_state_and_loop_a_implementation() -> None:
     text = START_HERE.read_text(encoding="utf-8")
     for token in (
         "현재 운영 Sync 규칙 · 개정 3",
         "현재 Operational State 설계 · 개정 3",
         "State Migration / StateStore foundation",
+        "semantic_v2 source hash",
+        "Loop A Delta Source Sync",
         "IMPLEMENTED",
-        "실제 로컬 collector.db Migration",
-        "Loop A Delta Source Sync integration",
+        "실제 local collector.db Migration",
+        "실제 사내 Jira Loop A Run",
+        "Loop B Latest-Only Single Worker",
         "Source Ready",
         "superseded",
         "stale guard",
@@ -38,7 +41,8 @@ def test_handoff_preserves_full_operational_service_scope() -> None:
     assert "SOURCE SYNC" in upper
     assert "OPENCODE" in upper
     for token in (
-        "Knowledge / Embedding / Atomic Publish",
+        "Knowledge / Review / Evidence",
+        "BGE-M3 / FAISS staging / Atomic Publish",
         "Structured Logging / Lag / Backlog Monitoring",
         "Remote MCP Operations / Team Pilot",
     ):
@@ -50,7 +54,7 @@ def test_handoff_preserves_source_history_latest_only_policy() -> None:
     for token in (
         "Source History",
         "모두 보존",
-        "Source Ready",
+        "Source-ready",
         "superseded",
     ):
         assert token in text
@@ -60,6 +64,11 @@ def test_handoff_preserves_source_history_latest_only_policy() -> None:
     ).read_text(encoding="utf-8")
     assert "Jira 본문/댓글" in implementation
     assert "기록하지 않고" in implementation
+
+
+def test_handoff_links_loop_a_implementation_report() -> None:
+    text = START_HERE.read_text(encoding="utf-8")
+    assert "LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html" in text
 
 
 def test_handoff_does_not_prematurely_freeze_next_milestone_number() -> None:
