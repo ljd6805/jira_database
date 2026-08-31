@@ -16,23 +16,24 @@ def test_post_mvp_start_here_exists_and_is_html() -> None:
     assert "개정 3" in text
 
 
-def test_next_session_starts_after_knowledge_db_and_embedding_implementation() -> None:
+def test_next_session_uses_fresh_bootstrap_and_real_smoke_gates() -> None:
     text = START_HERE.read_text(encoding="utf-8")
     for token in (
-        "State Migration / StateStore foundation",
-        "semantic_v2 source hash",
+        "Fresh Bootstrap",
+        "data_smoke",
         "Loop A Delta Source Sync",
         "Loop B Knowledge Automation",
         "per-Work Knowledge DB materialization",
         "Incremental BGE-M3 staging",
         "IMPLEMENTED",
-        "실제 local collector.db Migration",
-        "실제 사내 Jira Loop A Run",
-        "실제 사내 OpenCode Knowledge Run",
-        "실제 jira-knowledge-extraction Skill load",
+        "Real Loop A Smoke",
+        "Real Internal OpenCode Run",
+        "jira-knowledge-extraction",
         "Atomic Publish",
     ):
         assert token in text
+    assert "Legacy Migration" in text
+    assert "compatibility" in text.lower()
 
 
 def test_handoff_preserves_full_operational_service_scope() -> None:
@@ -76,11 +77,13 @@ def test_handoff_records_opencode_automation_real_run_and_scheduler_separately()
         assert token in text
 
 
-def test_handoff_links_current_implementation_and_easy_guide() -> None:
+def test_handoff_links_current_implementation_and_easy_guides() -> None:
     text = START_HERE.read_text(encoding="utf-8")
+    assert "LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html" in text
     assert "LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html" in text
     assert "OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html" in text
     assert "jira_loop_b_opencode_automation_easy_guide.html" in text
+    assert "jira_operational_fresh_bootstrap_smoke_policy.html" in text
 
 
 def test_handoff_does_not_prematurely_freeze_next_milestone_number() -> None:
