@@ -1,0 +1,33 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Jira Knowledge Pipeline 전체 문서의 v1/v2/v3 혼동을 줄이기 위한 버전 언어 재정렬 기록">
+  <title>Version Language Realignment · 2026-08-31</title>
+  <style>
+    :root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1100px;margin:auto;padding:28px 22px 86px}.hero{padding:36px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,52px)}section{margin-top:38px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}pre{white-space:pre-wrap;overflow:auto;padding:17px;border-radius:13px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:11px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}
+  </style>
+  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
+</head>
+<body><main class="wrap">
+<header class="hero"><div>DOCUMENTATION REALIGNMENT · 2026-08-31</div><h1>버전 숫자보다<br>“무엇의 현재 상태인가”를 먼저 보이게 한다</h1><p>사용자가 문서의 <code>v1/v2/v3</code> 표기를 이해하기 어렵다고 피드백하여, 전체 사람용 문서의 버전 언어와 현재/과거 상태 표시를 재정렬했습니다.</p></header>
+<section><h2>1. 문제</h2><div class="grid3"><div class="card"><h3>숫자만 보임</h3><p><code>v1/v2/v3</code>가 무엇의 버전인지 본문을 읽기 전에는 알기 어려웠습니다.</p></div><div class="card"><h3>독립 번호가 섞임</h3><p>Operational State, Knowledge DB, Document Shell, ID 알고리즘, hash profile의 번호가 같은 체계처럼 보였습니다.</p></div><div class="card"><h3>과거 문서 혼입</h3><p>개정 2 시점의 Easy Guide와 Decision 문서가 현재 문서처럼 읽히는 부분이 있었습니다.</p></div></div></section>
+<section><h2>2. 결정</h2><div class="card good"><strong>사람용 표기 순서</strong><pre>현재/과거 상태
+→ 무엇의 버전인지
+→ 같은 대상 안의 개정 번호</pre></div><table><thead><tr><th>대상</th><th>현재 사람용 표현</th></tr></thead><tbody><tr><td>Sync Contract</td><td>현재 운영 규칙 · Sync Contract · 개정 3</td></tr><tr><td>Operational State DB</td><td>현재 Operational State 설계 · 개정 3</td></tr><tr><td>Knowledge DB</td><td>실제 구현 완료 · Knowledge DB Schema · 개정 1</td></tr><tr><td>Document Shell</td><td>문서 UI 프레임 · 개정 1</td></tr><tr><td><code>semantic_v2</code></td><td>Source 변경 판별 hash profile 이름</td></tr><tr><td><code>STATE_ID_SCHEMA_VERSION = 2</code></td><td>Work Item ID 생성 알고리즘의 기술 버전</td></tr></tbody></table></section>
+<section><h2>3. 전체 문서에 적용한 방식</h2><div class="grid2"><div class="card"><h3>공통 Document Shell</h3><p>버전 표현이 있는 모든 HTML에서 펼쳐볼 수 있는 “버전 숫자 읽는 법” 도움말을 자동 제공합니다.</p></div><div class="card"><h3>Historical 자동 표시</h3><p>Baseline 문서는 공통 Shell에서 과거 보관본/현재 구현 기준 아님을 표시합니다.</p></div><div class="card"><h3>핵심 문서 직접 수정</h3><p>Hub, Sync Contract, State Schema, DDL, Two-Loop, Easy/Detailed Guide, State S1~S6, D7/D8, Baseline 문서를 현재 의미로 정렬했습니다.</p></div><div class="card"><h3>관계도 시각화</h3><p>State DB 현재 개정 3과 Knowledge DB 구현 개정 1을 독립된 번호 체계로 표시하고 cross-DB logical reference는 점선으로 구분합니다.</p></div></div></section>
+<section><h2>4. 내용 불일치도 함께 수정</h2><div class="card warn"><p>단순 이름 치환만 하지 않았습니다. 개정 2 시점 문서에 남아 있던 “Intermediate Version supersede 미결정”을 제거하고, 현재 확정된 <strong>Latest-Only / supersede / stale in-flight guard</strong> 규칙을 Easy Guide, Detailed Guide, 2-Loop Architecture, State S3/S4, D7 등에 반영했습니다.</p></div></section>
+<section><h2>5. 회귀 방지</h2><pre>tests/test_document_version_language.py
+
+검사 대상
+- Hub가 Version Terminology Guide를 연결하는가
+- 공통 Shell이 독립 버전 체계를 설명하는가
+- 현재 문서에 오래된 “현재 Schema v2” 표현이 다시 들어오지 않는가
+- 현재 claim gate가 Latest-Only 조건을 포함하는가
+- Baseline이 과거 문서라고 명시하는가
+- semantic_v2 / STATE_ID_SCHEMA_VERSION 같은 내부 번호를 설명하는가</pre></section>
+<section><h2>6. Source of Truth</h2><div class="card"><p><code>docs/VERSION_TERMINOLOGY_GUIDE.html</code>이 사람용 버전 언어 가이드이고, <code>docs/DOCUMENTATION_POLICY.html</code>과 <code>docs/templates/STANDARD_DOCUMENT_TEMPLATE.html</code>이 앞으로의 작성 규칙을 고정합니다.</p></div></section>
+</main></body></html>
