@@ -1,163 +1,41 @@
-<!doctype html>
-<html data-doc-shell="v1" lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Operational State Schema 개정 3의 explicit Migration, StateStore, Two-Loop Latest-Only 상태 기반 구현 결과">
-  <title>Operational State · 개정 3 · Migration / StateStore 구현</title>
-  <style>
-    :root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1140px;margin:auto;padding:42px 22px 90px}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(34px,5vw,55px);line-height:1.1}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:44px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}}
-  </style>
-  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
-  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
-</head>
-<body><main class="wrap">
-  <p><a href="../index.html">← Documentation Hub</a> · <a href="../architecture/jira_sync_state_schema_contract.html">현재 State 설계 · 개정 3</a> · <a href="POST_MVP_OPERATIONAL_SERVICE_START_HERE.html">Latest Handoff</a></p>
-  <header class="hero">
-    <div>IMPLEMENTATION REPORT · 2026-08-31</div>
-    <h1>Operational State 기반 구현을<br>시작했습니다.</h1>
-    <p>첫 구현 단위는 <strong>legacy collector.db의 명시적 Migration + StateStore 확장 + Latest-Only 상태 전이</strong>입니다. Jira Delta API 연동 자체는 다음 구현 단위입니다.</p>
-    <span class="state">IMPLEMENTED · CORE UNIT PASS · LOCAL DB MIGRATION PENDING</span>
-  </header>
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Operational State Schema 개정 3의 StateStore, Migration compatibility capability, Latest-Only 상태 구현 결과"><title>Operational State · 개정 3 · Migration / StateStore 구현</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78}.wrap{max-width:1120px;margin:auto;padding:42px 22px 90px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{padding:38px;border-left:6px solid var(--green)}.card{margin-top:18px}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow,pre{white-space:pre-wrap;padding:18px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line)}th{background:#eef3f9}a{color:var(--blue);font-weight:800}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="../architecture/jira_operational_fresh_bootstrap_smoke_policy.html">Fresh Bootstrap / Smoke</a> · <a href="../architecture/jira_sync_state_schema_contract.html">State 개정 3</a></p><header class="hero"><div>IMPLEMENTATION REPORT · CURRENT INTERPRETATION · 2026-08-31</div><h1>Operational State foundation은 구현됐습니다.</h1><p><code>state_schema.py</code>, <code>state_store.py</code>, Migration compatibility capability, Source Ready, Latest-Only supersede/stale guard를 구현했습니다. <strong>현재 공식 Real Test는 legacy DB Migration이 아니라 Fresh Bootstrap</strong>을 사용합니다.</p><strong>IMPLEMENTED · CI PASS · FRESH BOOTSTRAP DEFAULT · LEGACY MIGRATION COMPATIBILITY ONLY</strong></header><section class="card"><h2>1. 구현된 코드</h2><div class="flow">src/jira_collector/state_schema.py
+→ current Schema 개정 3 초기화
+→ legacy fingerprint
+→ explicit migration / backup / rollback
+→ unknown schema fail-closed
 
-  <section><h2>1. 이번에 실제로 구현한 것</h2><div class="grid2">
-    <div class="card good"><h3>State Schema foundation</h3><p><code>src/jira_collector/state_schema.py</code>. Schema inspection, fingerprint, explicit Migration, backup, integrity 검증, fail-closed를 구현했습니다.</p></div>
-    <div class="card good"><h3>StateStore expansion</h3><p><code>src/jira_collector/state_store.py</code>. 기존 Collector API를 유지하면서 Loop A / Loop B / Latest-Only 상태 API를 추가했습니다.</p></div>
-    <div class="card good"><h3>Explicit Migration tool</h3><p><code>tools/migrate_state_v3.py</code>. Jira credential 없이 State DB만 안전하게 Migration하는 독립 명령입니다.</p></div>
-    <div class="card good"><h3>Regression tests</h3><p><code>tests/test_state_schema_v3.py</code>. Migration/backup/rollback/supersede/A→B→A를 실제 SQLite로 검증합니다.</p></div>
-  </div></section>
+src/jira_collector/state_store.py
+→ 기존 Collector API 유지
+→ source_sync_run / project_state / source_project_run
+→ sync_issue_change / processing_run
+→ Source Ready
+→ superseded
+→ stale guard
+→ commit_source_project
 
-  <section><h2>2. Silent Migration을 막았습니다</h2><div class="flow">새/빈 collector.db
-→ 처음부터 Operational State 개정 3 초기화
+tools/migrate_state_v3.py
+→ legacy DB를 꼭 재사용할 때 쓰는 compatibility tool</div></section><section class="card good"><h2>2. 현재 공식 시작 방식</h2><div class="flow">Smoke
+→ data_smoke/ 새 DB
+→ Migration 없음
 
-기존 known legacy collector.db
-→ 일반 StateStore open
-→ StateMigrationRequiredError
-→ 자동 변경 금지
+Formal Real Test
+→ 파일럿 DB 삭제 또는 별도 보관
+→ 깨끗한 data/ 새 DB
+→ Migration 없음
+→ Full Initial Ingest
 
-명시적 Migration
-→ writer 차단
-→ SQLite consistent backup
-→ backup integrity check
-→ known legacy fingerprint 확인
-→ additive table 생성
-→ PRAGMA user_version = 3
-→ schema/integrity 검증
+Legacy DB reuse exception
+→ migrate_state_v3.py
+→ backup / fingerprint / integrity Gate</div></section><section class="card"><h2>3. Migration 기능을 왜 유지하는가?</h2><p>다른 설치 환경에서 기존 <code>collector.db</code>를 반드시 이어써야 할 가능성이 있으므로 compatibility capability로 남깁니다. 하지만 현재 프로젝트의 정식 Real Test는 이 경로를 사용하지 않습니다.</p></section><section class="card"><h2>4. 가장 중요한 State Transaction</h2><div class="flow">BEGIN
+source_project_run.source_status = source_committed
+project_state.committed_watermark = upper
+현재 Work → Source Ready
+이전 미완료 Work → superseded
+COMMIT</div><p><code>commit_source_project()</code>가 Watermark와 Ready/supersede를 같은 Transaction에서 처리합니다.</p></section><section class="card"><h2>5. Loop B foundation</h2><div class="flow">list_latest_ready_work_items()
+→ Source Ready + latest + pending/failed + not superseded
 
-unknown schema
-→ fail closed
-→ 자동 수정 금지</div><div class="card warn"><strong>중요</strong><p>Migration 기능은 구현됐지만 실제 사용 중인 <code>data/state/collector.db</code>를 이 작업에서 Migration했다고 주장하지 않습니다. 실제 파일은 사용 환경에서 backup 경로와 결과를 확인하며 별도 실행해야 합니다.</p></div></section>
+claim_work_item()
+→ Single Worker claim
 
-  <section><h2>3. 기존 Collector 기록을 보존합니다</h2><div class="flow">legacy tables · 그대로 유지
-collection_runs
-project_runs
-issue_checkpoints
-artifacts
-
-+
-
-Operational State tables
-source_sync_run
-project_state
-source_project_run
-sync_issue_change
-processing_run
-
-+
-state_schema_migration</div><p>기존 same-run Resume 기록을 추정 변환하지 않고 원래 row 그대로 보존합니다.</p></section>
-
-  <section><h2>4. Loop A에서 추가한 핵심 API</h2><table><thead><tr><th>API</th><th>역할</th></tr></thead><tbody>
-    <tr><td><code>create_source_sync_run()</code></td><td>fixed upper를 가진 Source Run 생성</td></tr>
-    <tr><td><code>upsert_visible_project()</code></td><td>project_id 기반 Registry/current state</td></tr>
-    <tr><td><code>start_source_project_run()</code></td><td>Project lower/upper/cursor 실행 시작</td></tr>
-    <tr><td><code>record_source_candidate()</code></td><td>NEW/CHANGED Work Item durable + cursor/count checkpoint. UNCHANGED는 Work Item 없음.</td></tr>
-    <tr><td><code>commit_source_project()</code></td><td>Source Commit + Watermark + Source Ready + supersede를 같은 Transaction으로 확정</td></tr>
-  </tbody></table></section>
-
-  <section><h2>5. 가장 중요한 Transaction</h2><div class="flow">T3 · Project Source Commit
-
-BEGIN
-
-source_project_run
-  source_status = source_committed
-
-project_state
-  committed_watermark = upper
-
-이번 Source Run의 NEW/CHANGED Work
-  last_source_committed_run_id = current
-  → Source Ready
-
-같은 jira_id의 이전 pending / failed / running Work
-  → work_status = superseded
-  → superseded_by_work_item_id = latest
-
-COMMIT</div><p>이 Transaction이 실패하면 Watermark만 앞서가거나, 아직 Commit되지 않은 최신 Version 때문에 기존 Work가 먼저 superseded되는 상태가 생기지 않습니다.</p></section>
-
-  <section><h2>6. Loop B foundation도 준비했습니다</h2><div class="grid3">
-    <div class="card"><h3>Latest backlog</h3><p><code>list_latest_ready_work_items()</code>는 Source Ready + pending/failed + not superseded만 반환합니다.</p></div>
-    <div class="card"><h3>Single Worker claim</h3><p><code>claim_work_item()</code>. 아직 Multi-worker lease는 도입하지 않습니다.</p></div>
-    <div class="card"><h3>Stale guard</h3><p><code>work_item_is_latest()</code>를 OpenCode 결과 후와 Publish 직전에 다시 사용할 수 있습니다.</p></div>
-  </div><div class="flow">claim 직전 latest check
-→ OpenCode
-→ 응답 직후 latest check
-→ Knowledge / Embedding
-→ Publish 직전 latest check
-→ Atomic Publish</div></section>
-
-  <section><h2>7. A → B → A도 처리합니다</h2><div class="flow">Source semantic state
-A → B → A
-
-첫 A
-→ Knowledge completed
-→ Embedding completed
-→ Published
-
-B
-→ 새 Work
-
-A가 다시 최신
-→ 기존 A의 같은 sw_ 재사용
-→ Knowledge/Embedding 재사용
-→ Publish만 pending으로 재활성화
-→ 미완료 B는 superseded</div><p>semantic identity와 expensive artifact를 불필요하게 다시 만들지 않습니다.</p></section>
-
-  <section><h2>8. 구조화 Logging</h2><div class="flow">state_event=work_item_superseded
-state_event=processing_skip_superseded
-state_event=stale_inflight_detected
-state_event=latest_processing_started
-state_event=work_item_reactivated</div><p>로그에는 <strong>Jira 본문/댓글을 기록하지 않고</strong> jira_id, work_item_id, run_id, 상태, 이유 같은 운영 metadata만 남깁니다.</p></section>
-
-  <section><h2>9. 현재 검증 결과</h2><div class="card good"><h3>Core implementation tests = PASS</h3><p>새 State 테스트가 포함된 GitHub Actions에서 Migration/StateStore 관련 검증은 모두 통과했습니다. 해당 실행에서는 총 173개 중 170개가 통과했고, 남은 3개는 동시에 변경된 문서 Shell/Registry 표현 불일치였습니다. 구현 실패는 없었습니다.</p></div><table><thead><tr><th>검증</th><th>결과</th></tr></thead><tbody>
-    <tr><td>새 DB → 개정 3 초기화</td><td>PASS</td></tr>
-    <tr><td>known legacy → explicit migration 요구</td><td>PASS</td></tr>
-    <tr><td>SQLite backup + legacy row 보존</td><td>PASS</td></tr>
-    <tr><td>Migration 재실행 no-op</td><td>PASS</td></tr>
-    <tr><td>unknown schema fail-closed</td><td>PASS</td></tr>
-    <tr><td>Watermark + Ready Gate rollback</td><td>PASS</td></tr>
-    <tr><td>running 구버전 supersede + stale guard</td><td>PASS</td></tr>
-    <tr><td>A→B→A artifact reuse</td><td>PASS</td></tr>
-  </tbody></table></section>
-
-  <section><h2>10. 실제 로컬 Migration 절차 · 아직 실행 전</h2><pre>python tools/migrate_state_v3.py \
-  --database data/state/collector.db</pre><p>실행 전에는 해당 DB를 쓰는 writer를 중지해야 합니다. 성공 시 timestamp가 포함된 pre-migration backup과 version/fingerprint가 출력됩니다.</p><div class="card warn"><strong>REAL LOCAL GATE</strong><p>실제 프로젝트의 기존 <code>collector.db</code>에서 backup / migration / integrity / 기존 Resume 확인은 별도 실행 결과를 받아 완료 처리합니다.</p></div></section>
-
-  <section><h2>11. 다음 구현 단위</h2><div class="flow">이번 완료
-Operational State 개정 3 foundation
-→ explicit Migration
-→ StateStore Loop A/B state API
-→ Latest-Only supersede/stale guard
-
-NEXT
-Loop A 실제 Delta Source Sync integration
-→ Project Discovery를 project_id Registry와 연결
-→ committed watermark - 5m
-→ fixed upper
-→ updated ASC, id ASC
-→ semantic_v2 classification
-→ record_source_candidate
-→ commit_source_project</div></section>
-
-  <footer class="footer">Operational State 개정 3 · Migration / StateStore foundation implementation · 2026-08-31</footer>
-</main></body></html>
+work_item_is_latest()
+→ OpenCode / Embedding / Publish 경계 stale guard</div></section><section class="card"><h2>6. 검증</h2><table><thead><tr><th>검증</th><th>결과</th></tr></thead><tbody><tr><td>빈 DB → State 개정 3</td><td>PASS</td></tr><tr><td>known legacy → explicit migration 요구</td><td>PASS</td></tr><tr><td>backup / legacy row 보존 / re-run no-op</td><td>PASS</td></tr><tr><td>unknown schema fail-closed</td><td>PASS</td></tr><tr><td>Watermark + Source Ready rollback</td><td>PASS</td></tr><tr><td>supersede + stale guard</td><td>PASS</td></tr><tr><td>A→B→A artifact reuse</td><td>PASS</td></tr></tbody></table></section><section class="card warn"><h2>7. 삭제하지 않는 이력</h2><p>Fresh Bootstrap에서 파일럿 DB를 제거하더라도 M0~M11 완료 HTML, Real-run 기록, Architecture/Decision 문서는 보존합니다. DB 재사용 여부와 프로젝트 의사결정 이력 보존은 별개입니다.</p></section><footer>Operational State 개정 3 · StateStore + Migration compatibility implemented · Fresh Bootstrap default · 2026-08-31</footer></main></body></html>
