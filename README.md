@@ -16,14 +16,18 @@ State Migration / StateStore foundation IMPLEMENTED · CI PASS
 semantic_v2 source hash                 IMPLEMENTED · CI PASS
 Loop A Delta Source Sync                IMPLEMENTED · CI PASS
 Loop B Latest-Only Knowledge Worker     IMPLEMENTED · CI PASS
+per-Work Knowledge DB materialization   IMPLEMENTED · CI PASS
+Incremental BGE-M3 staging              IMPLEMENTED · CI PASS
+Retrieval staging / Atomic Publish      NEXT
 실제 local collector.db Migration        NOT RUN YET
 실제 사내 Jira Loop A Run               NOT RUN YET
 실제 사내 OpenCode Knowledge Run        NOT RUN YET
-Operational Data Plane Integration      NEXT
+실제 사내 BGE-M3 Incremental Run        NOT RUN YET
 ```
 
 현재 최상위 기준 문서:
 
+- [Incremental Embedding 구현 보고서](docs/status/OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html)
 - [Loop B Latest-Only Knowledge Worker 구현 보고서](docs/status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html)
 - [Loop A Delta Source Sync 구현 보고서](docs/status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html)
 - [Operational State 개정 3 구현 보고서](docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html)
@@ -70,11 +74,9 @@ Jira Source 최신화와 느리고 변동성이 큰 OpenCode 지식화를 하나
 ```text
 Loop A · SOURCE SYNC                         IMPLEMENTED / CI PASS
 source_sync_run
-→ Jira serverInfo / fixed upper
 → Project Discovery
 → Initial / Delta / Catch-up
 → committed_watermark - 5m
-→ Jira Download
 → RAW / per-Issue ANALYSIS / Knowledge Input
 → semantic_v2 source_hash
 → NEW / CHANGED / UNCHANGED
@@ -98,19 +100,34 @@ processing_run
 → iv_ / kg_ State checkpoint
 → knowledge_status = completed
 
-Loop B · DATA PLANE                          NEXT
-→ per-Work Knowledge DB materialization
-→ BGE-M3 incremental Embedding
-→ FAISS staging / mapping
+Loop B · KNOWLEDGE DB                        IMPLEMENTED / CI PASS
+→ per-Work Issue Version / Generation / Attempt
+→ Knowledge Item / Evidence / Review
+→ candidate + accepted_attempt_id
+→ active 전환은 Publish까지 보류
+
+Loop B · INCREMENTAL EMBEDDING               IMPLEMENTED / CI PASS
+→ candidate Generation accepted Knowledge Item corpus
+→ BGE-M3
 → latestness re-check
-→ Atomic Publish
+→ Work별 corpus.jsonl / embeddings.jsonl atomic staging
+→ latestness re-check
+→ embedding_status = completed
+→ work_status = pending
+
+Loop B · RETRIEVAL / PUBLISH                 NEXT
+→ Published snapshot 구성
+→ FAISS staging / mapping / manifest
+→ latestness re-check
+→ coherent Atomic Publish
+→ Knowledge active state 정합화
 → PUBLISHED
 
 Always-on Retrieval
 Published Corpus → FAISS → Evidence/MCP → Team OpenCode
 ```
 
-두 Loop는 서로 기다리지 않습니다. OpenCode가 느려도 Jira Source Sync는 계속되고, 중간 Source Version은 History로 남지만 비싼 AI 처리는 최신 Version만 수행합니다.
+두 Loop는 서로 기다리지 않습니다. OpenCode나 BGE-M3가 느려도 Jira Source Sync는 계속되고, 중간 Source Version은 History로 남지만 비싼 AI/Data Plane 처리는 최신 Version만 수행합니다.
 
 ## 3. Loop A Delta Source Sync — IMPLEMENTED
 
@@ -165,7 +182,7 @@ src/jira_collector/knowledge_processing.py
 → 최신이면 canonical Knowledge/Review 승격
 → iv_ / kg_ 계산
 → knowledge_status = completed
-→ Embedding/Publish가 남아 있으므로 work_status = pending
+→ 다음 stage를 위해 work_status = pending
 ```
 
 OpenCode stdout 문구가 아니라 **실제 JSON artifact + Python Validator + Reviewer PASS + latestness**가 성공 기준입니다.
@@ -185,7 +202,44 @@ python tools/run_knowledge_worker.py \
 
 상세: [Loop B Knowledge Worker](docs/status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html)
 
-## 5. semantic_v2 — IMPLEMENTED
+## 5. Operational Knowledge DB + Incremental Embedding — IMPLEMENTED
+
+Knowledge Worker가 만든 Work 하나를 기존 M7 full-run loader에 억지로 넣지 않고 전용 incremental materializer로 적재합니다.
+
+```text
+per-Work Knowledge DB
+→ Issue Version / Generation / Attempt
+→ Knowledge Item / Evidence / Review
+→ candidate + accepted_attempt_id
+→ latestness 확인
+→ active 전환은 Publish 단계까지 보류
+
+Incremental Embedding
+→ candidate Generation의 accepted Item만 corpus 생성
+→ BGE-M3 호출
+→ API 응답 후 latestness 재확인
+→ corpus/embedding artifact atomic staging
+→ latestness 재확인
+→ embedding_status = completed
+→ Publish가 이어받도록 work_status = pending
+```
+
+실행:
+
+```bash
+python tools/run_embedding_worker.py \
+  --knowledge-db data/knowledge_db/your.sqlite3 \
+  --artifact-root data/embedding/operational \
+  --limit 1
+```
+
+`run_embedding_worker.py`는 Jira 인증을 다시 요구하지 않습니다. State DB, Knowledge DB, BGE-M3 설정만 소비합니다.
+
+> 자동 테스트는 fake OpenAI-compatible embedding client 기반입니다. 실제 사내 BGE-M3 endpoint Incremental Real Run은 별도 Gate입니다.
+
+상세: [Incremental Embedding Implementation](docs/status/OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html)
+
+## 6. semantic_v2 — IMPLEMENTED
 
 Jira `updated`는 Delta candidate trigger이고 semantic identity가 아닙니다.
 
@@ -208,23 +262,22 @@ source_hash에 유지
 
 따라서 timestamp만 바뀌거나 이번 run의 package 범위만 달라져도 UNCHANGED이고, 실제 업무 의미가 바뀌어야 CHANGED가 됩니다.
 
-## 6. Latest-Only Processing
+## 7. Latest-Only Processing
 
 ```text
 Source History
 상태 A → B → C → D
 모두 보존
 
-Knowledge Processing
-A already Published
+Knowledge / Data Plane
 B pending/running → superseded 가능
 C pending         → superseded
-D latest          → process
+D latest          → Knowledge → DB candidate → Embedding → Publish 준비
 ```
 
-구버전 Work가 이미 OpenCode 처리 중이면 외부 호출을 강제 취소하지 않습니다. 응답 후 최신성을 다시 검사하고 stale이면 canonical Knowledge 승격, Embedding, Publish를 중단합니다.
+구버전 Work가 이미 OpenCode/BGE-M3 처리 중이면 외부 호출을 강제 취소하지 않습니다. 응답 후 최신성을 다시 검사하고 stale이면 다음 canonical/Publish 경로를 중단합니다.
 
-A→B→A처럼 미완료 stale-running A가 다시 최신이 되면 retryable checkpoint로 처리합니다. 이미 완성된 artifact가 있으면 기존 재사용 정책을 유지합니다.
+A→B→A처럼 과거 semantic state가 다시 최신이 되면 기존 Work identity와 완성 artifact를 재사용할 수 있습니다.
 
 구조화 로그:
 
@@ -238,7 +291,7 @@ work_item_reactivated
 
 로그에는 Jira 원문/댓글 본문을 넣지 않고 identity/run/stage/reason/timestamp만 기록합니다.
 
-## 7. Operational State foundation — IMPLEMENTED
+## 8. Operational State foundation — IMPLEMENTED
 
 ```text
 src/jira_collector/state_schema.py
@@ -267,7 +320,7 @@ legacy collector.db
 
 > 실제 사용 중인 `data/state/collector.db`가 Migration됐다고 간주하지 않습니다. 실제 환경에서 writer를 중지하고 backup 결과와 기존 Resume 동작을 확인해야 합니다.
 
-## 8. 안전 경계
+## 9. 안전 경계
 
 Loop A T3:
 
@@ -280,19 +333,17 @@ project_state.committed_watermark = upper
 COMMIT
 ```
 
-Loop B Knowledge:
+Loop B Knowledge / Embedding:
 
 ```text
-staging artifact 먼저
-→ Validator/Reviewer
-→ latestness re-check
-→ canonical artifact durable
-→ State knowledge_status=completed 나중
+actual staging artifact 먼저
+→ validator/latestness 확인
+→ State completed 나중
 ```
 
-Publish 단계에서도 actual active switch가 State `published`보다 먼저여야 합니다.
+Publish 단계에서도 actual coherent active switch가 State `published`보다 먼저여야 합니다.
 
-## 9. Same-Run Resume
+## 10. Same-Run Resume
 
 ```text
 Source Run fixed upper = 최초 한 번 결정
@@ -307,7 +358,7 @@ resume(source_run_id)
 → Project 전체 성공 후 Watermark 전진
 ```
 
-## 10. Identity
+## 11. Identity
 
 ```text
 Jira identity
@@ -332,7 +383,7 @@ FAISS position ≠ emb_ ≠ ki_
 
 Loop B Knowledge Generation은 `iv_ + Knowledge Contract(knowledge schema / skill / runtime / model_profile)`로 `kg_`를 결정합니다.
 
-## 11. 현재 Operational State DB 구조
+## 12. 현재 Operational State DB 구조
 
 ```text
 STATE_SCHEMA_VERSION = 3
@@ -351,7 +402,7 @@ state_schema_migration
 
 기존 `collection_runs`, `project_runs`, `issue_checkpoints`, `artifacts`는 첫 Migration에서 삭제하거나 의미를 바꾸지 않습니다.
 
-## 12. 현재 운영 Sync 규칙
+## 13. 현재 운영 Sync 규칙
 
 ```text
 D1  Project별 committed Watermark
@@ -366,7 +417,7 @@ D9  Two-Loop Operational Architecture
 D10 Latest-Only Knowledge Processing
 ```
 
-## 13. 구현 검증
+## 14. 구현 검증
 
 ```text
 State Migration / backup / rollback / fail-closed       PASS
@@ -381,8 +432,13 @@ Knowledge staging → canonical promotion                 PASS
 OpenCode 중 newer Source → stale result 차단             PASS
 OpenCode failure → retryable failed state               PASS
 Reviewer non-PASS 차단                                  PASS
-A→B→A stale-running retry                               PASS
-Source/Knowledge runner entrypoints                     PASS
+per-Work Knowledge DB candidate materialization         PASS
+candidate Generation corpus                             PASS
+Incremental Embedding success / retry                   PASS
+BGE-M3 호출 중 newer Source → old completion 차단        PASS
+Embedding Processing Run claim/release                  PASS
+Source/Knowledge/Embedding runner entrypoints           PASS
+전체 GitHub Actions 회귀                                PASS
 ```
 
 아직 Real Environment Gate:
@@ -391,9 +447,10 @@ Source/Knowledge runner entrypoints                     PASS
 실제 사용 중 collector.db Migration   PENDING
 실제 사내 Jira Loop A Run             PENDING
 실제 사내 OpenCode Knowledge Run      PENDING
+실제 사내 BGE-M3 Incremental Run      PENDING
 ```
 
-## 14. 운영 최신성 / Backpressure
+## 15. 운영 최신성 / Backpressure
 
 ```text
 Source Lag
@@ -401,10 +458,10 @@ Publish Lag
 Latest Backlog Depth
 Oldest Latest Pending Age
 Supersede Ratio
-OpenCode Latency / Error / Throughput
+OpenCode / BGE-M3 Latency / Error / Throughput
 ```
 
-## 15. MVP 핵심 숫자
+## 16. MVP 핵심 숫자
 
 ```text
 Issue                         30
@@ -421,7 +478,7 @@ M8 Embedding                 285
 M9 FAISS Vector              285
 ```
 
-## 16. M7 Knowledge DB SQLite — DONE / PASS
+## 17. M7 Knowledge DB SQLite — DONE / PASS
 
 ```text
 Issue / Generation       30 / 30
@@ -444,7 +501,7 @@ Issue
          └─ Knowledge Review
 ```
 
-## 17. M8 BGE-M3 — DONE / PASS
+## 18. M8 BGE-M3 — DONE / PASS
 
 ```text
 Knowledge Item 1개 = Embedding Unit 1개
@@ -457,7 +514,9 @@ embedding_rows      285
 batch_count           5
 ```
 
-## 18. M9 FAISS — DONE / PASS
+M8의 위 수치는 기존 Functional MVP Real Run 결과입니다. 새 Incremental Embedding 운영 경로의 실제 사내 BGE-M3 Real Run과는 구분합니다.
+
+## 19. M9 FAISS — DONE / PASS
 
 ```text
 Index       IndexFlatIP
@@ -469,7 +528,7 @@ Reranker    none
 Mapping     FAISS position → emb_ → ki_
 ```
 
-## 19. M10 Evidence + MCP — DONE / PASS
+## 20. M10 Evidence + MCP — DONE / PASS
 
 ```text
 질문 → BGE-M3 → FAISS Top-3 Knowledge
@@ -489,7 +548,7 @@ get_jira_issue
 
 MCP에는 생성형 LLM이 없습니다.
 
-## 20. M11 OpenCode Integration — DONE / PASS
+## 21. M11 OpenCode Integration — DONE / PASS
 
 ```text
 M11-01 .env service configuration                PASS
@@ -504,7 +563,7 @@ M11-06 description/comment Evidence 추적         PASS
 
 서비스 설정 키는 `.env.example`과 M11 문서에서 관리합니다: `JIRA_KNOWLEDGE_DB_PATH`, `JIRA_RETRIEVAL_ARTIFACT_DIR`, `BGE_M3_ENDPOINT`.
 
-## 21. Central Remote MCP
+## 22. Central Remote MCP
 
 Central MCP는 두 Loop를 실행하는 엔진이 아닙니다.
 
@@ -520,25 +579,27 @@ Central MCP
 
 새 Processing/Publish가 실패해도 마지막 정상 Published Corpus를 계속 제공합니다.
 
-## 22. 다음 구현 순서
+## 23. 다음 구현 순서
 
 ```text
 Operational State foundation               IMPLEMENTED / CI PASS
 semantic_v2                                 IMPLEMENTED / CI PASS
 Loop A Delta Source Sync                    IMPLEMENTED / CI PASS
 Loop B latest-only Knowledge Worker         IMPLEMENTED / CI PASS
-Operational per-Work Knowledge DB           NEXT
-Incremental BGE-M3 / FAISS / Atomic Publish LATER
+Operational per-Work Knowledge DB           IMPLEMENTED / CI PASS
+Incremental BGE-M3 staging                  IMPLEMENTED / CI PASS
+FAISS staging / coherent Atomic Publish     NEXT
 Monitoring / Remote MCP Operations          LATER
 ```
 
-다음 구현에서는 기존 M7 full-run loader를 억지로 재사용하지 않고, **현재 Work Item 하나를 Knowledge DB에 incremental materialize하는 전용 경로**를 만든 뒤 Embedding/Publish로 이어갑니다.
+다음 구현의 핵심은 **FAISS 파일 하나를 단순 교체하는 것이 아니라 Knowledge DB active Generation과 Retrieval artifact가 한 Published snapshot으로 일관되게 보이도록 만드는 것**입니다. Half-Publish를 막는 active bundle/pointer 경계를 먼저 구현합니다.
 
 Multi-worker claim/lease와 외부 MQ, 정확한 cadence/concurrency는 실제 Single Worker 처리량을 측정한 뒤 결정합니다.
 
-## 23. 주요 문서
+## 24. 주요 문서
 
 - [Documentation Hub](docs/index.html)
+- [Incremental Embedding](docs/status/OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html)
 - [Loop B Knowledge Worker](docs/status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html)
 - [Loop A Delta Source Sync](docs/status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html)
 - [Operational State 구현 보고서](docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html)
@@ -556,7 +617,7 @@ Multi-worker claim/lease와 외부 MQ, 정확한 cadence/concurrency는 실제 S
 - [버전 표기 가이드](docs/VERSION_TERMINOLOGY_GUIDE.html)
 - [Documentation Policy](docs/DOCUMENTATION_POLICY.html)
 
-## 24. 로컬 MVP Artifact
+## 25. 로컬 MVP Artifact
 
 ```text
 M7 SQLite
