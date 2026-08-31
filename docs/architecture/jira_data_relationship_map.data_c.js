@@ -1,15 +1,15 @@
 Object.assign(window.JIRA_MAP_VIEWS,{
   "state":{
-    "title":"Operational State DB v3 · 2-Loop / Latest-Only",
-    "help":"현재 FROZEN DDL v3의 핵심 5개 Operational table을 FK와 claim 조건 중심으로 보여줍니다. 점선 logical 관계가 아니라 이 화면의 연결은 모두 collector.db 내부 관계/운영 의존성입니다.",
+    "title":"Operational State DB · 현재 설계 개정 3 · 2-Loop / Latest-Only",
+    "help":"현재 Operational State DB 설계(개정 3)의 핵심 5개 table을 FK와 claim 조건 중심으로 보여줍니다. Knowledge DB의 개정 번호와는 별도입니다.",
     "nodes":[
       {"id":"sr","type":"db","kind":"db","shape":"rect","x":150,"y":110,"w":235,"h":92,"label":"source_sync_run","sub":"PK source_run_id · Loop A run","detail":"Loop A 한 번의 전체 Source Sync 실행. fixed upper, discovery/source/run status를 기록합니다."},
       {"id":"ps","type":"issue","kind":"issue","shape":"rect","x":480,"y":110,"w":235,"h":92,"label":"project_state","sub":"PK project_id · watermark","detail":"프로젝트 장기 상태. current key/name, visibility, committed_watermark와 마지막 Source 성공을 기억합니다."},
       {"id":"spr","type":"db","kind":"db","shape":"rect","x":480,"y":340,"w":255,"h":98,"label":"source_project_run","sub":"PK (source_run_id, project_id)","detail":"특정 Source Run 안에서 특정 Project를 어디까지 읽었는지 기록합니다. lower/upper, cursor, candidate/new/changed/unchanged count가 핵심입니다."},
-      {"id":"work","type":"plan","kind":"db","shape":"rect","x":825,"y":340,"w":275,"h":104,"label":"sync_issue_change","sub":"PK work_item_id · durable backlog","detail":"Loop A와 Loop B 사이의 Work Item table. Source lineage, Ready Gate, latest-only supersede, knowledge/embedding/publish stage를 한 row에 기록합니다."},
+      {"id":"work","type":"plan","kind":"db","shape":"rect","x":825,"y":340,"w":275,"h":104,"label":"sync_issue_change","sub":"PK work_item_id · durable backlog","detail":"Loop A와 Loop B 사이의 Work Item table. Source lineage, Ready Gate, Latest-Only supersede, knowledge/embedding/publish stage를 한 row에 기록합니다."},
       {"id":"pr","type":"knowledge","kind":"knowledge","shape":"rect","x":1140,"y":110,"w":235,"h":92,"label":"processing_run","sub":"PK processing_run_id · Loop B run","detail":"Loop B 한 번의 backlog 소비 실행. selected/published/failed/superseded count와 backlog 전후를 기록합니다."},
       {"id":"gate","type":"store","kind":"store","shape":"rect","x":825,"y":610,"w":300,"h":118,"label":"Source Ready + Latest Gate","sub":"claimable Work만 통과","detail":"committed run과 observed run이 같고, work_status가 pending/failed이며 superseded되지 않은 row만 Loop B가 claim할 수 있습니다."},
-      {"id":"migration","type":"store","kind":"store","shape":"rect","x":180,"y":610,"w":260,"h":92,"label":"state_schema_migration","sub":"technical metadata · user_version=3","detail":"Operational domain이 아닌 migration audit table. schema upgrade의 from/to version, fingerprint, backup을 기록합니다."}
+      {"id":"migration","type":"store","kind":"store","shape":"rect","x":180,"y":610,"w":260,"h":92,"label":"state_schema_migration","sub":"technical metadata · user_version=3","detail":"Operational domain이 아닌 migration audit table입니다. user_version=3은 현재 Operational State schema의 SQLite 기술 marker입니다."}
     ],
     "edges":[
       {"from":"sr","to":"ps","label":"FK ×3 · seen/success run","fromSide":"right","toSide":"left"},
@@ -24,8 +24,8 @@ Object.assign(window.JIRA_MAP_VIEWS,{
     ]
   },
   "crossdb":{
-    "title":"State DB ↔ Knowledge DB · Physical FK vs Logical Reference",
-    "help":"두 SQLite DB 사이에는 일반 FK를 걸지 않습니다. sync_issue_change의 issue_version_id / knowledge_generation_id는 Knowledge DB의 ID를 가리키는 logical reference이며, jira_id + source_hash가 reconciliation의 핵심 의미 키입니다.",
+    "title":"Operational State DB ↔ Knowledge DB · 서로 독립된 Schema 개정 번호",
+    "help":"Operational State DB는 현재 설계 개정 3, Knowledge DB는 실제 구현 Schema 개정 1입니다. 숫자 3과 1은 서로 비교할 버전이 아닙니다. 두 SQLite DB 사이에는 일반 FK 대신 logical reference를 사용합니다.",
     "nodes":[
       {"id":"pr2","type":"knowledge","kind":"knowledge","shape":"rect","x":170,"y":105,"w":230,"h":86,"label":"processing_run","sub":"State DB · pr_","detail":"Loop B 실행 자체의 운영 상태입니다."},
       {"id":"work2","type":"plan","kind":"db","shape":"rect","x":235,"y":330,"w":290,"h":112,"label":"sync_issue_change","sub":"State DB · sw_ backlog","detail":"jira_id/source_hash와 Knowledge DB logical IDs를 보관합니다. DB를 넘는 물리 FK는 아닙니다."},
