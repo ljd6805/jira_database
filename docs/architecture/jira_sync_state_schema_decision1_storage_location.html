@@ -1,10 +1,18 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S1 · Storage Location · Current</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--green:#14845f;--blue:#3157d5;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1000px;margin:auto;padding:42px 22px 84px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}a{color:var(--blue);font-weight:800}.card{margin-top:18px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">현재 Operational State 설계 · 개정 3</a></p><header class="hero"><div>S1 · FIXED · CURRENT</div><h1>기존 collector.db를 Operational State DB로 확장한다.</h1><p>2-Loop + Latest-Only 채택 후에도 저장소 책임은 그대로 유지됩니다.</p></header><section class="card"><h2>현재 결정</h2><div class="flow">Control Plane
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S1 · Storage Location · Current</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--green:#14845f;--blue:#3157d5;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1000px;margin:auto;padding:42px 22px 84px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}a{color:var(--blue);font-weight:800}.card{margin-top:18px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_operational_fresh_bootstrap_smoke_policy.html">Fresh Bootstrap / Smoke</a> · <a href="jira_sync_state_schema_contract.html">현재 Operational State 설계 · 개정 3</a></p><header class="hero"><div>S1 · CURRENT · REVISED BOOTSTRAP INTERPRETATION</div><h1>Operational State DB는<br><code>data_root/state/collector.db</code>에 둔다.</h1><p>State DB의 역할과 파일명은 유지하되, <strong>기존 파일럿 DB를 반드시 재사용한다는 의미는 폐기</strong>합니다. 현재 공식 경로는 Fresh Bootstrap입니다.</p></header><section class="card"><h2>현재 위치 규칙</h2><div class="flow">Formal Real Test / Operation
+data_root = ./data
 → data/state/collector.db
-→ source_sync_run
-→ project_state
-→ source_project_run
-→ sync_issue_change
-→ processing_run
 
-Data Plane
-→ Knowledge DB · 별도 SQLite</div></section><section class="card"><h2>Migration은 필수</h2><p>기존 DB를 단순 재사용하는 것이 아니라 explicit migration으로 확장합니다. 현재 실제 목표는 <strong>Operational State Schema 개정 3</strong>이며 SQLite 기술 marker는 <code>STATE_SCHEMA_VERSION = 3</code> / <code>PRAGMA user_version = 3</code>입니다.</p></section><section class="card"><h2>왜 새 DB를 만들지 않나?</h2><p>Source cursor, Watermark, Work backlog, Processing checkpoint는 모두 실행 Control Plane의 상태입니다. 기존 Collector Resume State와 같은 책임에 속하므로 하나의 State DB로 유지합니다.</p></section><section class="card"><h2>버전 번호 주의</h2><p>여기서 개정 3은 <strong>Operational State DB</strong>의 개정 번호입니다. M7의 Knowledge DB Schema 개정 1과는 별도입니다.</p></section><footer>S1 current · storage location unchanged · Operational State 개정 3 · 2026-08-31</footer></main></body></html>
+Smoke
+data_root = ./data_smoke
+→ data_smoke/state/collector.db
+
+둘 다 같은 Operational State Schema 개정 3
+둘 다 Control Plane 역할</div></section><section class="card"><h2>Control Plane / Data Plane</h2><div class="flow">Control Plane · State DB
+source_sync_run
+project_state
+source_project_run
+sync_issue_change
+processing_run
+
+Data Plane · Knowledge DB
+Issue Version / Generation / Attempt / Item / Evidence / Review</div></section><section class="card"><h2>Fresh Bootstrap이 기본</h2><p>새 Smoke와 정식 Real Test에서는 빈 DB를 현재 Schema 개정 3으로 직접 초기화합니다. 기존 파일럿 <code>collector.db</code>를 이어받지 않습니다.</p></section><section class="card"><h2>Migration은 조건부</h2><p>기존 legacy <code>collector.db</code>를 꼭 재사용해야 하는 별도 환경에서만 explicit Migration이 필수입니다. 현재 공식 Real Test에는 해당하지 않습니다.</p></section><section class="card"><h2>왜 State DB 역할은 하나로 유지하나?</h2><p>Source cursor, Watermark, Work backlog, Processing checkpoint는 모두 Control Plane 상태입니다. Fresh DB를 만들더라도 이 책임 경계는 변하지 않습니다.</p></section><section class="card"><h2>버전 번호 주의</h2><p><code>STATE_SCHEMA_VERSION = 3</code>은 Operational State DB의 개정 번호입니다. M7 Knowledge DB Schema 개정 1과는 별도입니다.</p></section><footer>S1 current · data_root/state/collector.db · Fresh Bootstrap default · legacy migration conditional · 2026-08-31</footer></main></body></html>
