@@ -3,35 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Jira Knowledge Pipeline Documentation Hub와 공통 문서 내비게이션을 고정하는 Document Framework v1 결정 문서">
-  <title>Jira Knowledge Pipeline · Document Framework v1</title>
+  <meta name="description" content="Jira Knowledge Pipeline Documentation Hub와 공통 문서 내비게이션을 고정하는 Document Framework 개정 1 결정 문서">
+  <title>Jira Knowledge Pipeline · Document Framework · 개정 1</title>
   <style>
     :root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.72}
-    .wrap{max-width:1080px;margin:auto;padding:24px 22px 80px}.hero{padding:36px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}
-    h1{margin:7px 0;font-size:clamp(32px,5vw,52px);line-height:1.12}section{margin-top:38px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-    .card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card p{margin:6px 0;color:var(--muted);font-size:14px}.callout{padding:16px 18px;border-left:5px solid var(--green);background:#eaf8f3;border-radius:11px}
-    pre{white-space:pre-wrap;overflow:auto;padding:17px;border-radius:13px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line)}th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}@media(max-width:760px){.grid{grid-template-columns:1fr}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.72}.wrap{max-width:1080px;margin:auto;padding:24px 22px 80px}.hero{padding:36px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:7px 0;font-size:clamp(32px,5vw,52px);line-height:1.12}section{margin-top:38px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.card p{margin:6px 0;color:var(--muted);font-size:14px}.callout{padding:16px 18px;border-left:5px solid var(--green);background:#eaf8f3;border-radius:11px}.warn{border-color:var(--amber);background:#fff6e9}pre{white-space:pre-wrap;overflow:auto;padding:17px;border-radius:13px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line)}th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9;font-size:13px}@media(max-width:760px){.grid{grid-template-columns:1fr}}
   </style>
   <link rel="stylesheet" href="assets/document-shell.css" data-doc-shell="v1">
-<script defer src="assets/document-navigation.js" data-doc-shell="v1"></script></head>
+  <script defer src="assets/document-navigation.js" data-doc-shell="v1"></script>
+</head>
 <body><main class="wrap">
-<header class="hero"><strong>DOCUMENT FRAMEWORK v1 · DECIDED · 2026-08-27</strong><h1>문서의 내용은 늘어나도<br>문서의 틀은 흔들리지 않게</h1><p>Documentation Hub와 모든 HTML 문서의 공통 탐색 규칙을 하나의 프레임으로 고정합니다. 앞으로 새 문서를 만들 때마다 내비게이션을 다시 발명하지 않습니다.</p></header>
-<section><h2>1. 이번에 고정한 것</h2><div class="grid"><article class="card"><h3>Hub Frame v1</h3><p>Hub는 5개 기본 영역과 공통 카드/색상/폭을 <code>assets/hub-frame.css</code>에서 관리합니다.</p></article><article class="card"><h3>Document Shell v1</h3><p>모든 일반 HTML 문서는 같은 CSS/JS shell을 포함합니다.</p></article><article class="card"><h3>Navigation Contract</h3><p><strong>이전 문서 / 문서 Hub / 다음 문서</strong>가 항상 같은 위치와 모양으로 존재합니다.</p></article></div></section>
+<header class="hero"><strong>DOCUMENT UI FRAME · 개정 1 · DECIDED · 2026-08-31</strong><h1>문서의 내용은 늘어나도<br>문서의 틀은 흔들리지 않게</h1><p>Documentation Hub와 모든 HTML 문서의 공통 탐색 규칙을 하나의 프레임으로 고정합니다. 여기서 <strong>개정 1은 문서 UI 틀의 번호</strong>이며 State DB, Knowledge DB, Sync Contract의 개정 번호와 관계없습니다.</p></header>
+<section><div class="callout warn"><strong>버전 숫자 혼동 방지</strong><br>예전 문서의 <code>Document Framework v1</code>, <code>Document Shell v1</code>, <code>Hub Frame v1</code>은 모두 <strong>문서 UI 프레임 개정 1</strong>을 뜻합니다. Operational State Schema 개정 3이나 Knowledge DB Schema 개정 1과 비교하는 숫자가 아닙니다. 자세한 규칙은 <a href="VERSION_TERMINOLOGY_GUIDE.html">버전 표기 가이드</a>를 따릅니다.</div></section>
+<section><h2>1. 이번에 고정한 것</h2><div class="grid"><article class="card"><h3>Hub Frame · 개정 1</h3><p>Hub는 5개 기본 영역과 공통 카드/색상/폭을 <code>assets/hub-frame.css</code>에서 관리합니다.</p></article><article class="card"><h3>Document Shell · 개정 1</h3><p>모든 일반 HTML 문서는 같은 CSS/JS shell을 포함합니다.</p></article><article class="card"><h3>Navigation Contract</h3><p><strong>이전 문서 / 문서 Hub / 다음 문서</strong>가 항상 같은 위치와 모양으로 존재합니다.</p></article></div></section>
 <section><h2>2. 내비게이션 계약</h2><div class="callout"><strong>버튼은 없어지지 않습니다.</strong><br>첫 번째 문서라 이전 문서가 없거나 마지막 문서라 다음 문서가 없더라도 버튼 영역 자체는 유지하고 disabled 상태로 표시합니다.</div><table><thead><tr><th>버튼</th><th>항상 존재?</th><th>동작</th></tr></thead><tbody><tr><td>← 이전 문서</td><td>예</td><td>Registry 기준 이전 문서. 없으면 disabled.</td></tr><tr><td>⌂ 문서 Hub</td><td>예</td><td>항상 <code>docs/index.html</code>로 복귀.</td></tr><tr><td>다음 문서 →</td><td>예</td><td>Registry 기준 다음 문서. 없으면 disabled.</td></tr></tbody></table><p>긴 문서에서도 탐색이 끊기지 않도록 같은 세 버튼을 문서 상단과 하단에 모두 제공합니다.</p></section>
-<section><h2>3. Hub의 고정 골격</h2><pre>1. 지금 어디부터 읽나?           # hub-start
+<section><h2>3. 공통 버전 도움말</h2><p>Document Shell은 문서 본문에서 <code>v1/v2/v3</code>, <code>semantic_v2</code>, <code>schema_version</code> 같은 표현을 감지하면 상단에 공통 버전 도움말을 표시합니다.</p><pre>숫자만 비교하지 않기
+→ 현재/과거 상태 확인
+→ 무엇의 버전인지 확인
+→ 같은 대상 안에서만 개정 번호 비교</pre><p>Historical/Baseline 문서는 공통 Shell이 “과거 설계 보관본 · 현재 구현 기준 아님” 상태를 추가로 표시합니다.</p></section>
+<section><h2>4. Hub의 고정 골격</h2><pre>1. 지금 어디부터 읽나?           # hub-start
 2. 전체를 한 줄씩만 보면        # hub-roadmap
 3. 운영 서비스 핵심              # hub-service
 4. Milestone Visual Documents     # hub-milestones
 5. Architecture / Policy          # hub-reference</pre><p>새 문서가 추가되면 알맞은 영역에 카드/링크를 추가합니다. 기본 5개 영역 자체를 매번 재배치하거나 새 스타일을 임의로 만들지 않습니다.</p></section>
-<section><h2>4. 단일 원본</h2><table><thead><tr><th>파일</th><th>책임</th></tr></thead><tbody><tr><td><code>docs/assets/hub-frame.css</code></td><td>Documentation Hub의 고정 레이아웃/스타일</td></tr><tr><td><code>docs/assets/document-shell.css</code></td><td>모든 일반 문서의 공통 탐색 UI 스타일</td></tr><tr><td><code>docs/assets/document-navigation.js</code></td><td>이전/Hub/다음 버튼 생성과 이동</td></tr><tr><td><code>docs/assets/document-registry.js</code></td><td>문서 순서. 동기화 도구가 자동 생성</td></tr><tr><td><code>tools/docs/sync_document_shell.py</code></td><td>기존/신규 HTML에 shell을 적용하고 Registry를 갱신</td></tr><tr><td><code>tests/test_document_shell_consistency.py</code></td><td>프레임 회귀 방지</td></tr></tbody></table></section>
-<section><h2>5. 새 문서를 만드는 방법</h2><pre>1. docs/templates/STANDARD_DOCUMENT_TEMPLATE.html 복사
+<section><h2>5. 단일 원본</h2><table><thead><tr><th>파일</th><th>책임</th></tr></thead><tbody><tr><td><code>docs/assets/hub-frame.css</code></td><td>Documentation Hub의 고정 레이아웃/스타일</td></tr><tr><td><code>docs/assets/document-shell.css</code></td><td>모든 일반 문서의 공통 탐색 UI + 버전 도움말 스타일</td></tr><tr><td><code>docs/assets/document-navigation.js</code></td><td>이전/Hub/다음 버튼과 버전 문맥 도움말 생성</td></tr><tr><td><code>docs/assets/document-registry.js</code></td><td>문서 순서. 동기화 도구가 자동 생성</td></tr><tr><td><code>tools/docs/sync_document_shell.py</code></td><td>기존/신규 HTML에 shell을 적용하고 Registry를 갱신</td></tr><tr><td><code>tests/test_document_shell_consistency.py</code></td><td>프레임 회귀 방지</td></tr></tbody></table></section>
+<section><h2>6. 새 문서를 만드는 방법</h2><pre>1. docs/templates/STANDARD_DOCUMENT_TEMPLATE.html 복사
 2. 제목 / 본문 / 목적에 맞는 시각 요소 작성
-3. docs/index.html의 알맞은 영역에 HTML 링크 추가
-4. python tools/docs/sync_document_shell.py --write
-5. python tools/docs/sync_document_shell.py --check
-6. pytest tests/test_document_shell_consistency.py
-7. 관련 문서 Gate까지 통과 후 commit</pre><p>핵심은 4번입니다. 새 문서를 추가해도 공통 shell과 Registry를 사람이 일일이 맞추지 않고 동기화 도구가 정리합니다.</p></section>
-<section><h2>6. 기존 문서 처리</h2><p>2026-08-27 migration에서 <code>docs/index.html</code>을 제외한 기존 HTML 전체를 Document Shell v1 대상으로 삼습니다. 문서별 본문/다이어그램은 유지하고, 공통 탐색 계층만 표준화합니다. 과거 문서의 내용까지 같은 디자인으로 강제로 갈아엎지는 않습니다. 내용 표현은 목적에 따라 달라도 <strong>밖을 감싸는 프레임과 이동 규칙은 동일</strong>합니다.</p></section>
-<section><h2>7. 변경이 필요할 때</h2><div class="callout"><strong>Frame v1을 바꾸는 것은 일반 문서 편집이 아닙니다.</strong><br>Hub 기본 영역, 버튼 계약, Registry 방식, 공통 asset 경로를 바꾸려면 <code>DOCUMENTATION_POLICY.html</code>과 이 문서를 함께 갱신하고 회귀 테스트도 같이 수정합니다.</div></section>
+3. 현재/과거 상태 + 대상 + 개정 번호 순서로 버전 표기
+4. docs/index.html의 알맞은 영역에 HTML 링크 추가
+5. python tools/docs/sync_document_shell.py --write
+6. python tools/docs/sync_document_shell.py --check
+7. pytest tests/test_document_shell_consistency.py
+8. 관련 문서 Gate까지 통과 후 commit</pre></section>
+<section><h2>7. 기존 문서 처리</h2><p>2026-08-27 migration에서 <code>docs/index.html</code>을 제외한 기존 HTML 전체를 Document Shell 대상으로 삼았습니다. 2026-08-31부터는 공통 버전 도움말도 같은 Shell에서 제공합니다. 과거 문서 본문은 이력 보존을 위해 무조건 다시 쓰지 않지만, <strong>현재 문서처럼 오해될 수 있는 상태/버전 표현은 명확히 교정</strong>합니다.</p></section>
+<section><h2>8. 변경이 필요할 때</h2><div class="callout"><strong>문서 UI 프레임 개정 1을 바꾸는 것은 일반 문서 편집이 아닙니다.</strong><br>Hub 기본 영역, 버튼 계약, Registry 방식, 공통 asset 경로, 버전 도움말 규칙을 바꾸려면 <code>DOCUMENTATION_POLICY.html</code>과 이 문서를 함께 갱신하고 회귀 테스트도 같이 수정합니다.</div></section>
 </main></body></html>
