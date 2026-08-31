@@ -1,4 +1,4 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · Two-Loop Latest-Only Overview</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.72}.wrap{max-width:1120px;margin:auto;padding:38px 22px 84px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.warn{border-left-color:var(--amber);background:#fff7e9}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style><link rel="stylesheet" href="assets/document-shell.css" data-doc-shell="v1"><script defer src="assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="architecture/jira_loop_b_opencode_automation_easy_guide.html">★ OpenCode 자동화 쉬운 가이드</a><a href="status/OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html">Incremental Embedding</a><a href="status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge</a><a href="status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A</a><a href="architecture/jira_knowledge_operational_service_phase.html">Operational Service</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-31</div><h1>Jira Knowledge Pipeline<br>MVP → 2-Loop + Latest-Only</h1><p>M0~M11 Functional MVP는 완료됐고, 운영 자동화는 <strong>State + Loop A + Loop B Knowledge Automation + Knowledge DB + Incremental Embedding</strong>까지 구현했습니다. <strong>Real Internal OpenCode Run과 Continuous Scheduling은 아직 별도 Gate</strong>입니다.</p></header><section><h2>1. 전체 흐름</h2><div class="flow">Functional MVP · DONE / PASS
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · Two-Loop Latest-Only Overview</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.72}.wrap{max-width:1120px;margin:auto;padding:38px 22px 84px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.warn{border-left-color:var(--amber);background:#fff7e9}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style><link rel="stylesheet" href="assets/document-shell.css" data-doc-shell="v1"><script defer src="assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="architecture/jira_operational_fresh_bootstrap_smoke_policy.html">★ Fresh Bootstrap / Smoke</a><a href="architecture/jira_loop_b_opencode_automation_easy_guide.html">OpenCode 자동화</a><a href="status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A</a><a href="status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B</a><a href="architecture/jira_knowledge_operational_service_phase.html">Operational Service</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-31</div><h1>Jira Knowledge Pipeline<br>Fresh Bootstrap + Two-Loop + Latest-Only</h1><p>M0~M11 Functional MVP는 완료됐습니다. 운영 자동화 코드는 State → Loop A → Loop B Knowledge/Knowledge DB/Incremental Embedding까지 구현했고, <strong>실환경 시작은 Smoke 격리 후 Fresh Bootstrap</strong>으로 진행합니다.</p></header><section><h2>1. 전체 흐름</h2><div class="flow">Functional MVP · DONE / PASS
 Jira → RAW → ANALYSIS → Knowledge Input → Knowledge/Review
 → SQLite → BGE-M3 → FAISS → Evidence/MCP → OpenCode
 
@@ -13,92 +13,54 @@ Loop A · SOURCE SYNC                    IMPLEMENTED / CI PASS
 
 Loop B · KNOWLEDGE AUTOMATION           IMPLEMENTED / CI PASS
 → latest + Source-ready Work
-→ Python이 동적 Prompt 생성
-→ opencode run --agent jira-knowledge-orchestrator
-→ jira-knowledge-worker
-→ jira-knowledge-extraction Skill 요구
-→ Python Validator + jira-knowledge-reviewer
+→ Python 동적 Prompt
+→ Orchestrator → Worker → jira-knowledge-extraction Skill
+→ Validator → Reviewer
 → latestness re-check
 → canonical Knowledge
-→ iv_ / kg_ State checkpoint
 
-Loop B · KNOWLEDGE DB                   IMPLEMENTED / CI PASS
-→ per-Work candidate Generation materialization
-→ Attempt / Item / Evidence / Review
-→ accepted_attempt_id
-→ active 전환은 Publish까지 보류
-
-Loop B · INCREMENTAL EMBEDDING          IMPLEMENTED / CI PASS
-→ candidate Generation corpus
-→ BGE-M3
+Loop B · KNOWLEDGE DB / EMBEDDING       IMPLEMENTED / CI PASS
+→ per-Work candidate Generation
+→ accepted Item corpus
+→ BGE-M3 staging
 → latestness re-check
-→ corpus/embedding atomic staging
-→ embedding_status = completed
 
 Loop B · RETRIEVAL / PUBLISH            NEXT
-→ Published snapshot
 → FAISS / mapping / manifest staging
-→ latestness re-check
 → coherent Atomic Publish
-→ Knowledge active state 정합화
 → PUBLISHED
 
-Continuous Scheduling                    NOT IMPLEMENTED
-Real Internal OpenCode Run               PENDING
-Real Internal Skill-load verification    PENDING
+Continuous Scheduling                    NOT IMPLEMENTED</div></section><section><h2>2. Bootstrap 정책</h2><div class="grid"><div class="card"><h3>Smoke</h3><p><strong>data_smoke/</strong>. 새 State/RAW/Knowledge 데이터를 만들고 production/pilot data와 분리합니다.</p></div><div class="card"><h3>정식 Real Test</h3><p><strong>clean data/ Fresh Bootstrap.</strong> 파일럿 DB는 삭제 또는 별도 보관하고 Full Initial Ingest부터 시작합니다.</p></div><div class="card"><h3>Migration</h3><p><strong>compatibility only.</strong> 기존 collector.db를 꼭 이어써야 할 때만 사용합니다.</p></div></div></section><section><h2>3. Real Gate 순서</h2><div class="flow">G1 Real Loop A Smoke
+config/settings.smoke.yaml
+→ data_smoke/
+→ 실제 Jira
+→ Source-ready latest Work
 
-Always-on
-Published Corpus → Central Remote MCP → Team OpenCode</div></section><section><h2>2. “OpenCode 자동화 완료”의 정확한 의미</h2><table><thead><tr><th>항목</th><th>현재</th></tr></thead><tbody><tr><td>Work 선택 → OpenCode 호출 → Knowledge/Review 검증</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>Worker가 <code>jira-knowledge-extraction</code> Skill을 쓰도록 정의</td><td><strong>REQUIRED</strong></td></tr><tr><td>사내 OpenCode 1.18.12에서 실제 Work 처리</td><td><strong>PENDING</strong></td></tr><tr><td>실행 로그에서 실제 Skill load 확인</td><td><strong>PENDING</strong></td></tr><tr><td>Scheduler/Daemon이 runner 자동 기동</td><td><strong>NOT IMPLEMENTED</strong></td></tr></tbody></table><p><a href="architecture/jira_loop_b_opencode_automation_easy_guide.html">파일럿 Prompt와 현재 Prompt/Agent/Skill 구조 비교</a></p></section><section><h2>3. 현재 구현 진행도</h2><div class="grid"><div class="card"><h3>Operational State + Loop A</h3><p><strong>IMPLEMENTED / CI PASS.</strong> Migration, Source Ready, Delta, semantic_v2, Resume.</p></div><div class="card"><h3>Loop B Knowledge Automation</h3><p><strong>IMPLEMENTED / CI PASS.</strong> Python OpenCode 호출, staging, Validator/Reviewer, stale guard.</p></div><div class="card"><h3>Knowledge DB + Embedding</h3><p><strong>IMPLEMENTED / CI PASS.</strong> candidate Generation materialization과 Incremental BGE-M3 staging.</p></div></div><p><a href="status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현 보고서</a> · <a href="status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge 보고서</a> · <a href="status/OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html">Incremental Embedding 보고서</a></p></section><section><h2>4. Prompt / Agent / Skill 분리</h2><div class="flow">Python 동적 Prompt
-→ 이번 INPUT / OUTPUT / REVIEW 경로
+G2 Real Internal OpenCode Smoke
+→ Orchestrator
+→ Worker
+→ jira-knowledge-extraction Skill
+→ Validator / Reviewer
+→ Knowledge completed
 
-jira-knowledge-orchestrator
-→ Worker → Validator → Reviewer / Attempt Loop
-
-jira-knowledge-worker
-→ jira-knowledge-extraction Skill 사용 REQUIRED
-
-jira-knowledge-extraction Skill
-→ 사실성 / Evidence / 확실성 / 분류 / Trade-off
-
-jira-knowledge-reviewer
-→ Defect Audit 후 PASS / REGENERATE</div></section><section><h2>5. 안전 경계</h2><div class="flow">Loop A
-actual Source durable → State cursor second
-source_committed + Watermark + Source Ready SAME TRANSACTION
-
-Knowledge
-OpenCode staging → validation/review → latest check
-→ canonical artifact durable → State completed second
-
-Embedding
-candidate corpus → BGE-M3 → latest check
-→ embedding artifact durable → latest check
-→ State embedding completed second
-
-Publish · NEXT
-coherent Published bundle switch → State published second</div></section><section><h2>6. Source History vs Processing</h2><div class="flow">Source History
+G3 Real Incremental BGE-M3
+G4 Atomic Publish</div></section><section><h2>4. “자동화 구현”과 “실환경 PASS”는 다릅니다</h2><table><thead><tr><th>항목</th><th>현재</th></tr></thead><tbody><tr><td>Loop A / Loop B automation code</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>Real Jira Loop A</td><td><strong>PENDING</strong></td></tr><tr><td>Real Internal OpenCode + Skill load</td><td><strong>PENDING</strong></td></tr><tr><td>Real Incremental BGE-M3</td><td><strong>PENDING</strong></td></tr><tr><td>Continuous Scheduler / Daemon</td><td><strong>NOT IMPLEMENTED</strong></td></tr></tbody></table></section><section><h2>5. Latest-Only</h2><div class="flow">Source History
 A → B → C → D
 모두 보존
 
 Expensive Processing
-B/C → superseded 가능
-D latest → Knowledge → DB candidate → Embedding → Publish 준비
+B/C 미완료 → superseded 가능
+D latest → Knowledge → DB → Embedding → Publish</div></section><section><h2>6. 안전 경계</h2><div class="flow">Loop A
+actual Source durable → State cursor second
+source_committed + Watermark + Source Ready SAME TRANSACTION
 
-A→B→A
-같은 semantic Work identity와 완성 artifact를 재사용 가능</div></section><section><h2>7. Real Environment Gate</h2><div class="grid"><div class="card"><h3>Local collector.db</h3><p><strong>PENDING.</strong> 실제 DB backup/migration/legacy Resume 확인.</p></div><div class="card"><h3>Real Jira / OpenCode</h3><p><strong>PENDING.</strong> 사내 Jira 실행과 OpenCode Orchestrator→Worker→Skill→Reviewer 실제 경로 확인.</p></div><div class="card"><h3>Real Incremental BGE-M3</h3><p><strong>PENDING.</strong> 이번 운영 Embedding 검증은 fake client 기반. 기존 M8 MVP Real Run과 구분.</p></div></div></section><section><h2>8. Continuous Scheduling</h2><div class="flow">현재
-사람이 runner 실행
-→ 내부 Work 처리는 자동
+Knowledge
+OpenCode staging → validation/review → latestness
+→ canonical durable → State completed second
 
-향후
-Scheduler / Daemon
-→ backlog 감시
-→ 낮/밤 OpenCode 처리량 기반 cadence
-→ Knowledge → Embedding → Publish 자동 연계
-→ Lag / Backlog / Supersede Monitoring</div></section><section><h2>9. 다음 작업</h2><div class="callout"><strong>Retrieval staging + coherent Atomic Publish</strong><br>FAISS 파일만 바꾸지 않고 Knowledge active Generation과 Retrieval artifact가 하나의 Published snapshot으로 일관되게 보이도록 전환 경계를 구현합니다.</div><div class="flow">State foundation                    IMPLEMENTED / CI PASS
-semantic_v2                         IMPLEMENTED / CI PASS
-Loop A Delta Source Sync            IMPLEMENTED / CI PASS
-Loop B Knowledge Automation         IMPLEMENTED / CI PASS
-Operational Knowledge DB            IMPLEMENTED / CI PASS
-Incremental BGE-M3 staging          IMPLEMENTED / CI PASS
-FAISS / Atomic Publish              NEXT
-Continuous Scheduling / Monitoring LATER
-Remote MCP Operations               LATER</div><p><a href="architecture/jira_knowledge_operational_service_phase.html">Operational Service Phase 상세</a></p></section><footer>Pipeline Overview · Knowledge Automation IMPLEMENTED / Real OpenCode PENDING / Scheduling NOT IMPLEMENTED · Atomic Publish NEXT · 2026-08-31</footer></main></body></html>
+Embedding
+BGE-M3 → latestness → artifact durable
+→ State embedding completed second
+
+Publish · NEXT
+coherent Published bundle switch → State published second</div></section><section><h2>7. 현재 다음 작업</h2><div class="callout"><strong>코드 다음 단계: Retrieval staging + coherent Atomic Publish</strong><br>Knowledge active Generation과 FAISS artifact가 한 Published snapshot으로 보이도록 합니다.</div><div class="callout warn"><strong>실환경 다음 Gate: Real Loop A Smoke</strong><br><code>data_smoke/</code>에서 실제 Jira를 읽어 Source-ready Work를 만든 뒤 Real OpenCode Smoke로 넘어갑니다.</div></section><section><h2>8. 주요 문서</h2><p><a href="architecture/jira_operational_fresh_bootstrap_smoke_policy.html">Fresh Bootstrap / Smoke</a> · <a href="architecture/jira_knowledge_operational_service_phase.html">Operational Service Phase</a> · <a href="architecture/jira_knowledge_mcp_service_target.html">MCP Service Target</a> · <a href="VERSION_TERMINOLOGY_GUIDE.html">버전 표기 가이드</a></p></section><footer>Pipeline Overview · Fresh Bootstrap default · Real Loop A/OpenCode pending · Atomic Publish next · 2026-08-31</footer></main></body></html>
