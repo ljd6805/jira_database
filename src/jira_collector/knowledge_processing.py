@@ -14,7 +14,7 @@ from .knowledge_db.ids import (
     issue_version_id,
     knowledge_generation_id,
 )
-from .state_store import StateStore, WorkItemRecord
+from .state_store import StateStore, WorkItemRecord, utc_now_iso
 
 LOGGER = logging.getLogger(__name__)
 _REVIEW_FILE = re.compile(r"^(.+)\.review\.attempt([1-9][0-9]*)\.json$")
@@ -315,7 +315,7 @@ class LoopBKnowledgeWorker:
                 WHERE last_source_committed_run_id IS NOT NULL
                   AND last_source_committed_run_id = last_observed_source_run_id
                   AND work_status IN ('pending','failed')
-                  AND knowledge_status IN ('pending','failed')
+                  AND knowledge_status IN ('pending','failed','running')
                   AND superseded_by_work_item_id IS NULL
                 ORDER BY last_source_committed_at, created_at, work_item_id
                 LIMIT ?
@@ -333,7 +333,7 @@ class LoopBKnowledgeWorker:
                 WHERE last_source_committed_run_id IS NOT NULL
                   AND last_source_committed_run_id = last_observed_source_run_id
                   AND work_status IN ('pending','failed')
-                  AND knowledge_status IN ('pending','failed')
+                  AND knowledge_status IN ('pending','failed','running')
                   AND superseded_by_work_item_id IS NULL
                 """
             ).fetchone()
@@ -412,7 +412,7 @@ class LoopBKnowledgeWorker:
             connection.execute(
                 """
                 UPDATE sync_issue_change
-                SET work_status = 'pending', updated_at = CURRENT_TIMESTAMP
+                SET work_status = 'pending', updated_at = ?
                 WHERE work_item_id = ?
                   AND last_processing_run_id = ?
                   AND work_status = 'running'
@@ -420,7 +420,7 @@ class LoopBKnowledgeWorker:
                   AND last_source_committed_run_id = last_observed_source_run_id
                   AND superseded_by_work_item_id IS NULL
                 """,
-                (work_item_id, processing_run_id),
+                (utc_now_iso(), work_item_id, processing_run_id),
             )
 
     @staticmethod
