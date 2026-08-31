@@ -20,7 +20,30 @@ CURRENT NEXT
 
 LATER
 → Lag / Backlog / Supersede Monitoring
-→ Remote MCP Operations / Team Pilot</div></section><section><h2>2. 반드시 먼저 읽을 문서</h2><div class="grid2"><div class="box good"><b>1. Loop B Knowledge 구현 보고서</b><p><code>docs/status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html</code></p></div><div class="box good"><b>2. Loop A 구현 보고서</b><p><code>docs/status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html</code></p></div><div class="box good"><b>3. State foundation 보고서</b><p><code>docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html</code></p></div><div class="box good"><b>4. 현재 계약</b><p><code>docs/architecture/jira_sync_contract.html</code> + <code>jira_sync_state_schema_contract.html</code></p></div></div></section><section><h2>3. 현재 구현된 운영 흐름</h2><div class="flow">Loop A · IMPLEMENTED
+→ Remote MCP Operations / Team Pilot</div></section><section><h2>1.5. 계속 보존하는 운영 계약</h2><div class="box good"><p>새 구현 단계로 넘어가도 아래 계약은 삭제하거나 축약하지 않습니다. 현재 진행상태를 갱신하는 것과 이미 확정된 운영 원칙을 보존하는 것은 별개입니다.</p></div><div class="flow">현재 운영 Sync 규칙 · 개정 3                  FROZEN
+현재 Operational State 설계 · 개정 3           FROZEN
+State Migration / StateStore foundation         IMPLEMENTED
+semantic_v2 source hash                         IMPLEMENTED
+Loop A Delta Source Sync                        IMPLEMENTED
+Loop B Latest-Only Single Worker                기본 운영 모델
+Loop B Latest-Only Knowledge Worker             IMPLEMENTED
+
+Latest-Only invariants
+→ Source History는 모두 보존
+→ Source Ready 이후에만 처리
+→ newer Source가 오면 구버전 Work는 superseded
+→ OpenCode / Data Plane 경계마다 stale guard 유지
+
+남은 전체 운영 범위
+→ Knowledge / Review / Evidence
+→ BGE-M3 / FAISS staging / Atomic Publish
+→ Structured Logging / Lag / Backlog Monitoring
+→ Remote MCP Operations / Team Pilot
+
+실환경 Gate
+→ 실제 local collector.db Migration
+→ 실제 사내 Jira Loop A Run
+→ 실제 사내 OpenCode Knowledge Run</div><p>이 섹션은 “다음 단계가 바뀌면서 과거의 유효한 설명이 조용히 사라지는 것”을 막기 위한 보존 계약입니다.</p></section><section><h2>2. 반드시 먼저 읽을 문서</h2><div class="grid2"><div class="box good"><b>1. Loop B Knowledge 구현 보고서</b><p><code>docs/status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html</code></p></div><div class="box good"><b>2. Loop A 구현 보고서</b><p><code>docs/status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html</code></p></div><div class="box good"><b>3. State foundation 보고서</b><p><code>docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html</code></p></div><div class="box good"><b>4. 현재 계약</b><p><code>docs/architecture/jira_sync_contract.html</code> + <code>jira_sync_state_schema_contract.html</code></p></div></div></section><section><h2>3. 현재 구현된 운영 흐름</h2><div class="flow">Loop A · IMPLEMENTED
 Jira → fixed upper → Project Discovery
 → Delta / semantic_v2
 → RAW / ANALYSIS / Knowledge Input
