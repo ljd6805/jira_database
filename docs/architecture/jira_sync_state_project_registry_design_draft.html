@@ -1,34 +1,29 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Operational State Schema S1~S7 결정 이력과 2-Loop v2 revision 상태판"><title>Sync State Schema · Revision History · v2</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1120px;margin:auto;padding:42px 22px 86px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{background:linear-gradient(130deg,#17264a,#3157d5);color:#fff}.card{margin-top:18px}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.hero a{color:#fff}.footer{margin-top:48px;color:var(--muted);font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">Current Schema v2</a> · <a href="jira_sync_state_schema_contract_v1_baseline.html">v1 Historical</a></p><header class="hero"><div>SCHEMA DECISION / REVISION HISTORY · 2026-08-28</div><h1>S1~S7 결정은 보존하고,<br>2-Loop에 맞춰 v2로 revision했습니다.</h1><p>v1은 구현 전에 완성된 단일-Run baseline이었고, D9 2-Loop 채택으로 실행 모델과 DDL을 v2로 수정했습니다. 현재 구현 Source of Truth는 State Schema Contract v2입니다.</p></header><section class="card"><h2>1. S1~S7 현재 상태</h2><table><thead><tr><th>Decision</th><th>상태</th><th>2-Loop 영향</th></tr></thead><tbody><tr><td>S1 Storage</td><td>FIXED</td><td>collector.db 재사용 유지. Migration 목표 v2.</td></tr><tr><td>S2 Entity Layout</td><td>REVISED</td><td>4 Domain → 5 Domain. processing_run 추가.</td></tr><tr><td>S3 Columns/Status</td><td>REVISED</td><td>Source Run과 Processing Run 상태 분리.</td></tr><tr><td>S4 Transaction</td><td>FIXED / REFRAMED</td><td>Loop A와 Loop B 각각 짧은 commit point. Work Item이 비동기 경계.</td></tr><tr><td>S5 Migration</td><td>REVISED</td><td>첫 실제 운영 버전 = 2.</td></tr><tr><td>S6 ID/Key</td><td>REVISED</td><td>sr_ Source Run + pr_ Processing Run + sw_ Work.</td></tr><tr><td>S7 DDL</td><td>REVISED / FROZEN</td><td>5 Domain Table v2 DDL.</td></tr></tbody></table></section><section class="card good"><h2>2. 현재 Domain 모델</h2><div class="flow">source_sync_run
-      │
-      └── source_project_run ── project_state
-                 │
-                 └── NEW/CHANGED
-                        ↓
-                sync_issue_change
-                        ↑
-                 processing_run
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Operational State Schema S1~S7의 설계 변화 이력. 현재 구현 기준과 과거 개정을 구분한다."><title>Operational State Schema · Revision History · Historical</title><style>:root{--bg:#f4f7fb;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1120px;margin:auto;padding:42px 22px 86px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{background:#fff7e9;border-left:6px solid var(--amber)}.card{margin-top:18px}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:48px;color:var(--muted);font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">현재 Operational State 설계 · 개정 3</a> · <a href="jira_sync_state_schema_decision7_final_ddl.html">현재 실제 DDL · 개정 3</a></p><header class="hero"><div>SCHEMA DECISION / REVISION HISTORY · 2026-08-31</div><h1>이 문서는 State Schema의<br>변경 이력을 보는 문서입니다.</h1><p><strong>현재 구현 기준 문서가 아닙니다.</strong> 초기 단일-Run 설계에서 2-Loop, 그리고 Latest-Only까지 어떻게 바뀌었는지 S1~S7 결정의 흐름을 보존합니다.</p></header><section class="card good"><h2>1. 현재 기준부터</h2><div class="flow">현재 Operational State 설계 · 개정 3
 
-sync_issue_change
-→ 두 Loop 사이 durable backlog
-→ Knowledge/Embedding/Publish checkpoint</div></section><section class="card"><h2>3. v1→v2 핵심 변경</h2><div class="flow">v1
-sync_run
-├─ discovery_status
-├─ source_status
-├─ publish_status
-└─ run_status
-
-v2
 source_sync_run
-├─ discovery_status
-├─ source_status
-└─ run_status
-
+project_state
+source_project_run
+sync_issue_change
 processing_run
-├─ selected/published/failed counts
-└─ run_status</div></section><section class="card warn"><h2>4. 아직 Schema에 넣지 않은 정책</h2><p><strong>Intermediate Version supersede</strong>와 <strong>Multi-worker lease</strong>는 아직 Freeze하지 않았기 때문에 v2 DDL에 넣지 않았습니다. 이력과 Work Item은 둘 다 향후 revision이 가능하도록 보존합니다.</p></section><section class="card"><h2>5. 구현 순서</h2><div class="flow">Schema v2 DDL / Migration
-→ Loop A StateStore + Delta Source Sync
-→ durable backlog
-→ Loop B Processing Run / Worker
-→ Knowledge / Embedding / Publish
-→ lag/backlog monitoring
-→ next policy decisions</div></section><footer class="footer">Schema Decision History · current = State Schema v2 FROZEN · 2026-08-28</footer></main></body></html>
+
++ Source Ready
++ Latest-Only
++ work_status / supersede lifecycle</div><p>구현할 때는 <a href="jira_sync_state_schema_contract.html">현재 State 설계</a>와 <a href="jira_sync_state_schema_decision7_final_ddl.html">현재 DDL</a>을 사용합니다.</p></section><section class="card"><h2>2. 개정 흐름</h2><div class="flow">과거 개정 1 · never deployed
+단일 sync_run
+Source + Publish aggregate
+
+↓ 2-Loop 채택
+
+과거 개정 2 · never deployed
+source_sync_run + processing_run 분리
+Source Ready Gate
+5개 Operational Domain Table
+
+↓ Latest-Only 결정
+
+현재 개정 3
+같은 5개 Domain Table 유지
++ work_status
++ superseded_by_work_item_id
++ superseded_at / reason
++ processing_run.superseded_count</div></section><section class="card"><h2>3. S1~S7 현재 해석</h2><table><thead><tr><th>Decision</th><th>현재 상태</th><th>현재 의미</th></tr></thead><tbody><tr><td>S1 Storage</td><td>FIXED</td><td><code>collector.db</code>를 Operational State DB로 확장.</td></tr><tr><td>S2 Entity Layout</td><td>FIXED</td><td>5 Domain Table.</td></tr><tr><td>S3 Columns/Status</td><td>UPDATED</td><td>Source/Processing 분리 + Work lifecycle/supersede.</td></tr><tr><td>S4 Transaction</td><td>UPDATED</td><td>Source Commit + Watermark + Ready + supersede same transaction.</td></tr><tr><td>S5 Migration</td><td>FIXED</td><td>첫 실제 Operational Migration 목표 = 현재 개정 3.</td></tr><tr><td>S6 ID/Key</td><td>FIXED</td><td><code>sr_</code> Source Run + <code>pr_</code> Processing Run + <code>sw_</code> Work.</td></tr><tr><td>S7 DDL</td><td>FROZEN</td><td>현재 5 Domain Table + Latest-Only DDL.</td></tr></tbody></table></section><section class="card"><h2>4. 헷갈리기 쉬운 번호</h2><p><strong>Operational State 개정 3</strong>과 <code>STATE_ID_SCHEMA_VERSION = 2</code>는 다른 번호입니다. 후자는 Work Item ID 생성 알고리즘의 기술 버전입니다. Knowledge DB Schema 개정 1도 또 다른 번호 체계입니다.</p></section><section class="card warn"><h2>5. 현재 남은 별도 정책</h2><p><strong>Multi-worker claim / lease</strong>만 향후 결정입니다. 중간 Source 상태를 supersede하고 최신 Work만 Loop B가 처리하는 정책은 이미 확정됐습니다.</p></section><footer class="footer">Operational State Schema revision history · current = 개정 3 · 2026-08-31</footer></main></body></html>
