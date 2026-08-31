@@ -1,4 +1,272 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Continuous Jira Knowledge Service 공식 2-Loop 운영 아키텍처. Source Sync와 Knowledge Processing/Publish를 durable backlog와 Source Ready Gate로 분리한다."><title>Operational Architecture · Two-Loop · FROZEN</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1180px;margin:auto;padding:42px 22px 92px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:48px}h2{font-size:30px}.grid2,.grid3,.grid5{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid5{grid-template-columns:repeat(5,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.bad{border-left:5px solid var(--red);background:#fff0f0}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:900px){.grid2,.grid3,.grid5{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_contract.html">Sync Contract v2</a> · <a href="jira_sync_state_schema_contract.html">State Schema v2</a></p><header class="hero"><div>CONTINUOUS JIRA KNOWLEDGE SERVICE · ARCHITECTURE DECISION · 2026-08-28</div><h1>Source Sync와 Knowledge Publish를<br>두 개의 독립 Loop로 운영한다</h1><p>Jira Download/정제와 OpenCode 기반 지식화/Embedding/Publish를 하나의 직렬 Run으로 묶지 않습니다. 두 Loop 사이에는 durable Work Item backlog를 두고, <strong>Project Source Commit까지 완료된 Work만 Processing</strong>하도록 Source Ready Gate를 둡니다.</p><span class="state">FROZEN · TWO-LOOP · SOURCE READY GATE · IMPLEMENTATION BASELINE</span></header><section><h2>1. 최종 구조</h2><div class="flow">Loop A · SOURCE SYNC
+<!doctype html>
+<html data-doc-shell="v1" lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Continuous Jira Knowledge Service 공식 2-Loop 운영 아키텍처. Source Sync와 Knowledge Processing/Publish를 durable backlog와 Source Ready Gate로 분리한다. row와 Source Ready Gate를 초보자 관점의 시각 자료로 설명한다.">
+  <title>Operational Architecture · Two-Loop · FROZEN</title>
+  <style>
+    :root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--blue2:#edf3ff;--green:#14845f;--green2:#eaf8f3;--amber:#a86500;--amber2:#fff7e9;--red:#b83b3b;--red2:#fff0f0;--ink:#101827;--purple:#7656c8;--purple2:#f2efff}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1180px;margin:auto;padding:42px 22px 92px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:48px}h2{font-size:30px;line-height:1.3}h3{line-height:1.4}.lead{font-size:17px;color:var(--muted);max-width:980px}.grid2,.grid3,.grid5,.grid4{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.grid5{grid-template-columns:repeat(5,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:var(--green2)}.warn{border-left:5px solid var(--amber);background:var(--amber2)}.bad{border-left:5px solid var(--red);background:var(--red2)}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:var(--blue2);margin:18px 0}.callout strong{display:block;margin-bottom:5px}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}code,.mono{font-family:Consolas,"D2Coding",monospace}.pill{display:inline-block;padding:3px 8px;border-radius:999px;background:#edf3ff;color:#2447b8;font-size:.88em;font-weight:800}.one-line{font-size:19px;font-weight:900;padding:18px;border-radius:14px;background:#17264a;color:#fff;text-align:center}
+
+    /* beginner explanation */
+    .easy{border:2px solid #cbd8ff;background:linear-gradient(180deg,#f7f9ff,#fff);padding:24px;border-radius:22px}.term{padding:15px;border:1px solid var(--line);border-radius:14px;background:#fff}.term b{display:block;color:var(--blue);margin-bottom:4px}.term span{font-size:14px;color:var(--muted)}
+    .sheet{overflow:auto;padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff}.sheet-grid{min-width:900px;display:grid;grid-template-columns:150px 130px 170px 180px 180px;border:2px solid #aab9d0;border-radius:10px;overflow:hidden}.cell{padding:11px;border-right:1px solid #cfd8e6;border-bottom:1px solid #cfd8e6;font-size:13px}.head{background:#e9eef6;font-weight:900}.row-a{background:#fff}.row-hot{background:#fff0b8;font-weight:800}.row-ready{background:#eaf8f3}.sheet-note{font-size:14px;color:var(--muted);margin-top:12px}.row-focus{margin-top:14px;padding:14px;border-radius:12px;background:var(--amber2);border:1px solid #e4c27f}.row-focus strong{color:#7d4a00}
+    .version-visual{display:grid;grid-template-columns:1fr 60px 1fr;gap:14px;align-items:center;margin:18px 0}.issue-box,.work-box{padding:20px;border-radius:16px;border:2px solid var(--line);background:#fff}.issue-box{border-color:#91a9ef}.work-box{border-color:#b8a4ec}.big-arrow{text-align:center;font-size:30px;font-weight:900;color:#7f8da5}.mini-row{padding:10px;border-radius:9px;background:var(--purple2);border:1px solid #c9bdf1;margin:8px 0;font:13px Consolas,monospace}
+    .architecture-picture{display:grid;grid-template-columns:1fr 90px 1fr;gap:14px;align-items:stretch;margin:22px 0}.loop{padding:22px;border-radius:18px;border:2px solid var(--line);background:#fff}.loop-a{border-color:#7f9aee}.loop-b{border-color:#5aae8e}.loop-title{font-size:20px;font-weight:900}.node{padding:10px 12px;border-radius:10px;background:#f2f5fa;border:1px solid var(--line);font-size:14px;margin-top:8px}.down{text-align:center;font-weight:900;color:#7888a0}.bridge{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:9px}.gate{width:64px;height:64px;border-radius:18px;border:2px solid #d7a44c;background:var(--amber2);display:grid;place-items:center;font-size:31px}.bridge small{font-size:12px;color:var(--muted);font-weight:800}.backlog{padding:18px;margin:18px 0;border:2px dashed #9aaac2;border-radius:16px;background:#fbfcfe}.backlog strong{display:block;margin-bottom:10px}.work-list{display:flex;flex-wrap:wrap;gap:8px}.work-chip{padding:8px 10px;border-radius:9px;background:var(--purple2);border:1px solid #c9bdf1;font:12px Consolas,monospace}
+    .analogy{display:grid;grid-template-columns:1fr 60px 1fr;gap:14px;align-items:center}.warehouse{padding:20px;border:1px solid var(--line);background:#fff;border-radius:16px}.warehouse h3{margin-top:0}.truck{font-size:40px;text-align:center}.gate-state{font-weight:900}.closed-text{color:var(--red)}.open-text{color:var(--green)}
+    .timeline{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:18px 0}.moment{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.moment .time{font-size:12px;font-weight:900;color:var(--blue)}.moment h3{font-size:15px;margin:6px 0}.moment p{font-size:13px;color:var(--muted);margin:0}.moment.closed{border-top:5px solid var(--red)}.moment.open{border-top:5px solid var(--green)}.moment.commit{border-top:5px solid var(--blue)}
+    .scenario{display:grid;grid-template-columns:1fr 1fr;gap:16px}.scenario .flow{height:100%}.danger-line{padding:13px;border-radius:10px;background:#ffe5e5;color:#8b2525;font-weight:900}.success-line{padding:13px;border-radius:10px;background:#ddf5eb;color:#0f6f50;font-weight:900}
+    .condition-table td:nth-child(3){font-weight:900}.gate-closed{color:var(--red)}.gate-open{color:var(--green)}
+    .transaction{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}.tx{padding:15px;border-radius:13px;background:#fff;border:2px solid #9fb2ec}.tx b{display:block;margin-bottom:5px}.atomic{padding:12px;text-align:center;border-radius:11px;background:#17264a;color:#fff;font-weight:900;margin-top:10px}
+    .qa{margin-top:14px}.qa details{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0}.qa summary{font-weight:900;cursor:pointer}
+
+    @media(max-width:900px){.grid2,.grid3,.grid4,.grid5,.version-visual,.architecture-picture,.analogy,.scenario,.timeline,.transaction{grid-template-columns:1fr}.bridge{padding:12px}.big-arrow{transform:rotate(90deg)}.hero{padding:30px}}
+  </style>
+  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
+</head>
+<body>
+<main class="wrap">
+  <p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_contract.html">Sync Contract v2</a> · <a href="jira_sync_state_schema_contract.html">State Schema v2</a></p>
+
+  <header class="hero">
+    <div>CONTINUOUS JIRA KNOWLEDGE SERVICE · ARCHITECTURE DECISION · 2026-08-28</div>
+    <h1>Source Sync와 Knowledge Publish를<br>두 개의 독립 Loop로 운영한다</h1>
+    <p>Jira Download/정제와 OpenCode 기반 지식화/Embedding/Publish를 하나의 직렬 Run으로 묶지 않습니다. 두 Loop 사이에는 durable Work Item backlog를 두고, <strong>Project Source Commit까지 완료된 Work만 Processing</strong>하도록 Source Ready Gate를 둡니다.</p>
+    <span class="state">FROZEN · TWO-LOOP · SOURCE READY GATE · IMPLEMENTATION BASELINE</span>
+  </header>
+
+  <section class="easy">
+    <h2>0. 이 문서를 읽기 전에: 네 단어만 먼저 이해하기</h2>
+    <p class="lead">아래 네 단어만 잡으면 뒤의 설계가 훨씬 쉬워집니다. 특히 <strong>row</strong>와 <strong>Source Ready Gate</strong>는 이 문서 전체를 이해하는 열쇠입니다.</p>
+    <div class="grid4">
+      <div class="term"><b>Row</b><span>DB 테이블의 가로 한 줄. 하나의 기록(record)을 뜻합니다.</span></div>
+      <div class="term"><b>Work Item</b><span>Loop B가 나중에 처리해야 할 “작업표” 한 장입니다.</span></div>
+      <div class="term"><b>Backlog</b><span>아직 처리하지 않은 Work Item들이 쌓여 있는 대기 목록입니다.</span></div>
+      <div class="term"><b>Source Ready Gate</b><span>그 Work Item을 Loop B가 지금 가져가도 안전한지 검사하는 문입니다.</span></div>
+    </div>
+    <div class="one-line">가장 쉽게: Loop A가 작업표를 만들고 → Gate가 안전을 확인하고 → Loop B가 작업표를 가져가 처리합니다.</div>
+  </section>
+
+  <section id="row">
+    <h2>0-1. 먼저, row가 정확히 무엇인가?</h2>
+    <p class="lead"><strong>row는 데이터베이스 테이블의 가로 한 줄</strong>입니다. 엑셀에서 한 줄을 생각하면 됩니다. 열(column)은 “어떤 정보를 적는 칸인지”, row는 “그 칸들을 채운 기록 한 건”입니다.</p>
+
+    <div class="sheet">
+      <div><strong>예: sync_issue_change 테이블</strong></div>
+      <div class="sheet-grid" aria-label="데이터베이스 row 설명 그림">
+        <div class="cell head">work_item_id</div><div class="cell head">jira_id</div><div class="cell head">source_hash</div><div class="cell head">last_observed_run</div><div class="cell head">publish_status</div>
+        <div class="cell row-a">sw_A...</div><div class="cell row-a">10001</div><div class="cell row-a">hash_A</div><div class="cell row-a">sr_101</div><div class="cell row-a">published</div>
+        <div class="cell row-hot">sw_B...</div><div class="cell row-hot">10002</div><div class="cell row-hot">hash_B</div><div class="cell row-hot">sr_101</div><div class="cell row-hot">pending</div>
+        <div class="cell row-ready">sw_C...</div><div class="cell row-ready">10003</div><div class="cell row-ready">hash_C</div><div class="cell row-ready">sr_101</div><div class="cell row-ready">pending</div>
+      </div>
+      <div class="row-focus"><strong>노란색 가로 한 줄 전체가 row 1개입니다.</strong><br>즉 <span class="mono">sw_B...</span>라는 Work Item 하나에 관한 상태 정보가 한 줄에 모여 있습니다.</div>
+      <div class="sheet-note">DB에서 “row를 생성한다”는 말은 “이 테이블에 새로운 기록 한 줄을 추가한다”는 뜻입니다.</div>
+    </div>
+
+    <div class="callout"><strong>중요: 여기서 Work Item row ≠ Jira Issue 자체</strong>Jira Issue 하나를 그대로 DB 한 줄로 옮긴 것이 아닙니다. <code>sync_issue_change</code>의 row는 <strong>특정 Jira Issue의 특정 semantic 상태를 Loop B가 처리하기 위한 작업 기록</strong>입니다.</div>
+
+    <div class="version-visual">
+      <div class="issue-box">
+        <h3>Jira Issue · ABC-123</h3>
+        <p>처음 상태 A<br>→ 내용 수정 후 상태 B</p>
+        <p><strong>Jira Issue는 하나</strong></p>
+      </div>
+      <div class="big-arrow">→</div>
+      <div class="work-box">
+        <h3>sync_issue_change</h3>
+        <div class="mini-row">row #1 · ABC-123 · hash_A</div>
+        <div class="mini-row">row #2 · ABC-123 · hash_B</div>
+        <p><strong>semantic 상태가 다르면 Work Item도 달라질 수 있음</strong></p>
+      </div>
+    </div>
+
+    <p>이 구조 때문에 같은 <code>jira_id</code>라도 <code>source_hash</code>가 달라지면 별도 Work Item이 만들어질 수 있습니다. 반대로 같은 semantic 상태가 다시 등장하면 <code>UNIQUE(jira_id, source_hash, source_hash_profile)</code> 규칙 덕분에 기존 Work Item을 다시 식별할 수 있습니다.</p>
+  </section>
+
+  <section id="easy-picture">
+    <h2>0-2. Two-Loop 전체를 그림 한 장으로 먼저 보기</h2>
+    <div class="architecture-picture">
+      <div class="loop loop-a">
+        <div class="loop-title">Loop A · Source Sync</div>
+        <p>“Jira에 지금 뭐가 바뀌었지?”를 책임집니다.</p>
+        <div class="node">① Jira에서 변경 후보 발견</div><div class="down">↓</div>
+        <div class="node">② 실제 Source 파일 저장</div><div class="down">↓</div>
+        <div class="node">③ NEW / CHANGED 판단</div><div class="down">↓</div>
+        <div class="node">④ Work Item row 저장</div><div class="down">↓</div>
+        <div class="node">⑤ Project Source Commit</div>
+      </div>
+      <div class="bridge">
+        <div class="gate">🚧</div>
+        <strong>Source Ready Gate</strong>
+        <small>닫힘: 기다려<br>열림: 처리해도 됨</small>
+      </div>
+      <div class="loop loop-b">
+        <div class="loop-title">Loop B · Knowledge Processing</div>
+        <p>“확정된 변경을 지식으로 만들자”를 책임집니다.</p>
+        <div class="node">① Ready Work Item claim</div><div class="down">↓</div>
+        <div class="node">② OpenCode Knowledge 생성</div><div class="down">↓</div>
+        <div class="node">③ Review / Evidence</div><div class="down">↓</div>
+        <div class="node">④ Embedding / FAISS</div><div class="down">↓</div>
+        <div class="node">⑤ Atomic Publish</div>
+      </div>
+    </div>
+
+    <div class="backlog">
+      <strong>durable backlog = DB에 안전하게 저장된 “처리 대기 작업표”</strong>
+      <div class="work-list"><span class="work-chip">ABC-1 / hash_A</span><span class="work-chip">ABC-7 / hash_C</span><span class="work-chip">XYZ-3 / hash_F</span></div>
+    </div>
+    <p>두 Loop가 독립적으로 움직이기 때문에 Loop A는 계속 Jira를 최신화할 수 있고, Loop B는 자기 처리 속도에 맞춰 backlog를 소비할 수 있습니다.</p>
+  </section>
+
+  <section id="gate-deep">
+    <h2>0-3. Source Ready Gate는 무엇인가?</h2>
+    <p class="lead">한 문장으로 말하면, <strong>“이 Work Item이 DB에 존재한다”와 “이 Work Item을 처리해도 안전하다”를 구분하는 안전장치</strong>입니다.</p>
+
+    <div class="analogy">
+      <div class="warehouse">
+        <h3>택배 물류센터 비유</h3>
+        <p>트럭 한 대에 상자 100개가 오기로 했습니다. 40개를 내린 순간 이미 창고에는 상자가 존재합니다.</p>
+        <p>하지만 트럭 하역이 실패해서 나머지 60개가 누락될 수도 있습니다.</p>
+      </div>
+      <div class="truck">🚚</div>
+      <div class="warehouse">
+        <h3>우리 시스템으로 바꾸면</h3>
+        <p><strong>상자 1개 = Work Item row</strong></p>
+        <p><strong>트럭 하역 완료 = Project Source Commit</strong></p>
+        <p><strong>출고 승인문 = Source Ready Gate</strong></p>
+      </div>
+    </div>
+
+    <div class="callout warn"><strong>왜 row를 Commit 뒤에만 만들지 않고 미리 만드는가?</strong>Loop A가 중간에 죽어도 어디까지 처리했는지 복구할 수 있어야 하기 때문입니다. 실제 Source와 Work Item 상태를 durable하게 남기는 것은 crash safety에 유리합니다. 대신 <strong>미완료 상태의 row를 Loop B가 잘못 가져가지 못하도록 Gate를 둡니다.</strong></div>
+  </section>
+
+  <section id="without-gate">
+    <h2>0-4. Gate가 없으면 실제로 어떤 문제가 생기는가?</h2>
+    <p class="lead">예를 들어 ABC 프로젝트에서 이번 Source Run이 <code>ABC-1</code>과 <code>ABC-2</code>를 확인해야 한다고 하겠습니다.</p>
+    <div class="scenario">
+      <div class="card bad">
+        <h3>❌ Gate 없음</h3>
+        <div class="flow">T1 · sr_101 시작
+
+T2 · ABC-1 다운로드 성공
+     → 파일 저장 성공
+     → Work Item row 생성
+
+     [Loop B가 row 발견]
+     → ABC-1 Knowledge 생성 시작
+
+T3 · ABC-2 다운로드 실패
+     → Project Source Commit 실패
+     → Watermark도 전진하면 안 됨
+
+하지만...
+ABC-1은 이미 Loop B가 처리/Publish할 수 있음</div>
+        <div class="danger-line">결과: “실패한 Source Window의 일부”가 지식 시스템으로 먼저 흘러갈 수 있습니다.</div>
+      </div>
+      <div class="card good">
+        <h3>✅ Gate 있음</h3>
+        <div class="flow">T1 · sr_101 시작
+
+T2 · ABC-1 다운로드 성공
+     → 파일 저장 성공
+     → Work Item row 생성
+     → Gate CLOSED
+
+T3 · ABC-2 다운로드 실패
+     → Project Source Commit 실패
+     → Gate 계속 CLOSED
+
+Loop B 조회
+→ ABC-1 row는 보이지만 claim 불가
+→ 처리하지 않고 기다림</div>
+        <div class="success-line">결과: Source Run이 완전하게 Commit되지 않았으므로 잘못된 Publish가 시작되지 않습니다.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="gate-timeline">
+    <h2>0-5. Gate는 언제 닫히고, 언제 열리는가?</h2>
+    <div class="timeline">
+      <div class="moment commit"><div class="time">T1</div><h3>Source Run 시작</h3><p><code>sr_101</code>이 시작됩니다.</p></div>
+      <div class="moment closed"><div class="time">T2-A</div><h3>Issue 관찰</h3><p>Source 파일을 durable하게 저장합니다.</p></div>
+      <div class="moment closed"><div class="time">T2-B</div><h3>row UPSERT</h3><p><code>last_observed = sr_101</code><br>Gate는 아직 닫힘.</p></div>
+      <div class="moment commit"><div class="time">T3</div><h3>Project Commit</h3><p>Watermark와 committed run을 같은 transaction으로 갱신.</p></div>
+      <div class="moment open"><div class="time">T4</div><h3>Gate OPEN</h3><p><code>observed = committed</code><br>이제 Loop B claim 가능.</p></div>
+    </div>
+
+    <div class="one-line">row 생성 → 바로 처리 ❌ &nbsp;&nbsp; / &nbsp;&nbsp; row 생성 → Project Commit 확인 → 처리 ✅</div>
+  </section>
+
+  <section id="gate-fields">
+    <h2>0-6. DB에서는 Gate를 어떻게 판단하는가?</h2>
+    <p>핵심 필드는 두 개입니다.</p>
+    <div class="grid2">
+      <div class="card"><h3>last_observed_source_run_id</h3><p>“이 Work Item의 semantic 상태를 가장 최근에 어느 Source Run에서 관찰했는가?”</p></div>
+      <div class="card"><h3>last_source_committed_run_id</h3><p>“그 관찰이 Project Source Commit까지 성공했다고 확인된 Source Run은 무엇인가?”</p></div>
+    </div>
+    <div class="flow">Loop B가 claim 가능한 조건
+
+last_source_committed_run_id IS NOT NULL
+AND
+last_source_committed_run_id = last_observed_source_run_id</div>
+
+    <table class="condition-table">
+      <thead><tr><th>last_observed</th><th>last_source_committed</th><th>Gate</th><th>뜻</th></tr></thead>
+      <tbody>
+        <tr><td>sr_101</td><td>NULL</td><td class="gate-closed">CLOSED</td><td>이번 관찰이 아직 한번도 Commit되지 않음</td></tr>
+        <tr><td>sr_101</td><td>sr_100</td><td class="gate-closed">CLOSED</td><td>과거 Run은 Commit됐지만 이번 관찰 sr_101은 아직 미확정</td></tr>
+        <tr><td>sr_101</td><td>sr_101</td><td class="gate-open">OPEN</td><td>현재 관찰이 Project Commit까지 완료됨</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="atomic-gate">
+    <h2>0-7. 왜 Watermark와 Gate를 “같은 transaction”으로 열어야 하나?</h2>
+    <p class="lead">Project Commit 순간에는 아래 세 상태가 <strong>한 번에 같이 바뀌어야</strong> 합니다.</p>
+    <div class="transaction">
+      <div class="tx"><b>① source_project_run</b><code>source_status = source_committed</code></div>
+      <div class="tx"><b>② project_state</b><code>committed_watermark = upper</code></div>
+      <div class="tx"><b>③ Work Item</b><code>last_source_committed_run_id = current</code></div>
+    </div>
+    <div class="atomic">세 개를 SAME DB TRANSACTION에서 COMMIT</div>
+    <p>예를 들어 Watermark만 먼저 전진하고 프로세스가 죽으면 “Source는 최신이라고 표시되는데 Work Item Gate는 닫혀 있는” 모순 상태가 생깁니다. 반대로 Gate만 먼저 열리면 아직 Source Commit이 끝나지 않았는데 Loop B가 처리할 수 있습니다. 그래서 세 상태를 원자적으로 함께 Commit합니다.</p>
+  </section>
+
+  <section id="gate-reappearance">
+    <h2>0-8. 이미 처리했던 semantic 상태가 다시 나타나면?</h2>
+    <div class="flow">ABC-123 상태 변화
+A → B → A
+
+예전에 A용 Work Item row가 이미 존재
+
+새 Source Run sr_205에서 A를 다시 관찰
+→ 기존 A row의 last_observed_source_run_id = sr_205
+→ committed는 아직 과거 run
+→ Gate 일시 CLOSED
+
+Project Source Commit 성공
+→ last_source_committed_run_id = sr_205
+→ Gate 다시 OPEN
+
+기존 Knowledge / Embedding은 재사용 가능
+필요하면 Publish만 다시 활성화</div>
+    <p>즉 Gate는 “한번 열리면 영원히 열린 문”이 아닙니다. <strong>현재 관찰이 새 Source Run으로 이동하면 다시 닫히고, 그 Run의 Source Commit이 확인되어야 다시 열립니다.</strong></p>
+  </section>
+
+  <section>
+    <h2>0-9. 여기까지를 한 문장으로</h2>
+    <div class="one-line">Work Item row는 “처리할 일이 생겼다”는 기록이고, Source Ready Gate는 “그 일을 지금 처리해도 안전하다”는 승인입니다.</div>
+    <div class="qa">
+      <details><summary>row가 있으면 backlog에 있다는 뜻인가?</summary><p>넓게 보면 그렇습니다. 하지만 Loop B 관점에서는 row 전체가 곧바로 처리 가능한 queue는 아닙니다. 그중 Source Ready Gate가 열린 row만 실제 claim 대상입니다.</p></details>
+      <details><summary>Gate가 별도의 테이블인가?</summary><p>아닙니다. 현재 설계에서는 별도 Gate 테이블이 아니라 <code>last_observed_source_run_id</code>와 <code>last_source_committed_run_id</code>의 관계로 Gate 상태를 계산합니다.</p></details>
+      <details><summary>Gate가 Jira 데이터를 검증하는가?</summary><p>내용의 정답 여부를 검사하는 Gate는 아닙니다. “현재 Source 관찰이 프로젝트 단위 Commit까지 완료됐는가”라는 운영 일관성을 검사합니다.</p></details>
+      <details><summary>그럼 Review Gate와 같은 것인가?</summary><p>아닙니다. Source Ready Gate는 Loop A→Loop B 경계의 Source 안정성 Gate입니다. Knowledge Review/Evidence는 그 이후 Loop B 내부의 품질 검증 단계입니다.</p></details>
+    </div>
+  </section>
+
+  <section><h2>1. 최종 구조</h2><div class="flow">Loop A · SOURCE SYNC
 Scheduler A
 → source_sync_run / fixed upper
 → Project Discovery
@@ -34,7 +302,11 @@ Scheduler / Worker B
 → Processing Run 종료
 
 Always-on Retrieval
-Published Corpus → FAISS → Evidence/MCP → OpenCode User</div></section><section><h2>2. 왜 두 Loop로 나누는가?</h2><div class="grid3"><div class="card good"><h3>LLM 지연 격리</h3><p>OpenCode가 느려도 Jira Source 최신화는 계속됩니다.</p></div><div class="card good"><h3>독립 Cadence</h3><p>Source와 Processing의 실행 주기·중지·재시도를 따로 제어합니다.</p></div><div class="card good"><h3>Failure Isolation</h3><p>Jira 장애와 OpenCode/Embedding 장애가 서로의 진행을 막지 않습니다.</p></div><div class="card good"><h3>Backlog 가시성</h3><p>Source는 최신인데 Publish가 밀리는 상태를 명시적으로 측정합니다.</p></div><div class="card good"><h3>야간 Catch-up</h3><p>시간대별 OpenCode 처리량이 좋아질 때 backlog를 소진할 수 있습니다.</p></div><div class="card good"><h3>독립 운영</h3><p>Processing Loop만 멈춰도 Source Loop와 Retrieval은 유지됩니다.</p></div></div></section><section><h2>3. 두 Loop 사이의 공식 계약</h2><div class="card good"><div class="flow">Project SOURCE_COMMITTED
+Published Corpus → FAISS → Evidence/MCP → OpenCode User</div></section>
+
+  <section><h2>2. 왜 두 Loop로 나누는가?</h2><div class="grid3"><div class="card good"><h3>LLM 지연 격리</h3><p>OpenCode가 느려도 Jira Source 최신화는 계속됩니다.</p></div><div class="card good"><h3>독립 Cadence</h3><p>Source와 Processing의 실행 주기·중지·재시도를 따로 제어합니다.</p></div><div class="card good"><h3>Failure Isolation</h3><p>Jira 장애와 OpenCode/Embedding 장애가 서로의 진행을 막지 않습니다.</p></div><div class="card good"><h3>Backlog 가시성</h3><p>Source는 최신인데 Publish가 밀리는 상태를 명시적으로 측정합니다.</p></div><div class="card good"><h3>야간 Catch-up</h3><p>시간대별 OpenCode 처리량이 좋아질 때 backlog를 소진할 수 있습니다.</p></div><div class="card good"><h3>독립 운영</h3><p>Processing Loop만 멈춰도 Source Loop와 Retrieval은 유지됩니다.</p></div></div></section>
+
+  <section><h2>3. 두 Loop 사이의 공식 계약</h2><div class="card good"><div class="flow">Project SOURCE_COMMITTED
 +
 durable sync_issue_change
 +
@@ -43,7 +315,9 @@ Source Ready Gate OPEN
 Loop B가 소비 가능한 공식 경계</div></div><p>Work Item row가 존재한다는 사실만으로는 충분하지 않습니다. Candidate 처리 중 row를 먼저 저장할 수 있기 때문에 현재 Source 관찰이 Project Source Commit까지 확정되었는지 확인해야 합니다.</p><div class="flow">Loop B eligible
 last_source_committed_run_id IS NOT NULL
 AND
-last_source_committed_run_id = last_observed_source_run_id</div></section><section><h2>4. 왜 Ready Gate가 필요한가?</h2><div class="grid2"><div class="card bad"><h3>Gate가 없으면</h3><div class="flow">ABC-1 Work Item row 생성
+last_source_committed_run_id = last_observed_source_run_id</div></section>
+
+  <section><h2>4. 왜 Ready Gate가 필요한가?</h2><div class="grid2"><div class="card bad"><h3>Gate가 없으면</h3><div class="flow">ABC-1 Work Item row 생성
 ABC-2 Source 실패
 Project 전체 Source Commit 실패
 
@@ -55,7 +329,13 @@ T3 Project Source Commit
 → watermark + last_source_committed same transaction
 → gate open
 
-그 다음 Loop B claim</div></div></div></section><section><h2>5. Run Identity</h2><div class="grid2"><div class="card"><h3>source_sync_run</h3><p>Jira Discovery, Delta, Source Commit, Watermark를 책임지는 Loop A 실행.</p><div class="flow">source_run_id = sr_ + UUID4</div></div><div class="card"><h3>processing_run</h3><p>Backlog 소비, OpenCode, Embedding, Publish를 책임지는 Loop B 실행.</p><div class="flow">processing_run_id = pr_ + UUID4</div></div></div><p>두 Run은 1:1 대응하지 않습니다.</p></section><section><h2>6. Operational State Domain</h2><div class="grid5"><div class="card"><h3>source_sync_run</h3><p>Loop A Run.</p></div><div class="card"><h3>project_state</h3><p>Project identity / Watermark.</p></div><div class="card"><h3>source_project_run</h3><p>Run×Project / cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>durable backlog + ready/stage state.</p></div><div class="card"><h3>processing_run</h3><p>Loop B Run / 처리량.</p></div></div></section><section><h2>7. Queue는 SQLite State DB로 시작</h2><div class="flow">Loop A producer
+그 다음 Loop B claim</div></div></div></section>
+
+  <section><h2>5. Run Identity</h2><div class="grid2"><div class="card"><h3>source_sync_run</h3><p>Jira Discovery, Delta, Source Commit, Watermark를 책임지는 Loop A 실행.</p><div class="flow">source_run_id = sr_ + UUID4</div></div><div class="card"><h3>processing_run</h3><p>Backlog 소비, OpenCode, Embedding, Publish를 책임지는 Loop B 실행.</p><div class="flow">processing_run_id = pr_ + UUID4</div></div></div><p>두 Run은 1:1 대응하지 않습니다.</p></section>
+
+  <section><h2>6. Operational State Domain</h2><div class="grid5"><div class="card"><h3>source_sync_run</h3><p>Loop A Run.</p></div><div class="card"><h3>project_state</h3><p>Project identity / Watermark.</p></div><div class="card"><h3>source_project_run</h3><p>Run×Project / cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>durable backlog + ready/stage state.</p></div><div class="card"><h3>processing_run</h3><p>Loop B Run / 처리량.</p></div></div></section>
+
+  <section><h2>7. Queue는 SQLite State DB로 시작</h2><div class="flow">Loop A producer
 → Work Item INSERT / UPSERT
 → Source Ready Gate open after Project Commit
 
@@ -63,11 +343,26 @@ Loop B consumer
 → ready + pending/failed 대상 조회
 → 처리
 → stage checkpoint
-→ published</div><p>초기 Single Worker에서는 Kafka/RabbitMQ를 도입하지 않습니다. 병렬 처리 요구가 확인되면 claim/lease 또는 외부 Queue를 별도 설계합니다.</p></section><section><h2>8. 최신성은 하나의 Run 상태가 아닙니다</h2><div class="grid3"><div class="card"><h3>Source Lag</h3><p>Project committed watermark 기준 최신성.</p></div><div class="card"><h3>Publish Lag</h3><p>Source Head와 실제 Published Head 차이.</p></div><div class="card"><h3>Backlog</h3><p>source-ready 미처리 Work 수와 oldest age.</p></div></div></section><section><h2>9. 장애 격리</h2><table><thead><tr><th>상황</th><th>계속 가능한 것</th></tr></thead><tbody><tr><td>OpenCode 느림/장애</td><td>Loop A Source Sync + last-known-good Retrieval</td></tr><tr><td>Jira 장애</td><td>Loop B의 이미 source-ready backlog 처리 + Retrieval</td></tr><tr><td>Embedding/Publish 장애</td><td>Loop A + 기존 Published Retrieval</td></tr></tbody></table></section><section><h2>10. Processing Run의 성공 기준</h2><p>Source Run과 별개로 selected Work의 결과를 기준으로 completed/partial/failed를 기록합니다. 시스템 전체는 Source Lag / Publish Lag / Backlog / Throughput으로 봅니다.</p></section><section><h2>11. 아직 남은 별도 결정</h2><div class="card warn"><h3>Intermediate Version supersede</h3><p>V2→V3→V4가 Loop B 시작 전에 쌓이면 모든 semantic Version을 처리할지 미시작 구버전을 supersede할지 아직 Freeze하지 않았습니다.</p></div><div class="card warn"><h3>Multi-worker claim / lease</h3><p>초기 Single Worker 이후 병렬성이 필요할 때 결정합니다.</p></div></section><section><h2>12. 구현 순서</h2><div class="flow">Intermediate Version 정책 Freeze
+→ published</div><p>초기 Single Worker에서는 Kafka/RabbitMQ를 도입하지 않습니다. 병렬 처리 요구가 확인되면 claim/lease 또는 외부 Queue를 별도 설계합니다.</p></section>
+
+  <section><h2>8. 최신성은 하나의 Run 상태가 아닙니다</h2><div class="grid3"><div class="card"><h3>Source Lag</h3><p>Project committed watermark 기준 최신성.</p></div><div class="card"><h3>Publish Lag</h3><p>Source Head와 실제 Published Head 차이.</p></div><div class="card"><h3>Backlog</h3><p>source-ready 미처리 Work 수와 oldest age.</p></div></div></section>
+
+  <section><h2>9. 장애 격리</h2><table><thead><tr><th>상황</th><th>계속 가능한 것</th></tr></thead><tbody><tr><td>OpenCode 느림/장애</td><td>Loop A Source Sync + last-known-good Retrieval</td></tr><tr><td>Jira 장애</td><td>Loop B의 이미 source-ready backlog 처리 + Retrieval</td></tr><tr><td>Embedding/Publish 장애</td><td>Loop A + 기존 Published Retrieval</td></tr></tbody></table></section>
+
+  <section><h2>10. Processing Run의 성공 기준</h2><p>Source Run과 별개로 selected Work의 결과를 기준으로 completed/partial/failed를 기록합니다. 시스템 전체는 Source Lag / Publish Lag / Backlog / Throughput으로 봅니다.</p></section>
+
+  <section><h2>11. 아직 남은 별도 결정</h2><div class="card warn"><h3>Intermediate Version supersede</h3><p>V2→V3→V4가 Loop B 시작 전에 쌓이면 모든 semantic Version을 처리할지 미시작 구버전을 supersede할지 아직 Freeze하지 않았습니다.</p></div><div class="card warn"><h3>Multi-worker claim / lease</h3><p>초기 Single Worker 이후 병렬성이 필요할 때 결정합니다.</p></div></section>
+
+  <section><h2>12. 구현 순서</h2><div class="flow">Intermediate Version 정책 Freeze
 → State Schema v2 explicit Migration
 → Loop A Source State / Delta Sync
 → Source Ready Gate / backlog 검증
 → Loop B processing_run / Single Worker
 → Knowledge / Embedding / Publish
 → Source/Publish/Backlog Monitoring
-→ Remote MCP Operations</div></section><footer class="footer">Two-Loop Operational Architecture · FROZEN · Source Ready Gate included · 2026-08-28</footer></main></body></html>
+→ Remote MCP Operations</div></section>
+
+  <footer class="footer">Two-Loop Operational Architecture · FROZEN · Source Ready Gate included · Beginner visual explanation added · 2026-08-31</footer>
+</main>
+</body>
+</html>
