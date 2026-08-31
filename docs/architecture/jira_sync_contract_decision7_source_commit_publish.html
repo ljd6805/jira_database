@@ -1,43 +1,53 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="D7 Source Commit vs Publish 결정과 2-Loop Source Ready Gate"><title>Sync Contract · D7 · Source Commit vs Publish</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.76}.wrap{max-width:1050px;margin:auto;padding:42px 22px 86px}.hero{padding:38px;border-radius:24px;background:#eef9f4;border-left:6px solid var(--green)}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}.card{margin-top:18px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:14px}.warn{border-left:5px solid var(--amber);background:#fff7e9}a{color:var(--blue);font-weight:800}.footer{margin-top:48px;font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_contract.html">Sync Contract v2</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop</a></p><header class="hero"><div>D7 · FIXED · TWO-LOOP BOUNDARY · 2026-08-28</div><h1>SOURCE_COMMITTED와 PUBLISHED는 다른 완료 경계입니다.</h1><p>D9 2-Loop 채택으로 D7은 물리 실행 경계가 되었습니다. Source Commit은 Loop A, Publish는 Loop B가 담당하며, 두 Loop 사이에는 durable Work Item과 Source Ready Gate가 있습니다.</p></header><section class="card"><h2>Loop A · SOURCE_COMMITTED</h2><div class="flow">Jira Source 확보
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="D7 Source Commit vs Publish 결정과 현재 Source Ready + Latest Gate"><title>Sync Contract · D7 · Source Commit vs Publish · Current</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.76}.wrap{max-width:1050px;margin:auto;padding:42px 22px 86px}.hero{padding:38px;border-radius:24px;background:#eef9f4;border-left:6px solid var(--green)}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}.card{margin-top:18px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:14px}.warn{border-left:5px solid var(--amber);background:#fff7e9}a{color:var(--blue);font-weight:800}.footer{margin-top:48px;font-size:12px}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_contract.html">현재 Sync 규칙 · 개정 3</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop</a></p><header class="hero"><div>D7 · FIXED · CURRENT TWO-LOOP BOUNDARY · 2026-08-31</div><h1>SOURCE_COMMITTED와 PUBLISHED는 다른 완료 경계입니다.</h1><p>Source Commit은 Loop A, Publish는 Loop B가 담당합니다. 현재 정책에서는 두 Loop 사이에 durable Work Item과 <strong>Source Ready + Latest 조건</strong>이 있습니다.</p></header><section class="card"><h2>Loop A · SOURCE_COMMITTED</h2><div class="flow">Jira Source 확보
 → RAW / ANALYSIS / Knowledge Input durable
-→ semantic_v2 hash
+→ semantic_v2 (Source 변경 판별 프로필)
 → NEW / CHANGED / UNCHANGED 판정
-→ NEW/CHANGED Work Item row durable
+→ NEW/CHANGED Work Item durable
 → Project Source window 전체 완료
 → source_committed + Watermark
-→ Work Item Source Ready Gate open</div></section><section class="card"><h2>Loop B가 소비 가능한 정확한 조건</h2><div class="flow">durable Work Item 존재만으로는 부족
+→ 새 Work Source Ready
+→ 같은 Issue의 이전 미완료 Work supersede</div></section><section class="card"><h2>Loop B가 소비 가능한 정확한 조건</h2><div class="flow">durable Work Item 존재만으로는 부족
 
 Loop B eligible iff
 last_source_committed_run_id IS NOT NULL
-AND
-last_source_committed_run_id = last_observed_source_run_id</div><p>Candidate 처리 중 Work Item row를 먼저 저장할 수 있으므로 Project 전체 Source Commit 전에는 Loop B가 해당 row를 가져가면 안 됩니다.</p></section><section class="card warn"><h2>왜 필요한가?</h2><div class="flow">ABC-1 Source 저장 + Work row 생성
+AND last_source_committed_run_id = last_observed_source_run_id
+AND work_status IN ('pending','failed')
+AND superseded_by_work_item_id IS NULL</div><p>Candidate 처리 중 row를 먼저 저장할 수 있으므로 Project Source Commit 전에는 가져가면 안 되고, Source Commit 후에도 더 최신 Work에 밀린 row는 가져가면 안 됩니다.</p></section><section class="card warn"><h2>왜 필요한가?</h2><div class="flow">ABC-1 Source 저장 + Work row 생성
 ABC-2 Source 실패
-Project 전체 Source Commit 실패
+Project Source Commit 실패
 
-Gate 없음
-→ Loop B가 ABC-1을 먼저 처리할 수 있음 X
+Ready Gate 없음
+→ ABC-1을 잘못 처리할 수 있음
 
-Gate 있음
+Ready Gate 있음
 → ABC-1 row는 durable하지만 unready
-→ Project Source Commit 성공 후에만 claim 가능</div></section><section class="card"><h2>T3 Project Commit · 같은 Transaction</h2><div class="flow">1. source_project_run.source_status = source_committed
+→ Project Source Commit 성공 후에만 후보
+
+그 후 더 최신 ABC-1 상태가 들어오면
+→ 이전 미완료 Work는 superseded
+→ 최신 Work만 처리</div></section><section class="card"><h2>Project Commit · 같은 State DB Transaction</h2><div class="flow">1. source_project_run.source_status = source_committed
 2. project_state.committed_watermark = upper
-3. 현재 Project/Source Run에서 관찰한 Work Item
+3. 새 Work Item
    last_source_committed_run_id = current source_run_id
    last_source_committed_at = now
-COMMIT</div><p>이 세 상태가 함께 확정돼야 Loop A가 Loop B에 작업을 넘긴 것으로 봅니다.</p></section><section class="card"><h2>Loop B · PUBLISHED</h2><div class="flow">source-ready Work Item
+4. 같은 jira_id의 이전 미완료 Work
+   work_status = superseded
+   superseded_by_work_item_id = new work
+5. COMMIT</div><p>Ready와 latest 상태가 같은 순간에 확정돼야 Loop A가 Loop B에 올바른 작업을 넘긴 것으로 봅니다.</p></section><section class="card"><h2>Loop B · PUBLISHED</h2><div class="flow">latest + source-ready Work Item
 → OpenCode Knowledge
+→ latestness re-check
 → Review / Evidence
 → Knowledge DB
 → BGE-M3 Embedding
 → FAISS staging / mapping
-→ 검증
+→ latestness re-check
 → actual Retrieval atomic switch
-→ State publish_status = published</div></section><section class="card"><h2>두 Loop 사이에서 허용되는 상태</h2><div class="flow">Source Head = V2
-Published Head = V1
+→ State publish_status/work_status = published</div></section><section class="card"><h2>두 Loop 사이에서 허용되는 상태</h2><div class="flow">Source Head = 상태 C
+Published Head = 상태 A
 
 Loop A completed 가능
-Loop B V2 pending 가능
-사용자 Retrieval = V1 유지
+Loop B 상태 C pending 가능
+사용자 Retrieval = 상태 A 유지
 
-V2 actual Publish 후
-Published Head = V2</div><p>이 상태는 오류가 아니라 정상적인 eventual consistency 구간입니다. Source Lag, Publish Lag, Backlog로 관찰합니다.</p></section><section class="card"><h2>과거 semantic state 재등장</h2><p>A→B→A처럼 기존 A Work Item이 다시 관찰되면 <code>last_observed_source_run_id</code>가 새 Source Run으로 이동해 Ready Gate가 다시 닫힙니다. 새 Project Source Commit 후 gate를 다시 열고 기존 Knowledge/Embedding을 재사용해 Publish만 재실행할 수 있습니다.</p></section><section class="card"><h2>Half-Publish 금지</h2><p>Knowledge DB, Embedding, FAISS/Mapping이 서로 다른 세대로 노출되지 않게 staging/검증 후 actual Retrieval을 전환합니다. State의 <code>published</code> 표시는 실제 전환보다 먼저 기록할 수 없습니다.</p></section><footer class="footer">D7 FIXED · Source Commit = Loop A · Source Ready Gate · Publish = Loop B · 2026-08-28</footer></main></body></html>
+상태 C actual Publish 후
+Published Head = 상태 C</div><p>이 상태는 오류가 아니라 정상적인 eventual consistency 구간입니다.</p></section><section class="card"><h2>Half-Publish 금지</h2><p>Knowledge DB, Embedding, FAISS/Mapping이 서로 다른 세대로 노출되지 않게 staging/검증 후 actual Retrieval을 전환합니다. State의 <code>published</code> 표시는 실제 전환보다 먼저 기록할 수 없습니다.</p></section><footer class="footer">D7 FIXED · Source Commit = Loop A · Ready + Latest · Publish = Loop B · 2026-08-31</footer></main></body></html>
