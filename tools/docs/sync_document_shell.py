@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 import html
 import json
 import os
@@ -242,8 +243,22 @@ def check_all() -> int:
         for token in _expected_shell_tokens(path):
             if token not in text:
                 errors.append(f"{path.relative_to(ROOT)}: missing {token}")
-    if not REGISTRY.exists() or REGISTRY.read_text(encoding="utf-8") != _registry_text():
+
+    expected_registry = _registry_text()
+    current_registry = REGISTRY.read_text(encoding="utf-8") if REGISTRY.exists() else ""
+    if current_registry != expected_registry:
         errors.append("docs/assets/document-registry.js: out of sync")
+        errors.extend(
+            f"REGISTRY_DIFF {line}"
+            for line in difflib.unified_diff(
+                current_registry.splitlines(),
+                expected_registry.splitlines(),
+                fromfile="current document-registry.js",
+                tofile="expected document-registry.js",
+                lineterm="",
+            )
+        )
+
     if errors:
         print("DOCUMENT_SHELL_CHECK = FAIL")
         for error in errors:
