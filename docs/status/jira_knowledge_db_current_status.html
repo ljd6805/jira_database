@@ -1,58 +1,73 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M11 완료, 2-Loop Latest-Only, Operational State와 Loop A Delta Source Sync 구현"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현</a><a href="OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html">State 구현</a><a href="../architecture/jira_sync_contract.html">현재 Sync 규칙</a><a href="../architecture/jira_sync_state_schema_contract.html">현재 State 설계</a><a href="POST_MVP_OPERATIONAL_SERVICE_START_HERE.html">Handoff</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-31</span><h1>State 기반 위에<br>Loop A까지 실제 구현했습니다.</h1><p>M0~M11 Functional MVP와 2-Loop + Latest-Only 계약은 유지됩니다. <strong>Operational State 개정 3 foundation과 Loop A Delta Source Sync가 코드/자동 테스트까지 구현</strong>됐습니다.</p><span class="state">M0~M11 DONE · TWO-LOOP · D10 LATEST-ONLY · STATE + LOOP A IMPLEMENTED</span></header><div class="kpis"><div class="kpi"><b>285</b><span>MVP Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>2</b><span>Independent Operational Loops</span></div><div class="kpi"><b>Loop A</b><span>Delta Source Sync CI PASS</span></div><div class="kpi"><b>NEXT</b><span>Loop B Latest-Only Worker</span></div></div><section><h2>1. 현재 완료 상태</h2><div class="grid4"><div class="box good"><b>M0~M11</b><p>Jira → Knowledge → BGE-M3 → FAISS → Evidence/MCP → OpenCode 실제 검증 완료.</p></div><div class="box good"><b>운영 규칙 · 개정 3</b><p>D1~D10. Two-Loop + Source Ready + Latest-Only FIXED.</p></div><div class="box good"><b>Operational State · 개정 3</b><p>Schema/Migration/StateStore foundation 코드 구현.</p></div><div class="box good"><b>Loop A</b><p>Project Discovery → Delta → semantic_v2 → Source Commit / Resume 구현 및 CI PASS.</p></div></div></section><section><h2>2. 구현된 코드</h2><div class="flow">src/jira_collector/state_schema.py
-→ explicit migration / backup / fingerprint / fail-closed
-
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Jira Knowledge DB 현재 상태. M0~M11 완료, State/Loop A/Loop B Knowledge Worker 구현, Data Plane integration이 다음 단계"><title>Jira Knowledge DB · Current Status</title><link rel="stylesheet" href="milestone.css"><style>.grid2,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge 구현</a><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현</a><a href="OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html">State 구현</a><a href="../architecture/jira_sync_contract.html">현재 Sync 규칙</a><a href="POST_MVP_OPERATIONAL_SERVICE_START_HERE.html">Handoff</a></nav><header class="hero"><span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-08-31</span><h1>Loop A에 이어<br>Loop B Knowledge Worker까지 구현했습니다.</h1><p>M0~M11 Functional MVP와 2-Loop + Latest-Only 계약은 유지됩니다. <strong>Operational State foundation, semantic_v2, Loop A Delta Source Sync, Loop B latest-only Knowledge Worker까지 코드/자동 테스트로 구현</strong>했습니다.</p><span class="state">STATE DONE · LOOP A DONE · LOOP B KNOWLEDGE DONE · DATA PLANE NEXT</span></header><div class="kpis"><div class="kpi"><b>285</b><span>MVP Knowledge / Embeddings / FAISS</span></div><div class="kpi"><b>Loop A</b><span>Delta Source Sync CI PASS</span></div><div class="kpi"><b>Loop B</b><span>Knowledge Worker CI PASS</span></div><div class="kpi"><b>NEXT</b><span>Operational Data Plane</span></div></div><section><h2>1. 현재 완료 상태</h2><div class="grid4"><div class="box good"><b>M0~M11</b><p>Jira → Knowledge → BGE-M3 → FAISS → Evidence/MCP → OpenCode 실제 검증 완료.</p></div><div class="box good"><b>Operational State · 개정 3</b><p>Schema/Migration/StateStore + Source Ready + Latest-Only 상태 API 구현.</p></div><div class="box good"><b>Loop A</b><p>Project Discovery → Delta → semantic_v2 → Source Commit / Resume 구현 및 CI PASS.</p></div><div class="box good"><b>Loop B Knowledge</b><p>latest claim → OpenCode staging → validator/reviewer → stale guard → canonical Knowledge checkpoint 구현 및 CI PASS.</p></div></div></section><section><h2>2. 구현된 코드</h2><div class="flow">State Foundation
+src/jira_collector/state_schema.py
 src/jira_collector/state_store.py
-→ source_sync_run / project_state / source_project_run
-→ sync_issue_change latest-only lifecycle
-→ processing_run / Source Ready / stale guard
-
-src/jira_collector/knowledge_input/builder.py
-→ source_hash_profile = semantic_v2
-→ issue/comment updated_at은 hash에서 제외
-→ source path / package-scope metadata도 hash에서 제외
-
-src/jira_collector/source_sync.py
-→ Jira server clock fixed upper
-→ project_id Discovery / initial-delta-catchup
-→ watermark - 5m / stable JQL
-→ RAW → 이슈 단위 정제 → Knowledge Input
-→ NEW / CHANGED / UNCHANGED
-→ Source Commit / same-run Resume
-
 tools/migrate_state_v3.py
-tools/run_source_sync.py</div><p><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 상세 구현 보고서</a></p></section><section><h2>3. Loop A 전체 흐름</h2><div class="flow">Jira /serverInfo
-→ fixed upper
-→ Project Discovery 전체 성공
-→ project_id Registry
 
-Project별
-→ Initial 또는 Watermark - 5m Delta/Catch-up
-→ updated >= lower AND updated < upper
-→ ORDER BY updated ASC, id ASC
-→ RAW / ANALYSIS / Knowledge Input durable
-→ semantic_v2
-→ NEW / CHANGED / UNCHANGED
-→ record_source_candidate()
-→ commit_source_project()
-→ SOURCE_COMMITTED + Watermark + Source Ready + supersede</div></section><section><h2>4. semantic_v2</h2><div class="box good"><b>Jira updated는 후보 신호이지 semantic identity가 아닙니다.</b><p>Issue/Comment <code>updated_at</code>은 Package에는 보존하지만 hash에서는 제외합니다. 실제 본문, created_at, author, 관계, Attachment metadata, Custom Field 같은 의미 데이터는 hash에 남습니다.</p></div><p><code>other_package_available</code>처럼 이번 수집 범위에 따라 달라지는 파생 metadata도 hash에서 제외해 full-run과 incremental-run의 동일 Jira 상태가 같은 hash를 갖게 했습니다.</p></section><section><h2>5. 핵심 원자성</h2><div class="flow">T3 Project Source Commit · SAME State DB transaction
+Loop A
+src/jira_collector/source_sync.py
+src/jira_collector/knowledge_input/builder.py
+tools/run_source_sync.py
 
-source_project_run = source_committed
-+
-project_state.committed_watermark = upper
-+
-현재 Work Item Source Ready
-+
-같은 jira_id의 이전 미완료 Work = superseded
+Loop B · Knowledge stage
+src/jira_collector/knowledge_processing.py
+→ latest + Source-ready Knowledge backlog
+→ opencode run --agent jira-knowledge-orchestrator
+→ staging output
+→ deterministic Knowledge validator
+→ final Review PASS gate
+→ OpenCode 응답 후 latestness re-check
+→ canonical Knowledge/Review atomic promotion
+→ iv_ / kg_ State checkpoint
+→ stale-running A→B→A retry
 
-COMMIT</div><p>한 Project 실패가 다른 Project의 Source Commit을 되돌리지 않습니다.</p></section><section><h2>6. Same-Run Resume</h2><div class="flow">candidate 1 RAW/정제/package 완료
-→ cursor durable
-candidate 2 실패
-→ Watermark 유지
+tools/run_knowledge_worker.py
+→ --model-profile 필수
+→ --opencode-attach 선택
+→ Single Worker 순차 처리</div><p><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 상세</a> · <a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge 상세</a></p></section><section><h2>3. 현재 2-Loop 실행 경계</h2><div class="flow">Loop A · IMPLEMENTED
+Jira
+→ fixed upper / Project Discovery
+→ Delta / semantic_v2
+→ Source History durable
+→ SOURCE_COMMITTED + Watermark + Source Ready
+→ latest-only sync_issue_change
 
-동일 source_run_id resume
-→ 최초 fixed upper 재사용
-→ 완료 Discovery snapshot 재사용
-→ cursor 이전 candidate skip
-→ 실패 candidate부터 재시도
-→ Project 전체 성공 후 Watermark 전진</div></section><section><h2>7. 자동 검증</h2><table><thead><tr><th>항목</th><th>결과</th></tr></thead><tbody><tr><td>State Migration / backup / rollback / fail-closed</td><td>PASS</td></tr><tr><td>Initial Ingest / Jira clock fixed upper</td><td>PASS</td></tr><tr><td>Watermark - 5m / stable Delta JQL</td><td>PASS</td></tr><tr><td>timestamp-only → UNCHANGED</td><td>PASS</td></tr><tr><td>실제 내용 변경 → CHANGED + supersede</td><td>PASS</td></tr><tr><td>Discovery 성공 부재 → unavailable / Watermark 유지</td><td>PASS</td></tr><tr><td>Discovery 실패 → visibility 유지</td><td>PASS</td></tr><tr><td>same-run cursor Resume</td><td>PASS</td></tr><tr><td>semantic_v2 package-scope metadata 안정성</td><td>PASS</td></tr><tr><td>Source Sync runner entrypoint</td><td>PASS</td></tr></tbody></table></section><section><h2>8. 실제 환경 Gate</h2><div class="grid2"><div class="box warn"><b>실제 collector.db Migration</b><p>기능은 구현됐지만 사용 중인 <code>data/state/collector.db</code>를 이 원격 작업에서 실제 Migration하지 않았습니다.</p></div><div class="box warn"><b>실제 사내 Jira Loop A Run</b><p>Fake Jira + 실제 SQLite/파일 자동 테스트는 PASS지만 사내 Jira endpoint에 새 runner를 실행한 결과는 아직 없습니다.</p></div></div><pre>python tools/migrate_state_v3.py --database data/state/collector.db
-python tools/run_source_sync.py</pre></section><section><h2>9. 현재 다음 구현</h2><div class="box next"><b>Loop B Latest-Only Single Worker</b><p><code>sync_issue_change</code>에서 Source-ready + latest Work만 claim하고 OpenCode → stale re-check → Knowledge/Review/Evidence → Embedding → Publish 직전 stale re-check → Atomic Publish로 연결합니다.</p></div><div class="box warn"><b>Real Environment Gate는 별도</b><p>Loop B 구현과 별개로 실제 local migration과 실제 Jira Source Run은 사용 환경에서 결과를 확인해 완료 표시해야 합니다.</p></div></section><section><h2>10. 다음 구현 순서</h2><table><thead><tr><th>순서</th><th>작업</th><th>현재</th></tr></thead><tbody><tr><td>1</td><td>Operational State 개정 3 foundation</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>2</td><td>semantic_v2 source hash</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>3</td><td>Loop A Delta Source Sync</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>4</td><td>Loop B latest-only Single Worker</td><td><strong>NEXT</strong></td></tr><tr><td>5</td><td>Knowledge / Embedding / Atomic Publish</td><td>계획</td></tr><tr><td>6</td><td>Structured Logging / Source Lag / Publish Lag / Backlog Monitoring</td><td>계획</td></tr><tr><td>7</td><td>Remote MCP Operations / Team Pilot</td><td>계획</td></tr></tbody></table></section><footer>State foundation + Loop A IMPLEMENTED / CI PASS · REAL ENV GATES PENDING · 2026-08-31</footer></main></body></html>
+                 ↓
+
+Loop B · Knowledge stage IMPLEMENTED
+latest + Source-ready Work claim
+→ OpenCode Orchestrator
+→ staging Knowledge / Reviews
+→ Validator + Reviewer PASS
+→ latest re-check
+→ canonical Knowledge
+→ knowledge_status = completed
+
+                 ↓ NEXT
+
+Operational Data Plane
+Knowledge DB incremental materialization
+→ BGE-M3 incremental Embedding
+→ FAISS staging / mapping
+→ latest re-check
+→ Atomic Publish
+→ work_status = published</div></section><section><h2>4. Loop B Knowledge 안전 규칙</h2><div class="grid2"><div class="box good"><b>Staging first</b><p>OpenCode가 쓴 파일은 바로 공식 Knowledge가 아닙니다. staging에 둔 뒤 검증을 통과해야 canonical로 승격합니다.</p></div><div class="box good"><b>Latest after OpenCode</b><p>OpenCode가 느린 동안 더 최신 Source가 들어오면 구버전 결과는 canonical Knowledge로 승격하지 않습니다.</p></div><div class="box good"><b>Artifact first, State second</b><p>실제 Knowledge/Review 파일을 durable하게 만든 뒤에만 <code>knowledge_status=completed</code>를 기록합니다.</p></div><div class="box good"><b>Generation identity</b><p><code>model_profile</code>을 명시적으로 받아 <code>iv_ + Knowledge Contract → kg_</code>를 결정합니다.</p></div></div></section><section><h2>5. Source History / Latest-Only</h2><div class="flow">Source History
+A → B → C → D
+모두 보존
+
+AI Processing
+B pending/running → newer Source로 superseded 가능
+C pending          → superseded
+D latest + Source-ready → OpenCode 처리</div><p>중간 Version은 삭제하지 않습니다. 지식화 대상에서 제외된 이유는 State/structured log로 추적합니다.</p></section><section><h2>6. semantic_v2</h2><div class="box good"><b>Jira updated는 후보 신호이지 semantic identity가 아닙니다.</b><p>Issue/Comment <code>updated_at</code>, 경로, 실행 범위 파생값은 hash에서 제외하고 실제 업무 의미 데이터는 hash에 유지합니다.</p></div></section><section><h2>7. 자동 검증</h2><table><thead><tr><th>항목</th><th>결과</th></tr></thead><tbody><tr><td>State Migration / backup / rollback / fail-closed</td><td>PASS</td></tr><tr><td>Initial/Delta/Watermark -5m/stable JQL</td><td>PASS</td></tr><tr><td>timestamp-only → UNCHANGED / meaningful → CHANGED</td><td>PASS</td></tr><tr><td>Discovery failure isolation / same-run Resume</td><td>PASS</td></tr><tr><td>Loop B latest + Source-ready selection</td><td>PASS</td></tr><tr><td>Knowledge staging → canonical promotion</td><td>PASS</td></tr><tr><td>OpenCode 중 newer Source → stale result 차단</td><td>PASS</td></tr><tr><td>OpenCode failure → retryable failed state</td><td>PASS</td></tr><tr><td>Reviewer non-PASS 차단</td><td>PASS</td></tr><tr><td>A→B→A stale-running reactivation</td><td>PASS</td></tr><tr><td>Source/Knowledge runner entrypoints</td><td>PASS</td></tr></tbody></table></section><section><h2>8. 실제 환경 Gate</h2><div class="grid2"><div class="box warn"><b>실제 collector.db Migration</b><p>실제 사용 중인 <code>data/state/collector.db</code>는 이 원격 작업에서 Migration하지 않았습니다.</p></div><div class="box warn"><b>실제 사내 Jira Loop A</b><p>자동 테스트는 PASS지만 사내 Jira endpoint에서 새 Source runner 실행 실적은 아직 없습니다.</p></div><div class="box warn"><b>실제 사내 OpenCode Loop B</b><p>OpenCode CLI invocation은 테스트했지만 사내 OpenCode 1.18.12에서 실제 Work를 처리한 결과는 아직 없습니다.</p></div><div class="box warn"><b>Publish</b><p>Operational Knowledge DB/Embedding/FAISS/active pointer 연결 전이므로 전체 Loop B가 PUBLISHED까지 완료된 상태는 아닙니다.</p></div></div></section><section><h2>9. 실행 명령</h2><pre># State Migration
+python tools/migrate_state_v3.py --database data/state/collector.db
+
+# Loop A
+python tools/run_source_sync.py
+
+# Loop B · Knowledge stage
+python tools/run_knowledge_worker.py \
+  --model-profile internal-opencode-knowledge-v1
+
+# 이미 opencode serve를 띄운 경우
+python tools/run_knowledge_worker.py \
+  --model-profile internal-opencode-knowledge-v1 \
+  --opencode-attach http://localhost:4096</pre></section><section><h2>10. 현재 다음 구현</h2><div class="box next"><b>Operational Data Plane Integration</b><p>현재 incremental Work 하나를 기존 full-run loader에 억지로 넣지 않고, per-Work Knowledge DB materializer를 만들어 <strong>Issue Version / Generation / Attempt / Knowledge Item / Evidence / Review → BGE-M3 → FAISS staging → Atomic Publish</strong>로 이어갑니다.</p></div><p>Publish 직전에도 latestness를 다시 확인하고, stale이면 새 active view로 전환하지 않습니다.</p></section><section><h2>11. 구현 순서</h2><table><thead><tr><th>순서</th><th>작업</th><th>현재</th></tr></thead><tbody><tr><td>1</td><td>Operational State foundation</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>2</td><td>semantic_v2</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>3</td><td>Loop A Delta Source Sync</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>4</td><td>Loop B latest-only Knowledge Worker</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>5</td><td>Operational Knowledge DB materialization</td><td><strong>NEXT</strong></td></tr><tr><td>6</td><td>Incremental BGE-M3 / FAISS / Atomic Publish</td><td>계획</td></tr><tr><td>7</td><td>Lag / Backlog / Supersede Monitoring</td><td>계획</td></tr><tr><td>8</td><td>Remote MCP Operations / Team Pilot</td><td>계획</td></tr></tbody></table></section><footer>State + Loop A + Loop B Knowledge IMPLEMENTED / CI PASS · REAL ENV GATES PENDING · DATA PLANE NEXT · 2026-08-31</footer></main></body></html>
