@@ -205,7 +205,7 @@ class IssueKnowledgeInputBuilder:
             field_docs.append(self._field_doc(value, definition))
 
         # semantic_v2는 Jira updated를 Delta 후보 탐색에만 사용하고 semantic identity에는 사용하지 않습니다.
-        # package에는 updated_at을 그대로 남기지만 hash material에서는 Issue/Comment updated_at과 경로 metadata를 제외합니다.
+        # package에는 updated_at을 그대로 남기지만 hash material에서는 Issue/Comment updated_at과 실행 파생 metadata를 제외합니다.
         hash_material = self._semantic_v2_hash_material(
             issue_doc=issue_doc,
             comment_docs=comment_docs,
@@ -438,11 +438,11 @@ class IssueKnowledgeInputBuilder:
     ) -> dict[str, Any]:
         """semantic_v2 계약에 맞는 canonical source hash 재료를 만듭니다."""
 
-        issue_material = cls._strip_paths(issue_doc)
+        issue_material = cls._strip_derived_metadata(issue_doc)
         if isinstance(issue_material, dict):
             issue_material.pop("updated_at", None)
 
-        comment_material = cls._strip_paths(comment_docs)
+        comment_material = cls._strip_derived_metadata(comment_docs)
         if isinstance(comment_material, list):
             for comment in comment_material:
                 if isinstance(comment, dict):
@@ -451,23 +451,28 @@ class IssueKnowledgeInputBuilder:
         return {
             "issue": issue_material,
             "comments": comment_material,
-            "attachments": cls._strip_paths(attachment_docs),
-            "relationships": cls._strip_paths(relation_docs),
-            "custom_fields": cls._strip_paths(field_docs),
+            "attachments": cls._strip_derived_metadata(attachment_docs),
+            "relationships": cls._strip_derived_metadata(relation_docs),
+            "custom_fields": cls._strip_derived_metadata(field_docs),
         }
 
     @classmethod
-    def _strip_paths(cls, value: Any) -> Any:
-        """PC별 경로 차이가 source_hash를 바꾸지 않도록 경로 필드를 제외합니다."""
+    def _strip_derived_metadata(cls, value: Any) -> Any:
+        """PC/실행 범위에 따라 달라지는 metadata가 semantic hash를 바꾸지 않게 제외합니다."""
 
         if isinstance(value, list):
-            return [cls._strip_paths(item) for item in value]
+            return [cls._strip_derived_metadata(item) for item in value]
 
         if isinstance(value, dict):
             return {
-                key: cls._strip_paths(item)
+                key: cls._strip_derived_metadata(item)
                 for key, item in value.items()
-                if key not in {"source_path", "source_page"}
+                if key
+                not in {
+                    "source_path",
+                    "source_page",
+                    "other_package_available",
+                }
             }
 
         return value
