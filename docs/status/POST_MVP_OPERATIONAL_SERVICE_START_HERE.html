@@ -1,6 +1,7 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Continuous Jira Knowledge Service 최신 인수인계. Fresh Bootstrap, Smoke isolation, Loop B OpenCode real gate, Atomic Publish 다음 단계를 안내한다."><title>Post-MVP · Two-Loop Latest-Only · Start Here</title><link rel="stylesheet" href="milestone.css"><style>.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.next{border:2px solid var(--blue);background:#edf3ff}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}@media(max-width:800px){.grid2{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="jira_knowledge_db_current_status.html">Current Status</a><a href="../architecture/jira_operational_fresh_bootstrap_smoke_policy.html">★ Fresh Bootstrap / Smoke</a><a href="../architecture/jira_loop_b_opencode_automation_easy_guide.html">OpenCode 자동화</a><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A</a></nav><header class="hero"><span class="eyebrow">LATEST HANDOFF · 2026-08-31</span><h1>새 세션은 여기서 시작합니다.</h1><p>운영 구조는 <strong>Two-Loop + D10 Latest-Only + Operational State 개정 3</strong>입니다. 공식 Real Test 시작 방식은 <strong>Fresh Bootstrap</strong>이며, Smoke는 <code>data_smoke/</code>로 완전히 격리합니다.</p><span class="state">FRESH BOOTSTRAP DEFAULT · REAL LOOP A SMOKE NEXT · REAL OPENCODE PENDING · ATOMIC PUBLISH NEXT</span></header><section><h2>1. 지금 위치</h2><div class="flow">M0~M11 Functional MVP                    DONE / PASS
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Continuous Jira Knowledge Service 최신 인수인계. Fresh Bootstrap, Smoke isolation, Loop B OpenCode real gate, Atomic Publish 다음 단계를 안내한다."><title>Post-MVP · Two-Loop Latest-Only · Start Here</title><link rel="stylesheet" href="milestone.css"><style>.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.next{border:2px solid var(--blue);background:#edf3ff}.flow{white-space:pre-wrap}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}@media(max-width:800px){.grid2{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="../index.html">← 문서 허브</a><a href="jira_knowledge_db_current_status.html">Current Status</a><a href="../architecture/jira_operational_fresh_bootstrap_smoke_policy.html">★ Fresh Bootstrap / Smoke</a><a href="../architecture/jira_loop_b_opencode_automation_easy_guide.html">OpenCode 자동화</a><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A</a><a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge</a><a href="OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html">Embedding</a></nav><header class="hero"><span class="eyebrow">LATEST HANDOFF · 2026-08-31</span><h1>새 세션은 여기서 시작합니다.</h1><p>M0~M11 Functional MVP는 <strong>DONE / PASS</strong>입니다. 운영 구조는 <strong>Two-Loop + D10 Latest-Only + Operational State 개정 3</strong>이며, 공식 Real Test 시작 방식은 <strong>Fresh Bootstrap</strong>입니다.</p><span class="state">FRESH BOOTSTRAP DEFAULT · REAL LOOP A SMOKE NEXT · REAL OPENCODE PENDING · CONTINUOUS SCHEDULING NOT IMPLEMENTED · ATOMIC PUBLISH NEXT</span></header><section><h2>1. 지금 위치</h2><div class="flow">M0~M11 Functional MVP                    DONE / PASS
 D1~D10 Two-Loop + Latest-Only              FIXED
-Operational State Schema 개정 3            FROZEN
+StateStore foundation                      IMPLEMENTED · CI PASS
+semantic_v2 source hash                    IMPLEMENTED · CI PASS
 Loop A Delta Source Sync                   IMPLEMENTED · CI PASS
 Loop B Knowledge Automation                IMPLEMENTED · CI PASS
 per-Work Knowledge DB materialization      IMPLEMENTED · CI PASS
@@ -14,17 +15,24 @@ Legacy Migration                           compatibility only
 REAL ENV GATES
 Real Loop A Smoke                          NOT RUN YET
 Real Internal OpenCode Run                 NOT RUN YET
-jira-knowledge-extraction Skill load       NOT VERIFIED YET
+실제 jira-knowledge-extraction Skill load  NOT VERIFIED YET
 Real Incremental BGE-M3                    NOT RUN YET
 
 CONTINUOUS OPERATIONS
 Loop A Scheduler                           NOT IMPLEMENTED
 Loop B Scheduler / Daemon                  NOT IMPLEMENTED
 
-NEXT
-→ Retrieval snapshot / FAISS staging
+CURRENT NEXT
+FAISS / mapping / manifest staging
+→ latestness re-check
 → coherent Atomic Publish
-→ State published</div></section><section><h2>2. 먼저 읽을 문서</h2><div class="grid2"><div class="box good"><b>1. Fresh Bootstrap / Smoke Policy</b><p><code>docs/architecture/jira_operational_fresh_bootstrap_smoke_policy.html</code></p></div><div class="box good"><b>2. OpenCode 자동화 쉬운 가이드</b><p><code>docs/architecture/jira_loop_b_opencode_automation_easy_guide.html</code></p></div><div class="box good"><b>3. Loop A 구현</b><p><code>docs/status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html</code></p></div><div class="box good"><b>4. Current Status</b><p><code>docs/status/jira_knowledge_db_current_status.html</code></p></div></div></section><section><h2>3. Smoke → OpenCode Gate 순서</h2><div class="flow">G1 · Real Loop A Smoke
+→ Knowledge active/historical 정합화
+→ State publish_status = published
+
+LATER
+Structured Logging / Lag / Backlog Monitoring
+→ Scheduler / cadence / concurrency
+→ Remote MCP Operations / Team Pilot</div></section><section><h2>2. 먼저 읽을 문서</h2><div class="grid2"><div class="box good"><b>1. Fresh Bootstrap / Smoke Policy</b><p><code>docs/architecture/jira_operational_fresh_bootstrap_smoke_policy.html</code></p></div><div class="box good"><b>2. OpenCode 자동화 쉬운 가이드</b><p><code>docs/architecture/jira_loop_b_opencode_automation_easy_guide.html</code></p></div><div class="box good"><b>3. Loop A 구현</b><p><code>docs/status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html</code></p></div><div class="box good"><b>4. Loop B Knowledge Automation 구현</b><p><code>docs/status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html</code></p></div><div class="box good"><b>5. Incremental Embedding 구현</b><p><code>docs/status/OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html</code></p></div></div></section><section><h2>3. Smoke → OpenCode Gate 순서</h2><div class="flow">G1 · Real Loop A Smoke
 python tools/run_source_sync.py \
   --local-config config/settings.smoke.yaml \
   --max-issues-per-project 1
@@ -34,12 +42,13 @@ python tools/run_source_sync.py \
 → Source-ready latest Work 생성
 
 G2 · Real Internal OpenCode Smoke
-→ Source-ready Work 1건 선택
+→ Source-ready latest Work 1건 선택
 → Orchestrator
 → Worker
 → jira-knowledge-extraction Skill
 → Validator
 → Reviewer
+→ latestness re-check
 → knowledge_status completed
 
 G3 · Real Incremental BGE-M3
@@ -54,11 +63,18 @@ G4 · Atomic Publish</div><div class="box warn"><b>주의</b><p><code>--max-issu
 → Project별 Watermark 생성
 → Loop B
 → Publish
-→ 이후 Delta Sync</div><p>Migration은 기존 <code>collector.db</code>를 반드시 이어써야 할 때만 사용합니다.</p></section><section><h2>5. Latest-Only 정책은 그대로</h2><div class="flow">Source History는 모두 보존
+→ 이후 Delta Sync</div><p>Migration은 기존 <code>collector.db</code>를 반드시 이어써야 할 때만 사용하는 compatibility capability입니다.</p></section><section><h2>5. Latest-Only 정책</h2><div class="flow">Source History는 모두 보존
 newer Source가 Commit
 → 이전 미완료 Work는 superseded
 → superseded Work는 Loop B 처리 대상에서 제외
-→ latest Work만 Knowledge / Embedding / Publish</div></section><section><h2>6. Real OpenCode Smoke 확인 항목</h2><div class="flow">1. opencode run 호출
+→ latest Work만 Knowledge / Embedding / Publish
+
+Source-ready Gate
+→ last_source_committed_run_id = last_observed_source_run_id
+
+느린 OpenCode/BGE-M3 응답 후
+→ latestness 재검사
+→ stale이면 다음 stage / Publish 중단</div></section><section><h2>6. Real OpenCode Smoke 확인 항목</h2><div class="flow">1. opencode run 호출
 2. jira-knowledge-orchestrator
 3. jira-knowledge-worker
 4. jira-knowledge-extraction Skill 실제 load
@@ -67,4 +83,15 @@ newer Source가 Commit
 7. PASS / REGENERATE JSON
 8. canonical Knowledge
 9. knowledge_status = completed
-10. Jira/Web/MCP 외부 재조회 없음</div><p>이 Gate 전에는 <code>Real Internal OpenCode Run = PASS</code>라고 표시하지 않습니다.</p></section><section><h2>7. 다음 구현</h2><div class="box next"><b>Half-Publish를 막는 coherent publish boundary</b><p>Knowledge DB active Generation과 FAISS active artifact가 서로 다른 세대를 노출하지 않도록 Published bundle/pointer 경계를 구현합니다.</p></div></section><footer>Latest Handoff · Fresh Bootstrap default · Smoke isolated · Real Loop A/OpenCode pending · Atomic Publish next · 2026-08-31</footer></main></body></html>
+10. Jira/Web/MCP 외부 재조회 없음</div><p>이 Gate 전에는 <code>Real Internal OpenCode Run = PASS</code>라고 표시하지 않습니다.</p></section><section><h2>7. 계속 남아 있는 전체 운영 범위</h2><div class="flow">IMPLEMENTED
+per-Work Knowledge DB materialization
+Incremental BGE-M3 staging
+
+NEXT
+FAISS staging
+Atomic Publish
+
+LATER
+Structured Logging / Source Lag / Publish Lag / Backlog Monitoring
+Continuous Scheduling
+Remote MCP Operations / Team Pilot</div></section><section><h2>8. 다음 구현</h2><div class="box next"><b>Half-Publish를 막는 coherent publish boundary</b><p>Knowledge DB active Generation과 FAISS active artifact가 서로 다른 세대를 노출하지 않도록 Published bundle/pointer 경계를 구현합니다.</p></div></section><footer>Latest Handoff · Fresh Bootstrap default · Smoke isolated · Real Loop A/OpenCode pending · Scheduling NOT IMPLEMENTED · Atomic Publish next · 2026-08-31</footer></main></body></html>
