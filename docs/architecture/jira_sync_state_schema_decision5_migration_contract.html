@@ -1,26 +1,27 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S5 · Migration Contract v2</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1080px;margin:auto;padding:42px 22px 86px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:18px}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line)}th{background:#eef3f9}a{color:var(--blue);font-weight:800}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">Schema v2</a> · <a href="jira_sync_state_schema_contract_v1_baseline.html">v1 history</a></p><header class="hero"><div>S5 · FIXED · REVISED TO STATE SCHEMA v2</div><h1>첫 실제 Operational Migration 목표는 v2입니다.</h1><p>v1은 2-Loop 채택 전에 설계만 완료했고 실제 배포되지 않았습니다. 따라서 legacy collector.db에서 첫 실제 Operational State로 갈 때 목표는 v2입니다.</p></header><section class="card"><h2>Version 모델</h2><div class="flow">STATE_SCHEMA_VERSION = 2
-PRAGMA user_version = 2</div><table><thead><tr><th>DB</th><th>처리</th></tr></thead><tbody><tr><td>빈 DB + version 0</td><td>v2 새 초기화</td></tr><tr><td>known legacy + version 0</td><td>explicit backup → migration → validate</td></tr><tr><td>version 2</td><td>v2 fingerprint 확인 후 사용</td></tr><tr><td>unknown version 0 schema</td><td>fail closed</td></tr><tr><td>version 1</td><td>자동 해석/변환 금지. v1은 never-deployed baseline이므로 명시적 운영자 확인</td></tr><tr><td>version &gt; 2</td><td>현재 프로그램 쓰기 거부</td></tr></tbody></table></section><section class="card"><h2>Migration 절차</h2><div class="flow">writer 중지 / migration ownership
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S5 · Migration Contract v3</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1080px;margin:auto;padding:42px 22px 86px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:18px}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line)}th{background:#eef3f9}a{color:var(--blue);font-weight:800}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">Schema v3</a> · <a href="jira_sync_state_schema_contract_v2_baseline.html">v2 history</a></p><header class="hero"><div>S5 · FIXED · REVISED TO STATE SCHEMA v3</div><h1>첫 실제 Operational Migration 목표는 v3입니다.</h1><p>v1과 v2는 모두 구현 전에 의사결정이 확장된 never-deployed baseline입니다. Latest-Only Processing까지 포함한 v3가 첫 실제 운영 Schema입니다.</p></header><section class="card"><h2>Version 모델</h2><div class="flow">STATE_SCHEMA_VERSION = 3
+PRAGMA user_version = 3</div><table><thead><tr><th>DB</th><th>처리</th></tr></thead><tbody><tr><td>빈 DB + version 0</td><td>v3 새 초기화</td></tr><tr><td>known legacy + version 0</td><td>explicit backup → migration → validate</td></tr><tr><td>version 3</td><td>v3 fingerprint 확인 후 사용</td></tr><tr><td>unknown version 0 schema</td><td>fail closed</td></tr><tr><td>version 1 / 2</td><td>자동 추정 금지. never-deployed 설계 baseline이므로 운영자 확인 후 v3로 명시 전환</td></tr><tr><td>version &gt; 3</td><td>현재 프로그램 쓰기 거부</td></tr></tbody></table></section><section class="card"><h2>Migration 절차</h2><div class="flow">writer 중지 / migration ownership
 → SQLite consistent backup
 → backup integrity verify
 → known legacy fingerprint verify
-→ v2 tables additive create
+→ v3 tables additive create
 → migration metadata row
-→ PRAGMA user_version = 2
+→ PRAGMA user_version = 3
 → schema/integrity/regression tests
-→ cutover</div></section><section class="card"><h2>v2 Additive Tables</h2><div class="flow">source_sync_run
+→ cutover</div></section><section class="card"><h2>v3 Additive Tables</h2><div class="flow">source_sync_run
 project_state
 source_project_run
 sync_issue_change
 processing_run
 +
-state_schema_migration</div><p>기존 <code>collection_runs / project_runs / issue_checkpoints / artifacts</code>는 첫 Migration에서 삭제·rename·의미 변경하지 않습니다.</p></section><section class="card warn"><h2>No Guess Backfill</h2><p>Legacy 기록에서 stable project_id, committed Watermark, source_run history, processing history를 추정하지 않습니다. 첫 v2 Source Sync / Processing Run에서 새 상태를 정식 생성합니다.</p></section><section class="card"><h2>완료 Gate</h2><div class="flow">backup PASS
+state_schema_migration</div><p>기존 <code>collection_runs / project_runs / issue_checkpoints / artifacts</code>는 첫 Migration에서 삭제·rename·의미 변경하지 않습니다.</p></section><section class="card warn"><h2>No Guess Backfill</h2><p>Legacy 기록에서 stable project_id, committed Watermark, Source/Processing history, supersede history를 추정하지 않습니다. 첫 v3 Source Sync / Processing Run부터 새 상태를 정식 생성합니다.</p></section><section class="card"><h2>완료 Gate</h2><div class="flow">backup PASS
 integrity PASS
-user_version = 2
-v2 fingerprint PASS
+user_version = 3
+v3 fingerprint PASS
 legacy rows preserved
 legacy Collector/Resume regression PASS
-empty→v2 PASS
-legacy→v2 PASS
-v2 re-run no-op PASS
+empty→v3 PASS
+legacy→v3 PASS
+v3 re-run no-op PASS
 unknown schema reject PASS
-migration failure rollback PASS</div></section><footer>S5 current · explicit migration to State Schema v2 · 2026-08-28</footer></main></body></html>
+migration failure rollback PASS
+Latest-Only / supersede schema constraints PASS</div></section><footer>S5 current · explicit migration to State Schema v3 · 2026-08-31</footer></main></body></html>
