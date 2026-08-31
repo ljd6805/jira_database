@@ -1,13 +1,13 @@
 ---
 name: html-diagram-visual-qa
-description: HTML/SVG flowchart와 관계도의 화살표·노드·edge label 겹침을 예방하고 시인성을 검수한다.
+description: HTML/SVG flowchart와 관계도의 화살표·노드·edge label 겹침을 예방하고 시인성을 검수하며, 시각화 개선 중 기존 설명의 정보 손실을 막는다.
 compatibility: opencode
 metadata:
   language: ko
-  skill-version: "1.0"
+  skill-version: "1.1"
 ---
 
-# HTML Diagram Visual QA Skill v1.0
+# HTML Diagram Visual QA Skill v1.1
 
 ## 언제 사용하나
 
@@ -18,6 +18,16 @@ HTML 문서에서 flowchart, architecture map, relationship map, SVG diagram을 
 1. 2~5개 수준의 단순 직선 흐름은 CSS Grid/Flex를 우선한다.
 2. 분기·회귀·다대다 연결이 있는 경우에만 SVG network를 사용한다.
 3. 복잡한 SVG에서는 obstacle-aware orthogonal routing을 우선한다.
+
+## Content Preservation 규칙
+
+- **시각화는 설명을 대체하지 않고 보강한다.** 다이어그램 추가나 디자인 개선은 기존 설명 위에 이해를 돕는 시각 계층을 추가하는 작업이다.
+- 문서에 이미 있던 **기존의 유효한 설명**, 표, 예시, 주의사항, 관계 설명, Source of Truth 링크를 시각화 개선만을 이유로 삭제하거나 과도하게 축약하지 않는다.
+- 기본 읽기 순서는 가능하면 **그림 → 상세 설명 → 관계/표 → 쉬운 예시 → Source of Truth** 로 구성한다.
+- 복잡한 그림은 설명을 없애는 대신 여러 diagram으로 분리하고, 상세 정보는 카드/표로 내려서 역할을 나눈다.
+- 내용 삭제/축약은 **사용자가 명시적으로 삭제/축약을 요청**했거나, 코드/DDL/검증과 비교해 **오래되어 틀린 내용**임이 확인된 경우에만 허용한다.
+- 오래된 내용을 제거하거나 대체할 때는 무엇을 왜 바꿨는지 **삭제 이유를 문서에 남긴다**. historical 가치가 있으면 삭제보다 superseded/historical 표기를 우선한다.
+- Visual QA는 모양뿐 아니라 정보 coverage도 비교한다. 정당한 이유 없는 설명 손실은 0건이어야 한다.
 
 ## Connector 규칙
 
@@ -51,6 +61,7 @@ HTML 문서에서 flowchart, architecture map, relationship map, SVG diagram을 
 4. 텍스트가 connector 뒤에 묻히지 않음
 5. 복잡한 graph에서 한 node의 연결만 focus할 수 있음
 6. 1280px 데스크톱과 좁은 화면에서 모두 읽을 수 있음
+7. before/after 비교에서 기존 설명·표·예시·주의사항의 정당한 이유 없는 정보 손실 0건
 
 ## 프로젝트 적용 원칙
 
