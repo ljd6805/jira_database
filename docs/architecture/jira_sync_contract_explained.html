@@ -1,5 +1,8 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="2-Loop Continuous Jira Knowledge Service Sync Contract와 Source Ready Gate를 상세 설명"><title>Sync Contract v2 · 상세 설명 · Two-Loop</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 90px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}section{margin-top:48px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_contract.html">공식 Contract v2</a> · <a href="jira_sync_contract_easy_guide.html">쉬운 가이드</a></p><header class="hero"><div>DETAILED LEARNING GUIDE · 2026-08-28</div><h1>Continuous Sync는<br>두 개의 독립 Loop입니다.</h1><p>D1~D9와 Source Ready Gate의 설계 의도를 자세히 설명합니다. 핵심은 Jira Source 최신화와 느리고 변동성이 큰 OpenCode 처리를 같은 실행 수명주기에 묶지 않는 것입니다.</p></header><section><h2>1. 왜 1-Loop가 문제였나?</h2><div class="grid2"><div class="card"><h3>1-Loop</h3><div class="flow">Jira → 정제 → OpenCode → Embedding → Publish → 다음 Jira Sync</div><p>가장 느린 단계가 전체 cadence를 결정합니다. OpenCode가 낮시간에 느리면 Jira Source freshness까지 함께 밀립니다.</p></div><div class="card good"><h3>2-Loop</h3><div class="flow">Loop A: Jira → Source Commit → durable backlog
-Loop B: source-ready backlog → OpenCode → Publish</div><p>Source freshness와 Knowledge freshness를 서로 독립적으로 관리합니다.</p></div></div></section><section><h2>2. Loop A · Source Sync</h2><div class="flow">source_sync_run / fixed upper
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="현재 2-Loop Continuous Jira Knowledge Service Sync Contract와 Source Ready + Latest-Only를 상세 설명"><title>현재 Sync 운영 규칙 · 상세 설명 · Two-Loop</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1160px;margin:auto;padding:42px 22px 90px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}section{margin-top:48px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_contract.html">현재 Sync Contract · 개정 3</a> · <a href="jira_sync_contract_easy_guide.html">쉬운 가이드</a></p><header class="hero"><div>DETAILED LEARNING GUIDE · CURRENT RULES · 2026-08-31</div><h1>Continuous Sync는<br>두 개의 독립 Loop입니다.</h1><p>현재 운영 규칙의 설계 의도를 자세히 설명합니다. 핵심은 Jira Source 최신화와 느리고 변동성이 큰 OpenCode 처리를 같은 실행 수명주기에 묶지 않고, <strong>Loop B에서는 최신 Source 상태만 비싼 AI 처리</strong>를 수행하는 것입니다.</p></header>
+<section><h2>0. “개정 3”을 어떻게 읽나?</h2><div class="callout"><strong>현재 Sync Contract 계열의 세 번째 개정입니다.</strong><br>Operational State Schema 개정 3, Knowledge DB Schema 개정 1, Document Shell 개정 1은 각각 별도 대상입니다. 숫자의 크기를 서로 비교하지 않습니다.</div></section>
+<section><h2>1. 왜 1-Loop가 문제였나?</h2><div class="grid2"><div class="card"><h3>1-Loop</h3><div class="flow">Jira → 정제 → OpenCode → Embedding → Publish → 다음 Jira Sync</div><p>가장 느린 단계가 전체 cadence를 결정합니다. OpenCode가 느리면 Jira Source freshness까지 함께 밀립니다.</p></div><div class="card good"><h3>2-Loop</h3><div class="flow">Loop A: Jira → Source Commit → durable backlog
+Loop B: latest + source-ready backlog → OpenCode → Publish</div><p>Source freshness와 Knowledge freshness를 서로 독립적으로 관리합니다.</p></div></div></section>
+<section><h2>2. Loop A · Source Sync</h2><div class="flow">source_sync_run / fixed upper
 → Project Discovery
 → Initial / Delta / Catch-up
 → Jira Download
@@ -9,21 +12,27 @@ Loop B: source-ready backlog → OpenCode → Publish</div><p>Source freshness�
 → NEW/CHANGED Work Item row UPSERT
 → Project SOURCE_COMMITTED
 → Watermark + Source Ready Gate
-→ Source Run finalize</div><p>Loop A의 책임은 “최신 Jira 사실을 안전하게 확보하고 Loop B가 나중에 처리할 수 있는 durable 작업을 준비하는 것”입니다.</p></section><section><h2>3. Candidate Work Item과 Source Ready Work는 다릅니다</h2><p>2-Loop 구현에서 가장 중요한 차이입니다. Candidate Issue 하나가 안전하게 파일로 저장되면 crash-safe resume을 위해 Work Item row를 먼저 만들 수 있습니다. 하지만 같은 Project window의 다른 Issue가 아직 실패할 수 있으므로 이 row를 곧바로 Loop B에 넘기면 안 됩니다.</p><div class="flow">T2 Candidate
+→ 더 최신 Source 상태가 있으면 이전 미완료 Work supersede
+→ Source Run finalize</div><p><code>semantic_v2</code>는 문서 버전이 아니라 Source 내용의 의미 변화 여부를 계산하는 hash profile 이름입니다.</p></section>
+<section><h2>3. Candidate Work Item과 Source Ready Work는 다릅니다</h2><p>Candidate Issue 하나가 안전하게 파일로 저장되면 crash-safe resume을 위해 Work Item row를 먼저 만들 수 있습니다. 하지만 같은 Project window의 다른 Issue가 아직 실패할 수 있으므로 이 row를 곧바로 Loop B에 넘기면 안 됩니다.</p><div class="flow">T2 Candidate
 ABC-1 Source files durable
 → Work Item row UPSERT
 → last_observed_source_run_id = R100
-→ cursor commit
 
-아직
-last_source_committed_run_id != R100
+아직 Project Source Commit 전
 → Loop B claim 불가
 
 T3 Project Source Commit
-모든 후보 안전 완료
 → source_committed + Watermark
 → last_source_committed_run_id = R100
-→ 이제 claim 가능</div><div class="callout"><strong>Source Ready Gate:</strong><br><code>last_source_committed_run_id IS NOT NULL AND last_source_committed_run_id = last_observed_source_run_id</code></div></section><section><h2>4. 왜 Gate를 Project 단위로 여나?</h2><p>D1/D2에서 Watermark는 Project Source window 전체의 안전성을 나타냅니다. 일부 Issue만 성공했다고 Watermark를 전진하지 않는 것과 같은 이유로, 일부 Work Item만 먼저 Loop B에 넘기지도 않습니다.</p><div class="flow">ABC Project
+→ Source Ready</div></section>
+<section><h2>4. Source Ready만으로 충분하지 않습니다</h2><p>현재 정책에서는 같은 Jira Issue의 여러 Source 상태 중 <strong>가장 최신 Work</strong>여야 합니다.</p><div class="flow">Loop B claim 가능
+
+last_source_committed_run_id IS NOT NULL
+AND last_source_committed_run_id = last_observed_source_run_id
+AND work_status IN ('pending','failed')
+AND superseded_by_work_item_id IS NULL</div><p>즉 <strong>Source Ready + Latest</strong>가 공식 처리 경계입니다.</p></section>
+<section><h2>5. 왜 Gate를 Project 단위로 여나?</h2><p>Watermark는 Project Source window 전체의 안전성을 나타냅니다. 일부 Issue만 성공했다고 Watermark를 전진하지 않는 것과 같은 이유로, 일부 Work Item만 먼저 Loop B에 넘기지도 않습니다.</p><div class="flow">ABC Project
 ABC-1 candidate safe ✓
 ABC-2 candidate safe ✓
 ABC-3 source failure ✗
@@ -31,45 +40,58 @@ ABC-3 source failure ✗
 Project Source Commit = 실패
 Watermark = 이전 값 유지
 ABC-1/2 Work row = durable하지만 unready
-Loop B = consume X</div></section><section><h2>5. Loop B · Knowledge Processing / Publish</h2><div class="flow">processing_run
-→ Source Ready Work 선택
+Loop B = consume X</div></section>
+<section><h2>6. Latest-Only는 무엇을 버리고 무엇을 보존하나?</h2><div class="grid2"><div class="card good"><h3>보존</h3><p>RAW, ANALYSIS, source_hash, Issue Version과 관찰 이력 등 Source History는 삭제하지 않습니다.</p></div><div class="card good"><h3>건너뜀</h3><p>같은 Jira Issue의 더 최신 Source 상태가 Commit됐다면 아직 완료하지 않은 과거 Work의 OpenCode/Embedding/Publish를 생략합니다.</p></div></div><div class="flow">ABC-123
+상태 A → 상태 B → 상태 C
+Source History = A/B/C 모두 보존
+
+A Work pending → superseded by C
+B Work failed  → superseded by C
+C Work pending → Loop B 처리</div></section>
+<section><h2>7. Processing 중 더 최신 상태가 들어오면?</h2><div class="flow">B Work = running
+→ C SOURCE_COMMITTED
+→ B work_status = superseded
+→ OpenCode B 응답 도착
+→ worker latestness re-check
+→ stale 확인
+→ Active Knowledge / Embedding / Publish 중단
+→ stale_inflight_detected log</div><p>외부 API 호출 자체를 강제 취소하는 것보다, 응답 후와 Publish 직전에 최신성을 다시 확인해 stale 결과가 활성 검색으로 들어가지 못하게 합니다.</p></section>
+<section><h2>8. Loop B · Knowledge Processing / Publish</h2><div class="flow">processing_run
+→ latest + source-ready Work 선택
 → OpenCode Knowledge Generation
+→ latestness re-check
 → Review / Evidence
 → Knowledge DB
 → BGE-M3 Embedding
 → FAISS staging / mapping
-→ 검증
+→ latestness re-check
 → Atomic Publish
 → State publish_status = published
-→ Processing Run finalize</div><p>Loop B는 Jira를 다시 읽는 Loop가 아닙니다. Source Ready Work와 이미 durable한 Source 산출물을 소비합니다.</p></section><section><h2>6. durable backlog의 의미</h2><p><code>sync_issue_change</code>는 외부 MQ가 아니라 State DB 안의 durable work queue 역할을 합니다.</p><div class="flow">Loop A producer
-→ Work row staged
-→ Project Commit 후 source-ready
+→ Processing Run finalize</div><p>Loop B는 Jira를 다시 읽지 않습니다. 이미 durable한 Source 산출물을 소비합니다.</p></section>
+<section><h2>9. durable backlog의 의미</h2><p><code>sync_issue_change</code>는 외부 MQ가 아니라 Operational State DB 안의 durable work queue 역할을 합니다.</p><div class="flow">Loop A producer
+→ Work row durable
+→ Project Commit 후 Source Ready
+→ 새 상태 Commit 시 과거 미완료 Work supersede
 
 Loop B consumer
-→ source-ready + pending/failed 조회
+→ latest + source-ready + pending/failed 조회
 → 처리
-→ checkpoint / retry / published</div><p>초기 Single Worker에서는 이 구조로 충분하며 실제 병렬 처리 요구가 확인될 때 lease나 외부 Queue를 검토합니다.</p></section><section><h2>7. D1 / D2 · Watermark와 Overlap</h2><div class="flow">lower = committed_watermark - 5m
+→ stage checkpoint / retry / published</div></section>
+<section><h2>10. Watermark와 Overlap</h2><div class="flow">lower = committed_watermark - 5m
 upper = source_sync_run 시작 시 fixed
 updated &gt;= lower
 updated &lt; upper
-ORDER BY updated ASC, id ASC</div><p>Watermark는 Loop A 전용 Source progress입니다. Loop B backlog가 남아 있어도 Project Source Commit이 안전하다면 Watermark는 전진합니다.</p></section><section><h2>8. D3 / D4 · 실제 변화만 처리</h2><table><thead><tr><th>판정</th><th>조건</th><th>처리</th></tr></thead><tbody><tr><td>NEW</td><td>jira_id 미존재</td><td>새 semantic Work</td></tr><tr><td>CHANGED</td><td>같은 jira_id + 다른 semantic_v2 hash</td><td>새 semantic Work 또는 과거 동일 state 재활성화</td></tr><tr><td>UNCHANGED</td><td>같은 jira_id + 같은 hash</td><td>새 Work 없음</td></tr></tbody></table><p>Jira updated는 candidate trigger일 뿐 semantic identity가 아닙니다.</p></section><section><h2>9. D5 · Resume도 Loop별</h2><div class="grid2"><div class="card"><h3>Source Resume</h3><p>같은 Source Run의 fixed lower/upper와 stable cursor를 사용합니다. Source Commit 전 Work는 unready이므로 Processing과 섞이지 않습니다.</p></div><div class="card"><h3>Processing Resume</h3><p>Knowledge/Embedding/Publish Stage 상태를 보고 실패 지점부터 이어갑니다. 이미 존재하는 actual artifact는 검증 후 재사용합니다.</p></div></div></section><section><h2>10. D6 · Jira Lifecycle ≠ Knowledge Lifecycle</h2><div class="flow">Discovery 전체 성공
-→ 기존 Project B unavailable
-→ Loop A skip / Watermark 유지
-→ 기존 Work / Knowledge / Embedding / FAISS 보존
-→ Retrieval 계속 가능</div></section><section><h2>11. D7 · SOURCE_COMMITTED ≠ PUBLISHED</h2><div class="flow">Loop A
-V2 SOURCE_COMMITTED + Ready Gate
+ORDER BY updated ASC, id ASC</div><p>Watermark는 Loop A 전용 Source progress입니다. Loop B backlog가 남아 있어도 Project Source Commit이 안전하다면 Watermark는 전진합니다.</p></section>
+<section><h2>11. 실제 변화만 Work로 만듭니다</h2><table><thead><tr><th>판정</th><th>조건</th><th>처리</th></tr></thead><tbody><tr><td>NEW</td><td>jira_id 미존재</td><td>새 Source 상태 + Work</td></tr><tr><td>CHANGED</td><td>같은 jira_id + 다른 <code>semantic_v2</code> hash</td><td>새 Source 상태 + Work</td></tr><tr><td>UNCHANGED</td><td>같은 jira_id + 같은 hash</td><td>새 Work 없음</td></tr></tbody></table><p>Jira updated 시각은 candidate 탐색용이지 semantic identity 자체가 아닙니다.</p></section>
+<section><h2>12. Resume도 Loop별</h2><div class="grid2"><div class="card"><h3>Source Resume</h3><p>같은 Source Run의 fixed lower/upper와 stable cursor를 사용합니다. Source Commit 전 Work는 unready이므로 Processing과 섞이지 않습니다.</p></div><div class="card"><h3>Processing Resume</h3><p>먼저 최신 Work인지 다시 확인한 뒤 Knowledge/Embedding/Publish Stage 상태를 보고 실패 지점부터 이어갑니다.</p></div></div></section>
+<section><h2>13. SOURCE_COMMITTED ≠ PUBLISHED</h2><p>Source Head와 Published Head가 잠시 다른 것은 정상입니다.</p><div class="flow">Source Head = 상태 C
+Published Head = 상태 A
 
-Loop B
-V2 pending
+Loop B는 C를 처리 중
+사용자 검색은 A last-known-good 유지
 
-Service
-Published Head = V1 계속 사용
-
-Loop B V2 actual Publish
-→ Published Head = V2</div><p><code>Source Head != Published Head</code>는 정상적인 eventual consistency 상태입니다.</p></section><section><h2>12. D8 / D9 · Run 상태</h2><p>단일 Sync Run 집계는 폐기됐습니다.</p><table><thead><tr><th>Run</th><th>책임</th></tr></thead><tbody><tr><td>source_sync_run</td><td>Discovery / Source / Watermark</td></tr><tr><td>processing_run</td><td>Source-ready backlog consume / Knowledge / Publish</td></tr></tbody></table><p>시스템 전체 건강도는 Source Lag, Publish Lag, Backlog, Throughput 조합으로 봅니다.</p></section><section><h2>13. 낮/밤 OpenCode 편차</h2><div class="flow">낮
-Loop A 정상 cadence
-Loop B 느림 → source-ready backlog 증가 가능
-
-밤
-Loop B 처리량 향상
-→ backlog catch-up</div><p>2-Loop는 병목을 없애는 것이 아니라 Source freshness에서 격리하고 운영 지표로 드러냅니다.</p></section><section><h2>14. 운영 지표</h2><div class="grid3"><div class="card"><h3>Source Lag</h3><p>Watermark 최신성.</p></div><div class="card"><h3>Publish Lag</h3><p>Source Head vs Published Head.</p></div><div class="card"><h3>Backlog Depth</h3><p>Source-ready 미처리 Work 수.</p></div><div class="card"><h3>Oldest Pending</h3><p>최장 대기 age.</p></div><div class="card"><h3>Throughput</h3><p>시간당 Published 수.</p></div><div class="card"><h3>Latency / Error</h3><p>시간대별 OpenCode/Stage 성능.</p></div></div></section><section><h2>15. 아직 남은 정책</h2><div class="card warn"><h3>Intermediate Version supersede</h3><p>V2→V3→V4가 Processing 전에 쌓이면 모두 Knowledge 처리할지, Source history는 보존하되 미시작 구버전 Work를 supersede할지 다음에 결정합니다.</p></div><div class="card warn"><h3>Multi-worker claim / lease</h3><p>초기 Single Worker 후 실제 병렬 요구가 생길 때 설계합니다.</p></div></section><footer class="footer">Sync Contract v2 Detailed Guide · Two-Loop · Source Ready Gate · 2026-08-28</footer></main></body></html>
+C actual Publish 후
+Published Head = 상태 C</div></section>
+<section><h2>14. Run 상태</h2><table><thead><tr><th>Run</th><th>책임</th></tr></thead><tbody><tr><td>source_sync_run</td><td>Discovery / Source / Watermark</td></tr><tr><td>processing_run</td><td>최신 Source-ready backlog / Knowledge / Publish</td></tr></tbody></table><p>시스템 전체 건강도는 Source Lag, Publish Lag, Latest Backlog, Throughput, Supersede 지표 조합으로 봅니다.</p></section>
+<section><h2>15. 운영 지표</h2><div class="grid3"><div class="card"><h3>Source Lag</h3><p>Watermark 최신성.</p></div><div class="card"><h3>Publish Lag</h3><p>Source Head vs Published Head.</p></div><div class="card"><h3>Latest Backlog</h3><p>실제 처리해야 할 최신 Work 수.</p></div><div class="card"><h3>Oldest Pending</h3><p>최장 대기 age.</p></div><div class="card"><h3>Supersede</h3><p>구버전 Work를 얼마나 건너뛰었는지.</p></div><div class="card"><h3>Latency / Error</h3><p>OpenCode/Embedding/Publish 단계 성능.</p></div></div></section>
+<section><h2>16. 아직 남은 정책</h2><div class="card warn"><h3>Multi-worker claim / lease</h3><p>초기 Single Worker 이후 실제 병렬 요구가 생길 때 설계합니다. Latest-Only/supersede 정책은 이미 확정되었습니다.</p></div></section><footer class="footer">현재 Sync 운영 규칙 · 개정 3 기반 Detailed Guide · Two-Loop + Source Ready + Latest-Only · 2026-08-31</footer></main></body></html>
