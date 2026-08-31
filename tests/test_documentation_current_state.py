@@ -11,6 +11,7 @@ CURRENT_DOCS = (
     Path("docs/status/jira_knowledge_db_current_status.html"),
     Path("docs/status/POST_MVP_OPERATIONAL_SERVICE_START_HERE.html"),
     Path("docs/status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html"),
+    Path("docs/architecture/jira_operational_fresh_bootstrap_smoke_policy.html"),
     Path("docs/architecture/jira_operational_two_loop_architecture.html"),
     Path("docs/architecture/jira_sync_contract.html"),
     Path("docs/architecture/jira_sync_state_schema_contract.html"),
@@ -112,6 +113,20 @@ def test_current_contract_and_schema_are_revision3_latest_only() -> None:
     assert "work_status" in ddl and "superseded_by_work_item_id" in ddl
 
 
+def test_fresh_bootstrap_is_default_and_migration_is_compatibility_only() -> None:
+    policy = _read(Path("docs/architecture/jira_operational_fresh_bootstrap_smoke_policy.html"))
+    status = _read(Path("docs/status/jira_knowledge_db_current_status.html"))
+    handoff = _read(Path("docs/status/POST_MVP_OPERATIONAL_SERVICE_START_HERE.html"))
+    migration = _read(Path("docs/architecture/jira_sync_state_schema_decision5_migration_contract.html"))
+    for text in (policy, status, handoff):
+        assert "Fresh Bootstrap" in text
+        assert "data_smoke" in text
+    assert "compatibility" in policy.lower()
+    assert "legacy DB" in migration
+    assert "Fresh Bootstrap" in migration
+    assert "Migration REQUIRED" in migration or "migration required" in migration.lower()
+
+
 def test_historical_schema_baselines_are_explicitly_not_current() -> None:
     for path in (
         Path("docs/architecture/jira_sync_state_schema_contract_v1_baseline.html"),
@@ -183,7 +198,6 @@ def test_state_foundation_implementation_report_is_current_and_linked() -> None:
     text = _read(report)
     for token in (
         "IMPLEMENTED",
-        "LOCAL DB MIGRATION PENDING",
         "state_schema.py",
         "state_store.py",
         "migrate_state_v3.py",
@@ -292,6 +306,7 @@ def test_documentation_hub_links_all_milestone_completion_docs() -> None:
 def test_documentation_hub_links_current_sources() -> None:
     index = _read(Path("docs/index.html"))
     for name in (
+        "jira_operational_fresh_bootstrap_smoke_policy.html",
         "jira_sync_contract.html",
         "jira_sync_contract_decision10_latest_only_processing.html",
         "jira_sync_state_schema_contract.html",
