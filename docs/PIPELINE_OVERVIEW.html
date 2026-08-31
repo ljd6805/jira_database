@@ -1,21 +1,26 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · Two-Loop Latest-Only Overview</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.72}.wrap{max-width:1120px;margin:auto;padding:38px 22px 84px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.warn{border-left-color:var(--amber);background:#fff7e9}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style><link rel="stylesheet" href="assets/document-shell.css" data-doc-shell="v1"><script defer src="assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html">State 구현</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a><a href="architecture/jira_sync_contract.html">현재 Sync 규칙</a><a href="architecture/jira_sync_state_schema_contract.html">현재 State 설계</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-31</div><h1>Jira Knowledge Pipeline<br>MVP → 2-Loop + Latest-Only</h1><p>M0~M11 Functional MVP는 완료됐고, 지속 운영을 위한 <strong>Operational State 개정 3 foundation까지 구현</strong>했습니다.</p></header><section><h2>1. 전체 흐름</h2><div class="flow">Functional MVP · DONE / PASS
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jira Knowledge Pipeline · Two-Loop Latest-Only Overview</title><style>:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--code:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.72}.wrap{max-width:1120px;margin:auto;padding:38px 22px 84px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(130deg,#18294f,#3157d5 65%,#6d87e7)}h1{margin:8px 0;font-size:clamp(32px,5vw,54px)}section{margin-top:40px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--code);color:#dce8ff;font:13px/1.65 Consolas,monospace}.callout{padding:16px 18px;border-left:5px solid var(--blue);background:#edf3ff;border-radius:11px}.warn{border-left-color:var(--amber);background:#fff7e9}.top a{display:inline-block;margin:0 8px 12px 0;color:var(--blue);text-decoration:none;font-weight:800}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}@media(max-width:760px){.grid{grid-template-columns:1fr}}</style><link rel="stylesheet" href="assets/document-shell.css" data-doc-shell="v1"><script defer src="assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><nav class="top"><a href="index.html">← Documentation Hub</a><a href="status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현</a><a href="status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html">State 구현</a><a href="status/jira_knowledge_db_current_status.html">Current Status</a><a href="architecture/jira_sync_contract.html">현재 Sync 규칙</a></nav><header class="hero"><div>CURRENT ARCHITECTURE · 2026-08-31</div><h1>Jira Knowledge Pipeline<br>MVP → 2-Loop + Latest-Only</h1><p>M0~M11 Functional MVP는 완료됐고, 지속 운영은 <strong>Operational State foundation + Loop A Delta Source Sync까지 구현</strong>했습니다.</p></header><section><h2>1. 전체 흐름</h2><div class="flow">Functional MVP · DONE / PASS
 Jira → RAW → ANALYSIS → Knowledge Input → Knowledge/Review
 → SQLite → BGE-M3 → FAISS → Evidence/MCP → OpenCode
 
 Operational Service · TWO-LOOP + LATEST-ONLY
 
-Loop A · SOURCE SYNC
+Loop A · SOURCE SYNC                    IMPLEMENTED / CI PASS
 source_sync_run
-→ Project Discovery / Delta / Initial / Catch-up
-→ RAW / ANALYSIS / Knowledge Input
+→ Jira server clock fixed upper
+→ Project Discovery / project_id Registry
+→ Initial / Delta / Catch-up
+→ committed_watermark - 5m
+→ updated ASC, id ASC
+→ RAW / per-Issue ANALYSIS / Knowledge Input
 → semantic_v2
 → NEW / CHANGED / UNCHANGED
 → Source History 모두 보존
 → sync_issue_change
 → SOURCE_COMMITTED / Watermark / Source Ready
 → 이전 미완료 Work superseded
+→ same-run Resume
 
-Loop B · KNOWLEDGE PROCESSING / PUBLISH
+Loop B · KNOWLEDGE PROCESSING / PUBLISH NEXT
 processing_run
 → latest + source-ready Work만 claim
 → OpenCode
@@ -26,30 +31,52 @@ processing_run
 → Atomic Publish
 
 Always-on
-Published Corpus → Central Remote MCP → Team OpenCode</div></section><section><h2>2. 현재 구현 진행도</h2><div class="grid"><div class="card"><h3>Operational State foundation</h3><p><strong>IMPLEMENTED / UNIT PASS.</strong> Schema inspection, explicit Migration, StateStore, Latest-Only 상태 전이가 구현됐습니다.</p></div><div class="card"><h3>실제 local DB</h3><p><strong>Migration 전.</strong> 원격 작업에서 실제 <code>data/state/collector.db</code>를 변경하지 않았습니다.</p></div><div class="card"><h3>Loop A integration</h3><p><strong>NEXT.</strong> 기존 Jira Collector를 새 State Plane에 연결합니다.</p></div></div><p><a href="status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html">Operational State 구현 보고서</a></p></section><section><h2>3. State foundation에서 구현한 안전장치</h2><div class="flow">known legacy collector.db
-→ normal open = MigrationRequiredError
-→ explicit migration only
-→ consistent backup / integrity
-→ additive schema / user_version 3
+Published Corpus → Central Remote MCP → Team OpenCode</div></section><section><h2>2. 현재 구현 진행도</h2><div class="grid"><div class="card"><h3>Operational State foundation</h3><p><strong>IMPLEMENTED / CI PASS.</strong> Schema inspection, explicit Migration, StateStore, Latest-Only 상태 전이가 구현됐습니다.</p></div><div class="card"><h3>Loop A</h3><p><strong>IMPLEMENTED / CI PASS.</strong> Delta query, semantic_v2, Source Commit, Resume까지 실제 상태 흐름에 연결했습니다.</p></div><div class="card"><h3>Loop B</h3><p><strong>NEXT.</strong> 최신 Source-ready Work를 OpenCode/Knowledge/Embedding/Publish에 연결합니다.</p></div></div><p><a href="status/LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현 보고서</a> · <a href="status/OPERATIONAL_STATE_REV3_FOUNDATION_IMPLEMENTATION.html">State 구현 보고서</a></p></section><section><h2>3. Loop A의 안전 경계</h2><div class="flow">Source Run 시작
+→ Jira serverInfo로 fixed upper 고정
 
-T3 Source Commit
+Discovery 전체 성공
+→ Registry visible/unavailable 갱신
+Discovery 실패
+→ 기존 visibility 유지
+
+Candidate
+→ RAW 먼저 durable
+→ parser / analysis / package durable
+→ semantic_v2 classification
+→ cursor State second
+
+Project 완료
 → source_committed
 + watermark = upper
 + Work Source Ready
 + 이전 미완료 Work superseded
-→ SAME TRANSACTION
+→ SAME TRANSACTION</div></section><section><h2>4. semantic_v2</h2><div class="flow">Hash 제외
+issue.updated_at
+comment.updated_at
+source_path / source_page
+other_package_available
 
-Loop B
-→ latest + source-ready만 claim
-→ OpenCode 이후 stale guard
-→ Publish 직전 stale guard</div></section><section><h2>4. Source History vs Knowledge Processing</h2><div class="flow">Source History
+Hash 유지
+실제 Issue / Comment 내용
+created_at / author / 업무 context
+Attachment metadata
+Relationship 의미
+Custom Field 의미 값</div><p>Jira updated는 candidate trigger이고 semantic identity가 아닙니다.</p></section><section><h2>5. Same-Run Resume</h2><div class="flow">candidate A 완료 → cursor durable
+candidate B 실패 → Watermark 유지
+
+resume(source_run_id)
+→ 같은 fixed upper
+→ 완료 Discovery snapshot 재사용
+→ cursor 이전 candidate skip
+→ B부터 재시도
+→ 전체 성공 후 Watermark 전진</div></section><section><h2>6. Source History vs Knowledge Processing</h2><div class="flow">Source History
 상태 A → B → C → D
 모두 보존
 
 Knowledge Processing
 B pending → superseded
 C pending → superseded
-D latest  → process</div><p>중간 상태의 존재와 supersede 이유는 State DB와 구조화 로그에서 확인할 수 있습니다.</p></section><section><h2>5. State / Data 경계</h2><div class="grid"><div class="card"><h3>State DB</h3><p>source_sync_run, project_state, source_project_run, sync_issue_change, processing_run.</p></div><div class="card"><h3>Knowledge DB</h3><p>Issue Version, Generation, Attempt, Knowledge Item, Evidence, Review.</p></div><div class="card"><h3>Retrieval</h3><p>Embedding/FAISS artifact와 last-known-good Published active view.</p></div></div></section><section><h2>6. 운영 최신성</h2><div class="flow">Source Lag
+D latest  → Loop B 처리</div><p>중간 상태의 존재와 supersede 이유는 State DB와 구조화 로그에서 확인합니다.</p></section><section><h2>7. State / Data 경계</h2><div class="grid"><div class="card"><h3>State DB</h3><p>source_sync_run, project_state, source_project_run, sync_issue_change, processing_run.</p></div><div class="card"><h3>Knowledge DB</h3><p>Issue Version, Generation, Attempt, Knowledge Item, Evidence, Review.</p></div><div class="card"><h3>Retrieval</h3><p>Embedding/FAISS artifact와 last-known-good Published active view.</p></div></div></section><section><h2>8. Real Environment Gate</h2><div class="grid"><div class="card"><h3>Local collector.db</h3><p><strong>PENDING.</strong> 실제 DB backup/migration/legacy Resume 확인이 필요합니다.</p></div><div class="card"><h3>Real Jira Loop A</h3><p><strong>PENDING.</strong> Fake Jira 기반 자동 테스트는 PASS지만 사내 Jira에서 새 runner를 아직 실행하지 않았습니다.</p></div><div class="card"><h3>자동 CI</h3><p><strong>PASS.</strong> Initial/Delta/UNCHANGED/CHANGED/unavailable/Resume/semantic hash가 검증됐습니다.</p></div></div></section><section><h2>9. 운영 최신성</h2><div class="flow">Source Lag
 = Jira를 어디까지 안전하게 읽었나?
 
 Publish Lag
@@ -58,10 +85,13 @@ Publish Lag
 Latest Backlog
 = 실제로 처리해야 하는 최신 Work가 얼마나 있나?
 
+Oldest Latest Pending
+= 최신 Work 중 가장 오래 기다리는 건 얼마나 오래됐나?
+
 Supersede Ratio
-= 중간 Source 상태가 얼마나 자주 최신 상태에 밀리나?</div></section><section><h2>7. 장애 격리</h2><table><thead><tr><th>장애</th><th>영향</th><th>계속 동작</th></tr></thead><tbody><tr><td>Jira</td><td>Loop A</td><td>Loop B latest backlog + Retrieval</td></tr><tr><td>OpenCode</td><td>Loop B Knowledge</td><td>Loop A + Retrieval</td></tr><tr><td>Embedding/Publish</td><td>Loop B downstream</td><td>Loop A + last-known-good Retrieval</td></tr></tbody></table></section><section><h2>8. 다음 작업</h2><div class="callout"><strong>Loop A Delta Source Sync integration</strong><br>기존 Jira Collector를 project_id Registry, committed Watermark, fixed upper, stable cursor, semantic_v2 classification, <code>record_source_candidate()</code>, <code>commit_source_project()</code>에 연결합니다.</div><div class="flow">State foundation                    IMPLEMENTED / UNIT PASS
-Documentation Shell / Registry Gate   CURRENT
-Loop A Delta integration              NEXT
-Loop B latest-only Worker             LATER
-Knowledge / Embedding / Publish       LATER
-Monitoring / Remote MCP Operations    LATER</div></section><section><h2>9. 주요 운영 서비스 문서</h2><p><a href="architecture/jira_knowledge_operational_service_phase.html">Operational Service Phase</a> · <a href="architecture/jira_knowledge_mcp_service_target.html">MCP Service Target</a> · <a href="VERSION_TERMINOLOGY_GUIDE.html">버전 표기 가이드</a></p></section><footer>Pipeline Overview · State foundation IMPLEMENTED · Loop A integration NEXT · 2026-08-31</footer></main></body></html>
+= 중간 Source 상태가 얼마나 자주 최신 상태에 밀리나?</div></section><section><h2>10. 장애 격리</h2><table><thead><tr><th>장애</th><th>영향</th><th>계속 동작</th></tr></thead><tbody><tr><td>Jira</td><td>Loop A</td><td>Loop B latest backlog + Retrieval</td></tr><tr><td>OpenCode</td><td>Loop B Knowledge</td><td>Loop A + Retrieval</td></tr><tr><td>Embedding/Publish</td><td>Loop B downstream</td><td>Loop A + last-known-good Retrieval</td></tr></tbody></table></section><section><h2>11. 다음 작업</h2><div class="callout"><strong>Loop B Latest-Only Single Worker</strong><br><code>sync_issue_change</code>에서 latest + Source-ready Work를 claim하고 OpenCode → stale guard → Knowledge/Review/Evidence → Embedding → Publish 직전 stale guard → Atomic Publish로 연결합니다.</div><div class="flow">State foundation                    IMPLEMENTED / CI PASS
+semantic_v2                         IMPLEMENTED / CI PASS
+Loop A Delta Source Sync            IMPLEMENTED / CI PASS
+Loop B latest-only Worker           NEXT
+Knowledge / Embedding / Publish     LATER
+Monitoring / Remote MCP Operations  LATER</div></section><section><h2>12. 주요 운영 서비스 문서</h2><p><a href="architecture/jira_knowledge_operational_service_phase.html">Operational Service Phase</a> · <a href="architecture/jira_knowledge_mcp_service_target.html">MCP Service Target</a> · <a href="VERSION_TERMINOLOGY_GUIDE.html">버전 표기 가이드</a></p></section><footer>Pipeline Overview · State + Loop A IMPLEMENTED / CI PASS · Loop B NEXT · 2026-08-31</footer></main></body></html>
