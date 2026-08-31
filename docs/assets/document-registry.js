@@ -121,18 +121,6 @@ window.JIRA_DOCUMENT_REGISTRY = Object.freeze([
     "title": "현재 Operational State DB · 실제 DDL · 개정 3"
   },
   {
-    "path": "architecture/jira_sync_contract_v2_baseline.html",
-    "title": "과거 Sync Contract · 개정 2 · Baseline"
-  },
-  {
-    "path": "architecture/jira_sync_state_schema_contract_v2_baseline.html",
-    "title": "과거 Operational State 설계 · 개정 2 · Baseline"
-  },
-  {
-    "path": "architecture/jira_sync_state_schema_contract_v1_baseline.html",
-    "title": "과거 Operational State 설계 · 개정 1 · Baseline"
-  },
-  {
     "path": "PIPELINE_OVERVIEW.html",
     "title": "Jira Knowledge Pipeline · Two-Loop Latest-Only Overview"
   },
@@ -151,6 +139,18 @@ window.JIRA_DOCUMENT_REGISTRY = Object.freeze([
   {
     "path": "status/VERSION_LANGUAGE_REALIGNMENT_2026-08-31.html",
     "title": "Version Language Realignment · 2026-08-31"
+  },
+  {
+    "path": "architecture/jira_sync_contract_v2_baseline.html",
+    "title": "과거 Sync Contract · 개정 2 · Baseline"
+  },
+  {
+    "path": "architecture/jira_sync_state_schema_contract_v2_baseline.html",
+    "title": "과거 Operational State 설계 · 개정 2 · Baseline"
+  },
+  {
+    "path": "architecture/jira_sync_state_schema_contract_v1_baseline.html",
+    "title": "과거 Operational State 설계 · 개정 1 · Baseline"
   },
   {
     "path": "HTML_DOCUMENT_ENRICHMENT_2026-08-26.html",
