@@ -1,0 +1,106 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Jira Knowledge Service의 Smoke 격리, Fresh Bootstrap, legacy DB Migration 조건부 사용 정책">
+  <title>Operational Bootstrap Policy · Smoke Isolation + Fresh Start</title>
+  <style>
+    :root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 92px}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 65%,#6d87e7)}section{margin-top:44px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}}</style>
+  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
+</head>
+<body><main class="wrap">
+<p><a href="../index.html">← Documentation Hub</a> · <a href="jira_sync_state_schema_decision5_migration_contract.html">Migration Contract</a> · <a href="jira_loop_b_opencode_automation_easy_guide.html">OpenCode 자동화 가이드</a></p>
+<header class="hero"><div>OPERATIONAL BOOTSTRAP POLICY · 2026-08-31</div><h1>Smoke는 완전히 격리하고,<br>정식 운영 검증은 Fresh Start로 시작합니다.</h1><p>파일럿 DB는 운영으로 반드시 승계해야 하는 자산이 아니라 이미 목적을 다한 검증 산출물로 봅니다. 따라서 공식 Real Test 경로는 legacy DB Migration이 아니라 <strong>깨끗한 새 Operational State / Knowledge DB를 만드는 Fresh Bootstrap</strong>입니다.</p></header>
+<section><h2>1. 최종 결정</h2><div class="flow">SMOKE
+config/settings.smoke.yaml
+→ storage.data_root = ./data_smoke
+→ 새 State DB
+→ 새 RAW / ANALYSIS / Knowledge Input
+→ 새 Knowledge DB / Embedding staging
+→ production/pilot data와 완전 분리
+→ Migration 사용하지 않음
+
+FORMAL REAL TEST
+기존 파일럿 DB는 삭제 또는 별도 보관
+→ 깨끗한 ./data에서 새 DB 생성
+→ State Schema 개정 3을 처음부터 생성
+→ Full Initial Ingest
+→ 이후 정상 Delta Sync
+→ Migration 사용하지 않음
+
+LEGACY COMPATIBILITY ONLY
+기존 collector.db를 꼭 이어써야 하는 특별한 경우
+→ explicit Migration
+→ backup / fingerprint / integrity Gate</div></section>
+<section><h2>2. 왜 Fresh Start가 더 좋은가?</h2><div class="grid3"><div class="card good"><h3>상태 해석이 단순</h3><p>파일럿 run/resume 흔적과 운영 Watermark가 섞이지 않습니다. 첫 <code>project_state</code>부터 모두 현재 계약으로 생성됩니다.</p></div><div class="card good"><h3>Migration 위험 제거</h3><p>legacy fingerprint, backfill, old resume compatibility 같은 전환 복잡도를 정식 검증 경로에서 제거합니다.</p></div><div class="card good"><h3>재현성 향상</h3><p>새 시스템이 완전히 비어 있는 환경에서 Initial Ingest부터 Publish까지 스스로 만들 수 있는지 검증할 수 있습니다.</p></div></div></section>
+<section><h2>3. 삭제해도 되는 것과 보존해야 하는 것</h2><table><thead><tr><th>종류</th><th>권장</th><th>이유</th></tr></thead><tbody><tr><td><code>collector.db</code>, Knowledge DB, FAISS index, embedding staging</td><td><strong>Fresh Start 시 제거 가능</strong></td><td>재생성 가능한 운영 산출물</td></tr><tr><td>Smoke의 <code>data_smoke/</code></td><td><strong>Gate 종료 후 통째로 제거 가능</strong></td><td>운영 상태와 완전히 독립된 임시 검증 환경</td></tr><tr><td>M0~M11 HTML 완료 문서 / Real-run 기록</td><td><strong>보존</strong></td><td>파일럿에서 무엇을 검증했는지 증명하는 프로젝트 이력</td></tr><tr><td>필요한 RAW / ANALYSIS 샘플</td><td><strong>선택 보존</strong></td><td>문제 재현·회귀 분석에 가치가 있을 수 있음</td></tr></tbody></table><div class="card warn"><strong>주의</strong><p>“DB를 지운다”와 “프로젝트 검증 이력을 지운다”는 같은 뜻이 아닙니다. DB는 새로 만들더라도 파일럿 완료 문서와 결정 기록은 계속 남깁니다.</p></div></section>
+<section><h2>4. Smoke 전용 Data Root</h2><p>현재 설정 로더는 local YAML을 base 설정 위에 merge하므로 Smoke에서는 storage root만 바꾸면 됩니다.</p><pre># config/settings.smoke.yaml
+storage:
+  data_root: "./data_smoke"</pre><div class="flow">data_smoke/
+├─ state/
+│  └─ collector.db
+├─ raw/
+├─ analysis/
+├─ knowledge_input/
+├─ knowledge/
+├─ knowledge_db/
+├─ embedding/
+└─ retrieval/
+
+Git
+→ data_smoke/ 전체 ignore</div></section>
+<section><h2>5. Smoke 실행의 목적</h2><div class="flow">목표
+실제 Jira 1차 연결
+→ Loop A가 실제 Source를 읽음
+→ RAW / ANALYSIS / Knowledge Input 생성
+→ semantic_v2 분류
+→ Source Commit
+→ Source Ready Work 생성
+→ 그 Work 중 1건을 Real OpenCode Smoke에 사용</div><p>Smoke DB의 Watermark는 production의 Watermark가 아닙니다. Smoke 결과는 운영 continuity의 기준으로 사용하지 않습니다.</p></section>
+<section><h2>6. 현재 CLI의 한계</h2><div class="card warn"><p><code>--max-issues-per-project 1</code>은 접근 가능한 <strong>모든 Project에서 최대 1건씩</strong> 처리합니다. 따라서 Project가 많으면 Smoke Work도 여러 개 생길 수 있습니다.</p></div><div class="flow">현재 안전한 사용
+python tools/run_source_sync.py \
+  --local-config config/settings.smoke.yaml \
+  --max-issues-per-project 1
+
+→ data_smoke/에서만 실행
+→ 여러 Source-ready Work가 생겨도 운영 DB에는 영향 없음
+→ 그중 1건만 OpenCode Smoke에 사용</div><p>향후 필요하면 <code>--project-key</code> 전용 Smoke filter를 추가합니다. 현재 정책에서는 필수 조건은 아닙니다.</p></section>
+<section><h2>7. 정식 Real Test 절차</h2><div class="flow">1. 파일럿 운영 산출물 정리
+   - 기존 collector.db / Knowledge DB / FAISS 등을 삭제 또는 별도 보관
+
+2. 깨끗한 ./data 준비
+
+3. Migration 실행하지 않음
+
+4. Loop A Full Initial Ingest
+   - --max-issues-per-project 사용하지 않음
+   - 모든 접근 가능한 Project의 baseline 수집
+
+5. Project별 Source Commit / Watermark 생성
+
+6. Loop B latest-only Knowledge Automation
+
+7. Knowledge DB / Embedding / Atomic Publish
+
+8. 이후부터 Delta Sync 운영</div></section>
+<section><h2>8. Migration의 새 위치</h2><div class="grid2"><div class="card good"><h3>공식 Fresh Start</h3><p><strong>Migration 불필요.</strong> 빈 DB가 현재 Schema로 바로 초기화됩니다.</p></div><div class="card"><h3>Legacy 재사용</h3><p><strong>Migration 필수.</strong> 기존 <code>collector.db</code>를 계속 써야 할 때만 explicit migration을 사용합니다.</p></div></div><p>따라서 “Migration REQUIRED”라는 과거 문장은 앞으로 <strong>“legacy DB를 재사용하는 경우 Migration REQUIRED”</strong>라고 읽습니다.</p></section>
+<section><h2>9. 지금 우리가 실제로 할 다음 Gate</h2><div class="flow">G1 · Real Loop A Smoke
+[data_smoke]
+실제 Jira → Source-ready Work
+
+G2 · Real Internal OpenCode Smoke
+Work 1건
+→ Orchestrator
+→ Worker
+→ jira-knowledge-extraction Skill
+→ Validator
+→ Reviewer
+→ Knowledge completed
+
+G3 · Real Incremental BGE-M3
+
+G4 · Atomic Publish</div></section>
+<footer>Operational Bootstrap Policy · Smoke isolated · Formal test fresh bootstrap · Migration conditional · 2026-08-31</footer>
+</main></body></html>
