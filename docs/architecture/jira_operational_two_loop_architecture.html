@@ -15,13 +15,36 @@
     .version-visual{display:grid;grid-template-columns:1fr 60px 1fr;gap:14px;align-items:center;margin:18px 0}.issue-box,.work-box{padding:20px;border-radius:16px;border:2px solid var(--line);background:#fff}.issue-box{border-color:#91a9ef}.work-box{border-color:#b8a4ec}.big-arrow{text-align:center;font-size:30px;font-weight:900;color:#7f8da5}.mini-row{padding:10px;border-radius:9px;background:var(--purple2);border:1px solid #c9bdf1;margin:8px 0;font:13px Consolas,monospace}
     .architecture-picture{display:grid;grid-template-columns:1fr 90px 1fr;gap:14px;align-items:stretch;margin:22px 0}.loop{padding:22px;border-radius:18px;border:2px solid var(--line);background:#fff}.loop-a{border-color:#7f9aee}.loop-b{border-color:#5aae8e}.loop-title{font-size:20px;font-weight:900}.node{padding:10px 12px;border-radius:10px;background:#f2f5fa;border:1px solid var(--line);font-size:14px;margin-top:8px}.down{text-align:center;font-weight:900;color:#7888a0}.bridge{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:9px}.gate{width:64px;height:64px;border-radius:18px;border:2px solid #d7a44c;background:var(--amber2);display:grid;place-items:center;font-size:31px}.bridge small{font-size:12px;color:var(--muted);font-weight:800}.backlog{padding:18px;margin:18px 0;border:2px dashed #9aaac2;border-radius:16px;background:#fbfcfe}.backlog strong{display:block;margin-bottom:10px}.work-list{display:flex;flex-wrap:wrap;gap:8px}.work-chip{padding:8px 10px;border-radius:9px;background:var(--purple2);border:1px solid #c9bdf1;font:12px Consolas,monospace}
     .analogy{display:grid;grid-template-columns:1fr 60px 1fr;gap:14px;align-items:center}.warehouse{padding:20px;border:1px solid var(--line);background:#fff;border-radius:16px}.warehouse h3{margin-top:0}.truck{font-size:40px;text-align:center}.gate-state{font-weight:900}.closed-text{color:var(--red)}.open-text{color:var(--green)}
-    .timeline{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:18px 0}.moment{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.moment .time{font-size:12px;font-weight:900;color:var(--blue)}.moment h3{font-size:15px;margin:6px 0}.moment p{font-size:13px;color:var(--muted);margin:0}.moment.closed{border-top:5px solid var(--red)}.moment.open{border-top:5px solid var(--green)}.moment.commit{border-top:5px solid var(--blue)}
+
+    /* 0-5 Gate timeline: long text/code must never share narrow fixed columns. */
+    #gate-timeline .timeline{position:relative;display:grid;grid-template-columns:1fr;gap:12px;max-width:930px;margin:22px auto;padding:4px 0}
+    #gate-timeline .timeline::before{content:"";position:absolute;left:49px;top:40px;bottom:40px;width:2px;background:#cbd6e6;z-index:0}
+    #gate-timeline .moment{position:relative;z-index:1;display:grid;grid-template-columns:72px minmax(0,1fr) 150px;gap:18px;align-items:center;min-width:0;padding:18px 20px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 5px 14px rgba(31,49,84,.04)}
+    #gate-timeline .moment.commit{border-top:1px solid var(--line);border-left:5px solid var(--blue)}
+    #gate-timeline .moment.closed{border-top:1px solid var(--line);border-left:5px solid var(--red)}
+    #gate-timeline .moment.open{border-top:1px solid var(--line);border-left:5px solid var(--green)}
+    #gate-timeline .moment .time{width:58px;height:58px;display:grid;place-items:center;border-radius:50%;background:#edf3ff;border:2px solid #b9c8ee;color:var(--blue);font-size:13px;font-weight:900;line-height:1;text-align:center}
+    #gate-timeline .moment.closed .time{background:#fff0f0;border-color:#efb5b5;color:var(--red)}
+    #gate-timeline .moment.open .time{background:#eaf8f3;border-color:#a8dcc8;color:var(--green)}
+    #gate-timeline .moment-body{min-width:0}
+    #gate-timeline .moment h3{font-size:17px;margin:0 0 5px}
+    #gate-timeline .moment p{margin:0;color:var(--muted);font-size:14px;line-height:1.65;word-break:normal;overflow-wrap:anywhere}
+    #gate-timeline .moment code{white-space:normal;word-break:break-word;overflow-wrap:anywhere}
+    #gate-timeline .moment-status{justify-self:end;min-width:126px;padding:8px 10px;border-radius:999px;text-align:center;font-size:12px;font-weight:900;white-space:nowrap;background:#edf3ff;color:var(--blue)}
+    #gate-timeline .moment.closed .moment-status{background:#fff0f0;color:var(--red)}
+    #gate-timeline .moment.open .moment-status{background:#eaf8f3;color:var(--green)}
+    #gate-timeline .timeline-summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:930px;margin:16px auto 0}
+    #gate-timeline .timeline-summary>div{padding:15px 17px;border-radius:13px;font-weight:900;line-height:1.55}
+    #gate-timeline .timeline-summary .wrong{background:#fff0f0;border:1px solid #efb5b5;color:#8c2929}
+    #gate-timeline .timeline-summary .right{background:#eaf8f3;border:1px solid #a8dcc8;color:#0e6c4d}
+
     .scenario{display:grid;grid-template-columns:1fr 1fr;gap:16px}.scenario .flow{height:100%}.danger-line{padding:13px;border-radius:10px;background:#ffe5e5;color:#8b2525;font-weight:900}.success-line{padding:13px;border-radius:10px;background:#ddf5eb;color:#0f6f50;font-weight:900}
     .condition-table td:nth-child(3){font-weight:900}.gate-closed{color:var(--red)}.gate-open{color:var(--green)}
     .transaction{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}.tx{padding:15px;border-radius:13px;background:#fff;border:2px solid #9fb2ec}.tx b{display:block;margin-bottom:5px}.atomic{padding:12px;text-align:center;border-radius:11px;background:#17264a;color:#fff;font-weight:900;margin-top:10px}
     .qa{margin-top:14px}.qa details{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0}.qa summary{font-weight:900;cursor:pointer}
 
-    @media(max-width:900px){.grid2,.grid3,.grid4,.grid5,.version-visual,.architecture-picture,.analogy,.scenario,.timeline,.transaction{grid-template-columns:1fr}.bridge{padding:12px}.big-arrow{transform:rotate(90deg)}.hero{padding:30px}}
+    @media(max-width:900px){.grid2,.grid3,.grid4,.grid5,.version-visual,.architecture-picture,.analogy,.scenario,.transaction{grid-template-columns:1fr}.bridge{padding:12px}.big-arrow{transform:rotate(90deg)}.hero{padding:30px}}
+    @media(max-width:700px){#gate-timeline .timeline::before{left:45px}#gate-timeline .moment{grid-template-columns:62px minmax(0,1fr);gap:12px;padding:15px 14px}#gate-timeline .moment .time{width:50px;height:50px}#gate-timeline .moment-status{grid-column:2;justify-self:start;min-width:0;margin-top:2px;padding:7px 10px}#gate-timeline .timeline-summary{grid-template-columns:1fr}}
   </style>
   <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
   <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
@@ -188,15 +211,39 @@ Loop B 조회
 
   <section id="gate-timeline">
     <h2>0-5. Gate는 언제 닫히고, 언제 열리는가?</h2>
+    <p class="lead">한 줄에 다섯 단계를 억지로 넣지 않고, 실제 시간 순서대로 위에서 아래로 읽습니다. 왼쪽은 시점, 가운데는 실제 동작, 오른쪽은 그 순간의 Gate 상태입니다.</p>
     <div class="timeline">
-      <div class="moment commit"><div class="time">T1</div><h3>Source Run 시작</h3><p><code>sr_101</code>이 시작됩니다.</p></div>
-      <div class="moment closed"><div class="time">T2-A</div><h3>Issue 관찰</h3><p>Source 파일을 durable하게 저장합니다.</p></div>
-      <div class="moment closed"><div class="time">T2-B</div><h3>row UPSERT</h3><p><code>last_observed = sr_101</code><br>Gate는 아직 닫힘.</p></div>
-      <div class="moment commit"><div class="time">T3</div><h3>Project Commit</h3><p>Watermark와 committed run을 같은 transaction으로 갱신.</p></div>
-      <div class="moment open"><div class="time">T4</div><h3>Gate OPEN</h3><p><code>observed = committed</code><br>이제 Loop B claim 가능.</p></div>
+      <div class="moment commit">
+        <div class="time">T1</div>
+        <div class="moment-body"><h3>Source Run 시작</h3><p><code>sr_101</code>이 시작됩니다. 아직 Issue를 관찰하기 전 단계입니다.</p></div>
+        <div class="moment-status">RUN START</div>
+      </div>
+      <div class="moment closed">
+        <div class="time">T2-A</div>
+        <div class="moment-body"><h3>Issue 관찰 · Source 저장</h3><p>Jira에서 Issue를 읽고 실제 Source 파일을 durable하게 저장합니다. Project 전체 Commit은 아직 아닙니다.</p></div>
+        <div class="moment-status">GATE CLOSED</div>
+      </div>
+      <div class="moment closed">
+        <div class="time">T2-B</div>
+        <div class="moment-body"><h3>Work Item row UPSERT</h3><p><code>last_observed_source_run_id = sr_101</code>로 기록합니다. row는 존재하지만 아직 Loop B가 가져가면 안 됩니다.</p></div>
+        <div class="moment-status">GATE CLOSED</div>
+      </div>
+      <div class="moment commit">
+        <div class="time">T3</div>
+        <div class="moment-body"><h3>Project Source Commit</h3><p>Project의 Source 처리가 완결되면 Watermark와 <code>last_source_committed_run_id</code>를 같은 transaction에서 갱신합니다.</p></div>
+        <div class="moment-status">COMMIT</div>
+      </div>
+      <div class="moment open">
+        <div class="time">T4</div>
+        <div class="moment-body"><h3>Source Ready Gate OPEN</h3><p><code>last_observed_source_run_id</code>와 <code>last_source_committed_run_id</code>가 같은 Run을 가리킵니다. 이제 Loop B가 안전하게 claim할 수 있습니다.</p></div>
+        <div class="moment-status">GATE OPEN</div>
+      </div>
     </div>
 
-    <div class="one-line">row 생성 → 바로 처리 ❌ &nbsp;&nbsp; / &nbsp;&nbsp; row 생성 → Project Commit 확인 → 처리 ✅</div>
+    <div class="timeline-summary">
+      <div class="wrong">❌ Work Item row 생성 → 바로 Loop B 처리</div>
+      <div class="right">✅ Work Item row 생성 → Project Commit 확인 → Gate OPEN → Loop B 처리</div>
+    </div>
   </section>
 
   <section id="gate-fields">
