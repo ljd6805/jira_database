@@ -72,7 +72,7 @@ def test_current_docs_do_not_regress_to_old_status() -> None:
             assert marker not in text, f"{path} contains stale marker: {marker}"
 
 
-def test_current_entry_docs_record_two_loop_latest_only_v3() -> None:
+def test_current_entry_docs_record_two_loop_latest_only_revision3() -> None:
     required = (
         Path("docs/index.html"),
         Path("docs/status/jira_knowledge_db_current_status.html"),
@@ -83,14 +83,15 @@ def test_current_entry_docs_record_two_loop_latest_only_v3() -> None:
         upper = text.upper()
         assert "TWO-LOOP" in upper or "2-LOOP" in upper, path
         assert "LATEST-ONLY" in upper, path
-        assert "V3" in upper, path
+        # 사람용 문서는 bare v3 대신 대상 + 개정 3 표현을 사용합니다.
+        assert "개정 3" in text or "STATE_SCHEMA_VERSION = 3" in text, path
 
     status = _read(Path("docs/status/jira_knowledge_db_current_status.html"))
     assert "sync_issue_change" in status
     assert "superseded" in status
 
 
-def test_current_contract_and_schema_are_v3_latest_only() -> None:
+def test_current_contract_and_schema_are_revision3_latest_only() -> None:
     contract = _read(Path("docs/architecture/jira_sync_contract.html"))
     schema = _read(Path("docs/architecture/jira_sync_state_schema_contract.html"))
     ddl = _read(Path("docs/architecture/jira_sync_state_schema_decision7_final_ddl.html"))
@@ -274,6 +275,7 @@ def test_documentation_hub_links_current_sources() -> None:
         "jira_knowledge_pipeline_full_explained.html",
         "jira_knowledge_db_current_status.html",
         "POST_MVP_OPERATIONAL_SERVICE_START_HERE.html",
+        "VERSION_TERMINOLOGY_GUIDE.html",
     ):
         assert name in index
 
