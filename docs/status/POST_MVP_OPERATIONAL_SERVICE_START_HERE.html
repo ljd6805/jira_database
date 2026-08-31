@@ -29,7 +29,14 @@ LATER
 → NEW / CHANGED / UNCHANGED
 → candidate cursor checkpoint
 → Project Source Commit
-→ Watermark + Source Ready + supersede</div></section><section><h2>4. semantic_v2에서 다시 뒤집지 않을 것</h2><div class="grid2"><div class="box good"><b>Hash에 남김</b><p>Issue/Comment 본문, created_at, author, 업무 status/context, Attachment metadata, 관계, Custom Field.</p></div><div class="box good"><b>Hash에서 제외</b><p>issue.updated_at, comment.updated_at, source_path/source_page, <code>other_package_available</code> 같은 실행 범위 파생 metadata.</p></div></div><p>Timestamp만 바뀌면 UNCHANGED이며 실제 업무 내용이 바뀌어야 CHANGED가 됩니다.</p></section><section><h2>5. Same-Run Resume</h2><div class="flow">fixed upper 최초 한 번 결정
+→ Watermark + Source Ready + supersede</div></section><section><h2>4. semantic_v2에서 다시 뒤집지 않을 것</h2><div class="grid2"><div class="box good"><b>Hash에 남김</b><p>Issue/Comment 본문, created_at, author, 업무 status/context, Attachment metadata, 관계, Custom Field.</p></div><div class="box good"><b>Hash에서 제외</b><p>issue.updated_at, comment.updated_at, source_path/source_page, <code>other_package_available</code> 같은 실행 범위 파생 metadata.</p></div></div><p>Timestamp만 바뀌면 UNCHANGED이며 실제 업무 내용이 바뀌어야 CHANGED가 됩니다.</p></section><section><h2>5. Source History / Latest-Only</h2><div class="flow">Source History
+상태 A → B → C → D
+모두 보존
+
+Loop B
+B pending → superseded
+C pending → superseded
+D latest + Source-ready → process</div><p>중간 Source 상태는 삭제하지 않습니다. 비싼 OpenCode/Embedding/Publish만 최신 Source 상태에 집중하고, 중간 상태가 왜 처리되지 않았는지는 State와 구조화 로그로 추적합니다.</p></section><section><h2>6. Same-Run Resume</h2><div class="flow">fixed upper 최초 한 번 결정
 candidate 1 완료 → cursor durable
 candidate 2 실패 → Watermark 유지
 
@@ -38,7 +45,7 @@ resume(source_run_id)
 → 완료 Discovery snapshot 재사용
 → cursor 이전 candidate skip
 → 실패 지점부터 재시도
-→ 전체 완료 후 Source Commit</div></section><section><h2>6. 실행 명령</h2><pre># legacy State DB라면 먼저
+→ 전체 완료 후 Source Commit</div></section><section><h2>7. 실행 명령</h2><pre># legacy State DB라면 먼저
 python tools/migrate_state_v3.py --database data/state/collector.db
 
 # 새 Loop A Source Run
@@ -48,7 +55,7 @@ python tools/run_source_sync.py
 python tools/run_source_sync.py --resume-source-run-id sr_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # 테스트/파일럿 전용 제한
-python tools/run_source_sync.py --max-issues-per-project 30</pre></section><section><h2>7. 실제 환경 Gate는 별도</h2><div class="grid2"><div class="box warn"><b>Local State Migration</b><p>실제 사용 중인 <code>data/state/collector.db</code>를 원격 저장소 작업에서 변경하지 않았습니다. Backup과 legacy Resume을 실제 환경에서 확인해야 합니다.</p></div><div class="box warn"><b>Real Jira Source Sync</b><p>Fake Jira + 실제 SQLite/파일 자동 테스트는 PASS지만 사내 Jira endpoint에서 새 runner를 실행한 실적은 아직 없습니다.</p></div></div></section><section><h2>8. 다음 구현 · Loop B</h2><div class="box next"><b>Latest-Only Single Worker</b><p><code>sync_issue_change</code>의 Source-ready + latest Work만 claim합니다. OpenCode가 느린 동안 더 최신 Source가 들어와도 구버전 결과가 Knowledge/Embedding/Publish로 넘어가지 않도록 stale guard를 세 경계에서 적용합니다.</p></div><div class="flow">latest + source-ready claim
+python tools/run_source_sync.py --max-issues-per-project 30</pre></section><section><h2>8. 실제 환경 Gate는 별도</h2><div class="grid2"><div class="box warn"><b>Local State Migration</b><p>실제 사용 중인 <code>data/state/collector.db</code>를 원격 저장소 작업에서 변경하지 않았습니다. Backup과 legacy Resume을 실제 환경에서 확인해야 합니다.</p></div><div class="box warn"><b>Real Jira Source Sync</b><p>Fake Jira + 실제 SQLite/파일 자동 테스트는 PASS지만 사내 Jira endpoint에서 새 runner를 실행한 실적은 아직 없습니다.</p></div></div></section><section><h2>9. 다음 구현 · Loop B</h2><div class="box next"><b>Latest-Only Single Worker</b><p><code>sync_issue_change</code>의 Source-ready + latest Work만 claim합니다. OpenCode가 느린 동안 더 최신 Source가 들어와도 구버전 결과가 Knowledge/Embedding/Publish로 넘어가지 않도록 stale guard를 세 경계에서 적용합니다.</p></div><div class="flow">latest + source-ready claim
 → latest_processing_started
 → OpenCode
 → latestness re-check
@@ -57,4 +64,4 @@ python tools/run_source_sync.py --max-issues-per-project 30</pre></section><sect
 → Embedding
 → Publish 직전 latestness re-check
 → Atomic Publish
-→ PUBLISHED</div></section><section><h2>9. 구현 순서</h2><table><thead><tr><th>순서</th><th>작업</th><th>상태</th></tr></thead><tbody><tr><td>1</td><td>Operational State 개정 3 foundation</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>2</td><td>semantic_v2</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>3</td><td>Loop A Delta Source Sync</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>4</td><td>Loop B latest-only Single Worker</td><td><strong>NEXT</strong></td></tr><tr><td>5</td><td>OpenCode / Knowledge / Review / Evidence</td><td>계획</td></tr><tr><td>6</td><td>BGE-M3 / FAISS staging / Atomic Publish</td><td>계획</td></tr><tr><td>7</td><td>Structured Logging / Lag / Backlog Monitoring</td><td>계획</td></tr><tr><td>8</td><td>Remote MCP Operations / Team Pilot</td><td>계획</td></tr></tbody></table></section><section><h2>10. 아직 보류</h2><div class="box warn"><p>Multi-worker lease, 외부 MQ, 정확한 cadence/concurrency는 Single Worker 실제 처리량을 측정한 뒤 결정합니다. M12/M13 같은 다음 Milestone 번호도 아직 CURRENT로 고정하지 않습니다.</p></div></section><section><h2>11. 새 세션 첫 요청 예시</h2><div class="box next"><p><strong>“Handoff와 Loop A 구현 보고서를 읽어. State foundation과 Loop A는 구현 완료이므로 다시 설계하지 말고, 최신 CI와 Real Environment Gate 상태를 확인한 뒤 Loop B Latest-Only Single Worker 구현부터 이어가.”</strong></p></div></section><footer>Latest Handoff · State + Loop A IMPLEMENTED / CI PASS · Loop B NEXT · 2026-08-31</footer></main></body></html>
+→ PUBLISHED</div></section><section><h2>10. 구현 순서</h2><table><thead><tr><th>순서</th><th>작업</th><th>상태</th></tr></thead><tbody><tr><td>1</td><td>Operational State 개정 3 foundation</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>2</td><td>semantic_v2</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>3</td><td>Loop A Delta Source Sync</td><td><strong>IMPLEMENTED / CI PASS</strong></td></tr><tr><td>4</td><td>Loop B latest-only Single Worker</td><td><strong>NEXT</strong></td></tr><tr><td>5</td><td>OpenCode / Knowledge / Review / Evidence</td><td>계획</td></tr><tr><td>6</td><td>BGE-M3 / FAISS staging / Atomic Publish</td><td>계획</td></tr><tr><td>7</td><td>Structured Logging / Lag / Backlog Monitoring</td><td>계획</td></tr><tr><td>8</td><td>Remote MCP Operations / Team Pilot</td><td>계획</td></tr></tbody></table></section><section><h2>11. 아직 보류</h2><div class="box warn"><p>Multi-worker lease, 외부 MQ, 정확한 cadence/concurrency는 Single Worker 실제 처리량을 측정한 뒤 결정합니다. M12/M13 같은 다음 Milestone 번호도 아직 CURRENT로 고정하지 않습니다.</p></div></section><section><h2>12. 새 세션 첫 요청 예시</h2><div class="box next"><p><strong>“Handoff와 Loop A 구현 보고서를 읽어. State foundation과 Loop A는 구현 완료이므로 다시 설계하지 말고, 최신 CI와 Real Environment Gate 상태를 확인한 뒤 Loop B Latest-Only Single Worker 구현부터 이어가.”</strong></p></div></section><footer>Latest Handoff · State + Loop A IMPLEMENTED / CI PASS · Loop B NEXT · 2026-08-31</footer></main></body></html>
