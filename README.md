@@ -9,16 +9,18 @@ Jira REST API에서 업무 원본을 읽기 전용으로 수집하고, **원본 
 ```text
 M0~M11 Functional MVP        DONE / PASS
 Two-Loop Operational Arch    FROZEN
-Sync Contract                v2 FROZEN
-Operational State Schema     v2 FROZEN
-Implementation               NOT STARTED
+Latest-Only Processing D10   FROZEN
+Sync Contract                v3 FROZEN
+Operational State Schema     v3 FROZEN
+Runtime Implementation       NOT STARTED
 ```
 
-현재 최상위 기준은 다음 세 문서입니다.
+현재 최상위 기준은 다음 문서입니다.
 
+- [Sync Contract v3](docs/architecture/jira_sync_contract.html)
+- [D10 Latest-Only Processing](docs/architecture/jira_sync_contract_decision10_latest_only_processing.html)
+- [Operational State Schema v3](docs/architecture/jira_sync_state_schema_contract.html)
 - [2-Loop Operational Architecture](docs/architecture/jira_operational_two_loop_architecture.html)
-- [Sync Contract v2](docs/architecture/jira_sync_contract.html)
-- [Operational State Schema v2](docs/architecture/jira_sync_state_schema_contract.html)
 
 ## 1. Functional MVP — DONE / PASS
 
@@ -50,9 +52,9 @@ M10 Evidence Builder + MCP                 DONE · REAL-RUN PASS
 M11 OpenCode MCP Integration               DONE · USER REAL-RUN PASS
 ```
 
-## 2. 운영 서비스 — TWO LOOP
+## 2. 운영 서비스 — TWO LOOP + LATEST ONLY
 
-지속 운영에서는 Jira Source 최신화와 느리고 변동성이 큰 OpenCode 지식화를 하나의 직렬 Run으로 묶지 않습니다.
+Jira Source 최신화와 느리고 변동성이 큰 OpenCode 지식화를 하나의 직렬 Run으로 묶지 않습니다.
 
 ```text
 Loop A · SOURCE SYNC
@@ -63,20 +65,24 @@ source_sync_run
 → RAW / ANALYSIS / Knowledge Input
 → semantic_v2 source_hash
 → NEW / CHANGED / UNCHANGED
+→ 모든 Source Version 보존
 → NEW/CHANGED durable sync_issue_change
 → SOURCE_COMMITTED
-→ committed_watermark advance
+→ committed_watermark + Source Ready
+→ 같은 jira_id의 이전 미완료 Work superseded
 
-              ↓ durable backlog
+              ↓ latest-only durable backlog
 
 Loop B · KNOWLEDGE PROCESSING / PUBLISH
 processing_run
-→ backlog Work Item
+→ latest + source-ready Work Item만 claim
 → OpenCode Knowledge Generation
+→ latestness re-check
 → Review / Evidence
 → Knowledge DB
 → BGE-M3 Embedding
 → FAISS staging / mapping
+→ latestness re-check
 → Atomic Publish
 → PUBLISHED
 
@@ -84,9 +90,36 @@ Always-on Retrieval
 Published Corpus → FAISS → Evidence/MCP → Team OpenCode
 ```
 
-두 Loop는 서로 기다리지 않습니다. OpenCode가 느리거나 실패해도 Jira Source Sync는 계속 가능하고, Jira가 일시 장애여도 이미 쌓인 Processing backlog는 처리할 수 있습니다.
+두 Loop는 서로 기다리지 않습니다. OpenCode가 느려도 Jira Source Sync는 계속되고, 중간 Source Version은 History로 남지만 비싼 AI 처리는 최신 Version만 수행합니다.
 
-## 3. 핵심 불변 원칙
+## 3. Latest-Only Processing
+
+```text
+Source History
+V1 → V2 → V3 → V4
+모두 보존
+
+Knowledge Processing
+V1 already Published
+V2 pending → superseded
+V3 pending → superseded
+V4 latest  → process
+```
+
+구버전 Work가 이미 OpenCode 처리 중이면 외부 호출을 기본적으로 강제 취소하지 않습니다. 응답 후 최신성을 다시 검사하고 stale이면 Active Knowledge 저장, Embedding, Publish를 중단합니다.
+
+구조화 로그:
+
+```text
+work_item_superseded
+processing_skip_superseded
+stale_inflight_detected
+latest_processing_started
+```
+
+로그에는 Jira 원문/댓글 본문을 넣지 않고 identity/run/stage/reason/timestamp만 기록합니다.
+
+## 4. 핵심 불변 원칙
 
 1. **RAW가 사실의 최종 기준**입니다.
 2. History Storage와 Active Retrieval을 분리합니다.
@@ -99,12 +132,13 @@ Published Corpus → FAISS → Evidence/MCP → Team OpenCode
 9. **Jira Source Lifecycle ≠ Knowledge Lifecycle** 입니다.
 10. **SOURCE_COMMITTED ≠ PUBLISHED** 입니다.
 11. Source Loop와 Processing Loop는 독립적인 Run / Scheduler / 실패 경계를 가집니다.
-12. 새 Publish가 완성될 때까지 last-known-good Published Knowledge를 계속 제공합니다.
-13. Watermark는 Project Source Commit보다 먼저 전진하지 않습니다.
-14. 실제 durable 산출물이 State의 `completed/published` 표시보다 먼저입니다.
-15. 설계/코드/Milestone 상태 변경은 HTML 문서와 같은 작업 단위에서 동기화합니다.
+12. Source History는 모두 보존하고 **Knowledge Processing은 최신 Source Version만** 수행합니다.
+13. 새 Publish가 완성될 때까지 last-known-good Published Knowledge를 계속 제공합니다.
+14. Watermark는 Project Source Commit보다 먼저 전진하지 않습니다.
+15. 실제 durable 산출물이 State의 `completed/published` 표시보다 먼저입니다.
+16. 설계/코드/Milestone 상태 변경은 HTML 문서와 같은 작업 단위에서 동기화합니다.
 
-## 4. Identity
+## 5. Identity
 
 ```text
 Jira identity
@@ -129,13 +163,13 @@ FAISS position ≠ emb_ ≠ ki_
 
 `sw_`는 `jira_id + source_hash + source_hash_profile`에서 결정적으로 생성합니다. 같은 semantic state를 여러 Source Run에서 다시 만나도 같은 Work Item을 재사용합니다.
 
-## 5. Operational State Schema v2
+## 6. Operational State Schema v3
 
 기존 `data/state/collector.db`를 **명시적 Versioned Migration**으로 확장합니다.
 
 ```text
-STATE_SCHEMA_VERSION = 2
-PRAGMA user_version = 2
+STATE_SCHEMA_VERSION = 3
+PRAGMA user_version = 3
 
 Operational Domain Tables
 source_sync_run
@@ -144,15 +178,24 @@ source_project_run
 sync_issue_change
 processing_run
 
+sync_issue_change Latest-Only lifecycle
+work_status
+superseded_by_work_item_id
+superseded_at
+supersede_reason
+
+processing_run
+superseded_count
+
 Technical Metadata
 state_schema_migration
 ```
 
 기존 `collection_runs`, `project_runs`, `issue_checkpoints`, `artifacts`는 첫 Migration에서 삭제하거나 의미를 바꾸지 않습니다.
 
-State Schema v1은 실제 구현 전에 2-Loop 채택으로 대체되었으며 [v1 Historical Baseline](docs/architecture/jira_sync_state_schema_contract_v1_baseline.html)으로만 보존합니다.
+State Schema v1/v2는 실제 배포 전에 후속 결정으로 대체된 historical baseline입니다.
 
-## 6. Sync Contract 핵심
+## 7. Sync Contract v3
 
 ```text
 D1  Project별 committed Watermark
@@ -161,9 +204,10 @@ D3  NEW / CHANGED / UNCHANGED
 D4  source_hash_profile = semantic_v2
 D5  Loop별 Checkpoint / Resume
 D6  Project Registry + Knowledge Retention
-D7  SOURCE_COMMITTED ≠ PUBLISHED
+D7  SOURCE_COMMITTED ≠ PUBLISHED + Source Ready Gate
 D8  Run 상태 = Loop-local completed / partial / failed
 D9  Two-Loop Operational Architecture
+D10 Latest-Only Knowledge Processing
 ```
 
 ### Delta Source Query
@@ -179,9 +223,16 @@ ORDER BY updated ASC, id ASC
 
 Jira `updated`는 후보 탐색 신호일 뿐 실제 semantic change는 `semantic_v2 source_hash`로 판정합니다.
 
-## 7. 운영 최신성 / Backpressure
+Loop B Claim Gate:
 
-2-Loop 시스템에는 하나의 전체 `run_status`를 두지 않습니다.
+```text
+last_source_committed_run_id IS NOT NULL
+AND last_source_committed_run_id = last_observed_source_run_id
+AND work_status IN ('pending','failed')
+AND superseded_by_work_item_id IS NULL
+```
+
+## 8. 운영 최신성 / Backpressure
 
 ```text
 Source Lag
@@ -190,18 +241,19 @@ Source Lag
 Publish Lag
 → Source Head와 Published Head가 얼마나 차이나나?
 
-Backlog Depth
-→ Loop B가 아직 처리하지 못한 Work Item이 몇 개인가?
+Latest Backlog Depth
+→ 실제로 처리해야 하는 최신 Work Item이 몇 개인가?
 
-Oldest Pending Age
-→ 가장 오래 기다리는 Work Item은 얼마나 오래됐나?
+Oldest Latest Pending Age
+→ 가장 오래 기다리는 최신 Work는 얼마나 오래됐나?
+
+Supersede Ratio
+→ 중간 Source Version이 얼마나 자주 최신 Version에 밀리는가?
 ```
 
 추가로 Processing Throughput, OpenCode latency/error를 시간대별로 측정합니다.
 
-2-Loop는 병목을 없애는 구조가 아니라 **느린 Processing 병목을 Source 최신화에서 격리하고 관측 가능하게 만드는 구조**입니다.
-
-## 8. MVP 핵심 숫자
+## 9. MVP 핵심 숫자
 
 ```text
 Issue                         30
@@ -219,9 +271,7 @@ M8 Embedding                 285
 M9 FAISS Vector              285
 ```
 
-M5 raw Evidence 503 중 historical duplicate 1회를 M7에서 canonicalize해 502 row를 저장합니다.
-
-## 9. M7 SQLite — DONE / PASS
+## 10. M7 SQLite — DONE / PASS
 
 ```text
 Issue / Generation       30 / 30
@@ -244,7 +294,7 @@ Issue
          └─ Knowledge Review
 ```
 
-## 10. M8 BGE-M3 — DONE / PASS
+## 11. M8 BGE-M3 — DONE / PASS
 
 ```text
 Knowledge Item 1개 = Embedding Unit 1개
@@ -257,7 +307,7 @@ embedding_rows      285
 batch_count           5
 ```
 
-## 11. M9 FAISS — DONE / PASS
+## 12. M9 FAISS — DONE / PASS
 
 ```text
 Index       IndexFlatIP
@@ -269,17 +319,7 @@ Reranker    none
 Mapping     FAISS position → emb_ → ki_
 ```
 
-```text
-vector_count                  285
-dimension                    1024
-mapping/hash/norm failure       0
-same-source rebuild            PASS
-same-query vector              PASS
-same-query ranking             PASS
-same-query scores              PASS
-```
-
-## 12. M10 Evidence + MCP — DONE / PASS
+## 13. M10 Evidence + MCP — DONE / PASS
 
 ```text
 질문 → BGE-M3 → FAISS Top-3 Knowledge
@@ -299,7 +339,7 @@ get_jira_issue
 
 MCP에는 생성형 LLM이 없습니다.
 
-## 13. M11 OpenCode Integration — DONE / PASS
+## 14. M11 OpenCode Integration — DONE / PASS
 
 ```text
 M11-01 .env service configuration                PASS
@@ -310,9 +350,12 @@ M11-05 일반 업무 질문에서 자동 Tool selection   PASS
 M11-06 description/comment Evidence 추적         PASS
 ```
 
-여기까지가 Functional MVP입니다.
+[M11 Completion](docs/status/M11_COMPLETION.html)
 
-## 14. Central Remote MCP
+서비스 설정 키는 `.env.example`과 M11 문서에서 관리합니다:
+`JIRA_KNOWLEDGE_DB_PATH`, `JIRA_RETRIEVAL_ARTIFACT_DIR`, `BGE_M3_ENDPOINT`.
+
+## 15. Central Remote MCP
 
 Central MCP는 두 Loop를 실행하는 엔진이 아닙니다.
 
@@ -330,47 +373,30 @@ Central MCP
 
 상세: [MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)
 
-## 15. 다음 결정과 구현 순서
-
-### 다음 아키텍처 결정
-
-**Intermediate Version supersede policy**
+## 16. 다음 구현 순서
 
 ```text
-Source Loop
-V2 → V3 → V4
-
-Processing Loop가 아직 V2를 시작하지 않음
-
-선택 필요
-A. V2/V3/V4 모두 Knowledge 처리
-B. Source Version은 모두 보존하되 미시작 V2/V3 Work는 supersede하고 V4 처리
-```
-
-이 정책은 아직 Freeze하지 않았습니다.
-
-### 그 다음 구현
-
-```text
-State Schema v2 explicit Migration
-→ StateStore v2
+Documentation Shell / Registry / pytest Gate PASS
+→ State Schema v3 explicit Migration
+→ StateStore v3
 → Loop A Delta Source Sync
-→ durable backlog producer
-→ Loop B processing_run + Single Worker
-→ OpenCode / Review / Embedding / Publish
-→ Source Lag / Publish Lag / Backlog Monitoring
+→ Source Ready + supersede transaction
+→ Loop B latest-only Single Worker
+→ OpenCode / stale guard
+→ Knowledge / Embedding / Atomic Publish
+→ Structured Logging / Lag / Backlog Monitoring
 → Central Remote MCP Operations
 ```
 
-Multi-worker claim/lease와 외부 MQ는 실제 Single Worker 처리량을 측정한 뒤 결정합니다.
+Multi-worker claim/lease와 외부 MQ, 정확한 cadence/concurrency는 실제 Single Worker 처리량을 측정한 뒤 결정합니다.
 
-## 16. 주요 문서
+## 17. 주요 문서
 
 - [Documentation Hub](docs/index.html)
+- [Sync Contract v3](docs/architecture/jira_sync_contract.html)
+- [D10 Latest-Only](docs/architecture/jira_sync_contract_decision10_latest_only_processing.html)
+- [Operational State Schema v3](docs/architecture/jira_sync_state_schema_contract.html)
 - [2-Loop Operational Architecture](docs/architecture/jira_operational_two_loop_architecture.html)
-- [Sync Contract v2](docs/architecture/jira_sync_contract.html)
-- [Sync Contract 쉬운 가이드](docs/architecture/jira_sync_contract_easy_guide.html)
-- [Operational State Schema v2](docs/architecture/jira_sync_state_schema_contract.html)
 - [Full Pipeline](docs/architecture/jira_knowledge_pipeline_full_explained.html)
 - [Operational Service Phase](docs/architecture/jira_knowledge_operational_service_phase.html)
 - [MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)
@@ -380,7 +406,7 @@ Multi-worker claim/lease와 외부 MQ는 실제 Single Worker 처리량을 측�
 - [Relationship Map](docs/architecture/jira_data_relationship_map.html)
 - [Documentation Policy](docs/DOCUMENTATION_POLICY.html)
 
-## 17. 로컬 MVP Artifact
+## 18. 로컬 MVP Artifact
 
 ```text
 M7 SQLite
