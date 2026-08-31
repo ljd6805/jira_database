@@ -1,4 +1,4 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S3 · Columns / Status · Revised</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--amber:#a86500;--green:#14845f;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1080px;margin:auto;padding:42px 22px 84px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--amber)}.card{margin-top:18px}.good{border-left:5px solid var(--green)}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">Schema v2</a></p><header class="hero"><div>S3 · REVISED BY TWO-LOOP</div><h1>필수 컬럼과 Status는 Loop별로 분리합니다.</h1><p>v1의 <code>sync_run.discovery/source/publish/run_status</code> 혼합 구조를 제거하고 Source Run과 Processing Run이 각자의 상태만 보유합니다.</p></header><section class="card good"><h2>source_sync_run</h2><div class="flow">source_run_id
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>State Schema S3 · Columns / Status · Current</title><style>:root{--bg:#f4f7fb;--text:#172033;--line:#d9e2ef;--blue:#3157d5;--amber:#a86500;--green:#14845f;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75}.wrap{max-width:1080px;margin:auto;padding:42px 22px 84px}.hero,.card{padding:20px;background:#fff;border:1px solid var(--line);border-radius:15px}.hero{border-left:6px solid var(--green)}.card{margin-top:18px}.good{border-left:5px solid var(--green)}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:17px;background:var(--ink);color:#dce8ff;border-radius:13px;font:13px/1.7 Consolas,monospace}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Hub</a> · <a href="jira_sync_state_schema_contract.html">현재 Operational State 설계 · 개정 3</a></p><header class="hero"><div>S3 · CURRENT COLUMNS / STATUS</div><h1>Loop별 실행 상태와 Work lifecycle을 분리합니다.</h1><p>현재 개정 3에서는 Source/Processing Run 분리뿐 아니라 <code>sync_issue_change.work_status</code>와 supersede 상태까지 포함합니다.</p></header><section class="card good"><h2>source_sync_run</h2><div class="flow">source_run_id
 started_at / finished_at
 upper_bound
 discovery_status
@@ -25,8 +25,9 @@ run_status
 selected_count
 published_count
 failed_count
+superseded_count
 backlog_before / backlog_after
-error_summary</div></section><section class="card"><h2>sync_issue_change · durable backlog</h2><div class="flow">work_item_id
+error_summary</div><p><code>superseded_count</code>는 최신 상태에 밀려 실제 처리 결과를 버리거나 건너뛴 Work를 관찰합니다.</p></section><section class="card"><h2>sync_issue_change · durable latest backlog</h2><div class="flow">work_item_id
 project_id / jira_id / observed_issue_key
 source_hash / source_hash_profile
 change_kind
@@ -35,16 +36,21 @@ first_discovered_source_run_id
 last_observed_source_run_id
 last_source_committed_run_id
 last_source_committed_at
-last_processing_run_id
 last_observed_at
 
+work_status
+superseded_by_work_item_id
+superseded_at / supersede_reason
+
+last_processing_run_id
 issue_version_id / knowledge_generation_id
 knowledge_status
 embedding_status
 publish_status
 error_stage / error_message
 created_at / updated_at
-last_published_at</div><p>후보를 처리하는 동안 row는 먼저 만들어질 수 있으므로 Source 관찰과 Source Commit을 별도 필드로 구분합니다.</p></section><section class="card good"><h2>Source Ready Gate</h2><div class="flow">Loop B eligible
+last_published_at</div></section><section class="card good"><h2>Source Ready + Latest Gate</h2><div class="flow">Loop B eligible
 last_source_committed_run_id IS NOT NULL
-AND
-last_source_committed_run_id = last_observed_source_run_id</div><p>T2 Candidate 처리에서 <code>last_observed_source_run_id</code>는 전진하지만, Project 전체 Source Commit 전까지 <code>last_source_committed_run_id</code>는 이전 값/NULL입니다. 따라서 Loop B가 미완료 Source를 소비하지 않습니다.</p></section><section class="card"><h2>Status enum</h2><table><thead><tr><th>영역</th><th>값</th></tr></thead><tbody><tr><td>Discovery</td><td>pending / running / completed / failed</td></tr><tr><td>Source aggregate</td><td>pending / running / completed / partial / failed</td></tr><tr><td>Source Project</td><td>pending / running / source_committed / partial / failed / skipped_unavailable</td></tr><tr><td>Processing Run</td><td>running / completed / partial / failed</td></tr><tr><td>Knowledge / Embedding</td><td>pending / running / completed / failed</td></tr><tr><td>Publish</td><td>pending / running / published / failed</td></tr></tbody></table></section><section class="card"><h2>UNCHANGED</h2><p>새 Work Item을 만들지 않습니다. Source Project count와 stable cursor만 전진합니다.</p></section><footer>S3 revised · source/processing state separated · Source Ready Gate included · 2026-08-28</footer></main></body></html>
+AND last_source_committed_run_id = last_observed_source_run_id
+AND work_status IN ('pending','failed')
+AND superseded_by_work_item_id IS NULL</div><p>현재 Source 관찰이 Commit됐고, 동시에 같은 Jira Issue의 최신 Work여야 합니다.</p></section><section class="card"><h2>Status enum</h2><table><thead><tr><th>영역</th><th>값</th></tr></thead><tbody><tr><td>Discovery</td><td>pending / running / completed / failed</td></tr><tr><td>Source aggregate</td><td>pending / running / completed / partial / failed</td></tr><tr><td>Source Project</td><td>pending / running / source_committed / partial / failed / skipped_unavailable</td></tr><tr><td>Processing Run</td><td>running / completed / partial / failed</td></tr><tr><td>Work lifecycle</td><td>pending / running / published / failed / superseded</td></tr><tr><td>Knowledge / Embedding</td><td>pending / running / completed / failed</td></tr><tr><td>Publish</td><td>pending / running / published / failed</td></tr></tbody></table></section><section class="card warn"><h2>work_status와 Stage status를 섞지 않습니다</h2><p><code>work_status</code>는 “이 Work를 지금 처리할 가치가 있는가?”를 나타내고, knowledge/embedding/publish status는 “실행이 어디까지 진행됐는가?”를 나타냅니다. running 중 superseded가 되면 두 종류의 상태가 잠시 다를 수 있습니다.</p></section><footer>S3 current · Operational State 개정 3 · Latest-Only lifecycle 포함 · 2026-08-31</footer></main></body></html>
