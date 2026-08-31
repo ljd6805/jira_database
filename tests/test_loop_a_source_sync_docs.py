@@ -39,7 +39,7 @@ def test_loop_a_report_is_linked_from_current_entry_docs() -> None:
         assert "LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html" in text, path
 
 
-def test_current_entry_docs_move_next_step_to_loop_b() -> None:
+def test_current_entry_docs_keep_loop_a_done_and_move_next_to_data_plane() -> None:
     for path in (
         "README.md",
         "docs/index.html",
@@ -49,7 +49,8 @@ def test_current_entry_docs_move_next_step_to_loop_b() -> None:
     ):
         text = _read(path)
         assert "Loop A" in text and "IMPLEMENTED" in text, path
-        assert "Loop B" in text and "NEXT" in text, path
+        assert "Loop B" in text and "Knowledge" in text and "IMPLEMENTED" in text, path
+        assert "Data Plane" in text and "NEXT" in text, path
 
 
 def test_loop_a_code_keeps_fixed_upper_delta_and_resume_contract() -> None:
