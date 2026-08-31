@@ -25,7 +25,7 @@ def test_shared_shell_explains_independent_version_tracks() -> None:
         "현재 Operational State Schema · 개정 3",
         "Knowledge DB Schema · 개정 1",
         "semantic_v2",
-        "과거 설계 보관본 · 현재 구현 기준 아님",
+        "과거 설계/의사결정 보관본 · 현재 구현 기준 아님",
     )
     for phrase in required:
         assert phrase in script
