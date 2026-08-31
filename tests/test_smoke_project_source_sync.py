@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 
 import pytest
 
 from jira_collector.source_sync import DiscoveredProject, SourceSyncError
-from jira_collector.source_sync_smoke import SmokeProjectSourceSync
-from tools.run_source_sync import _validate_smoke_project_options
+from jira_collector.source_sync_smoke import (
+    SmokeProjectSourceSync,
+    validate_smoke_project_options,
+)
 
 
 def _project(project_id: str, key: str) -> DiscoveredProject:
@@ -36,16 +37,24 @@ def test_smoke_project_filter_fails_when_project_is_not_visible() -> None:
 
 
 def test_project_key_requires_isolated_data_smoke_root() -> None:
-    args = argparse.Namespace(project_key="ABC", resume_source_run_id=None)
-
     with pytest.raises(ValueError, match="Smoke 전용"):
-        _validate_smoke_project_options(args, Path("data"))
+        validate_smoke_project_options(
+            project_key="ABC",
+            resume_source_run_id=None,
+            data_root=Path("data"),
+        )
 
-    _validate_smoke_project_options(args, Path("data_smoke"))
+    validate_smoke_project_options(
+        project_key="ABC",
+        resume_source_run_id=None,
+        data_root=Path("data_smoke"),
+    )
 
 
 def test_project_key_smoke_does_not_allow_resume() -> None:
-    args = argparse.Namespace(project_key="ABC", resume_source_run_id="sr_test")
-
     with pytest.raises(ValueError, match="resume-source-run-id"):
-        _validate_smoke_project_options(args, Path("data_smoke"))
+        validate_smoke_project_options(
+            project_key="ABC",
+            resume_source_run_id="sr_test",
+            data_root=Path("data_smoke"),
+        )
