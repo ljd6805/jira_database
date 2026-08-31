@@ -21,6 +21,7 @@ class IssueKnowledgeInputBuilder:
     """ANALYSIS에 흩어진 사실을 이슈 하나당 JSON 한 파일로 조립합니다."""
 
     SCHEMA_VERSION = "1.0"
+    SOURCE_HASH_PROFILE = "semantic_v2"
 
     def __init__(
         self,
@@ -95,6 +96,7 @@ class IssueKnowledgeInputBuilder:
                     "issue_key": issue_key,
                     "path": relative.as_posix(),
                     "source_hash": package["source_hash"],
+                    "source_hash_profile": package["source_hash_profile"],
                     **package["counts"],
                 }
             )
@@ -202,16 +204,14 @@ class IssueKnowledgeInputBuilder:
                 )
             field_docs.append(self._field_doc(value, definition))
 
-        # source_hash는 OpenCode Agent의 증분 재분석 기준입니다.
-        # 생성 시각이나 PC별 파일 경로가 아니라 실제 업무 의미 데이터가 바뀔 때만 hash가 달라져야 합니다.
-        hash_material = self._strip_paths(
-            {
-                "issue": issue_doc,
-                "comments": comment_docs,
-                "attachments": attachment_docs,
-                "relationships": relation_docs,
-                "custom_fields": field_docs,
-            }
+        # semantic_v2는 Jira updated를 Delta 후보 탐색에만 사용하고 semantic identity에는 사용하지 않습니다.
+        # package에는 updated_at을 그대로 남기지만 hash material에서는 Issue/Comment updated_at과 경로 metadata를 제외합니다.
+        hash_material = self._semantic_v2_hash_material(
+            issue_doc=issue_doc,
+            comment_docs=comment_docs,
+            attachment_docs=attachment_docs,
+            relation_docs=relation_docs,
+            field_docs=field_docs,
         )
 
         # JSON key를 정렬하고 공백을 제거한 canonical 문자열을 사용해 같은 의미 입력의 hash를 안정적으로 만듭니다.
@@ -230,6 +230,7 @@ class IssueKnowledgeInputBuilder:
             "project_key": issue.get("project_key"),
             "issue_key": issue_key,
             "generated_at": generated_at,
+            "source_hash_profile": self.SOURCE_HASH_PROFILE,
             "source_hash": source_hash,
             "issue": issue_doc,
             "comments": comment_docs,
@@ -265,6 +266,7 @@ class IssueKnowledgeInputBuilder:
 
         return {
             "schema_version": self.SCHEMA_VERSION,
+            "source_hash_profile": self.SOURCE_HASH_PROFILE,
             "run_id": run_id,
             "generated_at": generated_at,
             "status": status,
@@ -423,6 +425,36 @@ class IssueKnowledgeInputBuilder:
         except (OSError, ValueError):
             # 다른 OS에서 생성된 경로 등 안전하게 변환할 수 없는 문자열은 정보 손실 방지를 위해 그대로 둡니다.
             return value
+
+    @classmethod
+    def _semantic_v2_hash_material(
+        cls,
+        *,
+        issue_doc: dict[str, Any],
+        comment_docs: list[dict[str, Any]],
+        attachment_docs: list[dict[str, Any]],
+        relation_docs: list[dict[str, Any]],
+        field_docs: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """semantic_v2 계약에 맞는 canonical source hash 재료를 만듭니다."""
+
+        issue_material = cls._strip_paths(issue_doc)
+        if isinstance(issue_material, dict):
+            issue_material.pop("updated_at", None)
+
+        comment_material = cls._strip_paths(comment_docs)
+        if isinstance(comment_material, list):
+            for comment in comment_material:
+                if isinstance(comment, dict):
+                    comment.pop("updated_at", None)
+
+        return {
+            "issue": issue_material,
+            "comments": comment_material,
+            "attachments": cls._strip_paths(attachment_docs),
+            "relationships": cls._strip_paths(relation_docs),
+            "custom_fields": cls._strip_paths(field_docs),
+        }
 
     @classmethod
     def _strip_paths(cls, value: Any) -> Any:
