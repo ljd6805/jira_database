@@ -12,7 +12,7 @@ const palette={
   plan:'#ffcf70'
 };
 const groupColors=palette;
-let currentView='entity';
+let currentView='state';
 const visibleGroups={
   issue:true,
   comment:true,
@@ -56,7 +56,8 @@ function createEdgePath(svg,route,e,index){
   },svg);
   const d=JiraDiagramRouter.path(route);
   svgEl('path',{d,class:'edge-halo'},g);
-  const path=svgEl('path',{d,class:'edge'},g);
+  const edgeClass=e.style==='logical'?'edge edge-logical':'edge';
+  const path=svgEl('path',{d,class:edgeClass},g);
   if(e.label)svgEl('title',{},path).textContent=e.label;
 }
 
@@ -74,8 +75,9 @@ function createEdgeLabel(svg,route,e,index,nodes,placed,view){
       x1:p.anchor[0],y1:p.anchor[1],x2:p.x,y2:p.y,class:'edge-label-leader'
     },g);
   }
+  const labelClass=e.style==='logical'?'label-tag label-tag-logical':'label-tag';
   svgEl('rect',{
-    x:p.x-p.w/2,y:p.y-p.h/2,width:p.w,height:p.h,rx:12,class:'label-tag'
+    x:p.x-p.w/2,y:p.y-p.h/2,width:p.w,height:p.h,rx:12,class:labelClass
   },g);
   svgEl('text',{
     x:p.x,y:p.y+3.5,'text-anchor':'middle',class:'edge-label'
@@ -83,8 +85,10 @@ function createEdgeLabel(svg,route,e,index,nodes,placed,view){
 }
 
 function showInfo(n){
+  const detail=n.detail||n.sub||'현재 데이터 구조의 구성 요소입니다.';
   document.getElementById('infoPanel').innerHTML=
-    `<div class="info-title">${n.label}</div><div class="info-body">${n.sub||'현재 데이터 구조의 구성 요소입니다.'}</div>`;
+    `<div class="info-title">${n.label}</div>`+
+    `<div class="info-body"><div class="mono" style="display:inline-block;margin-bottom:9px">${n.sub||''}</div><br>${detail}</div>`;
 }
 
 function groupVisible(kind){
@@ -141,6 +145,7 @@ function drawView(name){
   currentView=name;
   const svg=document.getElementById('networkSvg');
   const v=JIRA_MAP_VIEWS[name];
+  if(!v)return;
   svg.innerHTML='<defs><marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 z" fill="rgba(216,230,255,.74)"></path></marker></defs>';
   document.getElementById('viewTitle').textContent=v.title;
   document.getElementById('viewHelp').textContent=v.help;
@@ -173,4 +178,4 @@ document.querySelectorAll('.toggle').forEach(b=>{
   };
 });
 
-drawView('entity');
+drawView('state');
