@@ -161,6 +161,21 @@ function drawView(name){
   showInfo(v.nodes[0]);
 }
 
+function applyFriendlyTabLabels(){
+  const labels={
+    state:'State DB · 현재 개정 3',
+    crossdb:'State ↔ Knowledge',
+    schema:'Knowledge DB · 구현 개정 1',
+    issue:'Evidence Round-trip',
+    entity:'Current Entity',
+    pipeline:'M0~M11 Pipeline'
+  };
+  document.querySelectorAll('.tab').forEach(button=>{
+    const label=labels[button.dataset.view];
+    if(label)button.textContent=label;
+  });
+}
+
 document.querySelectorAll('.tab').forEach(b=>{
   b.onclick=()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
@@ -178,4 +193,8 @@ document.querySelectorAll('.toggle').forEach(b=>{
   };
 });
 
+applyFriendlyTabLabels();
+document.querySelectorAll('.tab').forEach(button=>{
+  button.classList.toggle('active',button.dataset.view==='state');
+});
 drawView('state');
