@@ -15,6 +15,7 @@ def test_operational_service_phase_is_documented_and_linked() -> None:
         "Functional MVP",
         "Project Discovery",
         "Delta Issue Sync",
+        "Latest-Only",
         "Knowledge",
         "Evidence",
         "Embedding",
@@ -24,11 +25,11 @@ def test_operational_service_phase_is_documented_and_linked() -> None:
     ):
         assert token in text
 
+    # The service-phase document must remain discoverable from the official entry points.
     for source in (
         "README.md",
         "docs/index.html",
         "docs/PIPELINE_OVERVIEW.html",
-        "docs/status/jira_knowledge_db_current_status.html",
     ):
         body = _read(source)
         assert "jira_knowledge_operational_service_phase.html" in body
@@ -39,8 +40,9 @@ def test_operational_service_phase_is_documented_and_linked() -> None:
 def test_remote_mcp_is_only_one_operational_service_component() -> None:
     text = _read("docs/architecture/jira_knowledge_mcp_service_target.html")
     assert "운영 서비스" in text
-    assert "Remote MCP만으로 서비스가 완성되는 것은 아니" in text
+    assert "Remote MCP만으로 서비스가 완성되는 것은 아닙니다" in text
     assert "jira_knowledge_operational_service_phase.html" in text
+    assert "Published Corpus" in text
 
 
 def test_operational_service_scope_keeps_project_and_delta_updates() -> None:
@@ -58,12 +60,24 @@ def test_operational_service_scope_keeps_project_and_delta_updates() -> None:
         assert token in text
 
 
+def test_operational_service_preserves_latest_only_and_logging_policy() -> None:
+    text = _read("docs/architecture/jira_knowledge_operational_service_phase.html")
+    for token in (
+        "superseded",
+        "work_item_superseded",
+        "stale_inflight_detected",
+        "Source History",
+        "Jira 원문",
+    ):
+        assert token in text
+
+
 def test_operational_service_flags_access_control_as_unresolved() -> None:
     text = _read("docs/architecture/jira_knowledge_operational_service_phase.html")
     for token in (
         "프로젝트 권한 상실",
         "팀원별 Jira 권한",
         "MVP",
-        "정책",
+        "정책 미확정",
     ):
         assert token in text
