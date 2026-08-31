@@ -1,53 +1,61 @@
-<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="2-Loop Continuous Jira Knowledge Service Operational State Schema v3. Latest-Only Processing과 supersede 상태를 포함한다."><title>Jira Knowledge Service · State Schema Contract v3 · FROZEN</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1180px;margin:auto;padding:42px 22px 92px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:48px}h2{font-size:30px}.grid2,.grid3,.grid5{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid5{grid-template-columns:repeat(5,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}a{color:var(--blue);font-weight:800}@media(max-width:900px){.grid2,.grid3,.grid5{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a> · <a href="jira_sync_contract.html">Sync Contract v3</a> · <a href="jira_sync_state_schema_contract_v2_baseline.html">v2 Historical</a></p><header class="hero"><div>OPERATIONAL STATE SCHEMA · LATEST-ONLY REVISION · 2026-08-31</div><h1>Sync State Schema Contract<br>FROZEN v3</h1><p>v2의 2-Loop + Source Ready Gate를 유지하고, 같은 Jira Issue의 중간 Source Version을 Loop B에서 건너뛰기 위한 <strong>Latest-Only Work Lifecycle</strong>을 추가합니다.</p><span class="state">CURRENT SOURCE OF TRUTH · STATE_SCHEMA_VERSION = 3 · IMPLEMENT THIS</span></header><section><h2>1. v2 → v3</h2><div class="flow">v2 · never deployed
+<!doctype html><html data-doc-shell="v1" lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="현재 2-Loop Jira Knowledge Service Operational State Schema 개정 3. Latest-Only Processing과 supersede 상태를 포함한다."><title>현재 Operational State Schema · 개정 3 · FROZEN</title><style>:root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.75;word-break:keep-all}.wrap{max-width:1180px;margin:auto;padding:42px 22px 92px}.hero{padding:42px;border-radius:28px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}.hero h1{margin:8px 0;font-size:clamp(36px,5vw,58px);line-height:1.08}.state{display:inline-block;margin-top:14px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:900}section{margin-top:48px}h2{font-size:30px}.grid2,.grid3,.grid5{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid5{grid-template-columns:repeat(5,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}.callout{padding:16px 18px;border-left:5px solid var(--blue);border-radius:11px;background:#edf3ff;margin:18px 0}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}.footer{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}a{color:var(--blue);font-weight:800}@media(max-width:900px){.grid2,.grid3,.grid5{grid-template-columns:1fr}}</style><link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1"><script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script></head><body><main class="wrap"><p><a href="../index.html">← Documentation Hub</a> · <a href="jira_operational_two_loop_architecture.html">2-Loop Architecture</a> · <a href="jira_sync_contract.html">현재 Sync 규칙 · 개정 3</a> · <a href="jira_sync_state_schema_contract_v2_baseline.html">과거 State 설계 · 개정 2</a></p><header class="hero"><div>OPERATIONAL STATE SCHEMA · CURRENT DESIGN · 2026-08-31</div><h1>현재 Operational State Schema<br>개정 3</h1><p>2-Loop + Source Ready를 유지하고, 같은 Jira Issue의 중간 Source 상태를 Loop B에서 건너뛰기 위한 <strong>Latest-Only Work Lifecycle</strong>을 포함한 현재 구현 목표입니다.</p><span class="state">CURRENT SOURCE OF TRUTH · STATE_SCHEMA_VERSION = 3 · IMPLEMENT THIS</span></header>
+<section><h2>0. “개정 3”의 뜻</h2><div class="callout"><strong><code>collector.db</code>의 Operational State Schema 계열에서 세 번째 개정이라는 뜻입니다.</strong><br>M7의 Knowledge DB Schema 개정 1과는 다른 DB, 다른 번호 체계입니다.</div></section>
+<section><h2>1. 이전 설계 → 현재 설계</h2><div class="flow">과거 Operational State 설계 · 개정 2 · never deployed
 2-Loop + Source Ready Gate
 
-v3 · current
+현재 Operational State 설계 · 개정 3
 + Latest-Only Processing
 + work_status
 + superseded_by_work_item_id
 + superseded_at / supersede_reason
-+ processing_run.superseded_count</div><p>5개 Domain Table 경계는 그대로 유지합니다. 변경 대상은 주로 <code>sync_issue_change</code>의 Loop B lifecycle입니다.</p></section><section><h2>2. 책임 경계</h2><div class="grid2"><div class="card good"><h3>Control Plane · collector.db</h3><p>두 Loop Run, Project Watermark, Source cursor, Work Item readiness/latestness/stage, retry/error/supersede.</p></div><div class="card"><h3>Data Plane · Knowledge DB</h3><p>Issue Version, Generation, Attempt, Knowledge Item, Evidence, Review. Source History는 삭제하지 않습니다.</p></div></div></section><section><h2>3. Operational Domain Table · 5개</h2><div class="grid5"><div class="card"><h3>source_sync_run</h3><p>Loop A 실행.</p></div><div class="card"><h3>project_state</h3><p>Project 현재 상태 / Watermark.</p></div><div class="card"><h3>source_project_run</h3><p>Source Run×Project / cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>durable latest-only backlog / downstream checkpoint.</p></div><div class="card"><h3>processing_run</h3><p>Loop B 실행 / 처리량.</p></div></div></section><section><h2>4. Work Item identity는 그대로</h2><div class="flow">work_item_id = sw_ + deterministic SHA-256
++ processing_run.superseded_count</div><p>5개 Domain Table 경계는 그대로 유지합니다.</p></section>
+<section><h2>2. 책임 경계</h2><div class="grid2"><div class="card good"><h3>Control Plane · collector.db</h3><p>두 Loop Run, Project Watermark, Source cursor, Work Item readiness/latestness/stage, retry/error/supersede.</p></div><div class="card"><h3>Data Plane · Knowledge DB</h3><p>Issue Version, Generation, Attempt, Knowledge Item, Evidence, Review. 현재 실제 구현은 Knowledge DB Schema 개정 1입니다.</p></div></div></section>
+<section><h2>3. Operational Domain Table · 5개</h2><div class="grid5"><div class="card"><h3>source_sync_run</h3><p>Loop A 실행.</p></div><div class="card"><h3>project_state</h3><p>Project 현재 상태 / Watermark.</p></div><div class="card"><h3>source_project_run</h3><p>Source Run×Project / cursor.</p></div><div class="card"><h3>sync_issue_change</h3><p>durable latest-only backlog / downstream checkpoint.</p></div><div class="card"><h3>processing_run</h3><p>Loop B 실행 / 처리량.</p></div></div></section>
+<section><h2>4. Work Item identity</h2><div class="flow">work_item_id = sw_ + deterministic SHA-256
 identity material = jira_id + source_hash + source_hash_profile
-UNIQUE(jira_id, source_hash, source_hash_profile)</div><p>중간 Version을 supersede해도 Work Item identity나 Source Version을 삭제하지 않습니다.</p></section><section><h2>5. Work Lifecycle · v3 신규</h2><div class="flow">work_status
-pending
-running
-published
-failed
-superseded</div><table><thead><tr><th>상태</th><th>의미</th></tr></thead><tbody><tr><td>pending</td><td>최신 Source Ready Work, 아직 미처리</td></tr><tr><td>running</td><td>Loop B가 현재 처리 중</td></tr><tr><td>published</td><td>실제 Retrieval Publish까지 완료</td></tr><tr><td>failed</td><td>최신 Work였지만 처리 실패, 재시도 가능</td></tr><tr><td>superseded</td><td>더 최신 Source Version이 Source Commit되어 더 이상 AI 처리 가치가 없음</td></tr></tbody></table><div class="flow">superseded_by_work_item_id
+UNIQUE(jira_id, source_hash, source_hash_profile)</div><p>중간 Source 상태를 supersede해도 Work Item identity나 Source History를 삭제하지 않습니다.</p></section>
+<section><h2>5. Work Lifecycle</h2><table><thead><tr><th>work_status</th><th>의미</th></tr></thead><tbody><tr><td>pending</td><td>최신 Source Ready Work, 아직 미처리</td></tr><tr><td>running</td><td>Loop B가 현재 처리 중</td></tr><tr><td>published</td><td>실제 Retrieval Publish까지 완료</td></tr><tr><td>failed</td><td>최신 Work였지만 처리 실패, 재시도 가능</td></tr><tr><td>superseded</td><td>더 최신 Source 상태가 Source Commit되어 더 이상 AI 처리 가치가 없음</td></tr></tbody></table><div class="flow">superseded_by_work_item_id
 superseded_at
-supersede_reason = newer_source_version</div></section><section><h2>6. Source Ready + Latest Gate</h2><div class="card good"><div class="flow">Loop B claim 가능 조건
+supersede_reason = newer_source_version</div></section>
+<section><h2>6. Source Ready + Latest Gate</h2><div class="card good"><div class="flow">Loop B claim 가능
 
 last_source_committed_run_id IS NOT NULL
 AND last_source_committed_run_id = last_observed_source_run_id
 AND work_status IN ('pending','failed')
-AND superseded_by_work_item_id IS NULL</div></div><p>즉 Source Commit 완료뿐 아니라 <strong>같은 Jira Issue 중 현재 최신 Work</strong>여야 합니다.</p></section><section><h2>7. T3 Source Commit에서 supersede도 함께 처리</h2><div class="flow">새 V4 Work Item이 Project SOURCE_COMMITTED
+AND superseded_by_work_item_id IS NULL</div></div><p>Source Commit 완료뿐 아니라 같은 Jira Issue 중 <strong>현재 최신 Work</strong>여야 합니다.</p></section>
+<section><h2>7. Project Source Commit에서 supersede도 함께 처리</h2><div class="flow">새 상태 C Work Item이 Project SOURCE_COMMITTED
 
 SAME State DB transaction
 1. source_project_run.source_status = source_committed
 2. project_state.committed_watermark = upper
-3. V4 last_source_committed_run_id = current
+3. C last_source_committed_run_id = current
 4. 같은 jira_id의 이전 미완료 Work
    work_status IN (pending, failed, running)
    → work_status = superseded
-   → superseded_by_work_item_id = V4
+   → superseded_by_work_item_id = C
    → superseded_at = now
-5. COMMIT</div><p>이미 Published된 과거 Work는 History로 남기며 이 supersede 대상에 포함하지 않습니다.</p></section><section><h2>8. Processing 중 새 Version이 들어오는 경우</h2><div class="flow">V2 running
-→ V3 SOURCE_COMMITTED
-→ V2 work_status = superseded
-→ OpenCode V2 응답 도착
+5. COMMIT</div><p>이미 Published된 과거 Work는 History로 남깁니다.</p></section>
+<section><h2>8. Processing 중 새 상태가 들어오면</h2><div class="flow">상태 B Work running
+→ 상태 C SOURCE_COMMITTED
+→ B work_status = superseded
+→ OpenCode B 응답 도착
 → Worker 최신성 re-check
 → superseded 확인
 → Active Knowledge 저장/Embedding/Publish 중단
-→ stale_inflight_detected log</div><p>API 호출 자체의 강제 취소는 기본 정책이 아닙니다. 다만 Publish 전 최신성 검사는 반드시 다시 수행합니다.</p></section><section><h2>9. Stage 상태와 work_status의 역할</h2><div class="grid2"><div class="card"><h3>work_status</h3><p>이 Work를 지금 처리해야 하는가? 최신성/queue lifecycle.</p></div><div class="card"><h3>knowledge / embedding / publish_status</h3><p>실제 각 Stage가 어디까지 갔는가? 실행 진단/Resume.</p></div></div><p>예를 들어 처리 중 superseded되면 <code>work_status=superseded</code>이면서 <code>knowledge_status=running</code>일 수 있습니다. 외부 호출이 돌아온 뒤 worker가 stale 처리 로그를 남기고 종료합니다.</p></section><section><h2>10. processing_run v3</h2><div class="flow">processing_run
+→ stale_inflight_detected log</div></section>
+<section><h2>9. Stage 상태와 work_status의 역할</h2><div class="grid2"><div class="card"><h3>work_status</h3><p>이 Work를 지금 처리해야 하는가? 최신성/queue lifecycle.</p></div><div class="card"><h3>knowledge / embedding / publish_status</h3><p>실제 각 Stage가 어디까지 갔는가? 실행 진단/Resume.</p></div></div></section>
+<section><h2>10. processing_run</h2><div class="flow">processing_run
 selected_count
 published_count
 failed_count
-superseded_count   ← 신규
+superseded_count
 backlog_before
-backlog_after</div><p>Processing 중 최신 Version에 밀려 실제 AI 결과를 버린 건수를 별도로 측정합니다.</p></section><section><h2>11. Structured Logging</h2><div class="flow">work_item_superseded
+backlog_after</div><p>Processing 중 더 최신 Source 상태에 밀려 결과를 버린 건수를 별도로 측정합니다.</p></section>
+<section><h2>11. Structured Logging</h2><div class="flow">work_item_superseded
 processing_skip_superseded
 stale_inflight_detected
-latest_processing_started</div><p>로그 필드: timestamp, jira_id, project_id, old/new work_item_id, source_run_id, processing_run_id, stage, reason. Jira 원문/댓글 본문은 기록하지 않습니다.</p></section><section><h2>12. Migration v3</h2><div class="flow">STATE_SCHEMA_VERSION = 3
+latest_processing_started</div><p>Jira 원문/댓글 본문은 로그에 기록하지 않습니다.</p></section>
+<section><h2>12. Migration</h2><div class="flow">STATE_SCHEMA_VERSION = 3
 PRAGMA user_version = 3
 
 legacy collector.db version 0
@@ -55,8 +63,10 @@ legacy collector.db version 0
 → consistent backup
 → explicit additive migration
 → legacy rows preserve
-→ v3 schema/integrity/regression PASS
-→ cutover</div><p>v1/v2는 실제 배포되지 않은 설계 baseline입니다. 공식 첫 Operational Migration 목표는 v3입니다.</p></section><section><h2>13. DDL Source of Truth</h2><p>실제 CREATE TABLE / CHECK / FK / UNIQUE / INDEX는 <a href="jira_sync_state_schema_decision7_final_ddl.html">S7 Final DDL v3</a>를 따릅니다.</p></section><section><h2>14. 구현 Gate</h2><div class="flow">[ ] legacy → v3 migration / backup / rollback
+→ current schema/integrity/regression PASS
+→ cutover</div><p>과거 Operational State 설계 개정 1/2는 실제 배포되지 않았습니다. 공식 첫 Operational Migration 목표가 현재 개정 3입니다.</p></section>
+<section><h2>13. 실제 DDL Source of Truth</h2><p><a href="jira_sync_state_schema_decision7_final_ddl.html">현재 State DB 실제 DDL · 개정 3</a>를 따릅니다.</p></section>
+<section><h2>14. 구현 Gate</h2><div class="flow">[ ] legacy → current migration / backup / rollback
 [ ] Source Ready atomicity
 [ ] newer Source Commit supersedes old pending/failed/running Work
 [ ] Published history is not deleted
@@ -65,4 +75,5 @@ legacy collector.db version 0
 [ ] latestness re-check after OpenCode and before Publish
 [ ] supersede structured logging
 [ ] superseded_count / latest backlog query
-[ ] Loop A / Loop B failure isolation</div></section><section><h2>15. 아직 Freeze하지 않은 것</h2><div class="card warn"><h3>Multi-worker claim/lease</h3><p>초기 Single Worker 이후 실제 병렬 요구가 생길 때 결정합니다.</p></div></section><footer class="footer">State Schema Contract v3 · Latest-Only Processing · 2026-08-31</footer></main></body></html>
+[ ] Loop A / Loop B failure isolation</div></section>
+<section><h2>15. 아직 Freeze하지 않은 것</h2><div class="card warn"><h3>Multi-worker claim/lease</h3><p>초기 Single Worker 이후 실제 병렬 요구가 생길 때 결정합니다.</p></div></section><footer class="footer">현재 Operational State Schema · 개정 3 · Latest-Only Processing · 2026-08-31</footer></main></body></html>
