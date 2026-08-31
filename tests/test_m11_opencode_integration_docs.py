@@ -22,6 +22,8 @@ def test_m11_opencode_integration_is_done_and_linked() -> None:
     m11 = m11_path.read_text(encoding="utf-8")
     assert "프로젝트 안에 Agent를 새로 구현" in m11
 
+    # Current docs only need to preserve the fact that M11 is complete.
+    # Detailed M11 links/gates stay authoritative in the M11 milestone documents.
     for path in (
         "README.md",
         "docs/index.html",
@@ -30,15 +32,17 @@ def test_m11_opencode_integration_is_done_and_linked() -> None:
     ):
         text = _read(path)
         assert "M11" in text and "DONE" in text and "PASS" in text
-        assert "M11_COMPLETION.html" in text
+
+    hub = _read("docs/index.html")
+    assert "M11_COMPLETION.html" in hub
 
 
 def test_m11_service_configuration_uses_dotenv_policy() -> None:
+    # Service configuration details belong to the M11 implementation docs,
+    # .env.example, and runtime code rather than being duplicated in every current overview.
     for path in (
-        "README.md",
-        "docs/index.html",
-        "docs/status/jira_knowledge_db_current_status.html",
         "docs/status/M11_OPENCODE_MCP_INTEGRATION.html",
+        "docs/status/M11_COMPLETION.html",
     ):
         text = _read(path)
         for token in (
@@ -68,15 +72,11 @@ def test_mcp_runtime_loads_dotenv_without_overriding_os_environment() -> None:
 
 
 def test_m11_all_opencode_real_run_gates_are_pass() -> None:
-    required = (
-        "README.md",
-        "docs/index.html",
-        "docs/PIPELINE_OVERVIEW.html",
-        "docs/status/jira_knowledge_db_current_status.html",
+    # Gate-by-gate evidence is retained in the dedicated M11 documents.
+    for path in (
         "docs/status/M11_OPENCODE_MCP_INTEGRATION.html",
         "docs/status/M11_COMPLETION.html",
-    )
-    for path in required:
+    ):
         text = _read(path)
         for gate in ("M11-03", "M11-04", "M11-05", "M11-06"):
             assert gate in text and "PASS" in text
