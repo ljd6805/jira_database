@@ -15,11 +15,11 @@ D10 Latest-Only Processing              FIXED
 StateStore foundation                   IMPLEMENTED · CI PASS
 Legacy Migration capability             IMPLEMENTED · compatibility only
 semantic_v2 source hash                 IMPLEMENTED · CI PASS
-Loop A Delta Source Sync                IMPLEMENTED · CI PASS
-Loop B Knowledge Automation             IMPLEMENTED · CI PASS
-per-Work Knowledge DB materialization   IMPLEMENTED · CI PASS
-Incremental BGE-M3 staging              IMPLEMENTED · CI PASS
-Retrieval staging / Atomic Publish      NEXT CODE
+Loop A Delta Source Sync                IMPLEMENTED · REAL PASS
+Loop B Knowledge Automation             IMPLEMENTED · REAL PASS
+per-Work Knowledge DB materialization   IMPLEMENTED · REAL PASS
+Incremental BGE-M3                      IMPLEMENTED · REAL PASS
+G4 WAL-safe Atomic Publish              IMPLEMENTED · CI PASS
 
 Bootstrap Policy
 Smoke                                  data_smoke/ Fresh DB
@@ -27,15 +27,19 @@ Formal Real Test                       clean data/ Fresh Bootstrap
 Legacy DB Migration                    NOT PLANNED for official test
 
 Real Environment Gates
-Real Loop A Smoke                      PENDING
-Real Internal OpenCode Run             PENDING
+G1 Real Loop A                         PASS
+G2 Real Internal OpenCode              PASS
+G3 Real Incremental BGE-M3             PASS · BAAI/bge-m3 · 1024-d
+G4 Real Atomic Publish                 NEXT
 Real Skill-load verification           PENDING
-Real Incremental BGE-M3 Run            PENDING
 Continuous Scheduling                  NOT IMPLEMENTED
 ```
 
 현재 최상위 기준 문서:
 
+- [Current Status](docs/status/jira_knowledge_db_current_status.html)
+- [G3 Real BGE-M3 검증 기록](docs/status/G3_REAL_BGE_M3_VALIDATION.html)
+- [G4 Atomic Publish 쉬운 설계](docs/architecture/G4_ATOMIC_PUBLISH_PROTOCOL.html)
 - [Fresh Bootstrap / Smoke Policy](docs/architecture/jira_operational_fresh_bootstrap_smoke_policy.html)
 - [OpenCode 자동화 쉬운 가이드](docs/architecture/jira_loop_b_opencode_automation_easy_guide.html)
 - [Incremental Embedding 구현 보고서](docs/status/OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html)
@@ -83,7 +87,7 @@ M11 OpenCode MCP Integration               DONE · USER REAL-RUN PASS
 Jira Source 최신화와 느리고 변동성이 큰 OpenCode 지식화를 하나의 직렬 Run으로 묶지 않습니다.
 
 ```text
-Loop A · SOURCE SYNC                         IMPLEMENTED / CI PASS
+Loop A · SOURCE SYNC                         IMPLEMENTED / REAL PASS
 source_sync_run
 → Project Discovery
 → Initial / Delta / Catch-up
@@ -99,7 +103,7 @@ source_sync_run
 
               ↓ latest-only durable backlog
 
-Loop B · KNOWLEDGE AUTOMATION                IMPLEMENTED / CI PASS
+Loop B · KNOWLEDGE AUTOMATION                IMPLEMENTED / REAL PASS
 processing_run
 → latest + source-ready Work Item claim
 → OpenCode jira-knowledge-orchestrator
@@ -113,28 +117,29 @@ processing_run
 → iv_ / kg_ State checkpoint
 → knowledge_status = completed
 
-Loop B · KNOWLEDGE DB                        IMPLEMENTED / CI PASS
+Loop B · KNOWLEDGE DB                        IMPLEMENTED / REAL PASS
 → per-Work Issue Version / Generation / Attempt
 → Knowledge Item / Evidence / Review
 → candidate + accepted_attempt_id
 → active 전환은 Publish까지 보류
 
-Loop B · INCREMENTAL EMBEDDING               IMPLEMENTED / CI PASS
+Loop B · INCREMENTAL EMBEDDING               IMPLEMENTED / REAL PASS
 → candidate Generation accepted Knowledge Item corpus
-→ BGE-M3
+→ BAAI/bge-m3 실제 호출
 → latestness re-check
 → Work별 corpus.jsonl / embeddings.jsonl atomic staging
-→ latestness re-check
+→ 1024-d vector 검증
 → embedding_status = completed
 → work_status = pending
 
-Loop B · RETRIEVAL / PUBLISH                 NEXT
-→ Published snapshot 구성
-→ FAISS staging / mapping / manifest
-→ latestness re-check
-→ coherent Atomic Publish
-→ Knowledge active state 정합화
-→ PUBLISHED
+Loop B · G4 RETRIEVAL / PUBLISH              IMPLEMENTED / CI PASS
+→ target + 현재 active Generation full snapshot
+→ immutable FAISS / mapping / manifest bundle staging
+→ Generation-set integrity Gate
+→ latestness re-check + State WAL write lock
+→ Knowledge DB active Generation service-head commit
+→ State publish_status/work_status = published
+→ crash/race fail-closed + retry convergence
 
 Continuous Scheduling                        NOT IMPLEMENTED
 
@@ -263,7 +268,7 @@ python tools/run_knowledge_worker.py \
 
 ```text
 Knowledge Automation code          IMPLEMENTED / CI PASS
-Real Internal OpenCode Run         PENDING
+Real Internal OpenCode Run         PASS
 Actual Skill-load verification     PENDING
 Continuous Scheduler/Daemon        NOT IMPLEMENTED
 ```
@@ -272,7 +277,7 @@ Continuous Scheduler/Daemon        NOT IMPLEMENTED
 - [Loop B Knowledge Automation](docs/status/LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html)
 - [OpenCode 자동화 쉬운 가이드](docs/architecture/jira_loop_b_opencode_automation_easy_guide.html)
 
-## 6. Operational Knowledge DB + Incremental Embedding — IMPLEMENTED
+## 6. Operational Knowledge DB + Incremental Embedding — REAL PASS
 
 Knowledge Worker가 만든 Work 하나를 기존 M7 full-run loader에 억지로 넣지 않고 전용 incremental materializer로 적재합니다.
 
@@ -286,12 +291,28 @@ per-Work Knowledge DB
 
 Incremental Embedding
 → candidate Generation의 accepted Item만 corpus 생성
-→ BGE-M3 호출
+→ BAAI/bge-m3 실제 호출
 → API 응답 후 latestness 재확인
 → corpus/embedding artifact atomic staging
-→ latestness 재확인
+→ 1024-d vector / Generation identity 사후검증
 → embedding_status = completed
 → Publish가 이어받도록 work_status = pending
+```
+
+실제 G3 결과:
+
+```text
+G3_REAL_BGE_M3 = PASS
+processing_run_id = pr_6237ead6ee92424ba2fb27a57f6605a9
+selected_count = 1
+embedding_completed_count = 1
+failed_count = 0
+embedding_backlog = 1 → 0
+model = BAAI/bge-m3
+dimension = 1024
+generation_state = candidate
+work_status = pending
+publish_status = pending
 ```
 
 실행:
@@ -305,11 +326,48 @@ python tools/run_embedding_worker.py \
 
 `run_embedding_worker.py`는 Jira 인증을 다시 요구하지 않습니다. State DB, Knowledge DB, BGE-M3 설정만 소비합니다.
 
-> 자동 테스트는 fake OpenAI-compatible embedding client 기반입니다. 실제 사내 BGE-M3 endpoint Incremental Real Run은 별도 Gate입니다.
+상세:
+- [G3 Real BGE-M3 Validation](docs/status/G3_REAL_BGE_M3_VALIDATION.html)
+- [Incremental Embedding Implementation](docs/status/OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html)
 
-상세: [Incremental Embedding Implementation](docs/status/OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html)
+## 7. G4 Atomic Publish — IMPLEMENTED / CI PASS
 
-## 7. semantic_v2 — IMPLEMENTED
+State 개정 3은 WAL을 사용하므로 Knowledge DB와 State DB를 SQLite `ATTACH`로 한 cross-file transaction에 묶는 초기 설계는 폐기했습니다. State WAL은 그대로 유지합니다.
+
+```text
+publish-ready latest Work
+→ target + current active Generation full snapshot 계산
+→ immutable Retrieval bundle staging
+→ source embedding / FAISS / mapping / manifest 검증
+→ Generation 집합 검증
+→ latestness re-check
+→ State BEGIN IMMEDIATE
+→ Knowledge DB transaction
+   old active(target Jira) → historical
+   target candidate        → active      ← service-facing commit point
+→ State
+   work_status             → published
+   publish_status          → published
+   processing_run          → completed
+```
+
+Active Retrieval은 별도 mutable pointer가 아니라 **Knowledge DB의 active accepted Generation 집합과 정확히 같은 Generation 집합을 가진 검증된 immutable bundle**로 결정합니다.
+
+실행:
+
+```bash
+python tools/run_publish_worker.py \
+  --state-db data/state/collector.db \
+  --knowledge-db data/knowledge_db/your.sqlite3 \
+  --embedding-root data/embedding/operational \
+  --retrieval-root data/retrieval/operational
+```
+
+G4 CI는 Initial Publish, full snapshot 교체, State WAL 유지, Knowledge commit 후 State checkpoint 실패 복구, staging 중 동시 Publish race의 fail-closed/retry를 검증합니다.
+
+상세: [G4 Atomic Publish Protocol](docs/architecture/G4_ATOMIC_PUBLISH_PROTOCOL.html)
+
+## 8. semantic_v2 — IMPLEMENTED
 
 Jira `updated`는 Delta candidate trigger이고 semantic identity가 아닙니다.
 
@@ -332,7 +390,7 @@ source_hash에 유지
 
 따라서 timestamp만 바뀌거나 이번 run의 package 범위만 달라져도 UNCHANGED이고, 실제 업무 의미가 바뀌어야 CHANGED가 됩니다.
 
-## 8. Latest-Only Processing
+## 9. Latest-Only Processing
 
 ```text
 Source History
@@ -342,7 +400,7 @@ Source History
 Knowledge / Data Plane
 B pending/running → superseded 가능
 C pending         → superseded
-D latest          → Knowledge → DB candidate → Embedding → Publish 준비
+D latest          → Knowledge → DB candidate → Embedding → Publish
 ```
 
 구버전 Work가 이미 OpenCode/BGE-M3 처리 중이면 외부 호출을 강제 취소하지 않습니다. 응답 후 최신성을 다시 검사하고 stale이면 다음 canonical/Publish 경로를 중단합니다.
@@ -361,11 +419,12 @@ work_item_reactivated
 
 로그에는 Jira 원문/댓글 본문을 넣지 않고 identity/run/stage/reason/timestamp만 기록합니다.
 
-## 9. Operational State foundation — IMPLEMENTED
+## 10. Operational State foundation — IMPLEMENTED
 
 ```text
 src/jira_collector/state_schema.py
 → current Schema 개정 3 초기화
+→ WAL journal mode
 → legacy schema inspection / fingerprint
 → explicit migration / backup / integrity
 → unknown schema fail-closed
@@ -384,7 +443,7 @@ tools/migrate_state_v3.py
 
 기존 known legacy `collector.db`를 꼭 재사용하는 경우에만 일반 StateStore open이 `StateMigrationRequiredError`로 차단되고 explicit migration을 요구합니다.
 
-## 10. 안전 경계
+## 11. 안전 경계
 
 Loop A T3:
 
@@ -405,9 +464,17 @@ actual staging artifact 먼저
 → State completed 나중
 ```
 
-Publish 단계에서도 actual coherent active switch가 State `published`보다 먼저여야 합니다.
+G4 Publish:
 
-## 11. Same-Run Resume
+```text
+immutable Retrieval bundle 먼저
+→ integrity + Generation-set Gate
+→ latestness re-check
+→ Knowledge active service-head commit
+→ State published checkpoint
+```
+
+## 12. Same-Run Resume
 
 ```text
 Source Run fixed upper = 최초 한 번 결정
@@ -422,7 +489,7 @@ resume(source_run_id)
 → Project 전체 성공 후 Watermark 전진
 ```
 
-## 12. Identity
+## 13. Identity
 
 ```text
 Jira identity
@@ -447,11 +514,12 @@ FAISS position ≠ emb_ ≠ ki_
 
 Loop B Knowledge Generation은 `iv_ + Knowledge Contract(knowledge schema / skill / runtime / model_profile)`로 `kg_`를 결정합니다.
 
-## 13. 현재 Operational State DB 구조
+## 14. 현재 Operational State DB 구조
 
 ```text
 STATE_SCHEMA_VERSION = 3
 PRAGMA user_version = 3
+PRAGMA journal_mode = WAL
 
 Operational Domain Tables
 source_sync_run
@@ -466,7 +534,7 @@ state_schema_migration
 
 Legacy Migration을 사용하는 경우 기존 `collection_runs`, `project_runs`, `issue_checkpoints`, `artifacts`는 삭제하거나 의미를 바꾸지 않습니다.
 
-## 14. 현재 운영 Sync 규칙
+## 15. 현재 운영 Sync 규칙
 
 ```text
 D1  Project별 committed Watermark
@@ -481,7 +549,7 @@ D9  Two-Loop Operational Architecture
 D10 Latest-Only Knowledge Processing
 ```
 
-## 15. 구현 검증 / Real Environment Gate
+## 16. 구현 검증 / Real Environment Gate
 
 ```text
 State schema / migration compatibility tests             PASS
@@ -497,16 +565,22 @@ Reviewer non-PASS 차단                                  PASS
 per-Work Knowledge DB candidate materialization         PASS
 Incremental Embedding success / retry                   PASS
 Embedding Processing Run claim/release                  PASS
+G4 immutable full Retrieval snapshot                    PASS
+G4 State WAL preservation                              PASS
+G4 checkpoint failure retry convergence                 PASS
+G4 concurrent Publish snapshot race fail-closed         PASS
 Documentation / pytest                                  PASS
 
-Real Loop A Smoke                                       PENDING
-Real Internal OpenCode + Skill load                     PENDING
-Real Incremental BGE-M3                                 PENDING
+G1 Real Loop A Smoke                                    PASS
+G2 Real Internal OpenCode                               PASS
+G3 Real Incremental BGE-M3                              PASS
+G4 Real Atomic Publish                                  NEXT
+Actual Skill-load trace                                 PENDING
 Legacy Migration for official test                      NOT PLANNED
 Continuous Scheduling                                   NOT IMPLEMENTED
 ```
 
-## 16. 운영 최신성 / Backpressure
+## 17. 운영 최신성 / Backpressure
 
 ```text
 Source Lag
@@ -517,7 +591,7 @@ Supersede Ratio
 OpenCode / BGE-M3 Latency / Error / Throughput
 ```
 
-## 17. MVP 핵심 숫자
+## 18. MVP 핵심 숫자
 
 ```text
 Issue                         30
@@ -534,7 +608,7 @@ M8 Embedding                 285
 M9 FAISS Vector              285
 ```
 
-## 18. M7 Knowledge DB SQLite — DONE / PASS
+## 19. M7 Knowledge DB SQLite — DONE / PASS
 
 ```text
 Issue / Generation       30 / 30
@@ -557,7 +631,7 @@ Issue
          └─ Knowledge Review
 ```
 
-## 19. M8 BGE-M3 — DONE / PASS
+## 20. M8 BGE-M3 — DONE / PASS
 
 ```text
 Knowledge Item 1개 = Embedding Unit 1개
@@ -570,9 +644,9 @@ embedding_rows      285
 batch_count           5
 ```
 
-M8의 위 수치는 기존 Functional MVP Real Run 결과입니다. 새 Incremental Embedding 운영 경로의 실제 사내 BGE-M3 Real Run과는 구분합니다.
+M8의 위 수치는 기존 Functional MVP Real Run 결과입니다. 운영 Incremental G3도 별도로 실제 BAAI/bge-m3 1024-d PASS를 확인했습니다.
 
-## 20. M9 FAISS — DONE / PASS
+## 21. M9 FAISS — DONE / PASS
 
 ```text
 Index       IndexFlatIP
@@ -584,7 +658,7 @@ Reranker    none
 Mapping     FAISS position → emb_ → ki_
 ```
 
-## 21. M10 Evidence + MCP — DONE / PASS
+## 22. M10 Evidence + MCP — DONE / PASS
 
 ```text
 질문 → BGE-M3 → FAISS Top-3 Knowledge
@@ -604,7 +678,7 @@ get_jira_issue
 
 MCP에는 생성형 LLM이 없습니다.
 
-## 22. M11 OpenCode Integration — DONE / PASS
+## 23. M11 OpenCode Integration — DONE / PASS
 
 ```text
 M11-01 .env service configuration                PASS
@@ -617,9 +691,18 @@ M11-06 description/comment Evidence 추적         PASS
 
 [M11 Completion](docs/status/M11_COMPLETION.html)
 
-서비스 설정 키는 `.env.example`과 M11 문서에서 관리합니다: `JIRA_KNOWLEDGE_DB_PATH`, `JIRA_RETRIEVAL_ARTIFACT_DIR`, `BGE_M3_ENDPOINT`.
+서비스 설정 키는 `.env.example`에서 관리합니다.
 
-## 23. Central Remote MCP
+```text
+JIRA_KNOWLEDGE_DB_PATH
+JIRA_RETRIEVAL_ARTIFACT_ROOT   ← G4 운영 권장, MCP 시작 시 active bundle 자동 선택
+JIRA_RETRIEVAL_ARTIFACT_DIR    ← 기존 특정 M9 artifact 직접 지정 방식
+BGE_M3_ENDPOINT
+```
+
+ROOT와 DIR을 함께 설정하면 ROOT가 우선합니다. 현재 G4는 요청 중 hot reload를 하지 않고 MCP 시작 시 coherent bundle 하나를 pin합니다.
+
+## 24. Central Remote MCP
 
 Central MCP는 두 Loop를 실행하는 엔진이 아닙니다.
 
@@ -633,31 +716,36 @@ Central MCP
 → 팀원 OpenCode에 Tool 제공
 ```
 
-새 Processing/Publish가 실패해도 마지막 정상 Published Corpus를 계속 제공합니다.
+새 Processing/Publish가 실패해도 matching active Retrieval head를 검증해서 읽습니다.
 
-## 24. 다음 단계 — 코드와 실환경 Gate를 분리
+## 25. 다음 단계
 
 ```text
-CODE NEXT
-FAISS staging / coherent Atomic Publish
-→ Half-Publish 방지
-
 REAL GATE NEXT
-G1 Real Loop A Smoke in data_smoke/
-G2 Real Internal OpenCode + Skill load
-G3 Real Incremental BGE-M3
-G4 Atomic Publish Real validation
+보존한 data_smoke
+→ G4 Atomic Publish 실제 실행
+→ State published 확인
+→ target Generation active 확인
+→ active Retrieval bundle Generation set 확인
+→ FAISS integrity / 1024 dimension 확인
+→ G4 REAL PASS 확정
+
+PENDING EVIDENCE
+Actual Skill-load trace 보존
 
 LATER
 Continuous Scheduling / Monitoring
-Remote MCP Operations / Team Pilot
+MCP safe reload / Remote MCP Operations / Team Pilot
 ```
 
-코드 다음 단계와 실환경 다음 Gate는 서로 다른 축입니다. Atomic Publish 구현을 진행하면서 별도로 Smoke Real Gate를 수행할 수 있습니다.
+G1/G2/G3의 실제 artifact와 checkpoint를 보존하기 위해 G4 검증 전 `data_smoke`를 초기화하지 않습니다.
 
-## 25. 주요 문서
+## 26. 주요 문서
 
 - [Documentation Hub](docs/index.html)
+- [Current Status](docs/status/jira_knowledge_db_current_status.html)
+- [G3 Real BGE-M3 Validation](docs/status/G3_REAL_BGE_M3_VALIDATION.html)
+- [G4 Atomic Publish Protocol](docs/architecture/G4_ATOMIC_PUBLISH_PROTOCOL.html)
 - [Fresh Bootstrap / Smoke Policy](docs/architecture/jira_operational_fresh_bootstrap_smoke_policy.html)
 - [OpenCode 자동화 쉬운 가이드](docs/architecture/jira_loop_b_opencode_automation_easy_guide.html)
 - [Incremental Embedding](docs/status/OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html)
@@ -671,14 +759,13 @@ Remote MCP Operations / Team Pilot
 - [Full Pipeline](docs/architecture/jira_knowledge_pipeline_full_explained.html)
 - [Operational Service Phase](docs/architecture/jira_knowledge_operational_service_phase.html)
 - [MCP Service Target](docs/architecture/jira_knowledge_mcp_service_target.html)
-- [Current Status](docs/status/jira_knowledge_db_current_status.html)
 - [Latest Handoff](docs/status/POST_MVP_OPERATIONAL_SERVICE_START_HERE.html)
 - [Pipeline Overview](docs/PIPELINE_OVERVIEW.html)
 - [Relationship Map](docs/architecture/jira_data_relationship_map.html)
 - [버전 표기 가이드](docs/VERSION_TERMINOLOGY_GUIDE.html)
 - [Documentation Policy](docs/DOCUMENTATION_POLICY.html)
 
-## 26. 로컬 MVP Artifact
+## 27. 로컬 MVP Artifact
 
 ```text
 M7 SQLite
