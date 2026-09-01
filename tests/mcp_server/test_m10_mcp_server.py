@@ -14,6 +14,7 @@ from jira_collector.mcp_server import (
     create_mcp_server,
     open_knowledge_db_readonly,
 )
+from jira_collector.mcp_server.service import SearchHead
 from jira_collector.mcp_server.validation import validate_m10_payloads
 from jira_collector.retrieval import RetrievalCandidate
 
@@ -133,6 +134,46 @@ def test_service_search_builds_evidence_package() -> None:
     assert package["knowledge_item_id"] == "ki_1"
     assert package["statement"] == "retry 적용 후 timeout이 재현되지 않았다."
     assert package["evidence"][0]["text"] == "retry를 적용한 뒤 재현되지 않음"
+
+
+def test_request_read_snapshot_survives_concurrent_head_switch(tmp_path: Path) -> None:
+    db_path = tmp_path / "knowledge.sqlite3"
+    creator = _database(db_path)
+    assert str(creator.execute("PRAGMA journal_mode=WAL").fetchone()[0]).lower() == "wal"
+    creator.close()
+
+    reader = open_knowledge_db_readonly(db_path)
+    writer = sqlite3.connect(db_path)
+    switched = False
+
+    def provider(connection: sqlite3.Connection) -> SearchHead:
+        nonlocal switched
+        row = connection.execute(
+            "SELECT state FROM knowledge_generation WHERE knowledge_generation_id='kg_1'"
+        ).fetchone()
+        assert row is not None and row[0] == "active"
+        writer.execute(
+            "UPDATE knowledge_generation SET state='historical' WHERE knowledge_generation_id='kg_1'"
+        )
+        writer.commit()
+        switched = True
+        return SearchHead(FakeSearcher(), _query_embedder)
+
+    service = JiraKnowledgeService(reader, search_head_provider=provider)
+    try:
+        result = service.search_jira_knowledge("retry timeout")
+    finally:
+        reader.close()
+        writer.close()
+
+    assert switched is True
+    assert result["warnings"] == []
+    assert result["results"][0]["knowledge_item_id"] == "ki_1"
+    with sqlite3.connect(db_path) as verification:
+        state = verification.execute(
+            "SELECT state FROM knowledge_generation WHERE knowledge_generation_id='kg_1'"
+        ).fetchone()
+    assert state is not None and state[0] == "historical"
 
 
 def test_service_get_issue_returns_safe_current_snapshot() -> None:
