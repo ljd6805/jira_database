@@ -17,4 +17,5 @@ def test_embedding_worker_runner_help_is_available() -> None:
     assert "--knowledge-db" in result.stdout
     assert "JIRA_KNOWLEDGE_DB_PATH" in result.stdout
     assert "--artifact-root" in result.stdout
+    assert "--stale-after-seconds" in result.stdout
     assert "--limit" in result.stdout
