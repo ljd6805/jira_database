@@ -16,5 +16,6 @@ def test_knowledge_worker_help_is_available() -> None:
     assert "latest-only Knowledge stage" in result.stdout
     assert "--model-profile" in result.stdout
     assert "--opencode-attach" in result.stdout
+    assert "--stale-after-seconds" in result.stdout
     assert "--limit" in result.stdout
     assert "Embedding/Publish" in result.stdout
