@@ -6,14 +6,14 @@
   <meta name="description" content="data_smoke에서 실제 사내 BGE-M3를 호출한 G3 검증 결과와 Candidate/State/Embedding 정합성 확인 기록.">
   <title>G3 Real BGE-M3 Validation · PASS</title>
   <link rel="stylesheet" href="milestone.css">
-  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
-  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
   <style>
     .grid2,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}
     .box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}
     table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}
     .big{font-size:1.6rem;font-weight:800}.arrow{text-align:center;font-size:1.4rem}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}
   </style>
+  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
 </head>
 <body><main class="wrap">
 <nav class="top">
@@ -55,7 +55,7 @@ next_stage = Retrieval staging / Atomic Publish</div>
 <div class="box good"><b>핵심 해석</b><p>Backlog 1건이 실제 모델 호출을 거쳐 정상 완료됐고 backlog는 0으로 줄었습니다. 이전 G3가 <em>BGE-M3 호출 전에</em> 막혔던 것과 달리 이번에는 실제 Embedding 경계를 통과했습니다.</p></div></section>
 
 <section><h2>3. BGE-M3 성공만으로 PASS라고 하지 않은 이유</h2>
-<p>API가 200을 반환하는 것만으로는 충분하지 않습니다. 잘못된 Generation을 embed했거나, vector가 1024가 아니거나, Publish가 실수로 먼저 실행됐다면 운영 계약은 깨집니다. 그래서 아래 상태를 함께 확인했습니다.</p>
+<p>API가 정상 응답하는 것만으로는 충분하지 않습니다. 잘못된 Generation을 embed했거나, vector가 1024가 아니거나, Publish가 실수로 먼저 실행됐다면 운영 계약은 깨집니다. 그래서 아래 상태를 함께 확인했습니다.</p>
 <table><thead><tr><th>검사</th><th>기대값</th><th>실제</th></tr></thead><tbody>
 <tr><td>Knowledge Generation</td><td><code>candidate</code></td><td><strong>candidate · PASS</strong></td></tr>
 <tr><td>Work</td><td><code>pending</code></td><td><strong>pending · PASS</strong></td></tr>
