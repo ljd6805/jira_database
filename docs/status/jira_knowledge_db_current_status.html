@@ -3,152 +3,152 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Jira Knowledge DB 현재 상태. Real Loop A와 Real OpenCode Knowledge는 PASS, Incremental Knowledge DB materializer 계약 복구와 회귀 테스트도 PASS하여 Real BGE-M3 G3 재테스트 준비가 완료된 상태를 기록한다.">
+  <meta name="description" content="Jira Knowledge DB 현재 상태. G1/G2/G3 실제 환경 PASS, G4 WAL-safe Atomic Publish 구현 및 CI PASS, data_smoke G4 real validation 대기 상태를 기록한다.">
   <title>Jira Knowledge DB · Current Status</title>
   <link rel="stylesheet" href="milestone.css">
+  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
   <style>
     .grid2,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}
     .box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.next{border:2px solid var(--blue);background:#edf3ff}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}
     table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}
-    code{word-break:break-all}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}
+    code{word-break:break-word}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}
   </style>
-  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
-  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
 </head>
 <body><main class="wrap">
 <nav class="top">
   <a href="../index.html">← 문서 허브</a>
-  <a href="../architecture/jira_operational_fresh_bootstrap_smoke_policy.html">Fresh Bootstrap / Smoke Policy</a>
-  <a href="REAL_LOOP_A_OPENCODE_SMOKE_GUIDE.html">★ Real Smoke Guide</a>
+  <a href="G3_REAL_BGE_M3_VALIDATION.html">G3 Real PASS</a>
+  <a href="../architecture/G4_ATOMIC_PUBLISH_PROTOCOL.html">G4 Atomic Publish</a>
   <a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A</a>
-  <a href="../architecture/jira_loop_b_opencode_automation_easy_guide.html">OpenCode 자동화 쉬운 가이드</a>
   <a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge</a>
-  <a href="OPENCODE_SMOKE_IGNORE_VISIBILITY_FIX.html">OpenCode Smoke Troubleshooting</a>
   <a href="OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html">Embedding</a>
 </nav>
-
 <header class="hero">
   <span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-09-01</span>
-  <h1>G1 · G2는 실제 환경 PASS,<br>G3 앞단 Materializer도 복구 완료했습니다.</h1>
-  <p>M0~M11 Functional MVP는 <strong>DONE / PASS</strong>입니다. 운영 구조는 <strong>Two-Loop + D10 Latest-Only + Operational State 개정 3</strong>이며 공식 검증 정책은 <strong>Fresh Bootstrap</strong>입니다. Real G3에서 발견된 Incremental Knowledge DB materializer 계약 drift는 수정했고, 실제 import와 <code>materialize_work()</code> candidate 생성 회귀 테스트까지 전체 CI로 통과했습니다. 이제 남은 것은 보존 중인 <code>data_smoke</code>에서 실제 사내 BGE-M3를 다시 호출하는 것입니다.</p>
-  <span class="state">G1 PASS · G2 KNOWLEDGE PATH PASS · MATERIALIZER FIXED / CI 239 PASS · G3 REAL BGE-M3 RETEST READY · ATOMIC PUBLISH AFTER G3</span>
+  <h1>G1 · G2 · G3 실제 환경 PASS,<br>G4 Atomic Publish 구현 완료</h1>
+  <p>M0~M11 Functional MVP는 <strong>DONE / PASS</strong>입니다. 현재 운영 구조는 <strong>Two-Loop + D10 Latest-Only + Operational State 개정 3</strong>입니다. 실제 Jira → OpenCode Knowledge → 사내 BGE-M3 1024차원 Embedding까지 <strong>G3 Real PASS</strong>를 확인했고, 그 결과를 서비스에 안전하게 노출하는 <strong>G4 WAL-safe Atomic Publish</strong>도 구현 및 CI 검증을 마쳤습니다. 남은 바로 다음 Gate는 보존 중인 <code>data_smoke</code>에서 G4를 실제 실행하는 것입니다.</p>
+  <span class="state">G1 PASS · G2 PASS · G3 REAL BGE-M3 PASS · G4 IMPLEMENTED / CI PASS · G4 REAL data_smoke NEXT</span>
 </header>
 
 <section><h2>1. Gate 상태</h2>
 <table><thead><tr><th>Gate</th><th>확인 내용</th><th>현재</th></tr></thead><tbody>
 <tr><td>G1 · Real Loop A</td><td>실제 Jira → RAW / ANALYSIS / Knowledge Input → SOURCE_COMMITTED → Source Ready</td><td><strong>PASS</strong></td></tr>
-<tr><td>Crash / Stale Recovery</td><td>중단된 running Work와 Processing Run 자동 복구 후 재처리</td><td><strong>PASS</strong></td></tr>
-<tr><td>G2 · Real OpenCode Knowledge Path</td><td>Source-ready Work → OpenCode 1.18.17 + CodeLLMPro → Knowledge / Review checkpoint</td><td><strong>PASS</strong></td></tr>
-<tr><td>실제 Skill-load trace</td><td><code>jira-knowledge-extraction</code> 실제 load trace의 별도 보존</td><td><strong>PENDING</strong></td></tr>
-<tr><td>G3-A · Incremental Knowledge DB</td><td>current loader 계약 정렬 → 실제 import → <code>materialize_work()</code> → candidate + accepted_attempt_id</td><td><strong>FIXED / CI PASS</strong></td></tr>
-<tr><td>G3-B · Real Incremental BGE-M3</td><td>보존한 candidate Knowledge → 실제 사내 BGE-M3 → embedding artifact/checkpoint</td><td><strong>RETEST READY · NOT RUN YET</strong></td></tr>
-<tr><td>G4 · Atomic Publish</td><td>FAISS / mapping / manifest coherent published bundle</td><td><strong>NOT IMPLEMENTED · NEXT after G3 PASS</strong></td></tr>
+<tr><td>Crash / Stale Recovery</td><td>중단된 running Work와 Processing Run 복구 후 재처리</td><td><strong>PASS</strong></td></tr>
+<tr><td>G2 · Real OpenCode Knowledge</td><td>Source-ready Work → OpenCode → Knowledge / Review checkpoint</td><td><strong>PASS</strong></td></tr>
+<tr><td>실제 Skill-load trace</td><td><code>jira-knowledge-extraction</code> 실제 load trace 별도 보존</td><td><strong>PENDING</strong></td></tr>
+<tr><td>G3-A · Incremental Knowledge DB</td><td>실제 <code>data_smoke</code> candidate + accepted_attempt_id + Evidence 정합성</td><td><strong>PASS</strong></td></tr>
+<tr><td>G3-B · Real BGE-M3</td><td>실제 <code>BAAI/bge-m3</code> → 1024-d vector → embedding checkpoint</td><td><strong>REAL PASS</strong></td></tr>
+<tr><td>G4 · Atomic Publish 구현</td><td>WAL-safe immutable Retrieval bundle + active Generation head + retry protocol</td><td><strong>IMPLEMENTED · CI PASS</strong></td></tr>
+<tr><td>G4 · Real data_smoke</td><td>G3에서 보존한 candidate를 실제 active/published service head로 전환</td><td><strong>NEXT</strong></td></tr>
 <tr><td>Continuous Scheduling</td><td>Loop A/B 자동 기동</td><td><strong>NOT IMPLEMENTED</strong></td></tr>
 </tbody></table></section>
 
-<section><h2>2. 시작 정책 · Fresh Bootstrap</h2>
+<section><h2>2. G3 Real PASS 증거</h2>
 <div class="grid2">
-  <div class="box good"><b>Smoke</b><p><code>config/settings.smoke.yaml</code> + <code>data_smoke/</code>를 사용합니다. 운영 데이터와 격리하며 Migration하지 않습니다.</p></div>
-  <div class="box good"><b>Formal Real Test</b><p>기존 파일럿 DB/Index를 승계하지 않고 깨끗한 <code>data/</code>에서 Full Initial Ingest로 시작합니다.</p></div>
-</div>
-<p><a href="../architecture/jira_operational_fresh_bootstrap_smoke_policy.html">Fresh Bootstrap / Smoke 정책 상세</a></p></section>
-
-<section><h2>3. G2 실제 성공 기록</h2>
-<div class="flow">KNOWLEDGE_WORKER = CHECKPOINTED
-processing_run_id = pr_46868fc5384a4f6692ce2181a24a02a0
-stale_recovered_work_count = 1
-stale_recovered_processing_run_count = 1
+  <div class="box good"><b>실제 Embedding Worker</b><div class="flow">processing_run_id = pr_6237ead6ee92424ba2fb27a57f6605a9
 selected_count = 1
-knowledge_completed_count = 1
+embedding_completed_count = 1
 failed_count = 0
-knowledge_backlog_before = 1
-knowledge_backlog_after = 0
-model_profile = internal-opencode-knowledge-v1
-opencode_model = codemate/CodeLLMPro</div></section>
-
-<section><h2>4. Real G3가 찾아낸 결함과 수정</h2>
-<div class="flow">Real G3 최초 시도
-→ data_smoke Knowledge checkpoint 유지
-→ IncrementalKnowledgeDbMaterializer import
-→ ImportError
-
-발견한 계약 drift
-1. custom field helper 이름 불일치
-   incremental.py: _insert_source_custom_field_definition/value
-   loader.py:      _insert_custom_field_catalog/value
-
-2. Issue 적재 호출 규약 불일치
-   incremental.py: _upsert_issue(connection, source_run_id, package) + jira_id 반환 기대
-   loader.py:      _upsert_issue(connection, row) -> None
-
-3. Issue Version 호출 규약 불일치
-   incremental.py: _ensure_issue_version(connection, source_run_id, jira_id, package) + 반환값 기대
-   loader.py:      _ensure_issue_version(connection, run_id, issue_key, version_id, package) -> None
-
-4. 추가 정적 결함
-   _load_issue_reviews()가 re.compile()을 사용하지만 import re 누락</div>
-<div class="box good"><b>수정 원칙</b><p>base loader에 legacy 호환용 API를 다시 만들지 않았습니다. <strong>Incremental 쪽을 현재 base loader 계약에 맞췄습니다.</strong> Operational <code>analysis.issue</code> row를 <code>_upsert_issue()</code>에 전달하고, 이미 계산한 deterministic <code>issue_version_id</code>를 현재 <code>_ensure_issue_version()</code> 계약에 명시적으로 전달합니다.</p></div>
-<div class="box good"><b>데이터 안전성</b><p>최초 실패는 BGE-M3 호출 전에 발생했으므로 기존 <code>data_smoke</code>의 G1/G2 artifact와 State checkpoint는 그대로 보존했습니다. G3 재테스트도 이 checkpoint에서 이어갑니다.</p></div></section>
-
-<section><h2>5. 새 회귀 테스트가 확인한 것</h2>
-<div class="grid2">
-  <div class="box good"><b>실제 module import</b><p><code>jira_collector.knowledge_db.incremental</code>을 실제 import합니다. 삭제되거나 이름이 바뀐 private helper를 import하면 즉시 실패합니다.</p></div>
-  <div class="box good"><b>materialize_work 통합 경로</b><p>Operational State + analysis + Knowledge Input + Knowledge + Review를 연결해 <code>materialize_work()</code>를 실제 호출합니다.</p></div>
-  <div class="box good"><b>6종 Evidence round-trip</b><p>summary, description, comment, attachment, relationship, custom field가 실제 source entity로 역추적되는지 검증합니다.</p></div>
-  <div class="box good"><b>Candidate idempotency</b><p>같은 Work를 두 번 materialize해도 Generation/Attempt/Item/Evidence가 중복되지 않고 <code>candidate + accepted_attempt_id</code>가 유지됩니다.</p></div>
+backlog = 1 → 0
+model = BAAI/bge-m3
+dimension = 1024</div></div>
+  <div class="box good"><b>최종 Gate</b><div class="flow">G3_REAL_BGE_M3 = PASS
+generation_state = candidate
+work_status = pending
+publish_status = pending
+dimension = 1024</div></div>
 </div>
-<div class="flow">CI #1079 · 1 failed, 238 passed
-→ 새 integration fixture가 Knowledge checkpoint 직후의 transient work_status='running'에서 materialize 호출
-→ production bug로 오판하지 않음
-→ 실제 LoopBKnowledgeWorker의 handoff인 running → pending을 fixture에 반영
-→ Incremental의 pending/published guard는 그대로 유지
+<p><a href="G3_REAL_BGE_M3_VALIDATION.html">G3 실제 검증 기록 전체 보기</a></p></section>
 
-CI #1081 · PUSH · 239 passed
-CI #1082 · PR   · 239 passed</div>
-<div class="box warn"><b>왜 <code>running</code>을 허용하지 않았나?</b><p>Knowledge 완료 직후 <code>work_status='running'</code>은 worker가 아직 Work를 소유한 transient 상태입니다. 실제 G2 종료 시 <code>_release_after_knowledge()</code>가 이를 <code>pending</code>으로 돌립니다. Incremental Materializer가 <code>running</code>까지 허용하면 다른 processing run이 소유한 Work를 건드릴 수 있으므로 production guard를 느슨하게 만들지 않았습니다.</p></div></section>
+<section><h2>3. G4를 구현하며 바뀐 핵심 설계</h2>
+<div class="box warn"><b>처음 생각했던 Cross-DB ATTACH 방식은 폐기했습니다.</b><p>초기 구현은 Knowledge DB와 State DB를 SQLite <code>ATTACH</code>한 뒤 하나의 transaction으로 묶으려 했습니다. 하지만 CI에서 실제 State DB가 <strong>WAL</strong>임을 확인했고, SQLite의 multi-file crash atomicity 조건과 맞지 않았습니다. 테스트를 쉽게 만들기 위해 WAL을 끄지 않고 G4 프로토콜 자체를 다시 설계했습니다.</p></div>
+<div class="flow">최종 G4
 
-<section><h2>6. 현재 구현 경로</h2>
-<div class="flow">Loop A · IMPLEMENTED / CI PASS / REAL SMOKE PASS
-Jira → Source Ready
-→ Latest-Only sync_issue_change backlog
+1. latest publish-ready Work claim
+2. target + 현재 active Generation 전체 snapshot 계산
+3. immutable Retrieval bundle staging
+4. FAISS / mapping / manifest / Generation set 검증
+5. latestness 재검사 + State BEGIN IMMEDIATE
+6. Knowledge DB transaction
+   old active(target Jira) → historical
+   target candidate        → active     ← service-facing commit point
+7. State transaction
+   work_status             → published
+   publish_status          → published
+   processing_run          → completed</div>
+<div class="box good"><b>State 개정 3 그대로 유지</b><p>G4 때문에 State Schema를 올리지 않았고 <strong>WAL도 그대로 유지</strong>합니다. active Knowledge Generation 집합과 정확히 같은 Generation 집합을 가진 immutable Retrieval bundle만 서비스 head로 인정합니다.</p></div>
+<p><a href="../architecture/G4_ATOMIC_PUBLISH_PROTOCOL.html">G4 Atomic Publish 쉬운 설계 문서 보기</a></p></section>
+
+<section><h2>4. G4 CI가 검증한 것</h2>
+<div class="grid2">
+  <div class="box good"><b>첫 Publish</b><p>candidate → active, State published, 실제 FAISS 검색까지 연결됩니다.</p></div>
+  <div class="box good"><b>Full Snapshot 교체</b><p>A v1 + B에서 A v2 Publish 시 Retrieval에는 A v2 + B만 남고 A v1은 historical이 됩니다.</p></div>
+  <div class="box good"><b>State WAL 유지</b><p>Publish 전후 State DB journal mode가 WAL인지 확인합니다.</p></div>
+  <div class="box good"><b>Crash / Race 복구</b><p>Knowledge head commit 뒤 State 실패와 staging 중 다른 Issue Publish race를 강제로 만들고 fail-closed 및 재시도 수렴을 확인합니다.</p></div>
+</div>
+<div class="flow">CI #1102 · PASS
+→ 기존 회귀 + G4 WAL-safe 테스트 PASS
+→ Cross-DB ATTACH 설계 폐기 후 corrected protocol 검증 완료</div></section>
+
+<section><h2>5. MCP의 G4 연결 방식</h2>
+<div class="grid2">
+  <div class="box good"><b>권장 · Operational Root</b><p><code>JIRA_RETRIEVAL_ARTIFACT_ROOT</code>를 설정하면 MCP 시작 시 Knowledge DB의 active Generation 집합과 정확히 맞는 <code>runs/&lt;processing_run_id&gt;</code> bundle을 찾아 pin합니다.</p></div>
+  <div class="box good"><b>하위 호환 · Direct Directory</b><p>기존 <code>JIRA_RETRIEVAL_ARTIFACT_DIR</code>도 계속 지원합니다. ROOT가 있으면 ROOT가 우선합니다.</p></div>
+</div>
+<div class="box warn"><b>Hot reload는 아직 하지 않습니다.</b><p>한 요청 안에서 query embedding manifest와 FAISS index가 바뀌는 race를 피하기 위해 G4에서는 MCP 시작 시 하나의 bundle을 고정합니다. safe hot reload는 필요성이 확인될 때 별도 설계합니다.</p></div></section>
+
+<section><h2>6. 현재 전체 운영 경로</h2>
+<div class="flow">Loop A · IMPLEMENTED / REAL PASS
+Jira
+→ Source Ready
+→ sync_issue_change durable backlog
+→ D10 Latest-Only
 → newer Source가 SOURCE_COMMITTED되면 이전 미완료 Work는 superseded 처리
 
-Loop B Knowledge · IMPLEMENTED / CI PASS / REAL PATH PASS
-Source Ready → OpenCode → Knowledge checkpoint → pending handoff
+Loop B Knowledge · IMPLEMENTED / REAL PASS
+Source Ready
+→ OpenCode Knowledge / Review
+→ candidate Knowledge DB
 
-Incremental Knowledge DB · CONTRACT RECOVERED / CI PASS
-pending latest Work
-→ operational source entities
-→ issue / issue_version
-→ candidate knowledge_generation + accepted_attempt_id
-→ accepted Evidence round-trip
-
-Operational Embedding Worker · IMPLEMENTED / fake-client CI PASS
-candidate Generation
-→ deterministic corpus
-→ actual BGE-M3 call
-→ atomic embeddings.jsonl
+Operational Embedding · IMPLEMENTED / REAL PASS
+candidate
+→ BAAI/bge-m3
+→ 1024-d embeddings.jsonl
 → embedding_status=completed
 
-Real BGE-M3
-→ NEXT EXECUTION GATE
-→ 아직 재호출하지 않았으므로 PASS라고 기록하지 않음
+G4 Atomic Publish · IMPLEMENTED / CI PASS
+embedding completed latest Work
+→ immutable full Retrieval snapshot
+→ Generation-set integrity gate
+→ Knowledge active head commit
+→ State published checkpoint
 
-Atomic Publish
-→ ONLY AFTER G3 PASS
-→ 현재 NOT IMPLEMENTED</div>
-<p><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현 보고서</a> · <a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge 구현 보고서</a> · <a href="OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html">Incremental Embedding 구현/트러블슈팅</a></p></section>
+G4 Real data_smoke
+→ NEXT EXECUTION GATE</div></section>
 
 <section><h2>7. 지금 바로 이어갈 작업</h2>
-<div class="box next"><b>G3 Real BGE-M3 재테스트</b><p>PR #23의 Materializer 복구를 main에 반영한 뒤 현재 <code>data_smoke</code>를 삭제하지 않고 Knowledge DB candidate를 생성합니다. candidate와 State checkpoint를 확인한 다음 기존 <code>tools/run_embedding_worker.py</code>로 실제 BGE-M3를 호출합니다.</p></div>
-<div class="flow">1. PR #23 merge
-2. 기존 data_smoke 유지
-3. IncrementalKnowledgeDbMaterializer.materialize_work()로 candidate 생성
-4. candidate + accepted_attempt_id + Evidence round-trip 확인
-5. tools/run_embedding_worker.py로 실제 BGE-M3 G3 실행
-6. corpus.jsonl / embeddings.jsonl / embedding_status=completed 확인
-7. G3 PASS일 때만 G4 Atomic Publish 구현 시작</div>
-<div class="box warn"><b>금지</b><p>G3 재테스트 전에 <code>data_smoke</code>를 초기화하지 않습니다. G3가 PASS하기 전에 Atomic Publish를 구현하거나 현재 Published Retrieval을 전환하지 않습니다.</p></div></section>
+<div class="box next"><b>G4 Real data_smoke 검증</b><p>G1/G2/G3에서 사용한 <code>data_smoke</code>를 그대로 유지한 채 새 <code>tools/run_publish_worker.py</code>를 실행합니다. 성공 후 State, Knowledge active Generation, Retrieval bundle의 Generation 집합, FAISS integrity를 함께 사후검사합니다.</p></div>
+<div class="flow">1. G4 branch/PR CI 완료
+2. main merge + main CI 확인
+3. 기존 data_smoke 유지
+4. tools/run_publish_worker.py 실행
+5. PUBLISH_WORKER = PUBLISHED 확인
+6. work_status/publish_status = published 확인
+7. target Generation = active 확인
+8. active Retrieval bundle Generation set == Knowledge active Generation set 확인
+9. FAISS validation + 1024 dimension 확인
+10. 모두 PASS일 때 G4 REAL PASS 확정</div>
+<div class="box warn"><b>금지</b><p><code>data_smoke</code>를 초기화하지 않습니다. G4 real validation 전에 기존 batch materializer로 Generation을 임의 active 전환하지 않습니다.</p></div></section>
 
-<footer>Current Status · Fresh Bootstrap · State Schema 개정 3 · G1 PASS · G2 PASS · Incremental Materializer FIXED · CI 239 PASS · G3 REAL BGE-M3 RETEST READY · Atomic Publish AFTER G3 · 2026-09-01</footer>
+<section><h2>8. 아직 남은 운영 항목</h2>
+<table><thead><tr><th>항목</th><th>상태</th><th>비고</th></tr></thead><tbody>
+<tr><td>G4 real validation</td><td><strong>NEXT</strong></td><td>현재 가장 가까운 Gate</td></tr>
+<tr><td>Actual Skill-load trace 보존</td><td>PENDING</td><td>G2 path 성공과 별도로 trace 증거 보강</td></tr>
+<tr><td>Loop A Scheduler</td><td>NOT IMPLEMENTED</td><td>지속 운영 단계</td></tr>
+<tr><td>Loop B Scheduler / Daemon</td><td>NOT IMPLEMENTED</td><td>지속 운영 단계</td></tr>
+<tr><td>MCP safe reload</td><td>NOT IMPLEMENTED</td><td>현재는 startup pin</td></tr>
+</tbody></table></section>
+
+<footer>Current Status · Two-Loop · Latest-Only · State 개정 3 · G1/G2/G3 REAL PASS · G4 IMPLEMENTED / CI PASS · G4 REAL data_smoke NEXT · 2026-09-01</footer>
 </main></body></html>
