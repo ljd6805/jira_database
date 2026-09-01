@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Jira Knowledge DB 현재 상태. Real Loop A와 Real OpenCode Knowledge는 PASS, Real Incremental BGE-M3는 Incremental Knowledge DB materializer 계약 drift로 BLOCKED 상태임을 기록한다.">
+  <meta name="description" content="Jira Knowledge DB 현재 상태. Real Loop A와 Real OpenCode Knowledge는 PASS, Incremental Knowledge DB materializer 계약 복구와 회귀 테스트도 PASS하여 Real BGE-M3 G3 재테스트 준비가 완료된 상태를 기록한다.">
   <title>Jira Knowledge DB · Current Status</title>
   <link rel="stylesheet" href="milestone.css">
   <style>
@@ -29,9 +29,9 @@
 
 <header class="hero">
   <span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-09-01</span>
-  <h1>G1과 G2는 실제 환경 PASS,<br>G3는 코드 계약 drift에서 BLOCKED입니다.</h1>
-  <p>M0~M11 Functional MVP는 <strong>DONE / PASS</strong>입니다. 운영 구조는 <strong>Two-Loop + D10 Latest-Only + Operational State 개정 3</strong>이며 공식 검증 정책은 <strong>Fresh Bootstrap</strong>입니다. 실제 Jira Source Sync와 실제 OpenCode Knowledge checkpoint까지는 통과했고, Real BGE-M3 테스트는 BGE endpoint 호출 전에 Incremental Knowledge DB materializer의 기존 구현 불일치에서 중단됐습니다.</p>
-  <span class="state">G1 PASS · G2 KNOWLEDGE PATH PASS · G3 BLOCKED BEFORE BGE-M3 CALL · ATOMIC PUBLISH NEXT AFTER G3</span>
+  <h1>G1 · G2는 실제 환경 PASS,<br>G3 앞단 Materializer도 복구 완료했습니다.</h1>
+  <p>M0~M11 Functional MVP는 <strong>DONE / PASS</strong>입니다. 운영 구조는 <strong>Two-Loop + D10 Latest-Only + Operational State 개정 3</strong>이며 공식 검증 정책은 <strong>Fresh Bootstrap</strong>입니다. Real G3에서 발견된 Incremental Knowledge DB materializer 계약 drift는 수정했고, 실제 import와 <code>materialize_work()</code> candidate 생성 회귀 테스트까지 전체 CI로 통과했습니다. 이제 남은 것은 보존 중인 <code>data_smoke</code>에서 실제 사내 BGE-M3를 다시 호출하는 것입니다.</p>
+  <span class="state">G1 PASS · G2 KNOWLEDGE PATH PASS · MATERIALIZER FIXED / CI 239 PASS · G3 REAL BGE-M3 RETEST READY · ATOMIC PUBLISH AFTER G3</span>
 </header>
 
 <section><h2>1. Gate 상태</h2>
@@ -40,8 +40,9 @@
 <tr><td>Crash / Stale Recovery</td><td>중단된 running Work와 Processing Run 자동 복구 후 재처리</td><td><strong>PASS</strong></td></tr>
 <tr><td>G2 · Real OpenCode Knowledge Path</td><td>Source-ready Work → OpenCode 1.18.17 + CodeLLMPro → Knowledge / Review checkpoint</td><td><strong>PASS</strong></td></tr>
 <tr><td>실제 Skill-load trace</td><td><code>jira-knowledge-extraction</code> 실제 load trace의 별도 보존</td><td><strong>PENDING</strong></td></tr>
-<tr><td>G3 · Real Incremental BGE-M3</td><td>Knowledge DB materialize → 실제 사내 BGE-M3 → embedding artifact</td><td><strong>BLOCKED</strong><br>Incremental Knowledge DB materializer 계약 drift</td></tr>
-<tr><td>G4 · Atomic Publish</td><td>FAISS / mapping / manifest coherent published bundle</td><td><strong>NOT IMPLEMENTED · NEXT after G3</strong></td></tr>
+<tr><td>G3-A · Incremental Knowledge DB</td><td>current loader 계약 정렬 → 실제 import → <code>materialize_work()</code> → candidate + accepted_attempt_id</td><td><strong>FIXED / CI PASS</strong></td></tr>
+<tr><td>G3-B · Real Incremental BGE-M3</td><td>보존한 candidate Knowledge → 실제 사내 BGE-M3 → embedding artifact/checkpoint</td><td><strong>RETEST READY · NOT RUN YET</strong></td></tr>
+<tr><td>G4 · Atomic Publish</td><td>FAISS / mapping / manifest coherent published bundle</td><td><strong>NOT IMPLEMENTED · NEXT after G3 PASS</strong></td></tr>
 <tr><td>Continuous Scheduling</td><td>Loop A/B 자동 기동</td><td><strong>NOT IMPLEMENTED</strong></td></tr>
 </tbody></table></section>
 
@@ -65,41 +66,46 @@ knowledge_backlog_after = 0
 model_profile = internal-opencode-knowledge-v1
 opencode_model = codemate/CodeLLMPro</div></section>
 
-<section><h2>4. G3 테스트에서 새로 발견한 결함</h2>
-<div class="flow">G3 준비
+<section><h2>4. Real G3가 찾아낸 결함과 수정</h2>
+<div class="flow">Real G3 최초 시도
 → data_smoke Knowledge checkpoint 유지
 → IncrementalKnowledgeDbMaterializer import
 → ImportError
 
-ImportError:
-cannot import name '_insert_source_custom_field_definition'
-from jira_collector.knowledge_db.loader
+발견한 계약 drift
+1. custom field helper 이름 불일치
+   incremental.py: _insert_source_custom_field_definition/value
+   loader.py:      _insert_custom_field_catalog/value
 
-추가 대조 결과
-1. incremental.py
-   _insert_source_custom_field_definition/value 사용
-   ↕
-   loader.py
-   _insert_custom_field_catalog/value 존재
+2. Issue 적재 호출 규약 불일치
+   incremental.py: _upsert_issue(connection, source_run_id, package) + jira_id 반환 기대
+   loader.py:      _upsert_issue(connection, row) -> None
 
-2. incremental.py
-   self._upsert_issue(connection, source_run_id, package)
-   반환 jira_id 기대
-   ↕
-   loader.py
-   _upsert_issue(connection, row) -> None
+3. Issue Version 호출 규약 불일치
+   incremental.py: _ensure_issue_version(connection, source_run_id, jira_id, package) + 반환값 기대
+   loader.py:      _ensure_issue_version(connection, run_id, issue_key, version_id, package) -> None
 
-3. incremental.py
-   self._ensure_issue_version(connection, source_run_id, jira_id, package)
-   반환 version_id 기대
-   ↕
-   loader.py
-   _ensure_issue_version(connection, run_id, issue_key, version_id, package) -> None</div>
-<div class="box warn"><b>판정</b><p>단순 환경 문제나 BGE-M3 장애가 아닙니다. <strong>Incremental Materializer와 현재 base loader 사이의 기존 코드 계약 drift</strong>입니다. Real G3에서는 BGE-M3 endpoint가 아직 한 번도 호출되지 않았습니다.</p></div>
-<div class="box good"><b>데이터 안전성</b><p>실패가 Python import 단계에서 발생했으므로 기존 <code>data_smoke</code>의 G1/G2 성공 artifact와 State checkpoint는 그대로 유지합니다. <code>embedding_status</code>도 아직 변경하지 않았습니다.</p></div></section>
+4. 추가 정적 결함
+   _load_issue_reviews()가 re.compile()을 사용하지만 import re 누락</div>
+<div class="box good"><b>수정 원칙</b><p>base loader에 legacy 호환용 API를 다시 만들지 않았습니다. <strong>Incremental 쪽을 현재 base loader 계약에 맞췄습니다.</strong> Operational <code>analysis.issue</code> row를 <code>_upsert_issue()</code>에 전달하고, 이미 계산한 deterministic <code>issue_version_id</code>를 현재 <code>_ensure_issue_version()</code> 계약에 명시적으로 전달합니다.</p></div>
+<div class="box good"><b>데이터 안전성</b><p>최초 실패는 BGE-M3 호출 전에 발생했으므로 기존 <code>data_smoke</code>의 G1/G2 artifact와 State checkpoint는 그대로 보존했습니다. G3 재테스트도 이 checkpoint에서 이어갑니다.</p></div></section>
 
-<section><h2>5. 왜 기존 CI가 잡지 못했나?</h2>
-<p>기존 Embedding 자동 테스트는 준비된 Knowledge DB와 fake OpenAI-compatible embedding client를 사용해 Embedding Worker 자체를 검증했습니다. 반면 실제 G3 앞단인 <code>IncrementalKnowledgeDbMaterializer</code>를 import하고 현재 <code>loader.py</code>와 end-to-end로 연결하는 회귀 테스트가 없었습니다. 따라서 <strong>Embedding Worker CI PASS와 Real G3 준비 경로 PASS는 같은 의미가 아니었습니다.</strong></p></section>
+<section><h2>5. 새 회귀 테스트가 확인한 것</h2>
+<div class="grid2">
+  <div class="box good"><b>실제 module import</b><p><code>jira_collector.knowledge_db.incremental</code>을 실제 import합니다. 삭제되거나 이름이 바뀐 private helper를 import하면 즉시 실패합니다.</p></div>
+  <div class="box good"><b>materialize_work 통합 경로</b><p>Operational State + analysis + Knowledge Input + Knowledge + Review를 연결해 <code>materialize_work()</code>를 실제 호출합니다.</p></div>
+  <div class="box good"><b>6종 Evidence round-trip</b><p>summary, description, comment, attachment, relationship, custom field가 실제 source entity로 역추적되는지 검증합니다.</p></div>
+  <div class="box good"><b>Candidate idempotency</b><p>같은 Work를 두 번 materialize해도 Generation/Attempt/Item/Evidence가 중복되지 않고 <code>candidate + accepted_attempt_id</code>가 유지됩니다.</p></div>
+</div>
+<div class="flow">CI #1079 · 1 failed, 238 passed
+→ 새 integration fixture가 Knowledge checkpoint 직후의 transient work_status='running'에서 materialize 호출
+→ production bug로 오판하지 않음
+→ 실제 LoopBKnowledgeWorker의 handoff인 running → pending을 fixture에 반영
+→ Incremental의 pending/published guard는 그대로 유지
+
+CI #1081 · PUSH · 239 passed
+CI #1082 · PR   · 239 passed</div>
+<div class="box warn"><b>왜 <code>running</code>을 허용하지 않았나?</b><p>Knowledge 완료 직후 <code>work_status='running'</code>은 worker가 아직 Work를 소유한 transient 상태입니다. 실제 G2 종료 시 <code>_release_after_knowledge()</code>가 이를 <code>pending</code>으로 돌립니다. Incremental Materializer가 <code>running</code>까지 허용하면 다른 processing run이 소유한 Work를 건드릴 수 있으므로 production guard를 느슨하게 만들지 않았습니다.</p></div></section>
 
 <section><h2>6. 현재 구현 경로</h2>
 <div class="flow">Loop A · IMPLEMENTED / CI PASS / REAL SMOKE PASS
@@ -108,24 +114,41 @@ Jira → Source Ready
 → newer Source가 SOURCE_COMMITTED되면 이전 미완료 Work는 superseded 처리
 
 Loop B Knowledge · IMPLEMENTED / CI PASS / REAL PATH PASS
-Source Ready → OpenCode → Knowledge checkpoint
+Source Ready → OpenCode → Knowledge checkpoint → pending handoff
 
-Incremental Knowledge DB materializer
-→ REAL G3에서 계약 drift 발견
-→ 현재 BLOCKED
+Incremental Knowledge DB · CONTRACT RECOVERED / CI PASS
+pending latest Work
+→ operational source entities
+→ issue / issue_version
+→ candidate knowledge_generation + accepted_attempt_id
+→ accepted Evidence round-trip
 
-Operational Embedding Worker
-→ fake client 기반 CI PASS
-→ 실제 BGE-M3 호출은 아직 미실행
+Operational Embedding Worker · IMPLEMENTED / fake-client CI PASS
+candidate Generation
+→ deterministic corpus
+→ actual BGE-M3 call
+→ atomic embeddings.jsonl
+→ embedding_status=completed
+
+Real BGE-M3
+→ NEXT EXECUTION GATE
+→ 아직 재호출하지 않았으므로 PASS라고 기록하지 않음
 
 Atomic Publish
-→ NEXT implementation stage after G3
+→ ONLY AFTER G3 PASS
 → 현재 NOT IMPLEMENTED</div>
-<p><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현 보고서</a> · <a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge 구현 보고서</a> · <a href="../architecture/jira_loop_b_opencode_automation_easy_guide.html">Loop B OpenCode 자동화 쉬운 가이드</a></p></section>
+<p><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현 보고서</a> · <a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge 구현 보고서</a> · <a href="OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html">Incremental Embedding 구현/트러블슈팅</a></p></section>
 
-<section><h2>7. 다음 세션 시작점</h2>
-<div class="box next"><b>새 구현 세션에서 먼저 할 일</b><p><code>IncrementalKnowledgeDbMaterializer</code>와 현재 <code>KnowledgeDbMaterializer</code> 계약을 정렬하고, 실제 import + materialize_work 회귀 테스트를 추가합니다. 그 테스트가 PASS한 뒤 현재 <code>data_smoke</code>를 지우지 않고 G3 Real BGE-M3를 다시 실행합니다.</p></div>
-<div class="box warn"><b>Atomic Publish는 그 다음 NEXT</b><p>G3가 먼저 통과해야 합니다. 이번 세션에서는 Atomic Publish나 새로운 CLI/worker 구현은 진행하지 않습니다.</p></div></section>
+<section><h2>7. 지금 바로 이어갈 작업</h2>
+<div class="box next"><b>G3 Real BGE-M3 재테스트</b><p>PR #23의 Materializer 복구를 main에 반영한 뒤 현재 <code>data_smoke</code>를 삭제하지 않고 Knowledge DB candidate를 생성합니다. candidate와 State checkpoint를 확인한 다음 기존 <code>tools/run_embedding_worker.py</code>로 실제 BGE-M3를 호출합니다.</p></div>
+<div class="flow">1. PR #23 merge
+2. 기존 data_smoke 유지
+3. IncrementalKnowledgeDbMaterializer.materialize_work()로 candidate 생성
+4. candidate + accepted_attempt_id + Evidence round-trip 확인
+5. tools/run_embedding_worker.py로 실제 BGE-M3 G3 실행
+6. corpus.jsonl / embeddings.jsonl / embedding_status=completed 확인
+7. G3 PASS일 때만 G4 Atomic Publish 구현 시작</div>
+<div class="box warn"><b>금지</b><p>G3 재테스트 전에 <code>data_smoke</code>를 초기화하지 않습니다. G3가 PASS하기 전에 Atomic Publish를 구현하거나 현재 Published Retrieval을 전환하지 않습니다.</p></div></section>
 
-<footer>Current Status · Fresh Bootstrap · State Schema 개정 3 · G1 PASS · G2 PASS · G3 BLOCKED BEFORE BGE-M3 · Atomic Publish NEXT AFTER G3 · 2026-09-01</footer>
+<footer>Current Status · Fresh Bootstrap · State Schema 개정 3 · G1 PASS · G2 PASS · Incremental Materializer FIXED · CI 239 PASS · G3 REAL BGE-M3 RETEST READY · Atomic Publish AFTER G3 · 2026-09-01</footer>
 </main></body></html>
