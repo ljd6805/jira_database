@@ -8,6 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from jira_collector.embedding.config import load_embedding_settings
+from jira_collector.publishing import active_retrieval_artifact_dir
 from jira_collector.retrieval import embed_query_text, load_retrieval_searcher
 
 from .service import JiraKnowledgeService
@@ -22,11 +23,11 @@ def load_service_from_environment(
     env: Mapping[str, str] | None = None,
     dotenv_path: str | Path | None = ".env",
 ) -> JiraKnowledgeService:
-    """.env/환경 변수와 검증된 M7/M9 artifact로 read-only MCP service를 구성합니다."""
+    """.env/환경 변수와 검증된 active Knowledge/Retrieval head로 MCP를 구성합니다."""
 
     environment = _load_runtime_environment(env=env, dotenv_path=dotenv_path)
     db_path = _required_path(environment, "JIRA_KNOWLEDGE_DB_PATH")
-    retrieval_dir = _required_path(environment, "JIRA_RETRIEVAL_ARTIFACT_DIR")
+    retrieval_dir = _resolve_retrieval_dir(environment, db_path)
     connection = open_knowledge_db_readonly(db_path)
     searcher = load_retrieval_searcher(retrieval_dir)
     embedding_settings = load_embedding_settings(dotenv_path=None, env=environment)
@@ -35,6 +36,29 @@ def load_service_from_environment(
         return embed_query_text(query, searcher.manifest, embedding_settings)
 
     return JiraKnowledgeService(connection, searcher, query_embedder)
+
+
+def _resolve_retrieval_dir(
+    environment: Mapping[str, str],
+    knowledge_db_path: Path,
+) -> Path:
+    """G4 root가 있으면 active Generation 집합과 일치하는 bundle을 시작 시 선택합니다."""
+
+    root_value = str(environment.get("JIRA_RETRIEVAL_ARTIFACT_ROOT", "")).strip()
+    if root_value:
+        root = Path(root_value).expanduser().resolve()
+        if not root.exists():
+            raise McpRuntimeSettingsError(
+                f"JIRA_RETRIEVAL_ARTIFACT_ROOT 경로를 찾을 수 없습니다: {root}"
+            )
+        try:
+            return active_retrieval_artifact_dir(knowledge_db_path, root)
+        except Exception as exc:
+            raise McpRuntimeSettingsError(
+                "현재 active Knowledge Generation 집합과 일치하는 Retrieval bundle을 "
+                f"찾지 못했습니다: {exc}"
+            ) from exc
+    return _required_path(environment, "JIRA_RETRIEVAL_ARTIFACT_DIR")
 
 
 def _load_runtime_environment(
