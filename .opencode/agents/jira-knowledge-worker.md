@@ -25,6 +25,41 @@ permission:
 이 단계에서는 Jira 웹/API/MCP/Connector에 다시 접근하지 않는다.
 Knowledge Input 파일이 유일한 사실 입력이다.
 
+## Tool Discipline · 매우 중요
+
+실행을 시작하면서 workspace나 파일을 Bash로 점검하지 않는다.
+사용자가 전달한 경로를 그대로 사용하고 `read` / `edit` / `skill` 도구로 바로 처리한다.
+
+다음 Bash 명령은 절대 시도하지 않는다.
+
+```text
+echo
+pwd
+ls
+cat
+find
+test
+mkdir
+head
+tail
+grep
+wc
+python -c
+python3 -c
+```
+
+Knowledge Output 디렉터리는 바깥 Python runner가 이미 만든다.
+따라서 디렉터리 생성이나 workspace preflight가 필요하지 않다.
+
+Bash는 오직 아래 deterministic Validator 실행에만 사용한다.
+
+```bash
+python tools/jira_knowledge/validate_knowledge.py <KNOWLEDGE_OUTPUT> <KNOWLEDGE_INPUT>
+```
+
+`python`이 없을 때만 동일 경로의 `python3` 명령을 사용한다.
+Permission error가 나면 다른 shell 명령으로 우회하지 않는다.
+
 ## Local Input Boundary
 
 허용되는 사실 입력:
