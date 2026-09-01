@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Loop B latest-only Incremental BGE-M3 Embedding stage 구현 결과와 stale guard, Processing Run, 실제 환경 Gate를 설명한다.">
+  <meta name="description" content="Loop B Incremental Embedding 구현과 2026-09-01 Real G3 테스트에서 발견된 Incremental Knowledge DB materializer 계약 drift를 함께 기록한다.">
   <title>Loop B · Incremental Embedding · Implementation</title>
   <style>
     :root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.76}.wrap{max-width:1120px;margin:auto;padding:42px 22px 90px}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 66%,#6d87e7)}section{margin-top:44px}.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}.footer{margin-top:52px;color:var(--muted);font-size:12px}@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}}</style>
@@ -12,9 +12,12 @@
 </head>
 <body><main class="wrap">
 <p><a href="../index.html">← Documentation Hub</a> · <a href="jira_knowledge_db_current_status.html">Current Status</a> · <a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge</a></p>
-<header class="hero"><div>IMPLEMENTATION REPORT · 2026-08-31</div><h1>Loop B Incremental Embedding을<br>latest-only로 구현했습니다.</h1><p>Knowledge DB에 준비된 최신 candidate Generation 하나만 BGE-M3로 임베딩하고, 느린 API 호출 중 더 최신 Jira Source가 들어오면 구버전 Embedding을 다음 Publish 단계로 넘기지 않습니다.</p></header>
-<section><h2>1. 이번 구현 범위</h2><div class="grid2"><div class="card good"><h3>Generation 단위 Corpus</h3><p><code>load_generation_embedding_corpus()</code>가 한 <code>kg_</code>의 accepted Knowledge Item만 deterministic 순서로 읽습니다.</p></div><div class="card good"><h3>Latest-only BGE-M3</h3><p><code>OperationalEmbeddingWorker</code>가 Source-ready/latest Work만 처리합니다.</p></div><div class="card good"><h3>Atomic staging artifact</h3><p>Work별 <code>corpus.jsonl</code>과 <code>embeddings.jsonl</code>을 임시 파일 후 <code>os.replace</code>로 저장합니다.</p></div><div class="card good"><h3>Independent Processing Run</h3><p>Embedding stage도 별도 <code>processing_run</code>으로 실행되고 완료 후 Publish 단계가 이어받도록 Work를 다시 pending으로 돌립니다.</p></div></div></section>
-<section><h2>2. 안전 순서</h2><div class="flow">Knowledge DB candidate + accepted attempt
+<header class="hero"><div>IMPLEMENTATION REPORT · REAL GATE UPDATE 2026-09-01</div><h1>Embedding Worker는 구현됐지만,<br>Real G3 앞단 Materializer에서 BLOCKED됐습니다.</h1><p>기존 자동 테스트는 Operational Embedding Worker의 latest-only/stale guard/artifact 동작을 검증했습니다. 2026-09-01 실제 Smoke에서는 BGE-M3 호출 전에 필요한 Incremental Knowledge DB materializer를 처음 실제 연결했고, 현재 base loader와의 계약 drift를 발견했습니다.</p></header>
+
+<section><h2>1. 원래 구현한 Embedding 범위</h2><div class="grid2"><div class="card good"><h3>Generation 단위 Corpus</h3><p><code>load_generation_embedding_corpus()</code>가 accepted Knowledge Item을 deterministic 순서로 읽습니다.</p></div><div class="card good"><h3>Latest-only BGE-M3</h3><p><code>OperationalEmbeddingWorker</code>는 Source-ready/latest Work만 처리합니다.</p></div><div class="card good"><h3>Atomic staging artifact</h3><p><code>corpus.jsonl</code>, <code>embeddings.jsonl</code>을 임시 파일 후 atomic replace합니다.</p></div><div class="card good"><h3>Independent Processing Run</h3><p>Embedding stage도 별도 <code>processing_run</code>으로 실행되며 Publish가 이어받도록 완료 후 Work를 pending으로 돌립니다.</p></div></div></section>
+
+<section><h2>2. 의도한 안전 순서</h2><div class="flow">Knowledge checkpoint completed
+→ Incremental Knowledge DB candidate + accepted_attempt_id
 → latest / Source Ready 확인
 → embedding_status = running
 → Generation corpus 생성
@@ -24,41 +27,46 @@
 → latest 재확인
 → embedding_status = completed
 → work_status = pending
-→ 다음 Publish stage가 이어받음</div></section>
-<section><h2>3. 느린 Embedding API 중 새 Version이 들어오면</h2><div class="flow">Old Work A · BGE-M3 호출 중
-          ↓
-Loop A에서 New Work B SOURCE_COMMITTED
-          ↓
-A → superseded
-          ↓
-BGE-M3 A 응답 도착
-          ↓
-latestness 재검사 FAIL
-          ↓
-A embedding_status는 completed로 만들지 않음
-A final embeddings artifact도 Publish 경로로 넘기지 않음
-B가 다음 latest Work</div><p>이 규칙은 OpenCode 처리 중 stale guard와 같은 철학입니다.</p></section>
-<section><h2>4. 구현 파일</h2><table><thead><tr><th>파일</th><th>역할</th></tr></thead><tbody><tr><td><code>src/jira_collector/embedding/operational.py</code></td><td>candidate Generation corpus, latest-only Embedding, Processing Run orchestration</td></tr><tr><td><code>src/jira_collector/embedding/__init__.py</code></td><td>Operational Embedding public API</td></tr><tr><td><code>tools/run_embedding_worker.py</code></td><td>Jira 인증 없이 State DB + Knowledge DB + BGE-M3 설정만으로 실행</td></tr><tr><td><code>tests/embedding/test_operational.py</code></td><td>성공/실패/supersede race/Processing Run 검증</td></tr><tr><td><code>tests/test_embedding_worker_runner.py</code></td><td>CLI entrypoint 회귀 검증</td></tr></tbody></table></section>
-<section><h2>5. 자동 검증</h2><div class="grid3"><div class="card good"><b>Candidate corpus</b><p>active 전환 전 candidate Generation도 Embedding 대상으로 읽음.</p></div><div class="card good"><b>Success path</b><p>Corpus/Embedding artifact 생성 후에만 State completed.</p></div><div class="card good"><b>Stale race</b><p>BGE-M3 호출 중 newer Source Commit 시 old Work completed 차단.</p></div><div class="card good"><b>Retry</b><p>Embedding API 실패 시 latest Work는 failed로 남아 재시도 가능.</p></div><div class="card good"><b>Processing Run</b><p>Embedding 완료 후 Work pending release, run은 Publish 미완료라 partial.</p></div><div class="card good"><b>CI</b><p>전체 GitHub Actions pytest 회귀 PASS.</p></div></div></section>
-<section><h2>6. 실제 환경 Gate</h2><div class="card warn"><strong>아직 실제 사내 BGE-M3 endpoint를 호출했다고 주장하지 않습니다.</strong><p>이번 PASS는 fake OpenAI-compatible embedding client를 사용한 자동 테스트입니다. 실제 endpoint 인증/응답/1024 dimension/속도는 사내 환경에서 별도 Real Run Gate가 필요합니다.</p></div><pre>python tools/run_embedding_worker.py \
-  --knowledge-db data/knowledge_db/your.sqlite3 \
-  --artifact-root data/embedding/operational \
-  --limit 1
+→ Publish stage</div></section>
 
-# 또는 .env
-JIRA_KNOWLEDGE_DB_PATH=...
-BGE_M3_ENDPOINT=...</pre></section>
-<section><h2>7. 다음 구현</h2><div class="card warn"><h3>Retrieval staging + Atomic Publish</h3><p>다음 단계는 단순 FAISS 생성보다 더 중요합니다. Knowledge DB의 active Generation 전환과 FAISS active artifact 전환은 서로 다른 durability domain이므로, 둘 중 하나만 먼저 보이는 Half-Publish를 막는 coherent publish bundle/pointer 설계가 필요합니다.</p></div><div class="flow">현재 완료
-Knowledge candidate materialization
-→ Incremental BGE-M3 staging
+<section><h2>3. 자동 테스트에서 실제 검증된 것</h2><div class="grid3"><div class="card good"><b>Embedding Worker success</b><p>준비된 candidate Generation을 fake client로 임베딩.</p></div><div class="card good"><b>Stale race</b><p>BGE 응답 전 newer Source Commit 시 old Work completed 차단.</p></div><div class="card good"><b>Retry</b><p>API 실패 시 latest Work가 retry 가능한 상태로 남음.</p></div><div class="card good"><b>Processing Run</b><p>Embedding 완료 후 Publish 전 상태를 partial/pending으로 유지.</p></div><div class="card good"><b>Artifact</b><p>Corpus/Embedding 파일이 정상 생성된 뒤 State completed.</p></div><div class="card warn"><b>Coverage Gap</b><p>실제 <code>IncrementalKnowledgeDbMaterializer</code> → 현재 <code>loader.py</code> 연결은 자동 테스트에서 검증하지 않았습니다.</p></div></div></section>
 
-NEXT
-→ 전체 Published snapshot 구성
-→ FAISS + mapping staging
-→ latest 재검사
-→ coherent active pointer / bundle switch
-→ Knowledge active state 정합화
-→ MCP에서 새 Published Corpus 확인
-→ State publish_status = published</div></section>
-<footer class="footer">Loop B Incremental Embedding · IMPLEMENTED / CI PASS · REAL BGE-M3 RUN PENDING · Atomic Publish NEXT · 2026-08-31</footer>
+<section><h2>4. 2026-09-01 Real G3에서 발견한 결함</h2><pre>ImportError: cannot import name '_insert_source_custom_field_definition'
+from 'jira_collector.knowledge_db.loader'</pre><div class="flow">계약 drift 확인
+
+incremental.py
+  _insert_source_custom_field_definition
+  _insert_source_custom_field_value
+↕
+loader.py
+  _insert_custom_field_catalog
+  _insert_custom_field_value
+
+incremental.py
+  _upsert_issue(connection, source_run_id, package)
+  → jira_id 반환 기대
+↕
+loader.py
+  _upsert_issue(connection, row) -> None
+
+incremental.py
+  _ensure_issue_version(connection, source_run_id, jira_id, package)
+  → version_id 반환 기대
+↕
+loader.py
+  _ensure_issue_version(connection, run_id, issue_key, version_id, package) -> None</div><div class="card warn"><strong>중요</strong><p>이 실패는 BGE-M3 endpoint나 인증 문제와 무관합니다. Python import/호출 계약 단계에서 중단됐으므로 실제 BGE-M3는 아직 호출되지 않았습니다.</p></div></section>
+
+<section><h2>5. 현재 정확한 상태</h2><table><thead><tr><th>항목</th><th>상태</th></tr></thead><tbody><tr><td>OperationalEmbeddingWorker</td><td><strong>IMPLEMENTED / fake-client CI PASS</strong></td></tr><tr><td>IncrementalKnowledgeDbMaterializer 실제 연결</td><td><strong>BLOCKED · contract drift</strong></td></tr><tr><td>Real BGE-M3 endpoint 호출</td><td><strong>NOT REACHED</strong></td></tr><tr><td>G3 Real Incremental BGE-M3</td><td><strong>BLOCKED</strong></td></tr><tr><td>G4 Atomic Publish</td><td><strong>NOT IMPLEMENTED</strong></td></tr></tbody></table></section>
+
+<section><h2>6. 데이터 보존</h2><div class="card good"><p>실패는 import 단계에서 발생했습니다. 따라서 G1/G2가 성공한 <code>data_smoke</code>는 삭제하지 않습니다. Knowledge checkpoint는 그대로 보존하고, <code>embedding_status</code>도 아직 실제 Embedding 시작 전 상태입니다.</p></div></section>
+
+<section><h2>7. 다음 세션 시작점</h2><div class="card warn"><h3>먼저 Materializer 계약 복구</h3><p>다음 구현 세션에서는 Incremental Materializer와 base loader 계약을 정렬하고, <strong>실제 module import + materialize_work + candidate Generation 생성</strong>을 하나의 회귀 테스트로 추가해야 합니다.</p></div><div class="flow">다음 세션
+1. incremental.py ↔ loader.py 계약 정렬
+2. Incremental materialization integration test 추가
+3. 전체 CI PASS
+4. 기존 data_smoke 그대로 유지
+5. G3 Real BGE-M3 재실행
+6. 성공 후에만 G4 Atomic Publish 구현 논의</div></section>
+
+<footer class="footer">Loop B Incremental Embedding · Worker CI PASS · Incremental Materializer REAL GATE BLOCKED · BGE-M3 NOT REACHED · 2026-09-01</footer>
 </main></body></html>
