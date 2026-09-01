@@ -6,10 +6,8 @@ import sqlite3
 from pathlib import Path
 
 from jira_collector.knowledge_db import KnowledgeDbError
-from jira_collector.publishing import (
-    OperationalPublishWorker,
-    active_retrieval_artifact_dir,
-)
+from jira_collector.publishing import OperationalPublishWorker
+from jira_collector.retrieval_head import active_retrieval_artifact_dir
 from jira_collector.stale_recovery import recover_stale_inflight
 from jira_collector.state_schema import StateMigrationRequiredError, StateSchemaError
 from jira_collector.state_store import StateStore
