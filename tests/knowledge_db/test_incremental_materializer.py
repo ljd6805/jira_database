@@ -126,7 +126,40 @@ def _seed_completed_work(state: StateStore, data_root: Path) -> tuple[str, str]:
         issue_version_id=version_id,
         knowledge_generation_id=generation_id,
     )
+    _release_completed_knowledge_work(state, work_item_id, processing_run_id)
     return source_run_id, work_item_id
+
+
+def _release_completed_knowledge_work(
+    state: StateStore,
+    work_item_id: str,
+    processing_run_id: str,
+) -> None:
+    """LoopBKnowledgeWorker의 Knowledge checkpoint 이후 handoff 상태를 재현합니다."""
+
+    with state.connect() as connection:
+        cursor = connection.execute(
+            """
+            UPDATE sync_issue_change
+            SET work_status='pending'
+            WHERE work_item_id=?
+              AND last_processing_run_id=?
+              AND work_status='running'
+              AND knowledge_status='completed'
+              AND last_source_committed_run_id=last_observed_source_run_id
+              AND superseded_by_work_item_id IS NULL
+            """,
+            (work_item_id, processing_run_id),
+        )
+        assert cursor.rowcount == 1
+    state.finish_processing_run(
+        processing_run_id,
+        run_status="partial",
+        published_count=0,
+        failed_count=0,
+        superseded_count=0,
+        backlog_after=0,
+    )
 
 
 def _write_operational_artifacts(data_root: Path, source_run_id: str) -> None:
