@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
 import jira_collector.mcp_server.runtime as runtime
 from jira_collector.mcp_server.runtime import (
+    _build_operational_search_head_provider,
     _load_runtime_environment,
-    _resolve_retrieval_dir,
+    _optional_path,
 )
 
 
@@ -59,41 +61,53 @@ def test_explicit_env_mapping_does_not_read_dotenv(tmp_path: Path) -> None:
     assert environment["JIRA_KNOWLEDGE_DB_PATH"] == "from-test"
 
 
-def test_g4_retrieval_root_resolves_active_bundle_at_startup(
+def test_g4_provider_resolves_bundle_for_current_read_snapshot(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    knowledge_db = tmp_path / "knowledge.sqlite3"
-    knowledge_db.touch()
     retrieval_root = tmp_path / "retrieval" / "operational"
     retrieval_root.mkdir(parents=True)
     expected = retrieval_root / "runs" / "pr_active"
     expected.mkdir(parents=True)
-    calls: list[tuple[Path, Path]] = []
+    calls: list[tuple[Path, frozenset[str]]] = []
 
-    def fake_resolver(db_path, root_path):
-        calls.append((Path(db_path), Path(root_path)))
-        return expected
+    class FakeSearcher:
+        manifest = object()
 
-    monkeypatch.setattr(runtime, "active_retrieval_artifact_dir", fake_resolver)
-    resolved = _resolve_retrieval_dir(
-        {"JIRA_RETRIEVAL_ARTIFACT_ROOT": str(retrieval_root)},
-        knowledge_db,
+    fake_searcher = FakeSearcher()
+    monkeypatch.setattr(
+        runtime,
+        "active_generation_ids_from_connection",
+        lambda connection: frozenset({"kg_active"}),
     )
 
-    assert resolved == expected
-    assert calls == [(knowledge_db, retrieval_root.resolve())]
+    def fake_resolver(root_path, generations):
+        calls.append((Path(root_path), frozenset(generations)))
+        return expected
+
+    monkeypatch.setattr(runtime, "retrieval_artifact_dir_for_generation_set", fake_resolver)
+    monkeypatch.setattr(runtime, "load_retrieval_searcher", lambda path: fake_searcher)
+    provider = _build_operational_search_head_provider(retrieval_root, object())
+
+    connection = sqlite3.connect(":memory:")
+    try:
+        head = provider(connection)
+        cached = provider(connection)
+    finally:
+        connection.close()
+
+    assert head.searcher is fake_searcher
+    assert cached.searcher is fake_searcher
+    assert calls == [(retrieval_root, frozenset({"kg_active"}))]
 
 
-def test_legacy_retrieval_artifact_dir_remains_supported(tmp_path: Path) -> None:
-    knowledge_db = tmp_path / "knowledge.sqlite3"
-    knowledge_db.touch()
+def test_legacy_retrieval_artifact_dir_path_remains_supported(tmp_path: Path) -> None:
     retrieval_dir = tmp_path / "retrieval" / "legacy"
     retrieval_dir.mkdir(parents=True)
 
-    resolved = _resolve_retrieval_dir(
+    resolved = _optional_path(
         {"JIRA_RETRIEVAL_ARTIFACT_DIR": str(retrieval_dir)},
-        knowledge_db,
+        "JIRA_RETRIEVAL_ARTIFACT_DIR",
     )
 
     assert resolved == retrieval_dir.resolve()
