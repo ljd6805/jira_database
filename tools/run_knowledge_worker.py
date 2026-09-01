@@ -11,6 +11,7 @@ from jira_collector.knowledge_processing import (
     OpenCodeKnowledgeProcessor,
 )
 from jira_collector.settings import SettingsError, load_settings
+from jira_collector.stale_recovery import recover_stale_inflight
 from jira_collector.state_schema import StateMigrationRequiredError, StateSchemaError
 from jira_collector.state_store import StateStore
 
@@ -45,6 +46,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--timeout-seconds", type=int, default=3600)
     parser.add_argument(
+        "--stale-after-seconds",
+        type=int,
+        default=None,
+        help=(
+            "이 시간보다 오래 running인 Knowledge Work를 중단된 in-flight로 보고 failed로 복구합니다. "
+            "생략 시 --timeout-seconds + 300초. Smoke에서 확실히 중단된 Work를 즉시 복구할 때는 0."
+        ),
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=1,
@@ -70,6 +80,10 @@ def main(argv: list[str] | None = None) -> int:
         print("KNOWLEDGE_WORKER = FAIL")
         print("reason = --timeout-seconds는 1 이상이어야 합니다.")
         return 1
+    if args.stale_after_seconds is not None and args.stale_after_seconds < 0:
+        print("KNOWLEDGE_WORKER = FAIL")
+        print("reason = --stale-after-seconds는 0 이상이어야 합니다.")
+        return 1
 
     try:
         settings = load_settings(
@@ -79,6 +93,16 @@ def main(argv: list[str] | None = None) -> int:
         )
         _configure_logging(settings.logging.level)
         state = StateStore(settings.storage.state_root / "collector.db")
+        stale_after_seconds = (
+            args.stale_after_seconds
+            if args.stale_after_seconds is not None
+            else args.timeout_seconds + 300
+        )
+        recovery = recover_stale_inflight(
+            state,
+            stage="knowledge",
+            stale_after_seconds=stale_after_seconds,
+        )
         contract = KnowledgeContract(
             knowledge_schema_version=args.knowledge_schema_version,
             skill_version=args.skill_version,
@@ -112,6 +136,12 @@ def main(argv: list[str] | None = None) -> int:
     outcome = "CHECKPOINTED" if result.knowledge_completed_count else result.status.upper()
     print(f"KNOWLEDGE_WORKER = {outcome}")
     print(f"processing_run_id = {result.processing_run_id}")
+    print(f"stale_after_seconds = {stale_after_seconds}")
+    print(f"stale_recovered_work_count = {recovery.recovered_work_count}")
+    print(
+        "stale_recovered_processing_run_count = "
+        f"{recovery.recovered_processing_run_count}"
+    )
     print(f"selected_count = {result.selected_count}")
     print(f"knowledge_completed_count = {result.knowledge_completed_count}")
     print(f"failed_count = {result.failed_count}")
