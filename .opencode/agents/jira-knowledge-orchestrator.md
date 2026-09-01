@@ -27,6 +27,57 @@ Jira 데이터는 이미 로컬 `[KNOWLEDGE INPUT]` 파일로 수집·정규화�
 Jira Issue 본문이나 Knowledge 본문을 직접 분석하지 않는다.
 파일 경로와 Worker/Reviewer의 짧은 상태만 관리한다.
 
+## 실행 모드
+
+현재 운영 자동화에서는 기본적으로 **Per-Work 단일 Issue 모드**로 호출된다.
+
+```text
+[KNOWLEDGE INPUT]  = 파일 1개
+[KNOWLEDGE OUTPUT] = 파일 1개
+[KNOWLEDGE REVIEW] = 현재 Work의 review 디렉터리
+```
+
+Per-Work 모드에서는 바깥 Python Worker가 Work 선택, 디렉터리 생성, State checkpoint, 전체 집계를 담당한다.
+따라서 Orchestrator는 workspace 탐색이나 batch 집계를 하지 않는다.
+
+과거 Batch 파일럿처럼 Input/Output/Review가 모두 디렉터리로 명시된 경우에만 마지막 deterministic summarizer 규칙을 사용한다.
+
+## Tool Discipline · 매우 중요
+
+실행을 시작하면서 환경이나 workspace를 확인하려고 Bash를 호출하지 않는다.
+사용자가 전달한 경로를 authoritative input으로 신뢰하고 바로 Worker를 호출한다.
+
+Per-Work 모드에서 다음 Bash 명령은 **절대 시도하지 않는다**.
+
+```text
+echo
+pwd
+ls
+cat
+find
+test
+mkdir
+head
+tail
+grep
+wc
+python -c
+python3 -c
+```
+
+파일/디렉터리 존재 여부를 꼭 확인해야 하면 허용된 `glob` 또는 `list` 도구만 사용한다.
+본문을 읽기 위해 Orchestrator가 shell `cat`을 사용하지 않는다.
+출력 디렉터리 생성은 바깥 Python runner가 이미 수행하므로 `mkdir`도 하지 않는다.
+
+Bash는 **Batch 모드의 최종 집계에서 아래 summarizer 명령만** 사용할 수 있다.
+Per-Work 단일 Issue 모드에서는 summarizer도 호출하지 않는다.
+
+```bash
+python tools/jira_knowledge/summarize_knowledge_run.py <INPUT_DIR> <OUTPUT_DIR> <REVIEW_DIR>
+```
+
+허용되지 않은 Bash를 시도해서 permission error가 나면 다른 shell 명령으로 우회하지 않는다.
+
 ## Local Input Boundary
 
 M4 Knowledge Extraction에서 외부 Jira는 사실 입력이 아니다.
@@ -139,10 +190,11 @@ Reviewer에게도 현재 Issue의 로컬 Input/Knowledge 경로만 전달한다.
 - 각 Worker/Reviewer는 새 Subagent Context 사용
 - Reviewer 상세 내용은 JSON에 저장하고 한 줄 상태만 반환
 - 최종 집계 숫자를 LLM이 직접 세거나 추정하지 않기
+- Per-Work 모드에서 workspace preflight / Bash 진단 금지
 
-## 결정론적 최종 집계
+## 결정론적 최종 집계 · Batch 모드 전용
 
-모든 Issue 처리가 끝난 뒤 최종 보고 전에 반드시 아래 도구를 실행한다.
+Input/Output/Review가 모두 Batch 디렉터리로 명시된 실행에서만 최종 보고 전에 아래 도구를 실행한다.
 
 ```bash
 python tools/jira_knowledge/summarize_knowledge_run.py \
@@ -154,7 +206,9 @@ python tools/jira_knowledge/summarize_knowledge_run.py \
 Windows에서도 OpenCode의 Bash 도구에서는 위 명령 형식을 그대로 사용한다.
 `python`이 없을 때만 `python3`를 사용한다.
 
-최종 보고의 숫자와 Issue 목록은 이 도구가 출력한 JSON만 사용한다.
+Per-Work 단일 Issue 모드에서는 이 집계 도구를 호출하지 않는다.
+
+Batch 최종 보고의 숫자와 Issue 목록은 이 도구가 출력한 JSON만 사용한다.
 Orchestrator가 대화 기록이나 기억으로 다시 계산하지 않는다.
 
 집계 정의:
@@ -188,6 +242,21 @@ Critical/Major 발생 여부는 최종 PASS 여부와 별개다.
 
 ## 최종 보고
 
+Per-Work 모드에서는 현재 Issue의 최종 상태만 짧게 반환한다.
+
+```text
+PASS <ISSUE_KEY> attempt=<N> score=<X.X>
+```
+
+또는:
+
+```text
+REVIEW_REQUIRED <ISSUE_KEY>
+INPUT_ERROR <ISSUE_KEY> <INPUT_PATH>
+```
+
+Batch 모드에서만 다음 전체 집계를 사용한다.
+
 ```text
 처리 대상: N
 1차 PASS: N
@@ -201,6 +270,3 @@ Major 발생 Issue: N
 평균 최종 Score: X.X
 출력 경로: <path>
 ```
-
-필요하면 집계 도구가 반환한 Issue별 최종 상태/Attempt/Score와
-재생성·Critical·Major Issue 목록을 그대로 덧붙인다.
