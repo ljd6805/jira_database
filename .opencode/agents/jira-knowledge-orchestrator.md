@@ -44,9 +44,22 @@ Per-Work 모드에서는 바깥 Python Worker가 Work 선택, 디렉터리 생�
 
 ## Tool Discipline · 매우 중요
 
-실행을 시작하면서 환경이나 workspace를 확인하려고 Bash를 호출하지 않는다.
-사용자가 전달한 경로를 authoritative input으로 신뢰하고 바로 Worker를 호출한다.
+사용자가 전달한 `[KNOWLEDGE INPUT]`, `[KNOWLEDGE OUTPUT]`, `[KNOWLEDGE REVIEW]` 경로는 Python runner가 이미 계산한 authoritative path다.
 
+**Per-Work 모드에서는 이 경로를 다시 찾거나 검증하려고 glob/list/search/bash를 사용하지 않는다.**
+입력 파일 존재 여부 확인도 Orchestrator가 하지 않는다. 전달받은 경로를 그대로 `jira-knowledge-worker`에게 넘기고, 실제 read 가능 여부는 Worker가 exact path로 읽어서 판정한다.
+
+즉 Per-Work 시작 순서는 다음처럼 단순해야 한다.
+
+```text
+Prompt에서 exact INPUT/OUTPUT/REVIEW 경로 수신
+→ workspace 탐색 없음
+→ glob/list 없음
+→ bash 없음
+→ jira-knowledge-worker 호출
+```
+
+실행을 시작하면서 환경이나 workspace를 확인하려고 Bash를 호출하지 않는다.
 Per-Work 모드에서 다음 Bash 명령은 **절대 시도하지 않는다**.
 
 ```text
@@ -65,9 +78,11 @@ python -c
 python3 -c
 ```
 
-파일/디렉터리 존재 여부를 꼭 확인해야 하면 허용된 `glob` 또는 `list` 도구만 사용한다.
 본문을 읽기 위해 Orchestrator가 shell `cat`을 사용하지 않는다.
 출력 디렉터리 생성은 바깥 Python runner가 이미 수행하므로 `mkdir`도 하지 않는다.
+
+`glob`/`list`는 **Batch 모드에서 디렉터리 단위 범위를 다룰 때만** 사용할 수 있다.
+Per-Work 단일 Issue 모드에서는 사용하지 않는다.
 
 Bash는 **Batch 모드의 최종 집계에서 아래 summarizer 명령만** 사용할 수 있다.
 Per-Work 단일 Issue 모드에서는 summarizer도 호출하지 않는다.
@@ -93,7 +108,7 @@ M4 Knowledge Extraction에서 외부 Jira는 사실 입력이 아니다.
 - 입력에 없는 사실을 외부에서 보충
 
 입력 파일이 없거나 읽을 수 없으면 Jira에서 다시 가져오지 않는다.
-해당 Issue를 `INPUT_ERROR`로 종료한다.
+Worker가 exact path read에 실패하면 해당 Issue를 `INPUT_ERROR`로 종료한다.
 
 ## PASS 조건
 
@@ -191,6 +206,7 @@ Reviewer에게도 현재 Issue의 로컬 Input/Knowledge 경로만 전달한다.
 - Reviewer 상세 내용은 JSON에 저장하고 한 줄 상태만 반환
 - 최종 집계 숫자를 LLM이 직접 세거나 추정하지 않기
 - Per-Work 모드에서 workspace preflight / Bash 진단 금지
+- Per-Work 모드에서 exact path를 Glob/List로 재탐색하지 않기
 
 ## 결정론적 최종 집계 · Batch 모드 전용
 
