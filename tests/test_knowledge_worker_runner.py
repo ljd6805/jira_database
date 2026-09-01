@@ -15,6 +15,8 @@ def test_knowledge_worker_help_is_available() -> None:
     assert result.returncode == 0, result.stderr
     assert "latest-only Knowledge stage" in result.stdout
     assert "--model-profile" in result.stdout
+    assert "--opencode-model" in result.stdout
+    assert "codemate/CodeLLMPro" in result.stdout
     assert "--opencode-attach" in result.stdout
     assert "--stale-after-seconds" in result.stdout
     assert "--limit" in result.stdout
