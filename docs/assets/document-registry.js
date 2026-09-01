@@ -297,6 +297,10 @@ window.JIRA_DOCUMENT_REGISTRY = Object.freeze([
     "title": "M8 · Real Embedding Troubleshooting"
   },
   {
+    "path": "status/OPENCODE_SMOKE_IGNORE_VISIBILITY_FIX.html",
+    "title": "OpenCode Smoke · data_smoke Visibility Troubleshooting"
+  },
+  {
     "path": "status/TWO_LOOP_DOCUMENTATION_REALIGNMENT_2026-08-28.html",
     "title": "Two-Loop Documentation Realignment · 2026-08-28"
   },
