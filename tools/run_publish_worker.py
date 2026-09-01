@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sqlite3
 from pathlib import Path
 
 from jira_collector.knowledge_db import KnowledgeDbError
@@ -18,8 +19,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "G4 Atomic Publish를 실행합니다. Embedding 완료 latest Work 하나로 "
-            "검증된 Retrieval bundle을 staging한 뒤 Knowledge active 전환과 "
-            "State published checkpoint를 한 cross-DB SQLite transaction으로 commit합니다."
+            "검증된 Retrieval bundle을 staging한 뒤 Knowledge active Generation 집합을 "
+            "service-facing commit point로 전환하고 State published checkpoint를 기록합니다."
         ),
     )
     parser.add_argument(
@@ -74,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError(
                 "Knowledge DB 경로가 필요합니다: --knowledge-db 또는 JIRA_KNOWLEDGE_DB_PATH"
             )
+        knowledge_db_path = Path(knowledge_db_value)
         state = StateStore(Path(args.state_db))
         recovery = recover_stale_inflight(
             state,
@@ -82,14 +84,17 @@ def main(argv: list[str] | None = None) -> int:
         )
         worker = OperationalPublishWorker(
             state,
-            Path(knowledge_db_value),
+            knowledge_db_path,
             Path(args.embedding_root),
             Path(args.retrieval_root),
             default_top_k=args.default_top_k,
         )
         result = worker.run()
         active_dir = (
-            active_retrieval_artifact_dir(state, Path(args.retrieval_root))
+            active_retrieval_artifact_dir(
+                knowledge_db_path,
+                Path(args.retrieval_root),
+            )
             if result.published_count
             else None
         )
@@ -98,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"reason = {exc}")
         print(f"next = python tools/migrate_state_v3.py --database {args.state_db}")
         return 3
-    except (KnowledgeDbError, StateSchemaError, OSError, sqlite_error(), ValueError) as exc:
+    except (KnowledgeDbError, StateSchemaError, sqlite3.Error, OSError, ValueError) as exc:
         print("PUBLISH_WORKER = FAIL")
         print(f"reason = {exc}")
         return 1
@@ -128,14 +133,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"active_retrieval_dir = {active_dir}")
     print("next_stage = G4 real retrieval validation")
     return 0 if result.failed_count == 0 else 2
-
-
-def sqlite_error():
-    """argparse CLI의 except tuple에서 sqlite3.Error를 늦게 import하기 위한 helper입니다."""
-
-    import sqlite3
-
-    return sqlite3.Error
 
 
 if __name__ == "__main__":
