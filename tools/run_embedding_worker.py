@@ -10,6 +10,7 @@ from jira_collector.embedding import (
     load_embedding_settings,
 )
 from jira_collector.knowledge_db import KnowledgeDbError
+from jira_collector.stale_recovery import recover_stale_inflight
 from jira_collector.state_schema import StateMigrationRequiredError, StateSchemaError
 from jira_collector.state_store import StateStore
 
@@ -43,6 +44,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Work별 corpus/embedding staging root.",
     )
     parser.add_argument(
+        "--stale-after-seconds",
+        type=int,
+        default=None,
+        help=(
+            "이 시간보다 오래 running인 Embedding Work를 중단된 in-flight로 보고 failed로 복구합니다. "
+            "생략 시 안전하게 max(3600, API timeout×retry + 300)초. 확실히 중단된 Work는 0."
+        ),
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=1,
@@ -57,6 +67,10 @@ def main(argv: list[str] | None = None) -> int:
         print("EMBEDDING_WORKER = FAIL")
         print("reason = --limit은 1 이상이어야 합니다.")
         return 1
+    if args.stale_after_seconds is not None and args.stale_after_seconds < 0:
+        print("EMBEDDING_WORKER = FAIL")
+        print("reason = --stale-after-seconds는 0 이상이어야 합니다.")
+        return 1
 
     try:
         embedding_settings = load_embedding_settings(
@@ -70,6 +84,23 @@ def main(argv: list[str] | None = None) -> int:
                 "Knowledge DB 경로가 필요합니다: --knowledge-db 또는 JIRA_KNOWLEDGE_DB_PATH"
             )
         state = StateStore(Path(args.state_db))
+        stale_after_seconds = (
+            args.stale_after_seconds
+            if args.stale_after_seconds is not None
+            else max(
+                3600,
+                int(
+                    embedding_settings.timeout_seconds
+                    * embedding_settings.max_attempts
+                    + 300
+                ),
+            )
+        )
+        recovery = recover_stale_inflight(
+            state,
+            stage="embedding",
+            stale_after_seconds=stale_after_seconds,
+        )
         worker = OperationalEmbeddingWorker(
             state,
             Path(knowledge_db_value),
@@ -96,6 +127,12 @@ def main(argv: list[str] | None = None) -> int:
     outcome = "CHECKPOINTED" if result.embedding_completed_count else result.status.upper()
     print(f"EMBEDDING_WORKER = {outcome}")
     print(f"processing_run_id = {result.processing_run_id}")
+    print(f"stale_after_seconds = {stale_after_seconds}")
+    print(f"stale_recovered_work_count = {recovery.recovered_work_count}")
+    print(
+        "stale_recovered_processing_run_count = "
+        f"{recovery.recovered_processing_run_count}"
+    )
     print(f"selected_count = {result.selected_count}")
     print(f"embedding_completed_count = {result.embedding_completed_count}")
     print(f"failed_count = {result.failed_count}")
