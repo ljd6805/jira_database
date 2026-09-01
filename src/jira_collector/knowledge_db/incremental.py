@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,10 +18,10 @@ from .ids import (
 )
 from .loader import (
     KnowledgeDbMaterializer,
+    _insert_custom_field_catalog,
+    _insert_custom_field_value,
     _insert_source_attachment,
     _insert_source_comment,
-    _insert_source_custom_field_definition,
-    _insert_source_custom_field_value,
     _insert_source_relationship,
     _read_json,
 )
@@ -125,21 +126,22 @@ class IncrementalKnowledgeDbMaterializer(KnowledgeDbMaterializer):
                 )
                 self._load_operational_source_entities(connection, analysis)
 
-                jira_id = self._upsert_issue(connection, source_run_id, package)
+                issue_row = _required_dict(analysis.get("issue"), "issue")
+                self._upsert_issue(connection, issue_row)
+                jira_id = str(issue_row.get("jira_id") or "")
                 if jira_id != str(work["jira_id"]):
                     raise KnowledgeDbError(
-                        f"Knowledge DB jira_id 불일치: state={work['jira_id']}, package={jira_id}"
+                        f"Knowledge DB jira_id 불일치: state={work['jira_id']}, analysis={jira_id}"
                     )
-                version_id = self._ensure_issue_version(
+
+                self._ensure_issue_version(
                     connection,
                     source_run_id,
-                    jira_id,
+                    issue_key,
+                    expected_version_id,
                     package,
                 )
-                if version_id != expected_version_id:
-                    raise KnowledgeDbError(
-                        f"Issue Version identity drift: {version_id} != {expected_version_id}"
-                    )
+                version_id = expected_version_id
                 self._ensure_observation(
                     connection,
                     source_run_id,
@@ -379,12 +381,12 @@ class IncrementalKnowledgeDbMaterializer(KnowledgeDbMaterializer):
         for row in relationships:
             _insert_source_relationship(connection, _required_dict(row, "relationship"))
         for row in catalog.values():
-            _insert_source_custom_field_definition(
+            _insert_custom_field_catalog(
                 connection,
                 _required_dict(row, "custom_field_definition"),
             )
         for row in custom_fields:
-            _insert_source_custom_field_value(
+            _insert_custom_field_value(
                 connection,
                 _required_dict(row, "custom_field_value"),
             )
