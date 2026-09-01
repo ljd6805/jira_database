@@ -182,7 +182,7 @@ def _write_jsonl(path: Path, rows: Iterable[dict[str, object]], sort_key: str) -
     ordered = sorted(rows, key=lambda row: str(row[sort_key]))
     path.write_text(
         "".join(
-            json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ",")) + "\n"
+            json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
             for row in ordered
         ),
         encoding="utf-8",
