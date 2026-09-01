@@ -16,6 +16,9 @@ from jira_collector.state_schema import StateMigrationRequiredError, StateSchema
 from jira_collector.state_store import StateStore
 
 
+DEFAULT_OPENCODE_MODEL = "codemate/CodeLLMPro"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -31,7 +34,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--model-profile",
         required=True,
         help=(
-            "Knowledge Generation identity에 넣을 OpenCode/Worker/Reviewer 모델 구성 프로필 이름. "
+            "Knowledge Generation identity에 기록하는 논리적 모델/Worker/Reviewer 구성 프로필. "
+            "실제 opencode run 모델은 --opencode-model로 별도 지정합니다. "
             "예: internal-opencode-knowledge-v1"
         ),
     )
@@ -40,6 +44,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--knowledge-schema-version", default="0.1")
     parser.add_argument("--opencode-binary", default="opencode")
     parser.add_argument("--opencode-agent", default="jira-knowledge-orchestrator")
+    parser.add_argument(
+        "--opencode-model",
+        default=DEFAULT_OPENCODE_MODEL,
+        help=(
+            "실제 opencode run --model에 전달할 provider/model. "
+            f"기본: {DEFAULT_OPENCODE_MODEL}"
+        ),
+    )
     parser.add_argument(
         "--opencode-attach",
         help="선택: 이미 실행 중인 opencode serve 주소. 예: http://localhost:4096",
@@ -84,6 +96,10 @@ def main(argv: list[str] | None = None) -> int:
         print("KNOWLEDGE_WORKER = FAIL")
         print("reason = --stale-after-seconds는 0 이상이어야 합니다.")
         return 1
+    if not args.opencode_model.strip() or "/" not in args.opencode_model:
+        print("KNOWLEDGE_WORKER = FAIL")
+        print("reason = --opencode-model은 provider/model 형식이어야 합니다.")
+        return 1
 
     try:
         settings = load_settings(
@@ -113,6 +129,7 @@ def main(argv: list[str] | None = None) -> int:
             Path.cwd(),
             binary=args.opencode_binary,
             agent=args.opencode_agent,
+            model=args.opencode_model,
             attach_url=args.opencode_attach,
             timeout_seconds=args.timeout_seconds,
         )
@@ -149,6 +166,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"knowledge_backlog_before = {result.knowledge_backlog_before}")
     print(f"knowledge_backlog_after = {result.knowledge_backlog_after}")
     print(f"model_profile = {args.model_profile}")
+    print(f"opencode_model = {args.opencode_model}")
     print("next_stage = Embedding / Publish")
     return 0 if result.failed_count == 0 else 2
 
