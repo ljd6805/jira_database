@@ -7,10 +7,13 @@ from pathlib import Path
 
 import pytest
 
+import jira_collector.publishing as publishing
 from jira_collector.embedding.contract import EmbeddingContract, embedding_id
 from jira_collector.knowledge_db import connect_database, initialize_schema
 from jira_collector.publishing import (
     OperationalPublishWorker,
+    PublishedHeadCheckpointError,
+    SnapshotChangedPublishError,
     active_retrieval_artifact_dir,
     load_active_retrieval_searcher,
 )
@@ -34,12 +37,7 @@ def test_initial_atomic_publish_sets_one_coherent_head(tmp_path: Path) -> None:
         statement="첫 번째 active knowledge",
         vector=[1.0, 0.0, 0.0],
     )
-    worker = OperationalPublishWorker(
-        state,
-        db_path,
-        embedding_root,
-        retrieval_root,
-    )
+    worker = OperationalPublishWorker(state, db_path, embedding_root, retrieval_root)
 
     result = worker.run()
 
@@ -60,27 +58,20 @@ def test_initial_atomic_publish_sets_one_coherent_head(tmp_path: Path) -> None:
     assert state_work["knowledge_status"] == "completed"
     assert state_work["embedding_status"] == "completed"
     assert state_work["last_processing_run_id"] == result.processing_run_id
-
     assert _generation_state(db_path, work["generation_id"]) == "active"
-    assert active_retrieval_artifact_dir(state, retrieval_root) == result.publish_result.artifact_dir
-    searcher = load_active_retrieval_searcher(state, retrieval_root)
+
+    active_dir = active_retrieval_artifact_dir(db_path, retrieval_root)
+    assert active_dir == result.publish_result.artifact_dir
+    searcher = load_active_retrieval_searcher(db_path, retrieval_root)
     candidates = searcher.search_vector([1.0, 0.0, 0.0], top_k=1)
     assert len(candidates) == 1
     assert candidates[0].knowledge_item_id == work["knowledge_item_id"]
-
-    with state.connect() as connection:
-        run = connection.execute(
-            "SELECT * FROM processing_run WHERE processing_run_id=?",
-            (result.processing_run_id,),
-        ).fetchone()
-    assert run is not None
-    assert run["run_status"] == "completed"
-    assert run["published_count"] == 1
+    _assert_processing_run_published(state, result.processing_run_id)
 
     repeated = worker.run()
     assert repeated.selected_count == 0
     assert repeated.published_count == 0
-    assert active_retrieval_artifact_dir(state, retrieval_root) == result.publish_result.artifact_dir
+    assert active_retrieval_artifact_dir(db_path, retrieval_root) == active_dir
 
 
 def test_publish_rebuilds_full_snapshot_and_replaces_only_target_issue(tmp_path: Path) -> None:
@@ -98,8 +89,7 @@ def test_publish_rebuilds_full_snapshot_and_replaces_only_target_issue(tmp_path:
         statement="issue A version 1",
         vector=[1.0, 0.0, 0.0],
     )
-    first = worker.run()
-    assert first.published_count == 1
+    assert worker.run().published_count == 1
 
     issue_b = _seed_ready_work(
         state,
@@ -112,13 +102,8 @@ def test_publish_rebuilds_full_snapshot_and_replaces_only_target_issue(tmp_path:
         statement="issue B",
         vector=[0.0, 1.0, 0.0],
     )
-    second = worker.run()
-    assert second.published_count == 1
-    second_generations = {
-        row.knowledge_generation_id
-        for row in load_retrieval_mapping(active_retrieval_artifact_dir(state, retrieval_root))
-    }
-    assert second_generations == {
+    assert worker.run().published_count == 1
+    assert _active_bundle_generations(db_path, retrieval_root) == {
         issue_a_v1["generation_id"],
         issue_b["generation_id"],
     }
@@ -136,24 +121,18 @@ def test_publish_rebuilds_full_snapshot_and_replaces_only_target_issue(tmp_path:
         statement="issue A version 2",
         vector=[0.0, 0.0, 1.0],
     )
-    third = worker.run()
-    assert third.published_count == 1
+    assert worker.run().published_count == 1
 
-    third_generations = {
-        row.knowledge_generation_id
-        for row in load_retrieval_mapping(active_retrieval_artifact_dir(state, retrieval_root))
-    }
-    assert third_generations == {
+    assert _active_bundle_generations(db_path, retrieval_root) == {
         issue_a_v2["generation_id"],
         issue_b["generation_id"],
     }
-    assert issue_a_v1["generation_id"] not in third_generations
     assert _generation_state(db_path, issue_a_v1["generation_id"]) == "historical"
     assert _generation_state(db_path, issue_a_v2["generation_id"]) == "active"
     assert _generation_state(db_path, issue_b["generation_id"]) == "active"
 
 
-def test_wal_mode_blocks_cross_db_atomic_publish_before_active_switch(tmp_path: Path) -> None:
+def test_state_wal_is_preserved_by_publish(tmp_path: Path) -> None:
     state, db_path, embedding_root, retrieval_root = _environment(tmp_path)
     work = _seed_ready_work(
         state,
@@ -163,25 +142,130 @@ def test_wal_mode_blocks_cross_db_atomic_publish_before_active_switch(tmp_path: 
         jira_id="20000",
         issue_key="ABC-1",
         source_hash_char="a",
-        statement="WAL safety gate",
+        statement="State WAL must stay enabled",
         vector=[1.0, 0.0, 0.0],
     )
-    with sqlite3.connect(db_path) as connection:
-        mode = str(connection.execute("PRAGMA journal_mode=WAL").fetchone()[0]).lower()
-    if mode != "wal":
-        pytest.skip("이 SQLite runtime은 WAL mode 전환을 지원하지 않습니다.")
+    assert _state_journal_mode(state) == "wal"
 
+    result = OperationalPublishWorker(
+        state,
+        db_path,
+        embedding_root,
+        retrieval_root,
+    ).run()
+
+    assert result.published_count == 1
+    assert result.failed_count == 0
+    assert _generation_state(db_path, work["generation_id"]) == "active"
+    assert _state_journal_mode(state) == "wal"
+
+
+def test_committed_head_recovers_when_state_checkpoint_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state, db_path, embedding_root, retrieval_root = _environment(tmp_path)
+    work = _seed_ready_work(
+        state,
+        db_path,
+        embedding_root,
+        sequence=1,
+        jira_id="20000",
+        issue_key="ABC-1",
+        source_hash_char="a",
+        statement="recover after State checkpoint failure",
+        vector=[1.0, 0.0, 0.0],
+    )
     worker = OperationalPublishWorker(state, db_path, embedding_root, retrieval_root)
-    result = worker.run()
+    original = publishing._mark_state_published
 
-    assert result.published_count == 0
-    assert result.failed_count == 1
-    assert _generation_state(db_path, work["generation_id"]) == "candidate"
+    def fail_state_checkpoint(*args, **kwargs) -> None:
+        raise sqlite3.OperationalError("simulated State checkpoint failure")
+
+    monkeypatch.setattr(publishing, "_mark_state_published", fail_state_checkpoint)
+    failed = worker.run()
+
+    assert failed.status == "failed"
+    assert failed.failed_count == 1
+    assert failed.published_count == 0
+    assert _generation_state(db_path, work["generation_id"]) == "active"
     failed_work = state.get_work_item(work["work_item_id"])
     assert failed_work["work_status"] == "failed"
     assert failed_work["publish_status"] == "failed"
-    with pytest.raises(Exception, match="Published Retrieval head"):
-        active_retrieval_artifact_dir(state, retrieval_root)
+    assert "State published checkpoint" in str(failed_work["error_message"])
+    assert active_retrieval_artifact_dir(db_path, retrieval_root).is_dir()
+
+    monkeypatch.setattr(publishing, "_mark_state_published", original)
+    recovered = worker.run()
+
+    assert recovered.published_count == 1
+    assert recovered.failed_count == 0
+    recovered_work = state.get_work_item(work["work_item_id"])
+    assert recovered_work["work_status"] == "published"
+    assert recovered_work["publish_status"] == "published"
+    assert _generation_state(db_path, work["generation_id"]) == "active"
+
+
+def test_staged_snapshot_change_fails_closed_then_retries(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state, db_path, embedding_root, retrieval_root = _environment(tmp_path)
+    issue_a = _seed_ready_work(
+        state,
+        db_path,
+        embedding_root,
+        sequence=1,
+        jira_id="20000",
+        issue_key="ABC-1",
+        source_hash_char="a",
+        statement="issue A",
+        vector=[1.0, 0.0, 0.0],
+    )
+    issue_b = _seed_ready_work(
+        state,
+        db_path,
+        embedding_root,
+        sequence=2,
+        jira_id="20001",
+        issue_key="ABC-2",
+        source_hash_char="b",
+        statement="issue B",
+        vector=[0.0, 1.0, 0.0],
+    )
+    target_worker = OperationalPublishWorker(state, db_path, embedding_root, retrieval_root)
+    other_worker = OperationalPublishWorker(state, db_path, embedding_root, retrieval_root)
+    original_stage = target_worker._stage_retrieval_bundle
+
+    def stage_then_publish_other(*args, **kwargs):
+        result = original_stage(*args, **kwargs)
+        other_result = other_worker.run()
+        assert other_result.published_count == 1
+        return result
+
+    monkeypatch.setattr(target_worker, "_stage_retrieval_bundle", stage_then_publish_other)
+    first = target_worker.run()
+
+    assert first.status == "failed"
+    assert first.failed_count == 1
+    assert first.published_count == 0
+    assert _generation_state(db_path, issue_a["generation_id"]) == "candidate"
+    assert _generation_state(db_path, issue_b["generation_id"]) == "active"
+    failed_work = state.get_work_item(issue_a["work_item_id"])
+    assert failed_work["work_status"] == "failed"
+    assert failed_work["publish_status"] == "failed"
+    assert "active Generation 집합" in str(failed_work["error_message"])
+    assert _active_bundle_generations(db_path, retrieval_root) == {
+        issue_b["generation_id"]
+    }
+
+    monkeypatch.setattr(target_worker, "_stage_retrieval_bundle", original_stage)
+    retried = target_worker.run()
+    assert retried.published_count == 1
+    assert _active_bundle_generations(db_path, retrieval_root) == {
+        issue_a["generation_id"],
+        issue_b["generation_id"],
+    }
 
 
 def _environment(tmp_path: Path) -> tuple[StateStore, Path, Path, Path]:
@@ -243,6 +327,43 @@ def _seed_ready_work(
     assert work_item_id is not None
     state.commit_source_project(source_run_id, "10000")
 
+    ids = _seed_knowledge_and_stage_state(
+        state,
+        db_path,
+        work_item_id=work_item_id,
+        source_run_id=source_run_id,
+        jira_id=jira_id,
+        issue_key=issue_key,
+        source_hash=source_hash,
+        sequence=sequence,
+        statement=statement,
+    )
+    _write_embedding_artifact(
+        embedding_root,
+        work_item_id=work_item_id,
+        jira_id=jira_id,
+        issue_version_id=ids["issue_version_id"],
+        generation_id=ids["generation_id"],
+        attempt_id=ids["attempt_id"],
+        knowledge_item_id=ids["knowledge_item_id"],
+        statement=statement,
+        vector=vector,
+    )
+    return {"work_item_id": work_item_id, **ids}
+
+
+def _seed_knowledge_and_stage_state(
+    state: StateStore,
+    db_path: Path,
+    *,
+    work_item_id: str,
+    source_run_id: str,
+    jira_id: str,
+    issue_key: str,
+    source_hash: str,
+    sequence: int,
+    statement: str,
+) -> dict[str, str]:
     issue_version_id = f"iv_test_{jira_id}_{sequence}"
     generation_id = f"kg_test_{jira_id}_{sequence}"
     attempt_id = f"ka_test_{jira_id}_{sequence}"
@@ -259,7 +380,26 @@ def _seed_ready_work(
         knowledge_item_id=knowledge_item_id,
         statement=statement,
     )
+    _complete_knowledge_and_embedding_state(
+        state,
+        work_item_id,
+        issue_version_id,
+        generation_id,
+    )
+    return {
+        "issue_version_id": issue_version_id,
+        "generation_id": generation_id,
+        "attempt_id": attempt_id,
+        "knowledge_item_id": knowledge_item_id,
+    }
 
+
+def _complete_knowledge_and_embedding_state(
+    state: StateStore,
+    work_item_id: str,
+    issue_version_id: str,
+    generation_id: str,
+) -> None:
     processing_run_id = state.create_processing_run(selected_count=1, backlog_before=1)
     assert state.claim_work_item(work_item_id, processing_run_id)
     assert state.mark_knowledge_running(work_item_id)
@@ -292,22 +432,6 @@ def _seed_ready_work(
         superseded_count=0,
         backlog_after=1,
     )
-    _write_embedding_artifact(
-        embedding_root,
-        work_item_id=work_item_id,
-        jira_id=jira_id,
-        issue_version_id=issue_version_id,
-        generation_id=generation_id,
-        attempt_id=attempt_id,
-        knowledge_item_id=knowledge_item_id,
-        statement=statement,
-        vector=vector,
-    )
-    return {
-        "work_item_id": work_item_id,
-        "generation_id": generation_id,
-        "knowledge_item_id": knowledge_item_id,
-    }
 
 
 def _seed_knowledge_db(
@@ -474,3 +598,30 @@ def _generation_state(db_path: Path, generation_id: str) -> str:
         ).fetchone()
     assert row is not None
     return str(row[0])
+
+
+def _active_bundle_generations(db_path: Path, retrieval_root: Path) -> set[str]:
+    return {
+        row.knowledge_generation_id
+        for row in load_retrieval_mapping(
+            active_retrieval_artifact_dir(db_path, retrieval_root)
+        )
+    }
+
+
+def _state_journal_mode(state: StateStore) -> str:
+    with state.connect() as connection:
+        row = connection.execute("PRAGMA journal_mode").fetchone()
+    assert row is not None
+    return str(row[0]).lower()
+
+
+def _assert_processing_run_published(state: StateStore, processing_run_id: str) -> None:
+    with state.connect() as connection:
+        row = connection.execute(
+            "SELECT * FROM processing_run WHERE processing_run_id=?",
+            (processing_run_id,),
+        ).fetchone()
+    assert row is not None
+    assert row["run_status"] == "completed"
+    assert row["published_count"] == 1
