@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="data_smoke와 --project-key를 사용해 Real Loop A Source Ready 1건을 만든 뒤 실제 사내 OpenCode Knowledge Worker까지 검증하는 단계별 가이드">
+  <meta name="description" content="data_smoke와 --project-key를 사용해 Real Loop A Source Ready 1건을 만든 뒤 실제 사내 OpenCode Knowledge Worker까지 검증하고 stale in-flight를 복구하는 단계별 가이드">
   <title>Real Smoke Guide · Project 1개 → Source Ready → OpenCode</title>
   <style>
     :root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1120px;margin:auto;padding:42px 22px 92px}.hero{padding:40px;border-radius:26px;color:#fff;background:linear-gradient(130deg,#17264a,#3157d5 65%,#6d87e7)}section{margin-top:42px}.card{padding:18px;border:1px solid var(--line);border-radius:15px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:14px;background:var(--ink);color:#dce8ff;font:13px/1.68 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}</style>
@@ -12,7 +12,7 @@
 </head>
 <body><main class="wrap">
 <p><a href="../index.html">← Documentation Hub</a> · <a href="../architecture/jira_operational_fresh_bootstrap_smoke_policy.html">Fresh Bootstrap / Smoke Policy</a> · <a href="../architecture/jira_loop_b_opencode_automation_easy_guide.html">OpenCode 자동화 가이드</a></p>
-<header class="hero"><div>REAL SMOKE GUIDE · 2026-08-31</div><h1>Project 1개 → Issue 1개 → Source Ready → Real OpenCode</h1><p>Production/Pilot data를 건드리지 않고 <strong>data_smoke/</strong>에서 실제 Jira Loop A와 실제 사내 OpenCode Knowledge Automation을 연속 검증합니다.</p></header>
+<header class="hero"><div>REAL SMOKE GUIDE · UPDATED 2026-09-01</div><h1>Project 1개 → Issue 1개 → Source Ready → Real OpenCode</h1><p>Production/Pilot data를 건드리지 않고 <strong>data_smoke/</strong>에서 실제 Jira Loop A와 실제 사내 OpenCode Knowledge Automation을 연속 검증합니다. 2026-09-01 실제 Smoke에서 발견된 <strong>stale running 복구</strong>도 포함합니다.</p></header>
 <section><h2>0. 이번 Smoke의 성공 정의</h2><div class="flow">G1 · REAL LOOP A
 Project 1개 발견
 → Issue 최대 1개 수집
@@ -22,6 +22,7 @@ Project 1개 발견
 
 G2 · REAL INTERNAL OPENCODE
 Source-ready latest Work 1건
+→ stale in-flight recovery
 → run_knowledge_worker.py
 → opencode run --agent jira-knowledge-orchestrator
 → Knowledge / Review artifact 생성
@@ -32,17 +33,20 @@ Source-ready latest Work 1건
 실제 jira-knowledge-extraction Skill load trace
 → OpenCode 실행 trace가 보일 때 확인
 → runner 자체는 현재 성공 stdout/stderr를 보존하지 않으므로 trace가 없으면 PENDING 유지</div></section>
-<section><h2>1. 최신 코드 받기</h2><pre>git pull</pre><p><code>--project-key</code> 옵션이 포함된 최신 main을 사용합니다.</p></section>
+<section><h2>1. 최신 코드 받기</h2><pre>git pull</pre><p><code>--project-key</code>와 <code>--stale-after-seconds</code>가 포함된 최신 main을 사용합니다.</p></section>
 <section><h2>2. Project Key 지정</h2><pre>export PROJECT_KEY="YOUR_PROJECT_KEY"</pre><p>예: Jira 이슈가 <code>ABC-123</code>이면 Project Key는 보통 <code>ABC</code>입니다.</p></section>
 <section><h2>3. Jira 인증정보 존재 여부만 확인</h2><pre>python - &lt;&lt;'PY'
 import os
+from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv()
+
+load_dotenv(Path(".env"), override=False)
 for key in ("JIRA_BASE_URL", "JIRA_USERNAME", "JIRA_PASSWORD"):
     print(f"{key} = {'SET' if os.getenv(key) else 'MISSING'}")
-PY</pre><p>값 자체는 화면에 출력하지 않습니다. 세 항목 모두 <strong>SET</strong>이어야 합니다.</p></section>
-<section><h2>4. Smoke 환경 초기화</h2><pre>rm -rf data_smoke</pre><div class="card warn"><strong>중요</strong><p>Smoke는 Resume하지 않습니다. 실패하면 원인을 고친 뒤 <code>data_smoke/</code>를 지우고 처음부터 다시 실행합니다.</p></div></section>
-<section><h2>5. 옵션 존재 확인</h2><pre>python tools/run_source_sync.py --help | grep -E "project-key|max-issues-per-project"</pre><p><code>--project-key</code>와 <code>--max-issues-per-project</code>가 보여야 합니다.</p></section>
+PY</pre><p><code>python -</code> stdin 실행에서는 <code>load_dotenv()</code> 자동 탐색이 실패할 수 있으므로 <strong>Path(".env")를 명시</strong>합니다. 값 자체는 출력하지 않습니다.</p></section>
+<section><h2>4. Smoke 환경 초기화</h2><pre>rm -rf data_smoke</pre><div class="card warn"><strong>Loop A를 처음 시작할 때만</strong><p>Smoke Source Sync 자체가 실패했다면 <code>data_smoke/</code>를 비우고 다시 시작합니다. 하지만 G1이 PASS한 뒤 Knowledge/OpenCode에서 실패했다면 <strong>data_smoke를 지우지 않습니다.</strong></p></div></section>
+<section><h2>5. 옵션 존재 확인</h2><pre>python tools/run_source_sync.py --help | grep -E "project-key|max-issues-per-project"
+python tools/run_knowledge_worker.py --help | grep "stale-after-seconds"</pre></section>
 <section><h2>6. Real Loop A Smoke 실행</h2><pre>python tools/run_source_sync.py \
   --local-config config/settings.smoke.yaml \
   --project-key "$PROJECT_KEY" \
@@ -53,7 +57,7 @@ smoke_project_key = ...
 visible_project_count = 1
 source_committed_project_count = 1
 failed_project_count = 0
-state_db = data_smoke/state/collector.db</pre><p>Project에 candidate Issue가 하나도 없으면 Source Commit은 성공해도 Work Item이 0개일 수 있습니다. 그 경우 다른 Project를 선택해 Smoke를 다시 시작합니다.</p></section>
+state_db = data_smoke/state/collector.db</pre></section>
 <section><h2>8. Source Ready Work 확인</h2><pre>python - &lt;&lt;'PY'
 import sqlite3
 from pathlib import Path
@@ -71,41 +75,41 @@ ORDER BY created_at, work_item_id
 
 print(f"work_count = {len(rows)}")
 for row in rows:
-    ready = (
+    source_ready = (
         row["last_source_committed_run_id"] is not None
         and row["last_source_committed_run_id"] == row["last_observed_source_run_id"]
-        and row["work_status"] in ("pending", "failed")
     )
     print(dict(row))
-    print(f"SOURCE_READY = {ready}")
-
-if not rows:
-    raise SystemExit("NO_WORK_ITEM")
-if not any(
-    row["last_source_committed_run_id"] is not None
-    and row["last_source_committed_run_id"] == row["last_observed_source_run_id"]
-    and row["work_status"] in ("pending", "failed")
-    for row in rows
-):
-    raise SystemExit("NO_SOURCE_READY_WORK")
-PY</pre><div class="card good"><strong>G1 PASS 조건</strong><p><code>work_count &gt;= 1</code>이고 최소 한 행에서 <code>SOURCE_READY = True</code>가 출력됩니다.</p></div></section>
+    print(f"SOURCE_READY = {source_ready}")
+PY</pre><div class="card good"><strong>G1 PASS 조건</strong><p>최소 한 Work에서 <code>last_source_committed_run_id = last_observed_source_run_id</code>이고 실제 RAW/ANALYSIS/Knowledge Input이 존재합니다.</p></div></section>
 <section><h2>9. 생성 파일 눈으로 확인</h2><pre>find data_smoke/raw data_smoke/analysis data_smoke/knowledge_input \
-  -type f | sort | head -80</pre><p>RAW, per-Issue ANALYSIS, Knowledge Input JSON이 실제로 만들어졌는지 확인합니다.</p></section>
+  -type f | sort | head -80</pre></section>
 <section><h2>10. OpenCode 사전 확인</h2><pre>opencode --version
 
 test -f .opencode/agents/jira-knowledge-orchestrator.md &amp;&amp; echo "orchestrator = OK"
 test -f .opencode/agents/jira-knowledge-worker.md &amp;&amp; echo "worker = OK"
 test -f .opencode/agents/jira-knowledge-reviewer.md &amp;&amp; echo "reviewer = OK"
-test -f .opencode/skills/jira-knowledge-extraction/SKILL.md &amp;&amp; echo "skill = OK"</pre><p>네 로컬 Agent/Skill 파일이 존재해야 합니다.</p></section>
-<section><h2>11. Real Internal OpenCode Knowledge Smoke</h2><pre>python tools/run_knowledge_worker.py \
+test -f .opencode/skills/jira-knowledge-extraction/SKILL.md &amp;&amp; echo "skill = OK"</pre></section>
+<section><h2>11. Real Internal OpenCode Knowledge Smoke</h2><pre># 일반 실행
+python tools/run_knowledge_worker.py \
   --local-config config/settings.smoke.yaml \
   --model-profile internal-opencode-knowledge-v1 \
-  --limit 1</pre><p>이 명령부터는 실제 사내 OpenCode 호출이 발생할 수 있으므로 평소보다 오래 걸릴 수 있습니다.</p></section>
-<section><h2>12. Knowledge Worker 결과 확인</h2><pre>KNOWLEDGE_WORKER = CHECKPOINTED
+  --limit 1
+
+# 이전 Worker가 확실히 비정상 종료되어 running에 고착된 Smoke Work가 있을 때
+python tools/run_knowledge_worker.py \
+  --local-config config/settings.smoke.yaml \
+  --model-profile internal-opencode-knowledge-v1 \
+  --stale-after-seconds 0 \
+  --limit 1</pre><p>일반 기본값은 <code>OpenCode timeout + 300초</code>입니다. 살아 있는 장시간 LLM 작업을 오인해 회수하지 않기 위한 안전 여유입니다. <code>0</code>은 사람이 해당 이전 Worker가 이미 죽었다고 확인한 Smoke/트러블슈팅에서만 사용합니다.</p></section>
+<section><h2>12. Stale Recovery + Knowledge Worker 결과 확인</h2><pre>KNOWLEDGE_WORKER = CHECKPOINTED
 processing_run_id = pr_...
+stale_after_seconds = 0
+stale_recovered_work_count = 1
+stale_recovered_processing_run_count = 1
 selected_count = 1
 knowledge_completed_count = 1
-failed_count = 0</pre><p><code>failed_count = 0</code>과 <code>knowledge_completed_count = 1</code>이 핵심입니다.</p></section>
+failed_count = 0</pre><p>stale Work가 없으면 recovery count는 0이 정상입니다. 핵심 G2 성공값은 <code>selected_count=1</code>, <code>knowledge_completed_count=1</code>, <code>failed_count=0</code>입니다.</p></section>
 <section><h2>13. State DB에서 Knowledge checkpoint 확인</h2><pre>python - &lt;&lt;'PY'
 import sqlite3
 
@@ -114,32 +118,58 @@ con.row_factory = sqlite3.Row
 rows = con.execute("""
 SELECT work_item_id, observed_issue_key, work_status,
        knowledge_status, issue_version_id, knowledge_generation_id,
-       embedding_status, publish_status
+       embedding_status, publish_status,
+       error_stage, error_message
 FROM sync_issue_change
 ORDER BY updated_at DESC
 """).fetchall()
 for row in rows:
     print(dict(row))
-PY</pre><p>성공한 Work는 <code>knowledge_status = completed</code>이고 <code>issue_version_id</code>, <code>knowledge_generation_id</code>가 채워져 있어야 합니다. Embedding이 아직 전이면 <code>work_status</code>는 다음 Stage를 위해 다시 <code>pending</code>일 수 있습니다.</p></section>
-<section><h2>14. Knowledge / Review 파일 확인</h2><pre>find data_smoke/knowledge -type f | sort</pre><p>최종 Knowledge JSON과 Attempt별 Review JSON이 존재하는지 확인합니다.</p></section>
-<section><h2>15. Skill-load trace는 별도 항목</h2><div class="card warn"><p>현재 <code>OpenCodeKnowledgeProcessor</code>는 성공한 <code>opencode run</code>의 stdout/stderr를 캡처하지만 파일로 보존하지 않습니다. 따라서 위 Smoke가 성공하면 <strong>자동 Knowledge 경로가 실제 사내 OpenCode에서 성공했다</strong>는 것은 확인할 수 있지만, <strong>실제 Skill tool load trace</strong>를 증명하려면 OpenCode 측 trace/log에서 <code>jira-knowledge-extraction</code> 호출 흔적을 추가 확인해야 합니다.</p><p>trace가 보이지 않으면 이 항목만 <strong>PENDING</strong>으로 남깁니다. Worker 정의상 Skill 사용은 REQUIRED입니다.</p></div></section>
-<section><h2>16. 실패했을 때</h2><div class="flow">Project not found
-→ PROJECT_KEY 확인
-→ 해당 계정이 Project를 조회할 수 있는지 확인
+PY</pre><p>성공한 Work는 <code>knowledge_status = completed</code>이고 <code>issue_version_id</code>, <code>knowledge_generation_id</code>가 채워져 있어야 합니다. Embedding 전이라면 <code>work_status = pending</code>이 정상입니다.</p></section>
+<section><h2>14. Knowledge / Review 파일 확인</h2><pre>find data_smoke/knowledge -type f | sort</pre></section>
+<section><h2>15. Skill-load trace는 별도 항목</h2><div class="card warn"><p>현재 <code>OpenCodeKnowledgeProcessor</code>는 성공한 <code>opencode run</code>의 stdout/stderr를 캡처하지만 파일로 보존하지 않습니다. 따라서 Knowledge Smoke 성공과 <strong>실제 Skill load trace 증명</strong>은 구분합니다. trace가 보이지 않으면 Skill-load 확인만 PENDING으로 남깁니다.</p></div></section>
+<section><h2>16. 2026-09-01 실제 Smoke에서 발견한 운영 결함</h2><div class="flow">1차 Knowledge Run
+→ LLM 문제
+→ Knowledge output JSON 없음
+→ 정상적으로 failed 처리
 
-SOURCE_SYNC = FAIL
-→ error 원인 확인
+2차 Run
+→ failed Work 재선택
+→ work_status=running
+→ knowledge_status=running
+→ 실행 중 비정상 종료
+→ terminal cleanup까지 도달하지 못함
+
+3차 Run
+→ running Work는 backlog selector에서 제외
+→ selected_count=0
+→ Work가 영구 고착될 수 있음</div><div class="card warn"><strong>결론</strong><p>일반 Exception Retry만으로는 충분하지 않습니다. 프로세스 kill, 세션 종료, 서버 장애처럼 Python cleanup이 실행되지 않는 경우를 위한 <strong>Crash Recovery / Stale In-flight Recovery</strong>가 필요합니다.</p></div></section>
+<section><h2>17. 구현된 자동 복구 계약</h2><div class="flow">Runner 시작
+→ running Work 조회
+→ stage 상태도 running인지 확인
+→ last_processing_run_id 확인
+→ Processing Run이 이미 terminal이면 즉시 orphan 판정
+   또는
+→ updated_at이 stale cutoff보다 오래됐는지 확인
+→ stale Work를 failed backlog로 복구
+→ 중단된 processing_run을 failed로 닫음
+→ structured log
+   stale_inflight_recovered
+   stale_processing_run_closed
+→ 같은 Runner에서 바로 재선택/재처리</div><p>State Schema v3는 변경하지 않았습니다. 현재의 <code>updated_at</code>, <code>last_processing_run_id</code>, <code>processing_run.run_status</code>만 사용합니다. Knowledge와 Embedding runner 모두 같은 복구 모듈을 사용합니다.</p></section>
+<section><h2>18. 실패했을 때 무엇을 지우나?</h2><div class="flow">Loop A / Source Sync 실패
+→ 원인 수정
 → rm -rf data_smoke
-→ Loop A부터 다시
+→ G1부터 재시작 가능
 
-work_count = 0
-→ 비어 있지 않은 다른 Project 선택
-→ rm -rf data_smoke
-→ Loop A부터 다시
+G1 PASS 후 Knowledge/OpenCode 실패
+→ data_smoke 삭제 금지
+→ error_message / processing_run 기록 보존
+→ 정상 failed이면 그냥 Knowledge Worker 재실행
+→ running 고착이면 --stale-after-seconds 0으로 recovery + 재실행
 
-KNOWLEDGE_WORKER = FAIL
-→ data_smoke는 지우지 말고 오류를 먼저 기록
-→ OpenCode/Agent/Review 실패 원인 확인
-→ 필요 시 Smoke를 처음부터 재실행</div></section>
-<footer>Real Smoke Guide · --project-key + data_smoke · G1 Loop A → G2 Real OpenCode · 2026-08-31</footer>
+Embedding에서 같은 종류의 running 고착
+→ data_smoke 삭제 금지
+→ run_embedding_worker.py --stale-after-seconds 0 사용 가능</div></section>
+<footer>Real Smoke Guide · G1 PASS 후 data_smoke 보존 · stale in-flight recovery implemented · 2026-09-01</footer>
 </main></body></html>
