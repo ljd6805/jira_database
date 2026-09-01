@@ -4,6 +4,7 @@ import json
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterable
 
 from jira_collector.embedding.validation import validate_embedding_artifact
 from jira_collector.knowledge_db import KnowledgeDbError, connect_database
@@ -19,11 +20,29 @@ from jira_collector.state_store import StateStore, utc_now_iso
 _BUNDLE_METADATA_FILENAME = "publish.bundle.json"
 _SOURCE_CORPUS_FILENAME = "source.corpus.jsonl"
 _SOURCE_EMBEDDING_FILENAME = "source.embeddings.jsonl"
-_ROLLBACK_JOURNAL_MODES = {"delete", "persist", "truncate"}
+_BUNDLE_METADATA_FIELDS = {
+    "processing_run_id",
+    "work_item_id",
+    "target_knowledge_generation_id",
+    "knowledge_generation_ids",
+    "source_work_by_generation",
+    "faiss_index_id",
+    "vector_count",
+    "dimension",
+    "staged_at",
+}
 
 
 class StalePublishWorkError(KnowledgeDbError):
-    """Publish 직전 Work가 latest가 아니게 된 경우입니다."""
+    """Publish 직전 Work가 더 이상 latest가 아니게 된 경우입니다."""
+
+
+class SnapshotChangedPublishError(KnowledgeDbError):
+    """Retrieval staging 뒤 다른 Publish가 active Generation 집합을 바꾼 경우입니다."""
+
+
+class PublishedHeadCheckpointError(KnowledgeDbError):
+    """Knowledge/FAISS head는 전환됐지만 State checkpoint가 끝나지 않은 경우입니다."""
 
 
 @dataclass(frozen=True)
@@ -51,8 +70,28 @@ class OperationalPublishRunResult:
     publish_result: AtomicPublishResult | None
 
 
+@dataclass(frozen=True)
+class RetrievalBundleMetadata:
+    processing_run_id: str
+    work_item_id: str
+    target_knowledge_generation_id: str
+    knowledge_generation_ids: tuple[str, ...]
+    source_work_by_generation: dict[str, str]
+    faiss_index_id: str
+    vector_count: int
+    dimension: int
+    staged_at: str
+
+
 class OperationalPublishWorker:
-    """Validated Retrieval bundle과 Knowledge/State head를 한 commit 경계로 전환합니다."""
+    """Validated Retrieval snapshot을 staging한 뒤 service head를 원자적으로 전환합니다.
+
+    State DB는 의도적으로 WAL mode이므로 Knowledge DB와 ATTACH한 cross-file transaction으로
+    묶지 않습니다. 대신 immutable Retrieval bundle을 먼저 만들고, Knowledge DB의 active
+    Generation 집합 하나를 service-facing commit point로 사용합니다. State는 그 직후 별도
+    WAL transaction으로 published checkpoint를 기록하며, 중간 crash는 같은 Work 재실행으로
+    수렴합니다.
+    """
 
     def __init__(
         self,
@@ -72,7 +111,7 @@ class OperationalPublishWorker:
         self.default_top_k = default_top_k
 
     def run(self) -> OperationalPublishRunResult:
-        """Publish-ready Work 하나를 하나의 Processing Run으로 처리합니다."""
+        """Publish-ready latest Work 하나를 한 Processing Run으로 처리합니다."""
 
         backlog_before = self._count_publish_backlog()
         selected = self._list_publish_work(limit=1)
@@ -81,90 +120,49 @@ class OperationalPublishWorker:
             backlog_before=backlog_before,
         )
         if not selected:
-            self._finish_nonpublished_run(
-                processing_run_id,
-                run_status="completed",
-                failed_count=0,
-                superseded_count=0,
-            )
+            self._finish_empty_run(processing_run_id)
             return self._run_result(
                 processing_run_id,
                 "completed",
-                0,
-                0,
-                0,
-                0,
-                backlog_before,
-                None,
+                selected_count=0,
+                published_count=0,
+                failed_count=0,
+                superseded_count=0,
+                backlog_before=backlog_before,
+                publish_result=None,
             )
 
         work_item_id = selected[0]
         if not self.state.claim_work_item(work_item_id, processing_run_id):
-            self._finish_nonpublished_run(
-                processing_run_id,
-                run_status="completed",
-                failed_count=0,
-                superseded_count=1,
-            )
+            self._finish_claim_skip(processing_run_id)
             return self._run_result(
                 processing_run_id,
                 "completed",
-                1,
-                0,
-                0,
-                1,
-                backlog_before,
-                None,
+                selected_count=1,
+                published_count=0,
+                failed_count=0,
+                superseded_count=1,
+                backlog_before=backlog_before,
+                publish_result=None,
             )
 
         try:
             published = self.process_work(work_item_id, processing_run_id)
-        except StalePublishWorkError:
-            self._finish_nonpublished_run(
-                processing_run_id,
-                run_status="completed",
-                failed_count=0,
-                superseded_count=1,
-            )
-            return self._run_result(
-                processing_run_id,
-                "completed",
-                1,
-                0,
-                0,
-                1,
-                backlog_before,
-                None,
-            )
         except Exception as exc:
-            work = self.state.get_work_item(work_item_id)
-            if work.get("work_status") != "superseded":
-                self.state.mark_work_failed(
-                    work_item_id,
-                    stage="publish",
-                    error_message=str(exc),
-                )
-                failed_count, superseded_count = 1, 0
-                status = "failed"
-            else:
-                failed_count, superseded_count = 0, 1
-                status = "completed"
-            self._finish_nonpublished_run(
+            failed_count, superseded_count, status = self._checkpoint_failure(
+                work_item_id,
                 processing_run_id,
-                run_status=status,
-                failed_count=failed_count,
-                superseded_count=superseded_count,
-                error_summary=str(exc) if failed_count else None,
+                exc,
             )
             return self._run_result(
                 processing_run_id,
                 status,
-                1,
-                0,
-                failed_count,
-                superseded_count,
-                backlog_before,
-                None,
+                selected_count=1,
+                published_count=0,
+                failed_count=failed_count,
+                superseded_count=superseded_count,
+                backlog_before=backlog_before,
+                publish_result=None,
             )
 
         return OperationalPublishRunResult(
@@ -195,7 +193,7 @@ class OperationalPublishWorker:
 
         work = self.state.get_work_item(work_item_id)
         generation_id = str(work["knowledge_generation_id"])
-        sources, expected_generations = self._expected_snapshot_sources(work)
+        sources, staged_generations = self._expected_snapshot_sources(work)
         artifact_dir = self.retrieval_artifact_root / "runs" / processing_run_id
         build_result = self._stage_retrieval_bundle(
             artifact_dir,
@@ -203,18 +201,18 @@ class OperationalPublishWorker:
             processing_run_id,
             generation_id,
             sources,
-            expected_generations,
+            staged_generations,
         )
-
         if not self.state.work_item_is_latest(work_item_id, log_stale=True):
             raise StalePublishWorkError(
                 f"Retrieval staging 후 stale이 됐습니다: {work_item_id}"
             )
-        self._atomic_commit(
+
+        self._commit_head_and_checkpoint_state(
             work_item_id,
             processing_run_id,
             generation_id,
-            expected_generations,
+            staged_generations,
         )
         return AtomicPublishResult(
             work_item_id=work_item_id,
@@ -223,7 +221,7 @@ class OperationalPublishWorker:
             faiss_index_id=build_result.faiss_index_id,
             vector_count=build_result.vector_count,
             dimension=build_result.dimension,
-            generation_count=len(expected_generations),
+            generation_count=len(staged_generations),
             artifact_dir=artifact_dir,
         )
 
@@ -244,14 +242,7 @@ class OperationalPublishWorker:
                 """,
                 (target_generation,),
             ).fetchone()
-            if target is None or str(target["jira_id"]) != target_jira_id:
-                raise KnowledgeDbError("State와 Knowledge Generation identity가 다릅니다.")
-            if target["accepted_attempt_id"] is None:
-                raise KnowledgeDbError("Publish 대상 Generation에 accepted_attempt_id가 없습니다.")
-            if str(target["state"]) not in {"candidate", "active", "historical"}:
-                raise KnowledgeDbError(
-                    f"Publish 가능한 Generation 상태가 아닙니다: {target['state']}"
-                )
+            _validate_target_generation(target, target_generation, target_jira_id)
             active = connection.execute(
                 """
                 SELECT knowledge_generation_id, jira_id
@@ -318,30 +309,33 @@ class OperationalPublishWorker:
             expected_dimension=dimension,
             default_top_k=self.default_top_k,
         )
-        validation = validate_retrieval_artifact(artifact_dir)
+        validation = validate_retrieval_artifact(
+            artifact_dir,
+            embedding_path=embedding_path,
+            expected_count=count,
+            expected_dimension=dimension,
+        )
         if not validation.passed:
             raise KnowledgeDbError("G4 Retrieval staging artifact 검증에 실패했습니다.")
-        staged_generations = frozenset(
+        staged = frozenset(
             row.knowledge_generation_id for row in load_retrieval_mapping(artifact_dir)
         )
-        if staged_generations != expected_generations:
+        if staged != expected_generations:
             raise KnowledgeDbError(
                 "G4 Retrieval bundle Generation 집합이 expected active set과 다릅니다."
             )
-        metadata = {
-            "processing_run_id": processing_run_id,
-            "work_item_id": work_item_id,
-            "target_knowledge_generation_id": target_generation_id,
-            "knowledge_generation_ids": sorted(expected_generations),
-            "source_work_by_generation": dict(sorted(sources.items())),
-            "faiss_index_id": build_result.faiss_index_id,
-            "vector_count": build_result.vector_count,
-            "dimension": build_result.dimension,
-        }
-        (artifact_dir / _BUNDLE_METADATA_FILENAME).write_text(
-            json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
-            encoding="utf-8",
+        metadata = RetrievalBundleMetadata(
+            processing_run_id=processing_run_id,
+            work_item_id=work_item_id,
+            target_knowledge_generation_id=target_generation_id,
+            knowledge_generation_ids=tuple(sorted(expected_generations)),
+            source_work_by_generation=dict(sorted(sources.items())),
+            faiss_index_id=build_result.faiss_index_id,
+            vector_count=build_result.vector_count,
+            dimension=build_result.dimension,
+            staged_at=utc_now_iso(),
         )
+        _write_bundle_metadata(artifact_dir, metadata)
         return build_result
 
     def _merge_embedding_sources(
@@ -360,12 +354,10 @@ class OperationalPublishWorker:
                 raise KnowledgeDbError(
                     f"Publish source embedding integrity 실패: {work_item_id}"
                 )
-            corpus_rows = _read_jsonl(corpus_path)
-            embedding_rows = _read_jsonl(embedding_path)
             _merge_generation_rows(
                 generation_id,
-                corpus_rows,
-                embedding_rows,
+                _read_jsonl(corpus_path),
+                _read_jsonl(embedding_path),
                 corpus_by_item,
                 embedding_by_item,
             )
@@ -380,99 +372,165 @@ class OperationalPublishWorker:
         corpus_path = artifact_dir / _SOURCE_CORPUS_FILENAME
         embedding_path = artifact_dir / _SOURCE_EMBEDDING_FILENAME
         _write_jsonl(corpus_path, corpus_by_item.values(), "knowledge_item_id")
-        _write_jsonl(embedding_path, embedding_by_item.values(), "embedding_id")
+        _write_jsonl(embedding_path, embedding_by_item.values(), "knowledge_item_id")
         return corpus_path, embedding_path, len(embedding_by_item), dimensions.pop()
 
-    def _atomic_commit(
+    def _commit_head_and_checkpoint_state(
         self,
         work_item_id: str,
         processing_run_id: str,
         generation_id: str,
         staged_generations: frozenset[str],
     ) -> None:
-        connection = sqlite3.connect(self.knowledge_database_path)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys=ON")
-        connection.execute("PRAGMA busy_timeout=5000")
+        knowledge_committed = False
         try:
-            connection.execute(
-                "ATTACH DATABASE ? AS state_db",
-                (str(self.state.database_path.resolve()),),
-            )
-            _assert_atomic_journal_modes(connection)
-            connection.execute("BEGIN IMMEDIATE")
-            try:
+            with self.state.connect() as state_connection:
+                state_connection.execute("BEGIN IMMEDIATE")
                 work = _load_publish_work_for_commit(
-                    connection,
+                    state_connection,
                     work_item_id,
                     processing_run_id,
                 )
-                generation = _load_generation_for_commit(connection, generation_id, work)
-                expected = _expected_generation_set_for_commit(connection, generation)
-                if expected != staged_generations:
-                    raise StalePublishWorkError(
-                        "Retrieval staging 이후 active Generation 집합이 변경됐습니다."
-                    )
+                self._commit_knowledge_head(
+                    generation_id,
+                    str(work["jira_id"]),
+                    staged_generations,
+                )
+                knowledge_committed = True
                 published_at = utc_now_iso()
-                _activate_generation(connection, generation_id, str(generation["jira_id"]))
                 _mark_state_published(
-                    connection,
+                    state_connection,
                     work_item_id,
                     processing_run_id,
                     published_at,
                 )
-                backlog_after = _count_publish_backlog_in_transaction(connection)
-                _finish_publish_run_in_transaction(
-                    connection,
+                backlog_after = _count_publish_backlog_connection(state_connection)
+                _finish_publish_run(
+                    state_connection,
                     processing_run_id,
                     published_at,
                     backlog_after,
                 )
-                connection.commit()
-            except Exception:
-                connection.rollback()
-                raise
+        except Exception as exc:
+            if knowledge_committed:
+                raise PublishedHeadCheckpointError(
+                    "Knowledge/FAISS service head commit 뒤 State published checkpoint가 완료되지 않았습니다. "
+                    "같은 Work를 재시도하면 수렴합니다."
+                ) from exc
+            raise
+
+    def _commit_knowledge_head(
+        self,
+        generation_id: str,
+        jira_id: str,
+        staged_generations: frozenset[str],
+    ) -> None:
+        connection = connect_database(self.knowledge_database_path)
+        try:
+            with connection:
+                target = connection.execute(
+                    """
+                    SELECT knowledge_generation_id, jira_id, state, accepted_attempt_id
+                    FROM knowledge_generation
+                    WHERE knowledge_generation_id=?
+                    """,
+                    (generation_id,),
+                ).fetchone()
+                _validate_target_generation(target, generation_id, jira_id)
+                expected = _expected_generation_set_for_commit(connection, jira_id, generation_id)
+                if expected != staged_generations:
+                    raise SnapshotChangedPublishError(
+                        "Retrieval staging 이후 active Generation 집합이 변경됐습니다. 재시도가 필요합니다."
+                    )
+                _activate_generation(connection, generation_id, jira_id)
         finally:
             connection.close()
+
+    def _checkpoint_failure(
+        self,
+        work_item_id: str,
+        processing_run_id: str,
+        exc: Exception,
+    ) -> tuple[int, int, str]:
+        message = str(exc)[:2000]
+        with self.state.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            work = connection.execute(
+                "SELECT * FROM sync_issue_change WHERE work_item_id=?",
+                (work_item_id,),
+            ).fetchone()
+            if work is None:
+                raise KeyError(f"work_item_id를 찾을 수 없습니다: {work_item_id}")
+            if str(work["work_status"]) == "superseded":
+                failed_count, superseded_count, status = 0, 1, "completed"
+            else:
+                cursor = connection.execute(
+                    """
+                    UPDATE sync_issue_change
+                    SET publish_status='failed', work_status='failed',
+                        error_stage='publish', error_message=?, updated_at=?
+                    WHERE work_item_id=?
+                      AND last_processing_run_id=?
+                      AND work_status='running'
+                      AND superseded_by_work_item_id IS NULL
+                    """,
+                    (message, utc_now_iso(), work_item_id, processing_run_id),
+                )
+                if cursor.rowcount != 1:
+                    raise KnowledgeDbError(
+                        f"Publish failure checkpoint 실패: {work_item_id}"
+                    )
+                failed_count, superseded_count, status = 1, 0, "failed"
+            backlog_after = _count_publish_backlog_connection(connection)
+            _finish_nonpublished_run(
+                connection,
+                processing_run_id,
+                status=status,
+                failed_count=failed_count,
+                superseded_count=superseded_count,
+                backlog_after=backlog_after,
+                error_summary=message if failed_count else None,
+            )
+        return failed_count, superseded_count, status
 
     def _list_publish_work(self, *, limit: int) -> list[str]:
         with self.state.connect() as connection:
             rows = connection.execute(
-                _PUBLISH_BACKLOG_SQL + " ORDER BY last_source_committed_at, created_at, work_item_id LIMIT ?",
+                _PUBLISH_BACKLOG_SQL
+                + " ORDER BY last_source_committed_at, created_at, work_item_id LIMIT ?",
                 (limit,),
             ).fetchall()
         return [str(row["work_item_id"]) for row in rows]
 
     def _count_publish_backlog(self) -> int:
         with self.state.connect() as connection:
-            row = connection.execute(
-                "SELECT COUNT(*) FROM (" + _PUBLISH_BACKLOG_SQL + ")"
-            ).fetchone()
-        return int(row[0]) if row is not None else 0
+            return _count_publish_backlog_connection(connection)
 
-    def _finish_nonpublished_run(
-        self,
-        processing_run_id: str,
-        *,
-        run_status: str,
-        failed_count: int,
-        superseded_count: int,
-        error_summary: str | None = None,
-    ) -> None:
+    def _finish_empty_run(self, processing_run_id: str) -> None:
         self.state.finish_processing_run(
             processing_run_id,
-            run_status=run_status,
+            run_status="completed",
             published_count=0,
-            failed_count=failed_count,
-            superseded_count=superseded_count,
+            failed_count=0,
+            superseded_count=0,
             backlog_after=self._count_publish_backlog(),
-            error_summary=error_summary,
+        )
+
+    def _finish_claim_skip(self, processing_run_id: str) -> None:
+        self.state.finish_processing_run(
+            processing_run_id,
+            run_status="completed",
+            published_count=0,
+            failed_count=0,
+            superseded_count=1,
+            backlog_after=self._count_publish_backlog(),
         )
 
     def _run_result(
         self,
         processing_run_id: str,
         status: str,
+        *,
         selected_count: int,
         published_count: int,
         failed_count: int,
@@ -498,7 +556,9 @@ class OperationalPublishWorker:
         processing_run_id: str,
     ) -> None:
         if work.get("work_status") != "running":
-            raise KnowledgeDbError(f"Publish claim 상태가 running이 아닙니다: {work.get('work_status')}")
+            raise KnowledgeDbError(
+                f"Publish claim 상태가 running이 아닙니다: {work.get('work_status')}"
+            )
         if work.get("last_processing_run_id") != processing_run_id:
             raise KnowledgeDbError("Publish Processing Run identity가 State와 다릅니다.")
         if work.get("knowledge_status") != "completed":
@@ -531,42 +591,256 @@ WHERE last_source_committed_run_id IS NOT NULL
 
 
 def active_retrieval_artifact_dir(
-    state: StateStore,
+    knowledge_database_path: str | Path,
     retrieval_artifact_root: str | Path,
 ) -> Path:
-    """가장 최근 atomic Publish Processing Run이 가리키는 immutable bundle을 반환합니다."""
+    """Knowledge DB active Generation 집합과 정확히 맞는 검증된 Retrieval bundle을 반환합니다."""
 
-    with state.connect() as connection:
-        row = connection.execute(
-            """
-            SELECT processing_run_id
-            FROM processing_run
-            WHERE run_status='completed'
-              AND published_count > 0
-            ORDER BY finished_at DESC, started_at DESC, processing_run_id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-    if row is None:
-        raise KnowledgeDbError("Published Retrieval head가 아직 없습니다.")
-    artifact_dir = Path(retrieval_artifact_root).resolve() / "runs" / str(row[0])
-    validation = validate_retrieval_artifact(artifact_dir)
-    if not validation.passed:
+    active_generations = _active_generation_ids(knowledge_database_path)
+    if not active_generations:
+        raise KnowledgeDbError("active Knowledge Generation이 아직 없습니다.")
+
+    root = Path(retrieval_artifact_root).resolve() / "runs"
+    candidates: list[tuple[str, str, Path]] = []
+    if root.is_dir():
+        for artifact_dir in root.iterdir():
+            if not artifact_dir.is_dir():
+                continue
+            metadata = _try_load_bundle_metadata(artifact_dir)
+            if metadata is None:
+                continue
+            if frozenset(metadata.knowledge_generation_ids) != active_generations:
+                continue
+            if not _bundle_matches_active_set(artifact_dir, active_generations):
+                continue
+            candidates.append(
+                (metadata.staged_at, metadata.processing_run_id, artifact_dir)
+            )
+    if not candidates:
         raise KnowledgeDbError(
-            f"Published Retrieval head artifact가 손상됐습니다: {artifact_dir}"
+            "active Knowledge Generation 집합과 일치하는 Published Retrieval bundle이 없습니다."
         )
-    return artifact_dir
+    return max(candidates, key=lambda value: (value[0], value[1]))[2]
 
 
 def load_active_retrieval_searcher(
-    state: StateStore,
+    knowledge_database_path: str | Path,
     retrieval_artifact_root: str | Path,
 ):
-    """State의 atomic Publish head를 따라 검증된 RetrievalSearcher를 엽니다."""
+    """현재 service-facing active Generation 집합에 맞는 RetrievalSearcher를 엽니다."""
 
     return load_retrieval_searcher(
-        active_retrieval_artifact_dir(state, retrieval_artifact_root)
+        active_retrieval_artifact_dir(
+            knowledge_database_path,
+            retrieval_artifact_root,
+        )
     )
+
+
+def _active_generation_ids(database_path: str | Path) -> frozenset[str]:
+    connection = connect_database(database_path)
+    try:
+        rows = connection.execute(
+            """
+            SELECT knowledge_generation_id
+            FROM knowledge_generation
+            WHERE state='active' AND accepted_attempt_id IS NOT NULL
+            ORDER BY knowledge_generation_id
+            """
+        ).fetchall()
+    finally:
+        connection.close()
+    return frozenset(str(row[0]) for row in rows)
+
+
+def _validate_target_generation(
+    row: sqlite3.Row | None,
+    generation_id: str,
+    jira_id: str,
+) -> None:
+    if row is None or str(row["jira_id"]) != jira_id:
+        raise KnowledgeDbError(
+            f"State와 Knowledge Generation identity가 다릅니다: {generation_id}"
+        )
+    if row["accepted_attempt_id"] is None:
+        raise KnowledgeDbError("Publish 대상 Generation에 accepted_attempt_id가 없습니다.")
+    if str(row["state"]) not in {"candidate", "active", "historical"}:
+        raise KnowledgeDbError(
+            f"Publish 가능한 Generation 상태가 아닙니다: {row['state']}"
+        )
+
+
+def _load_publish_work_for_commit(
+    connection: sqlite3.Connection,
+    work_item_id: str,
+    processing_run_id: str,
+) -> sqlite3.Row:
+    row = connection.execute(
+        """
+        SELECT work_item_id, jira_id, knowledge_generation_id,
+               last_processing_run_id, work_status, knowledge_status,
+               embedding_status, publish_status,
+               last_source_committed_run_id, last_observed_source_run_id,
+               superseded_by_work_item_id
+        FROM sync_issue_change
+        WHERE work_item_id=?
+        """,
+        (work_item_id,),
+    ).fetchone()
+    if row is None:
+        raise StalePublishWorkError(f"Publish Work를 찾을 수 없습니다: {work_item_id}")
+    valid = (
+        row["last_processing_run_id"] == processing_run_id
+        and row["work_status"] == "running"
+        and row["knowledge_status"] == "completed"
+        and row["embedding_status"] == "completed"
+        and row["publish_status"] == "running"
+        and row["last_source_committed_run_id"] is not None
+        and row["last_source_committed_run_id"] == row["last_observed_source_run_id"]
+        and row["superseded_by_work_item_id"] is None
+    )
+    if not valid:
+        raise StalePublishWorkError(
+            f"Service head commit 직전 Work가 stale입니다: {work_item_id}"
+        )
+    return row
+
+
+def _expected_generation_set_for_commit(
+    connection: sqlite3.Connection,
+    target_jira_id: str,
+    target_generation_id: str,
+) -> frozenset[str]:
+    rows = connection.execute(
+        """
+        SELECT knowledge_generation_id
+        FROM knowledge_generation
+        WHERE state='active' AND jira_id<>?
+        """,
+        (target_jira_id,),
+    ).fetchall()
+    result = {str(row[0]) for row in rows}
+    result.add(target_generation_id)
+    return frozenset(result)
+
+
+def _activate_generation(
+    connection: sqlite3.Connection,
+    generation_id: str,
+    jira_id: str,
+) -> None:
+    connection.execute(
+        """
+        UPDATE knowledge_generation
+        SET state='historical'
+        WHERE jira_id=? AND state='active' AND knowledge_generation_id<>?
+        """,
+        (jira_id, generation_id),
+    )
+    cursor = connection.execute(
+        """
+        UPDATE knowledge_generation
+        SET state='active'
+        WHERE knowledge_generation_id=?
+          AND accepted_attempt_id IS NOT NULL
+          AND state IN ('candidate','active','historical')
+        """,
+        (generation_id,),
+    )
+    if cursor.rowcount != 1:
+        raise KnowledgeDbError(f"Generation active 전환 실패: {generation_id}")
+
+
+def _mark_state_published(
+    connection: sqlite3.Connection,
+    work_item_id: str,
+    processing_run_id: str,
+    published_at: str,
+) -> None:
+    cursor = connection.execute(
+        """
+        UPDATE sync_issue_change
+        SET work_status='published', publish_status='published',
+            error_stage=NULL, error_message=NULL,
+            last_published_at=?, updated_at=?
+        WHERE work_item_id=?
+          AND last_processing_run_id=?
+          AND work_status='running'
+          AND knowledge_status='completed'
+          AND embedding_status='completed'
+          AND publish_status='running'
+          AND last_source_committed_run_id=last_observed_source_run_id
+          AND superseded_by_work_item_id IS NULL
+        """,
+        (published_at, published_at, work_item_id, processing_run_id),
+    )
+    if cursor.rowcount != 1:
+        raise StalePublishWorkError(f"State published 전환 실패: {work_item_id}")
+
+
+def _finish_publish_run(
+    connection: sqlite3.Connection,
+    processing_run_id: str,
+    finished_at: str,
+    backlog_after: int,
+) -> None:
+    cursor = connection.execute(
+        """
+        UPDATE processing_run
+        SET finished_at=?, run_status='completed',
+            published_count=1, failed_count=0, superseded_count=0,
+            backlog_after=?, error_summary=NULL
+        WHERE processing_run_id=?
+          AND run_status='running'
+          AND selected_count=1
+        """,
+        (finished_at, backlog_after, processing_run_id),
+    )
+    if cursor.rowcount != 1:
+        raise KnowledgeDbError(
+            f"Publish Processing Run finalize 실패: {processing_run_id}"
+        )
+
+
+def _finish_nonpublished_run(
+    connection: sqlite3.Connection,
+    processing_run_id: str,
+    *,
+    status: str,
+    failed_count: int,
+    superseded_count: int,
+    backlog_after: int,
+    error_summary: str | None,
+) -> None:
+    cursor = connection.execute(
+        """
+        UPDATE processing_run
+        SET finished_at=?, run_status=?,
+            published_count=0, failed_count=?, superseded_count=?,
+            backlog_after=?, error_summary=?
+        WHERE processing_run_id=? AND run_status='running'
+        """,
+        (
+            utc_now_iso(),
+            status,
+            failed_count,
+            superseded_count,
+            backlog_after,
+            error_summary,
+            processing_run_id,
+        ),
+    )
+    if cursor.rowcount != 1:
+        raise KnowledgeDbError(
+            f"Publish failure Processing Run finalize 실패: {processing_run_id}"
+        )
+
+
+def _count_publish_backlog_connection(connection: sqlite3.Connection) -> int:
+    row = connection.execute(
+        "SELECT COUNT(*) FROM (" + _PUBLISH_BACKLOG_SQL + ")"
+    ).fetchone()
+    return int(row[0]) if row is not None else 0
 
 
 def _read_jsonl(path: Path) -> list[dict[str, object]]:
@@ -613,11 +887,7 @@ def _merge_generation_rows(
         embedding_by_item[item_id] = row
 
 
-def _write_jsonl(
-    path: Path,
-    rows,
-    sort_key: str,
-) -> None:
+def _write_jsonl(path: Path, rows: Iterable[dict[str, object]], sort_key: str) -> None:
     ordered = sorted(rows, key=lambda row: str(row[sort_key]))
     path.write_text(
         "".join(
@@ -628,197 +898,106 @@ def _write_jsonl(
     )
 
 
-def _assert_atomic_journal_modes(connection: sqlite3.Connection) -> None:
-    main_mode = str(connection.execute("PRAGMA main.journal_mode").fetchone()[0]).lower()
-    state_mode = str(connection.execute("PRAGMA state_db.journal_mode").fetchone()[0]).lower()
-    if main_mode not in _ROLLBACK_JOURNAL_MODES or state_mode not in _ROLLBACK_JOURNAL_MODES:
-        raise KnowledgeDbError(
-            "Cross-DB Atomic Publish는 rollback-journal mode가 필요합니다: "
-            f"knowledge={main_mode}, state={state_mode}"
+def _write_bundle_metadata(
+    artifact_dir: Path,
+    metadata: RetrievalBundleMetadata,
+) -> None:
+    document = {
+        "processing_run_id": metadata.processing_run_id,
+        "work_item_id": metadata.work_item_id,
+        "target_knowledge_generation_id": metadata.target_knowledge_generation_id,
+        "knowledge_generation_ids": list(metadata.knowledge_generation_ids),
+        "source_work_by_generation": metadata.source_work_by_generation,
+        "faiss_index_id": metadata.faiss_index_id,
+        "vector_count": metadata.vector_count,
+        "dimension": metadata.dimension,
+        "staged_at": metadata.staged_at,
+    }
+    (artifact_dir / _BUNDLE_METADATA_FILENAME).write_text(
+        json.dumps(document, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _try_load_bundle_metadata(artifact_dir: Path) -> RetrievalBundleMetadata | None:
+    path = artifact_dir / _BUNDLE_METADATA_FILENAME
+    if not path.is_file():
+        return None
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(document, dict) or set(document) != _BUNDLE_METADATA_FIELDS:
+        return None
+    generations = document.get("knowledge_generation_ids")
+    sources = document.get("source_work_by_generation")
+    if not isinstance(generations, list) or not generations:
+        return None
+    if not all(isinstance(value, str) and value for value in generations):
+        return None
+    if not isinstance(sources, dict) or not all(
+        isinstance(key, str)
+        and isinstance(value, str)
+        and key
+        and value
+        for key, value in sources.items()
+    ):
+        return None
+    try:
+        return RetrievalBundleMetadata(
+            processing_run_id=_required_metadata_text(document, "processing_run_id"),
+            work_item_id=_required_metadata_text(document, "work_item_id"),
+            target_knowledge_generation_id=_required_metadata_text(
+                document,
+                "target_knowledge_generation_id",
+            ),
+            knowledge_generation_ids=tuple(generations),
+            source_work_by_generation=dict(sources),
+            faiss_index_id=_required_metadata_text(document, "faiss_index_id"),
+            vector_count=_required_metadata_int(document, "vector_count"),
+            dimension=_required_metadata_int(document, "dimension"),
+            staged_at=_required_metadata_text(document, "staged_at"),
         )
+    except ValueError:
+        return None
 
 
-def _load_publish_work_for_commit(
-    connection: sqlite3.Connection,
-    work_item_id: str,
-    processing_run_id: str,
-) -> sqlite3.Row:
-    row = connection.execute(
-        """
-        SELECT work_item_id, jira_id, knowledge_generation_id,
-               last_processing_run_id, work_status, knowledge_status,
-               embedding_status, publish_status,
-               last_source_committed_run_id, last_observed_source_run_id,
-               superseded_by_work_item_id
-        FROM state_db.sync_issue_change
-        WHERE work_item_id=?
-        """,
-        (work_item_id,),
-    ).fetchone()
-    if row is None:
-        raise StalePublishWorkError(f"Publish Work를 찾을 수 없습니다: {work_item_id}")
-    valid = (
-        row["last_processing_run_id"] == processing_run_id
-        and row["work_status"] == "running"
-        and row["knowledge_status"] == "completed"
-        and row["embedding_status"] == "completed"
-        and row["publish_status"] == "running"
-        and row["last_source_committed_run_id"] is not None
-        and row["last_source_committed_run_id"] == row["last_observed_source_run_id"]
-        and row["superseded_by_work_item_id"] is None
-    )
-    if not valid:
-        raise StalePublishWorkError(f"Atomic commit 직전 Work가 stale입니다: {work_item_id}")
-    return row
+def _bundle_matches_active_set(
+    artifact_dir: Path,
+    active_generations: frozenset[str],
+) -> bool:
+    try:
+        validation = validate_retrieval_artifact(artifact_dir)
+        if not validation.passed:
+            return False
+        mappings = load_retrieval_mapping(artifact_dir)
+    except (KnowledgeDbError, OSError):
+        return False
+    mapped = frozenset(row.knowledge_generation_id for row in mappings)
+    return mapped == active_generations
 
 
-def _load_generation_for_commit(
-    connection: sqlite3.Connection,
-    generation_id: str,
-    work: sqlite3.Row,
-) -> sqlite3.Row:
-    row = connection.execute(
-        """
-        SELECT knowledge_generation_id, jira_id, state, accepted_attempt_id
-        FROM knowledge_generation
-        WHERE knowledge_generation_id=?
-        """,
-        (generation_id,),
-    ).fetchone()
-    if row is None or row["jira_id"] != work["jira_id"]:
-        raise KnowledgeDbError("Atomic Publish Generation identity가 State와 다릅니다.")
-    if work["knowledge_generation_id"] != generation_id:
-        raise KnowledgeDbError("Atomic Publish State Generation checkpoint가 변경됐습니다.")
-    if row["accepted_attempt_id"] is None:
-        raise KnowledgeDbError("Atomic Publish Generation에 accepted_attempt_id가 없습니다.")
-    if row["state"] not in {"candidate", "active", "historical"}:
-        raise KnowledgeDbError(f"Atomic Publish 가능한 Generation 상태가 아닙니다: {row['state']}")
-    return row
+def _required_metadata_text(document: dict[str, object], key: str) -> str:
+    value = document.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"metadata {key}가 비어 있습니다.")
+    return value.strip()
 
 
-def _expected_generation_set_for_commit(
-    connection: sqlite3.Connection,
-    target_generation: sqlite3.Row,
-) -> frozenset[str]:
-    rows = connection.execute(
-        """
-        SELECT knowledge_generation_id
-        FROM knowledge_generation
-        WHERE state='active' AND jira_id<>?
-        """,
-        (target_generation["jira_id"],),
-    ).fetchall()
-    result = {str(row[0]) for row in rows}
-    result.add(str(target_generation["knowledge_generation_id"]))
-    return frozenset(result)
-
-
-def _activate_generation(
-    connection: sqlite3.Connection,
-    generation_id: str,
-    jira_id: str,
-) -> None:
-    connection.execute(
-        """
-        UPDATE knowledge_generation
-        SET state='historical'
-        WHERE jira_id=? AND state='active' AND knowledge_generation_id<>?
-        """,
-        (jira_id, generation_id),
-    )
-    cursor = connection.execute(
-        """
-        UPDATE knowledge_generation
-        SET state='active'
-        WHERE knowledge_generation_id=?
-          AND accepted_attempt_id IS NOT NULL
-          AND state IN ('candidate','active','historical')
-        """,
-        (generation_id,),
-    )
-    if cursor.rowcount != 1:
-        raise KnowledgeDbError(f"Generation active 전환 실패: {generation_id}")
-
-
-def _mark_state_published(
-    connection: sqlite3.Connection,
-    work_item_id: str,
-    processing_run_id: str,
-    published_at: str,
-) -> None:
-    cursor = connection.execute(
-        """
-        UPDATE state_db.sync_issue_change
-        SET work_status='published',
-            publish_status='published',
-            error_stage=NULL,
-            error_message=NULL,
-            last_published_at=?,
-            updated_at=?
-        WHERE work_item_id=?
-          AND last_processing_run_id=?
-          AND work_status='running'
-          AND knowledge_status='completed'
-          AND embedding_status='completed'
-          AND publish_status='running'
-          AND last_source_committed_run_id=last_observed_source_run_id
-          AND superseded_by_work_item_id IS NULL
-        """,
-        (published_at, published_at, work_item_id, processing_run_id),
-    )
-    if cursor.rowcount != 1:
-        raise StalePublishWorkError(f"State published 전환 실패: {work_item_id}")
-
-
-def _count_publish_backlog_in_transaction(connection: sqlite3.Connection) -> int:
-    row = connection.execute(
-        """
-        SELECT COUNT(*)
-        FROM state_db.sync_issue_change
-        WHERE last_source_committed_run_id IS NOT NULL
-          AND last_source_committed_run_id=last_observed_source_run_id
-          AND work_status IN ('pending','failed')
-          AND knowledge_status='completed'
-          AND embedding_status='completed'
-          AND publish_status IN ('pending','failed')
-          AND superseded_by_work_item_id IS NULL
-        """
-    ).fetchone()
-    return int(row[0]) if row is not None else 0
-
-
-def _finish_publish_run_in_transaction(
-    connection: sqlite3.Connection,
-    processing_run_id: str,
-    finished_at: str,
-    backlog_after: int,
-) -> None:
-    cursor = connection.execute(
-        """
-        UPDATE state_db.processing_run
-        SET finished_at=?,
-            run_status='completed',
-            published_count=1,
-            failed_count=0,
-            superseded_count=0,
-            backlog_after=?,
-            error_summary=NULL
-        WHERE processing_run_id=?
-          AND run_status='running'
-          AND selected_count=1
-        """,
-        (finished_at, backlog_after, processing_run_id),
-    )
-    if cursor.rowcount != 1:
-        raise KnowledgeDbError(
-            f"Atomic Publish Processing Run finalize 실패: {processing_run_id}"
-        )
+def _required_metadata_int(document: dict[str, object], key: str) -> int:
+    value = document.get(key)
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise ValueError(f"metadata {key}가 잘못됐습니다.")
+    return value
 
 
 __all__ = [
     "AtomicPublishResult",
     "OperationalPublishRunResult",
     "OperationalPublishWorker",
+    "PublishedHeadCheckpointError",
+    "RetrievalBundleMetadata",
+    "SnapshotChangedPublishError",
     "StalePublishWorkError",
     "active_retrieval_artifact_dir",
     "load_active_retrieval_searcher",
