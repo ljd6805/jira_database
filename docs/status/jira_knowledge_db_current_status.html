@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Jira Knowledge DB 현재 상태. Real Loop A와 Real OpenCode Knowledge Smoke PASS, Skill-load trace와 Real BGE-M3 및 Atomic Publish의 남은 Gate를 구분한다.">
+  <meta name="description" content="Jira Knowledge DB 현재 상태. Real Loop A와 Real OpenCode Knowledge는 PASS, Real Incremental BGE-M3는 Incremental Knowledge DB materializer 계약 drift로 BLOCKED 상태임을 기록한다.">
   <title>Jira Knowledge DB · Current Status</title>
   <link rel="stylesheet" href="milestone.css">
   <style>
@@ -29,20 +29,20 @@
 
 <header class="hero">
   <span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-09-01</span>
-  <h1>Real Loop A와 Real OpenCode Knowledge까지<br>실제 사내 환경에서 통과했습니다.</h1>
-  <p>M0~M11 Functional MVP는 <strong>DONE / PASS</strong>입니다. 운영 구조는 <strong>Two-Loop + D10 Latest-Only + Operational State 개정 3</strong>이며, 공식 운영 검증 정책은 <strong>Fresh Bootstrap</strong>입니다. 2026-09-01 Linux Smoke에서 실제 Jira Source Sync와 실제 OpenCode Knowledge checkpoint까지 확인했습니다.</p>
-  <span class="state">G1 REAL LOOP A PASS · G2 KNOWLEDGE PATH PASS · SKILL TRACE PENDING · REAL BGE-M3 NEXT</span>
+  <h1>G1과 G2는 실제 환경 PASS,<br>G3는 코드 계약 drift에서 BLOCKED입니다.</h1>
+  <p>M0~M11 Functional MVP는 <strong>DONE / PASS</strong>입니다. 운영 구조는 <strong>Two-Loop + D10 Latest-Only + Operational State 개정 3</strong>이며 공식 검증 정책은 <strong>Fresh Bootstrap</strong>입니다. 실제 Jira Source Sync와 실제 OpenCode Knowledge checkpoint까지는 통과했고, Real BGE-M3 테스트는 BGE endpoint 호출 전에 Incremental Knowledge DB materializer의 기존 구현 불일치에서 중단됐습니다.</p>
+  <span class="state">G1 PASS · G2 KNOWLEDGE PATH PASS · G3 BLOCKED BEFORE BGE-M3 CALL · G4 NOT IMPLEMENTED</span>
 </header>
 
-<section><h2>1. 지금 가장 중요한 상태</h2>
-<table><thead><tr><th>Gate</th><th>무엇을 확인했나</th><th>현재</th></tr></thead><tbody>
+<section><h2>1. Gate 상태</h2>
+<table><thead><tr><th>Gate</th><th>확인 내용</th><th>현재</th></tr></thead><tbody>
 <tr><td>G1 · Real Loop A</td><td>실제 Jira → RAW / ANALYSIS / Knowledge Input → SOURCE_COMMITTED → Source Ready</td><td><strong>PASS</strong></td></tr>
-<tr><td>Crash / Stale Recovery</td><td>중단된 <code>running</code> Work와 Processing Run을 자동 복구하고 같은 Work를 재처리</td><td><strong>PASS</strong></td></tr>
-<tr><td>G2 · Real OpenCode Knowledge Path</td><td>Source-ready Work 1건 → OpenCode → Knowledge / Review → checkpoint</td><td><strong>PASS</strong></td></tr>
-<tr><td>실제 Skill-load trace</td><td><code>jira-knowledge-extraction</code> Skill tool이 실제 로드됐다는 OpenCode trace 증거</td><td><strong>PENDING</strong></td></tr>
-<tr><td>G3 · Real Incremental BGE-M3</td><td>새 운영 경로의 Knowledge를 실제 사내 BGE-M3 endpoint로 embedding</td><td><strong>PENDING</strong></td></tr>
-<tr><td>G4 · Atomic Publish</td><td>FAISS / mapping / manifest를 일관된 published bundle로 전환</td><td><strong>NOT IMPLEMENTED</strong></td></tr>
-<tr><td>Continuous Scheduling</td><td>사람이 runner를 실행하지 않아도 두 Loop를 자동 기동</td><td><strong>NOT IMPLEMENTED</strong></td></tr>
+<tr><td>Crash / Stale Recovery</td><td>중단된 running Work와 Processing Run 자동 복구 후 재처리</td><td><strong>PASS</strong></td></tr>
+<tr><td>G2 · Real OpenCode Knowledge Path</td><td>Source-ready Work → OpenCode 1.18.17 + CodeLLMPro → Knowledge / Review checkpoint</td><td><strong>PASS</strong></td></tr>
+<tr><td>실제 Skill-load trace</td><td><code>jira-knowledge-extraction</code> 실제 load trace의 별도 보존</td><td><strong>PENDING</strong></td></tr>
+<tr><td>G3 · Real Incremental BGE-M3</td><td>Knowledge DB materialize → 실제 사내 BGE-M3 → embedding artifact</td><td><strong>BLOCKED</strong><br>Incremental Knowledge DB materializer 계약 drift</td></tr>
+<tr><td>G4 · Atomic Publish</td><td>FAISS / mapping / manifest coherent published bundle</td><td><strong>NOT IMPLEMENTED</strong></td></tr>
+<tr><td>Continuous Scheduling</td><td>Loop A/B 자동 기동</td><td><strong>NOT IMPLEMENTED</strong></td></tr>
 </tbody></table></section>
 
 <section><h2>2. 시작 정책 · Fresh Bootstrap</h2>
@@ -52,87 +52,77 @@
 </div>
 <p><a href="../architecture/jira_operational_fresh_bootstrap_smoke_policy.html">Fresh Bootstrap / Smoke 정책 상세</a></p></section>
 
-<section><h2>3. 2026-09-01 Real Knowledge Smoke 실제 결과</h2>
+<section><h2>3. G2 실제 성공 기록</h2>
 <div class="flow">KNOWLEDGE_WORKER = CHECKPOINTED
 processing_run_id = pr_46868fc5384a4f6692ce2181a24a02a0
-stale_after_seconds = 0
 stale_recovered_work_count = 1
 stale_recovered_processing_run_count = 1
 selected_count = 1
 knowledge_completed_count = 1
 failed_count = 0
-superseded_count = 0
 knowledge_backlog_before = 1
 knowledge_backlog_after = 0
 model_profile = internal-opencode-knowledge-v1
-opencode_model = codemate/CodeLLMPro
-next_stage = Embedding / Publish</div>
-<div class="grid2">
-  <div class="box good"><b>무엇이 증명됐나?</b><p>실제 Source-ready latest Work가 backlog에서 선택됐고, 이전 stale <code>running</code> 상태를 자동 복구한 뒤 Knowledge checkpoint까지 완료했습니다.</p></div>
-  <div class="box good"><b>실제 Runtime</b><p>Linux 서버의 OpenCode 1.18.17에서 <code>codemate/CodeLLMPro</code>를 명시해 실행했습니다.</p></div>
-  <div class="box good"><b>Backlog</b><p><code>knowledge_backlog_before=1 → after=0</code>이므로 이번 Knowledge backlog 1건이 실제로 소진됐습니다.</p></div>
-  <div class="box warn"><b>아직 증명하지 않은 것</b><p>Worker 정의상 Skill 사용은 REQUIRED지만, 실제 OpenCode trace에서 <code>jira-knowledge-extraction</code> load를 별도 증거로 보존하지 않았습니다.</p></div>
-</div></section>
+opencode_model = codemate/CodeLLMPro</div></section>
 
-<section><h2>4. Smoke 중 실제로 발견하고 고친 운영 문제</h2>
-<div class="flow">① python-dotenv stdin 자동탐색 문제
-→ .env 경로 명시
+<section><h2>4. G3 테스트에서 새로 발견한 결함</h2>
+<div class="flow">G3 준비
+→ data_smoke Knowledge checkpoint 유지
+→ IncrementalKnowledgeDbMaterializer import
+→ ImportError
 
-② LLM 장애 후 Work 재시도
-→ 정상 failed backlog 확인
+ImportError:
+cannot import name '_insert_source_custom_field_definition'
+from jira_collector.knowledge_db.loader
 
-③ Worker 비정상 종료
-→ work_status / knowledge_status = running 고착 발견
-→ stale in-flight recovery 구현
+추가 대조 결과
+1. incremental.py
+   _insert_source_custom_field_definition/value 사용
+   ↕
+   loader.py
+   _insert_custom_field_catalog/value 존재
 
-④ headless OpenCode model 불명확
-→ model_profile과 opencode_model 분리
-→ codemate/CodeLLMPro 명시
+2. incremental.py
+   self._upsert_issue(connection, source_run_id, package)
+   반환 jira_id 기대
+   ↕
+   loader.py
+   _upsert_issue(connection, row) -> None
 
-⑤ CodeLLMPro의 불필요한 Bash workspace preflight
-→ permission을 풀지 않고 Agent tool discipline 강화
+3. incremental.py
+   self._ensure_issue_version(connection, source_run_id, jira_id, package)
+   반환 version_id 기대
+   ↕
+   loader.py
+   _ensure_issue_version(connection, run_id, issue_key, version_id, package) -> None</div>
+<div class="box warn"><b>판정</b><p>단순 환경 문제나 BGE-M3 장애가 아닙니다. <strong>Incremental Materializer와 현재 base loader 사이의 기존 코드 계약 drift</strong>입니다. Real G3에서는 BGE-M3 endpoint가 아직 한 번도 호출되지 않았습니다.</p></div>
+<div class="box good"><b>데이터 안전성</b><p>실패가 Python import 단계에서 발생했으므로 기존 <code>data_smoke</code>의 G1/G2 성공 artifact와 State checkpoint는 그대로 유지합니다. <code>embedding_status</code>도 아직 변경하지 않았습니다.</p></div></section>
 
-⑥ data_smoke가 OpenCode Glob에서 보이지 않음
-→ .ignore에 data_smoke/knowledge_input, data_smoke/knowledge만 선택적으로 재노출
-→ Per-Work Orchestrator의 input rediscovery 제거</div>
-<p>이 문제들은 단순 테스트 편의 수정이 아니라 <strong>정식 운영 전에 필요한 복구성·재현성·보안 경계</strong>를 실제 Smoke에서 검증한 결과입니다.</p></section>
-
-<section><h2>5. model_profile과 opencode_model</h2>
-<div class="grid2">
-  <div class="box"><b>model_profile</b><p><code>internal-opencode-knowledge-v1</code></p><p>Knowledge Generation의 논리적 구성 identity입니다. Skill / Agent / Schema / Runtime 계약을 묶어 표현합니다.</p></div>
-  <div class="box"><b>opencode_model</b><p><code>codemate/CodeLLMPro</code></p><p>실제 <code>opencode run --model</code>에 전달되는 Runtime LLM ID입니다.</p></div>
-</div></section>
+<section><h2>5. 왜 기존 CI가 잡지 못했나?</h2>
+<p>기존 Embedding 자동 테스트는 준비된 Knowledge DB와 fake OpenAI-compatible embedding client를 사용해 Embedding Worker 자체를 검증했습니다. 반면 실제 G3 앞단인 <code>IncrementalKnowledgeDbMaterializer</code>를 import하고 현재 <code>loader.py</code>와 end-to-end로 연결하는 회귀 테스트가 없었습니다. 따라서 <strong>Embedding Worker CI PASS와 Real G3 준비 경로 PASS는 같은 의미가 아니었습니다.</strong></p></section>
 
 <section><h2>6. 현재 구현 경로</h2>
 <div class="flow">Loop A · IMPLEMENTED / CI PASS / REAL SMOKE PASS
-Jira → Delta / semantic_v2 → SOURCE_COMMITTED
-→ Watermark + Source Ready
-→ Latest-Only sync_issue_change backlog
+Jira → Source Ready
 
-Loop B Knowledge · IMPLEMENTED / CI PASS / REAL KNOWLEDGE PATH PASS
-latest Work → stale recovery → OpenCode CodeLLMPro
-→ Worker / Skill contract / Validator / Reviewer
-→ canonical Knowledge → knowledge_status completed
+Loop B Knowledge · IMPLEMENTED / CI PASS / REAL PATH PASS
+Source Ready → OpenCode → Knowledge checkpoint
 
-Loop B Knowledge DB · IMPLEMENTED / CI PASS
-→ Issue Version / Generation / Attempt / Item / Evidence / Review
+Incremental Knowledge DB materializer
+→ REAL G3에서 계약 drift 발견
+→ 현재 BLOCKED
 
-Loop B Incremental Embedding · IMPLEMENTED / CI PASS
-→ accepted Item corpus → BGE-M3 → latestness check
-→ atomic staging → embedding_status completed
+Operational Embedding Worker
+→ fake client 기반 CI PASS
+→ 실제 BGE-M3 호출은 아직 미실행
 
-NEXT REAL GATE
-→ 실제 사내 BGE-M3 endpoint로 G3 Smoke
-
-NEXT IMPLEMENTATION
-→ FAISS / mapping / manifest staging
-→ coherent Atomic Publish
-→ State published</div>
+Atomic Publish
+→ NOT IMPLEMENTED</div>
 <p><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현 보고서</a> · <a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge 구현 보고서</a> · <a href="../architecture/jira_loop_b_opencode_automation_easy_guide.html">Loop B OpenCode 자동화 쉬운 가이드</a></p></section>
 
-<section><h2>7. 다음 액션</h2>
-<div class="box next"><b>다음은 G3 · Real Incremental BGE-M3</b><p>현재 <code>data_smoke</code>와 완료된 Knowledge checkpoint를 그대로 유지한 채, 실제 사내 BGE-M3 endpoint로 Incremental Embedding 1건을 실행합니다. 성공하면 corpus / embedding artifact / <code>embedding_status=completed</code>를 확인합니다.</p></div>
-<div class="box warn"><b>주의</b><p>아직 Atomic Publish가 없으므로 G3가 성공해도 “운영 서비스 전체 완료”라고 표현하지 않습니다.</p></div></section>
+<section><h2>7. 다음 세션 시작점</h2>
+<div class="box next"><b>새 구현 세션에서 먼저 할 일</b><p><code>IncrementalKnowledgeDbMaterializer</code>와 현재 <code>KnowledgeDbMaterializer</code> 계약을 정렬하고, 실제 import + materialize_work 회귀 테스트를 추가합니다. 그 테스트가 PASS한 뒤 현재 <code>data_smoke</code>를 지우지 않고 G3 Real BGE-M3를 다시 실행합니다.</p></div>
+<div class="box warn"><b>이번 세션에서는 여기서 종료</b><p>사용자 결정에 따라 Atomic Publish나 새로운 CLI/worker 구현은 진행하지 않습니다. 이번 세션은 G3 BLOCKED 원인 확인까지로 마감합니다.</p></div></section>
 
-<footer>Current Status · Fresh Bootstrap · State Schema 개정 3 · G1 PASS · Real OpenCode Knowledge Path PASS · Skill trace PENDING · Real BGE-M3 NEXT · 2026-09-01</footer>
+<footer>Current Status · Fresh Bootstrap · State Schema 개정 3 · G1 PASS · G2 PASS · G3 BLOCKED BEFORE BGE-M3 · G4 NOT IMPLEMENTED · 2026-09-01</footer>
 </main></body></html>
