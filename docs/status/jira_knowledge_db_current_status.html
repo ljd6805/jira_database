@@ -31,7 +31,7 @@
   <span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-09-01</span>
   <h1>G1과 G2는 실제 환경 PASS,<br>G3는 코드 계약 drift에서 BLOCKED입니다.</h1>
   <p>M0~M11 Functional MVP는 <strong>DONE / PASS</strong>입니다. 운영 구조는 <strong>Two-Loop + D10 Latest-Only + Operational State 개정 3</strong>이며 공식 검증 정책은 <strong>Fresh Bootstrap</strong>입니다. 실제 Jira Source Sync와 실제 OpenCode Knowledge checkpoint까지는 통과했고, Real BGE-M3 테스트는 BGE endpoint 호출 전에 Incremental Knowledge DB materializer의 기존 구현 불일치에서 중단됐습니다.</p>
-  <span class="state">G1 PASS · G2 KNOWLEDGE PATH PASS · G3 BLOCKED BEFORE BGE-M3 CALL · G4 NOT IMPLEMENTED</span>
+  <span class="state">G1 PASS · G2 KNOWLEDGE PATH PASS · G3 BLOCKED BEFORE BGE-M3 CALL · ATOMIC PUBLISH NEXT AFTER G3</span>
 </header>
 
 <section><h2>1. Gate 상태</h2>
@@ -41,7 +41,7 @@
 <tr><td>G2 · Real OpenCode Knowledge Path</td><td>Source-ready Work → OpenCode 1.18.17 + CodeLLMPro → Knowledge / Review checkpoint</td><td><strong>PASS</strong></td></tr>
 <tr><td>실제 Skill-load trace</td><td><code>jira-knowledge-extraction</code> 실제 load trace의 별도 보존</td><td><strong>PENDING</strong></td></tr>
 <tr><td>G3 · Real Incremental BGE-M3</td><td>Knowledge DB materialize → 실제 사내 BGE-M3 → embedding artifact</td><td><strong>BLOCKED</strong><br>Incremental Knowledge DB materializer 계약 drift</td></tr>
-<tr><td>G4 · Atomic Publish</td><td>FAISS / mapping / manifest coherent published bundle</td><td><strong>NOT IMPLEMENTED</strong></td></tr>
+<tr><td>G4 · Atomic Publish</td><td>FAISS / mapping / manifest coherent published bundle</td><td><strong>NOT IMPLEMENTED · NEXT after G3</strong></td></tr>
 <tr><td>Continuous Scheduling</td><td>Loop A/B 자동 기동</td><td><strong>NOT IMPLEMENTED</strong></td></tr>
 </tbody></table></section>
 
@@ -104,6 +104,7 @@ from jira_collector.knowledge_db.loader
 <section><h2>6. 현재 구현 경로</h2>
 <div class="flow">Loop A · IMPLEMENTED / CI PASS / REAL SMOKE PASS
 Jira → Source Ready
+→ Latest-Only sync_issue_change backlog
 
 Loop B Knowledge · IMPLEMENTED / CI PASS / REAL PATH PASS
 Source Ready → OpenCode → Knowledge checkpoint
@@ -117,12 +118,13 @@ Operational Embedding Worker
 → 실제 BGE-M3 호출은 아직 미실행
 
 Atomic Publish
-→ NOT IMPLEMENTED</div>
+→ NEXT implementation stage after G3
+→ 현재 NOT IMPLEMENTED</div>
 <p><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현 보고서</a> · <a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge 구현 보고서</a> · <a href="../architecture/jira_loop_b_opencode_automation_easy_guide.html">Loop B OpenCode 자동화 쉬운 가이드</a></p></section>
 
 <section><h2>7. 다음 세션 시작점</h2>
 <div class="box next"><b>새 구현 세션에서 먼저 할 일</b><p><code>IncrementalKnowledgeDbMaterializer</code>와 현재 <code>KnowledgeDbMaterializer</code> 계약을 정렬하고, 실제 import + materialize_work 회귀 테스트를 추가합니다. 그 테스트가 PASS한 뒤 현재 <code>data_smoke</code>를 지우지 않고 G3 Real BGE-M3를 다시 실행합니다.</p></div>
-<div class="box warn"><b>이번 세션에서는 여기서 종료</b><p>사용자 결정에 따라 Atomic Publish나 새로운 CLI/worker 구현은 진행하지 않습니다. 이번 세션은 G3 BLOCKED 원인 확인까지로 마감합니다.</p></div></section>
+<div class="box warn"><b>Atomic Publish는 그 다음 NEXT</b><p>G3가 먼저 통과해야 합니다. 이번 세션에서는 Atomic Publish나 새로운 CLI/worker 구현은 진행하지 않습니다.</p></div></section>
 
-<footer>Current Status · Fresh Bootstrap · State Schema 개정 3 · G1 PASS · G2 PASS · G3 BLOCKED BEFORE BGE-M3 · G4 NOT IMPLEMENTED · 2026-09-01</footer>
+<footer>Current Status · Fresh Bootstrap · State Schema 개정 3 · G1 PASS · G2 PASS · G3 BLOCKED BEFORE BGE-M3 · Atomic Publish NEXT AFTER G3 · 2026-09-01</footer>
 </main></body></html>
