@@ -3,11 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="State WAL 정책을 유지하면서 Knowledge active Generation과 immutable FAISS Retrieval bundle을 coherent service head로 전환하는 G4 Atomic Publish 설계와 실패 복구 규칙.">
+  <meta name="description" content="State WAL을 유지하면서 Knowledge active Generation과 immutable FAISS Retrieval bundle을 coherent service head로 전환하고 MCP 요청 단위 snapshot으로 읽는 G4 Atomic Publish 설계.">
   <title>G4 Atomic Publish Protocol · Easy Architecture Guide</title>
   <link rel="stylesheet" href="../status/milestone.css">
-  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
-  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
   <style>
     .grid2,.grid3,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}
     .box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.bad{border-left:5px solid #b43b3b;background:#fff2f2}.info{border-left:5px solid #3569c8;background:#eef4ff}.flow{white-space:pre-wrap}
@@ -15,6 +13,8 @@
     .step{font-size:2rem;font-weight:900}.mini{font-size:.92rem;color:#516174}.center{text-align:center}.arrow{font-size:1.7rem;font-weight:900}
     code{word-break:break-word}@media(max-width:900px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
   </style>
+  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
 </head>
 <body><main class="wrap">
 <nav class="top">
@@ -27,102 +27,104 @@
 <header class="hero">
   <span class="eyebrow">G4 · OPERATIONAL PUBLISH · 2026-09-01</span>
   <h1>Atomic Publish를<br>아주 쉽게 이해하기</h1>
-  <p>G3까지 만든 Knowledge와 Embedding은 아직 <strong>candidate</strong>입니다. G4의 역할은 검증된 새 Knowledge와 새 FAISS Retrieval bundle을 <strong>사용자에게 서로 어긋나지 않는 한 세트처럼 보이게 전환</strong>하는 것입니다.</p>
-  <span class="state">IMPLEMENTED · STATE WAL PRESERVED · IMMUTABLE RETRIEVAL BUNDLE · FAIL-CLOSED · RETRYABLE</span>
+  <p>G3까지 만든 Knowledge와 Embedding은 아직 <strong>candidate</strong>입니다. G4는 검증된 새 Knowledge와 새 FAISS Retrieval bundle을 <strong>서로 같은 버전 묶음으로 서비스에 공개</strong>합니다.</p>
+  <span class="state">IMPLEMENTED · STATE WAL PRESERVED · IMMUTABLE RETRIEVAL BUNDLE · REQUEST-PINNED MCP SNAPSHOT · RETRYABLE</span>
 </header>
 
-<section><h2>1. Atomic Publish를 한 문장으로</h2>
-<div class="box info"><p class="step">“새 책과 새 색인을 같이 공개한다.”</p><p>Knowledge DB를 <strong>책 본문</strong>, FAISS를 <strong>책의 색인</strong>이라고 생각하면 쉽습니다. 본문은 새 버전인데 색인이 옛 버전이거나, 색인은 새 버전인데 본문이 아직 candidate라면 검색 결과가 깨집니다. G4는 이 두 가지가 항상 같은 Generation 집합을 가리키게 합니다.</p></div>
-<div class="flow">G3 종료 상태
+<section><h2>1. 한 문장으로: 새 책과 새 색인을 같이 공개한다</h2>
+<div class="box info"><p class="step">본문과 색인이 서로 다른 버전이면 검색은 깨집니다.</p><p>Knowledge DB를 <strong>책 본문</strong>, FAISS를 <strong>색인</strong>이라고 생각하면 쉽습니다. 새 본문을 공개했는데 색인은 옛 버전이거나, 새 색인이 아직 candidate 본문을 가리키면 안 됩니다.</p></div>
+<div class="flow">G3 종료
 
-Knowledge DB                         Retrieval
+Knowledge DB                         Embedding
 ┌─────────────────────────┐          ┌─────────────────────────┐
-│ Generation = candidate  │          │ BGE-M3 vectors ready    │
-│ accepted_attempt_id ✓   │          │ 아직 service head 아님  │
+│ Generation = candidate  │          │ BGE-M3 vector ready     │
+│ accepted_attempt_id ✓   │          │ 1024-d 검증 완료         │
 └─────────────────────────┘          └─────────────────────────┘
              │                                  │
              └──────────── G4 Publish ──────────┘
                               │
                               ▼
-                 coherent service-facing head
-
 Knowledge DB                         Retrieval
 ┌─────────────────────────┐          ┌─────────────────────────┐
-│ Generation = active     │◀────────▶│ 같은 active Generation │
-└─────────────────────────┘          │ 집합의 immutable bundle │
-                                     └─────────────────────────┘</div></section>
+│ Generation = active     │◀────────▶│ 같은 Generation 집합의 │
+│ old active = historical │          │ immutable FAISS bundle │
+└─────────────────────────┘          └─────────────────────────┘</div></section>
 
-<section><h2>2. 왜 단순히 “순서대로 3개 실행”하면 안 되나?</h2>
+<section><h2>2. 왜 단순히 순서대로 바꾸면 안 되나?</h2>
 <div class="grid2">
-  <div class="box bad"><b>Knowledge를 먼저 active</b><p>FAISS가 아직 옛 bundle이면 검색 후보와 Evidence Resolver가 서로 다른 Generation을 봅니다.</p></div>
-  <div class="box bad"><b>FAISS를 먼저 새 것으로 교체</b><p>FAISS가 아직 candidate Generation을 가리키면 Evidence Resolver는 active가 아니므로 결과를 정상 Evidence로 열 수 없습니다.</p></div>
+  <div class="box bad"><b>Knowledge를 먼저 active</b><p>서비스가 옛 FAISS를 계속 사용하면 검색 후보는 옛 Generation인데 Evidence Resolver는 새 active만 허용하게 됩니다.</p></div>
+  <div class="box bad"><b>FAISS를 먼저 교체</b><p>새 FAISS가 아직 candidate Generation을 가리키면 검색 후보를 active Knowledge로 정상 복원할 수 없습니다.</p></div>
 </div>
-<p>따라서 “A 먼저, B 나중”의 순서 문제가 아니라 <strong>둘을 같은 service head로 식별하는 규칙</strong>이 필요합니다.</p></section>
+<p>즉 A→B 순서를 고르는 문제가 아니라, <strong>Knowledge와 Retrieval이 같은 Generation 집합이라는 사실을 하나의 서비스 head 규칙으로 만들어야</strong> 합니다.</p></section>
 
-<section><h2>3. 처음 시도했던 설계와 왜 폐기했나?</h2>
-<div class="box warn"><b>초기 아이디어</b><p>Knowledge DB와 State DB를 SQLite <code>ATTACH DATABASE</code>로 한 connection에 붙이고, Generation active 전환과 State published를 하나의 cross-database transaction으로 commit하려 했습니다.</p></div>
-<div class="flow">[처음 생각]
+<section><h2>3. 처음 시도한 ATTACH 설계는 왜 폐기했나?</h2>
+<div class="box warn"><b>초기 아이디어</b><p>Knowledge DB와 State DB를 SQLite <code>ATTACH DATABASE</code>로 붙여 Generation active 전환과 State published를 한 transaction에서 commit하려 했습니다.</p></div>
+<div class="flow">처음 생각
 Knowledge DB ─┐
-              ├─ ATTACH + 하나의 COMMIT → 완벽한 Atomic?
+              ├─ ATTACH + COMMIT → 두 DB 모두 Atomic?
 State DB ─────┘</div>
-<div class="box bad"><b>실제 CI가 설계 문제를 발견</b><p>State Schema 개정 3은 새 DB를 의도적으로 <strong>WAL journal mode</strong>로 만듭니다. SQLite 공식 문서상 여러 attached DB의 crash-safe atomic commit은 main DB가 WAL이 아닐 때 보장됩니다. 즉 테스트를 통과시키려고 State를 DELETE mode로 바꾸면 기존 운영 정책을 훼손하는 셈입니다.</p></div>
-<table><thead><tr><th>선택지</th><th>판단</th><th>이유</th></tr></thead><tbody>
-<tr><td>테스트에서 WAL 끄기</td><td><strong>폐기</strong></td><td>실제 운영과 다른 테스트가 되어 결함을 숨김</td></tr>
-<tr><td>운영 State를 DELETE journal로 변경</td><td><strong>폐기</strong></td><td>G4 때문에 이미 정한 State WAL 정책을 흔들 이유가 없음</td></tr>
-<tr><td>Cross-DB transaction에 의존하지 않는 프로토콜</td><td><strong>채택</strong></td><td>State WAL을 그대로 유지하면서 fail-closed / retry 가능</td></tr>
+<div class="box bad"><b>CI가 실제 구조와의 충돌을 발견했습니다.</b><p>Operational State 개정 3은 의도적으로 <strong>WAL journal mode</strong>를 사용합니다. SQLite 공식 문서상 여러 attached DB의 crash-safe atomic commit은 WAL이 아닌 rollback-journal 조건이 필요합니다. 따라서 테스트를 통과시키기 위해 WAL을 끄는 것은 잘못된 해결책입니다.</p></div>
+<table><thead><tr><th>선택</th><th>판단</th><th>이유</th></tr></thead><tbody>
+<tr><td>테스트에서 State WAL 끄기</td><td><strong>폐기</strong></td><td>운영과 다른 테스트가 되어 결함을 숨김</td></tr>
+<tr><td>State 운영 정책을 DELETE journal로 변경</td><td><strong>폐기</strong></td><td>G4 때문에 이미 결정한 State 정책을 흔들 이유가 없음</td></tr>
+<tr><td>Cross-DB transaction에 의존하지 않는 프로토콜</td><td><strong>채택</strong></td><td>WAL 유지 + fail-closed + 재시도 수렴 가능</td></tr>
 </tbody></table>
 <p class="mini">참고: SQLite 공식 문서 · <a href="https://sqlite.org/lang_attach.html">ATTACH DATABASE</a> · <a href="https://sqlite.org/tempfiles.html">Temporary Files / Super-journal</a> · <a href="https://sqlite.org/atomiccommit.html">Atomic Commit</a></p></section>
 
-<section><h2>4. 최종 G4 프로토콜 · 7단계</h2>
+<section><h2>4. 최종 G4 Publish 프로토콜</h2>
 <div class="grid4">
-  <div class="box"><div class="step">1</div><b>Publish Work claim</b><p>Knowledge/Embedding 완료 + Source Ready + latest Work 하나만 잡습니다.</p></div>
-  <div class="box"><div class="step">2</div><b>Full snapshot 계산</b><p>target Generation + 다른 Jira의 현재 active Generation 집합을 계산합니다.</p></div>
-  <div class="box"><div class="step">3</div><b>Immutable bundle staging</b><p>각 Generation의 검증된 Embedding을 합쳐 새 FAISS/index/mapping/manifest를 만듭니다.</p></div>
-  <div class="box"><div class="step">4</div><b>Integrity Gate</b><p>row 수, contract, dimension, hash, mapping, normalization, Generation 집합을 다시 검증합니다.</p></div>
+  <div class="box"><div class="step">1</div><b>Work claim</b><p>Source Ready + Knowledge 완료 + Embedding 완료 + latest Work 하나만 잡습니다.</p></div>
+  <div class="box"><div class="step">2</div><b>Full snapshot 계산</b><p>target Generation과 다른 Jira의 현재 active Generation을 합칩니다.</p></div>
+  <div class="box"><div class="step">3</div><b>Immutable staging</b><p>Generation별 검증된 Embedding을 합쳐 새 FAISS bundle을 만듭니다.</p></div>
+  <div class="box"><div class="step">4</div><b>Integrity Gate</b><p>vector, dimension, mapping, manifest, Generation 집합을 검증합니다.</p></div>
 </div>
 <div class="center arrow">↓</div>
 <div class="grid3">
-  <div class="box"><div class="step">5</div><b>Latest 재검사 + State lock</b><p><code>BEGIN IMMEDIATE</code>로 짧게 State write lock을 잡아 commit 경계에서 Source/다른 Publish 변화를 막습니다.</p></div>
-  <div class="box good"><div class="step">6</div><b>Service Head Commit</b><p>Knowledge DB 한 transaction에서 같은 Jira의 old active를 historical로 내리고 target을 active로 올립니다.</p></div>
-  <div class="box"><div class="step">7</div><b>State checkpoint</b><p>같은 State transaction에서 Work/Publish를 published로 기록하고 Processing Run을 완료합니다.</p></div>
+  <div class="box"><div class="step">5</div><b>Latest 재검사</b><p>Publish 직전에 D10 Latest-Only 조건을 다시 확인하고 State writer lock을 짧게 잡습니다.</p></div>
+  <div class="box good"><div class="step">6</div><b>Service Head Commit</b><p>Knowledge DB transaction에서 같은 Jira의 old active를 historical로 내리고 target을 active로 올립니다.</p></div>
+  <div class="box"><div class="step">7</div><b>State checkpoint</b><p>Work와 Publish를 published로 기록하고 Processing Run을 완료합니다.</p></div>
 </div>
-<div class="flow">READY WORK
+<div class="flow">publish-ready Work
    │
    ▼
-[1] claim
+claim
    │
    ▼
-[2] expected active Generation set 계산
+expected active Generation set
    │
    ▼
-[3] runs/pr_xxx/ immutable Retrieval bundle 생성
+runs/pr_xxx/ immutable Retrieval bundle 생성
    │
    ▼
-[4] FAISS + mapping + manifest + Generation set 검증
+FAISS + mapping + manifest + Generation set 검증
    │
    ▼
-[5] latest re-check + State BEGIN IMMEDIATE
+latest re-check + State BEGIN IMMEDIATE
    │
    ▼
-[6] Knowledge DB transaction
-    old active(target Jira) → historical
-    target candidate        → active   ★ SERVICE HEAD COMMIT POINT
+Knowledge DB transaction
+old active(target Jira) → historical
+target candidate        → active   ★ SERVICE HEAD COMMIT POINT
    │
    ▼
-[7] State
-    work_status    → published
-    publish_status → published
-    processing_run → completed</div></section>
+State
+work_status    → published
+publish_status → published
+processing_run → completed</div></section>
 
-<section><h2>5. “Retrieval pointer 파일”이 따로 없는 이유</h2>
-<p>G4에서는 <code>current.txt</code>나 symlink 같은 별도 mutable pointer를 만들지 않았습니다. 대신 <strong>Knowledge DB의 active Generation 집합 자체를 service head identity</strong>로 사용합니다.</p>
+<section><h2>5. Active Retrieval은 별도 pointer 파일이 아니라 Generation 집합으로 찾는다</h2>
+<p><code>current.txt</code>나 symlink 같은 mutable pointer를 따로 두지 않았습니다. <strong>Knowledge DB의 active accepted Generation ID 집합 자체가 service head identity</strong>입니다.</p>
 <div class="grid2">
-  <div class="box good"><b>Knowledge DB</b><p>현재 서비스에 노출되어야 할 Generation ID 집합을 결정합니다.</p><div class="flow">active = { kg_A2, kg_B1, kg_C4 }</div></div>
-  <div class="box good"><b>Retrieval bundle</b><p><code>publish.bundle.json</code>과 mapping의 Generation 집합이 정확히 같은 bundle만 active 후보가 됩니다.</p><div class="flow">bundle generations
+  <div class="box good"><b>Knowledge head</b><div class="flow">active accepted Generations
+= { kg_A2, kg_B1, kg_C4 }</div></div>
+  <div class="box good"><b>Retrieval head</b><div class="flow">bundle Generation set
 = { kg_A2, kg_B1, kg_C4 }
-→ MATCH → 사용 가능</div></div>
+
+mapping Generation set도 동일
++ artifact validation PASS
+→ 사용 가능</div></div>
 </div>
-<div class="box info"><b>핵심 효과</b><p>staging 파일은 먼저 만들어져도 active Generation 집합과 다르므로 서비스에 보이지 않습니다. Knowledge DB transaction이 commit되는 순간에만 그 Generation 집합과 정확히 맞는 prebuilt bundle이 존재하게 됩니다.</p></div></section>
+<div class="box info"><b>중요한 효과</b><p>staging bundle이 먼저 생성되어도 아직 active 집합과 다르면 서비스가 선택하지 않습니다. Knowledge head가 commit된 뒤에만 정확히 같은 Generation 집합의 검증 bundle이 Retrieval head가 됩니다.</p></div></section>
 
 <section><h2>6. Immutable Retrieval bundle 구조</h2>
 <div class="flow">data/retrieval/operational/
@@ -135,73 +137,79 @@ State DB ─────┘</div>
    │  ├─ faiss_manifest.json
    │  └─ publish.bundle.json
    │
-   └─ pr_new_.../                 ← 새 Publish가 만든 불변 bundle
+   └─ pr_new_.../
       ├─ source.corpus.jsonl
       ├─ source.embeddings.jsonl
       ├─ faiss.index
       ├─ faiss_mapping.jsonl
       ├─ faiss_manifest.json
       └─ publish.bundle.json</div>
-<p><code>publish.bundle.json</code>에는 Processing Run, target Work/Generation, 전체 Generation ID 집합, Generation별 source Work, FAISS index ID, vector 수, dimension, staging 시각이 기록됩니다.</p></section>
+<p><code>publish.bundle.json</code>은 Processing Run, target Work/Generation, 전체 Generation 집합, Generation별 source Work, FAISS index ID, vector 수, dimension, staging 시각을 기록합니다.</p></section>
 
-<section><h2>7. 실패 위치별로 무슨 일이 생기나?</h2>
-<table><thead><tr><th>실패 시점</th><th>남는 상태</th><th>서비스 영향</th><th>다음 실행</th></tr></thead><tbody>
-<tr><td>Bundle 생성 전/중</td><td>active Generation 변화 없음</td><td><strong>기존 서비스 그대로</strong></td><td>다시 staging</td></tr>
-<tr><td>Bundle 완료 후 Knowledge commit 전</td><td>orphan staging bundle 가능</td><td><strong>active 집합과 불일치 → 자동 무시</strong></td><td>새 bundle 재생성</td></tr>
-<tr><td>Staging 중 다른 Issue Publish 완료</td><td>예상 active set이 낡음</td><td><strong>commit 금지</strong></td><td>fail-closed 후 최신 집합으로 재시도</td></tr>
-<tr><td>Knowledge head commit 후 State checkpoint 실패</td><td>Knowledge는 새 active, State는 failed/running일 수 있음</td><td><strong>matching immutable bundle이 이미 있어 검색 head는 coherent</strong></td><td>같은 Work 재실행 → State published로 수렴</td></tr>
+<section><h2>7. 실패 위치별 결과</h2>
+<table><thead><tr><th>실패 지점</th><th>남는 상태</th><th>서비스 영향</th><th>재실행</th></tr></thead><tbody>
+<tr><td>Bundle 생성 전/중</td><td>active Generation 변화 없음</td><td><strong>기존 head 유지</strong></td><td>다시 staging</td></tr>
+<tr><td>Bundle 완료 후 Knowledge commit 전</td><td>orphan staging bundle 가능</td><td><strong>active 집합과 불일치하므로 자동 무시</strong></td><td>새 snapshot으로 재시도</td></tr>
+<tr><td>Staging 중 다른 Issue가 먼저 Publish</td><td>예상 Generation 집합이 낡음</td><td><strong>commit 거부</strong></td><td>최신 집합으로 재시도</td></tr>
+<tr><td>Knowledge head commit 후 State checkpoint 실패</td><td>Knowledge는 새 active, matching bundle은 이미 존재</td><td><strong>Retrieval/Knowledge head는 coherent</strong></td><td>같은 Work 재실행 → State가 published로 수렴</td></tr>
 <tr><td>모두 완료</td><td>Knowledge active + matching bundle + State published</td><td><strong>새 head 정상 사용</strong></td><td>다음 backlog</td></tr>
 </tbody></table></section>
 
-<section><h2>8. 왜 Full Snapshot을 다시 만들까?</h2>
-<div class="box info"><b>현재 G4는 일부러 단순하게 갑니다.</b><p>새 Jira 한 건만 바뀌어도 현재 active Generation들의 Embedding을 모아 FAISS 전체 snapshot을 다시 만듭니다. 초기 운영 규모에서는 correctness가 delta index mutation보다 중요합니다.</p></div>
+<section><h2>8. 왜 매 Publish마다 Full Snapshot을 다시 만드나?</h2>
+<div class="box info"><b>현재는 correctness를 우선합니다.</b><p>한 Jira만 바뀌어도 현재 active Generation 전체의 Embedding을 모아 새 FAISS snapshot을 만듭니다. 초기 운영 규모에서는 delta index mutation보다 검증과 복구가 단순한 구조가 더 중요합니다.</p></div>
 <div class="grid2">
-  <div class="box good"><b>장점</b><p>새 bundle 하나만 검증하면 되고, 이전 index에 잘못된 vector가 남는 문제를 피합니다. rollback/비교도 쉽습니다.</p></div>
-  <div class="box warn"><b>나중 최적화</b><p>데이터가 충분히 커져 rebuild 비용이 실제 병목으로 확인될 때만 shard/delta/compaction을 별도 설계합니다. G4에서 미리 복잡하게 만들지 않습니다.</p></div>
+  <div class="box good"><b>장점</b><p>새 bundle 하나만 검증하면 되고, 이전 index에 stale vector가 남는 문제를 피합니다. artifact 비교와 rollback 분석도 쉽습니다.</p></div>
+  <div class="box warn"><b>나중 최적화</b><p>실제 데이터 규모에서 rebuild가 병목으로 확인될 때만 shard/delta/compaction을 별도 설계합니다.</p></div>
 </div></section>
 
-<section><h2>9. MCP는 어떻게 새 head를 읽나?</h2>
-<div class="flow">MCP START
+<section><h2>9. 실행 중인 MCP는 어떻게 Publish와 충돌하지 않나?</h2>
+<div class="box warn"><b>단순 startup pin은 충분하지 않았습니다.</b><p>MCP가 옛 FAISS를 메모리에 고정한 채 Knowledge DB만 새 active로 바뀌면, 옛 검색 후보가 historical이 되어 Evidence Resolver와 어긋날 수 있습니다. 그래서 최종 구현은 <strong>요청 단위 read snapshot</strong>을 사용합니다.</p></div>
+<div class="flow">MCP search request 시작
    │
-   ├─ JIRA_KNOWLEDGE_DB_PATH
-   │      └─ active Generation set 읽기
+   ▼
+Knowledge DB BEGIN read snapshot
    │
-   └─ JIRA_RETRIEVAL_ARTIFACT_ROOT
-          └─ runs/* 중 Generation set이 정확히 같은 bundle 찾기
-                    │
-                    ▼
-             validation PASS
-                    │
-                    ▼
-             searcher + manifest pin
-                    │
-                    ▼
-                MCP READY</div>
-<div class="box good"><b>시작 시 pin</b><p>MCP가 실행 중인 한 요청 도중 manifest/index가 갑자기 바뀌지 않게, 현재 구현은 <strong>MCP 시작 시</strong> active bundle을 결정하고 고정합니다. 새 Publish를 서비스 프로세스에 반영하려면 MCP를 재시작하거나 향후 별도 safe reload를 구현합니다.</p></div>
-<div class="box warn"><b>왜 요청마다 자동 hot-reload하지 않나?</b><p>질문 embedding은 Retrieval manifest의 모델/프로필/차원과 맞아야 합니다. 한 요청 중 head가 바뀌면 query vector는 옛 contract, 검색기는 새 index를 쓰는 race가 생길 수 있습니다. G4에서는 이 복잡도를 넣지 않습니다.</p></div></section>
+   ▼
+이 snapshot이 보는 active Generation 집합 읽기
+   │
+   ▼
+정확히 같은 Generation 집합의 immutable FAISS bundle 선택
+   │
+   ├─ 같은 bundle manifest로 query embedding
+   ├─ 같은 bundle FAISS로 Top-k 검색
+   └─ 같은 Knowledge DB read snapshot으로 Evidence resolve
+   │
+   ▼
+request 완료 → read snapshot 종료</div>
+<div class="grid2">
+  <div class="box good"><b>Publish가 요청 도중 일어나면</b><p>이미 시작된 요청은 SQLite WAL read snapshot 덕분에 끝까지 <strong>옛 Knowledge + 옛 FAISS</strong>를 같이 봅니다.</p></div>
+  <div class="box good"><b>다음 요청부터</b><p>새 read snapshot은 <strong>새 active Generation + 새 FAISS bundle</strong>을 선택합니다. MCP 프로세스 재시작은 G4의 필수조건이 아닙니다.</p></div>
+</div>
+<p><code>JIRA_RETRIEVAL_ARTIFACT_ROOT</code>가 이 운영 모드를 사용합니다. 기존 <code>JIRA_RETRIEVAL_ARTIFACT_DIR</code> 직접 지정 방식은 M9/M11 호환 경로로 유지합니다.</p></section>
 
-<section><h2>10. CI가 직접 검증하는 시나리오</h2>
+<section><h2>10. 자동 테스트가 직접 검증하는 시나리오</h2>
 <div class="grid3">
-  <div class="box good"><b>Initial Publish</b><p>첫 candidate → active, State published, 실제 FAISS search까지 확인합니다.</p></div>
-  <div class="box good"><b>Full Snapshot</b><p>A+B active 뒤 A v2 Publish 시 A v1이 빠지고 A v2+B만 남는지 확인합니다.</p></div>
-  <div class="box good"><b>WAL Preserve</b><p>Publish 전후 State journal mode가 계속 WAL인지 확인합니다.</p></div>
-  <div class="box good"><b>Checkpoint Failure</b><p>Knowledge commit 직후 State 실패를 강제로 만들고 재실행이 published로 수렴하는지 확인합니다.</p></div>
-  <div class="box good"><b>Concurrent Publish Race</b><p>Staging 도중 다른 Issue가 Publish되면 낡은 snapshot을 거부하고 재시도하는지 확인합니다.</p></div>
-  <div class="box good"><b>Idempotency</b><p>이미 처리된 backlog에서 worker를 다시 실행해도 중복 Publish가 생기지 않는지 확인합니다.</p></div>
+  <div class="box good"><b>Initial Publish</b><p>첫 candidate → active, State published, 실제 FAISS search를 확인합니다.</p></div>
+  <div class="box good"><b>Full Snapshot</b><p>A+B active 뒤 A v2 Publish 시 A v1은 빠지고 A v2+B만 남습니다.</p></div>
+  <div class="box good"><b>WAL Preserve</b><p>Publish 전후 State journal mode가 WAL인지 확인합니다.</p></div>
+  <div class="box good"><b>Checkpoint Failure</b><p>Knowledge commit 뒤 State 실패를 강제로 만들고 재실행이 published로 수렴하는지 확인합니다.</p></div>
+  <div class="box good"><b>Concurrent Publish Race</b><p>staging 중 다른 Issue Publish로 snapshot이 낡으면 commit을 거부하고 재시도합니다.</p></div>
+  <div class="box good"><b>MCP Mid-request Switch</b><p>요청 중 writer가 active Generation을 바꿔도 현재 요청이 기존 read snapshot으로 Evidence를 정상 복원하는지 검증합니다.</p></div>
 </div></section>
 
-<section><h2>11. 현재 결정사항 요약</h2>
+<section><h2>11. 최종 결정사항</h2>
 <table><thead><tr><th>항목</th><th>결정</th></tr></thead><tbody>
 <tr><td>State journal mode</td><td><strong>WAL 유지</strong></td></tr>
 <tr><td>State Schema</td><td><strong>개정 3 유지 · G4용 schema bump 없음</strong></td></tr>
 <tr><td>Cross-DB ATTACH atomic commit</td><td><strong>사용하지 않음</strong></td></tr>
 <tr><td>Retrieval artifact</td><td>Processing Run별 immutable full snapshot</td></tr>
 <tr><td>Service head identity</td><td>Knowledge DB의 active accepted Generation 집합</td></tr>
-<tr><td>Retrieval active 판별</td><td>Bundle/Mapping Generation 집합이 service head와 정확히 동일</td></tr>
-<tr><td>Latestness</td><td>D10 Latest-Only + commit 직전 re-check</td></tr>
+<tr><td>Retrieval active 판별</td><td>bundle metadata + mapping Generation 집합이 service head와 정확히 동일하고 artifact validation PASS</td></tr>
+<tr><td>Latestness</td><td>D10 Latest-Only + Publish 직전 re-check</td></tr>
 <tr><td>중간 실패</td><td>fail-closed + retry convergence</td></tr>
-<tr><td>MCP 전환</td><td>시작 시 active bundle pin, hot reload는 G4 범위 밖</td></tr>
+<tr><td>MCP 운영 읽기</td><td><strong>요청별 Knowledge read snapshot + matching FAISS bundle</strong></td></tr>
+<tr><td>G4 실제 환경 Gate</td><td>보존 중인 <code>data_smoke</code>에서 다음 실행</td></tr>
 </tbody></table></section>
 
-<footer>G4 Atomic Publish Protocol · WAL-safe · immutable bundle · active Generation set as service head · fail-closed / retryable · 2026-09-01</footer>
+<footer>G4 Atomic Publish Protocol · WAL-safe · immutable bundle · active Generation set as service head · request-pinned MCP snapshot · fail-closed / retryable · 2026-09-01</footer>
 </main></body></html>
