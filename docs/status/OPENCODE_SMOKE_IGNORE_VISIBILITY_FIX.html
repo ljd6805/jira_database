@@ -1,0 +1,106 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="2026-09-01 Linux Real Smoke에서 data_smoke Knowledge Input이 OpenCode Glob에 보이지 않았던 원인과 .ignore 수정, Per-Work exact-path 원칙을 기록한다.">
+  <title>OpenCode Smoke · data_smoke Visibility Troubleshooting</title>
+  <style>
+    :root{--bg:#f4f7fb;--paper:#fff;--text:#172033;--muted:#66748a;--line:#d9e2ef;--blue:#3157d5;--green:#14845f;--amber:#a86500;--red:#b83b3b;--ink:#101827}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.78;word-break:keep-all}.wrap{max-width:1100px;margin:auto;padding:42px 22px 90px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(135deg,#1b2950,#3157d5)}section{margin-top:38px}.card{padding:18px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid var(--green);background:#eef9f4}.warn{border-left:5px solid var(--amber);background:#fff7e9}.bad{border-left:5px solid var(--red);background:#fff1f1}.flow,pre{white-space:pre-wrap;padding:18px;border-radius:13px;background:var(--ink);color:#dce8ff;font:13px/1.7 Consolas,monospace;overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);vertical-align:top}th{background:#eef3f9}a{color:var(--blue);font-weight:800}</style>
+  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
+</head>
+<body><main class="wrap">
+<p><a href="../index.html">← Documentation Hub</a> · <a href="REAL_LOOP_A_OPENCODE_SMOKE_GUIDE.html">Real Smoke Guide</a> · <a href="M4_KNOWLEDGE_EXTRACTION_COMPLETION.html">M4 Knowledge Extraction</a></p>
+<header class="hero"><div>TROUBLESHOOTING · 2026-09-01</div><h1>파일은 있는데 OpenCode에서는 “0 matches”</h1><p>Linux Real Smoke에서 <code>data_smoke/knowledge_input/.../AI5-2.json</code>이 실제 파일시스템에는 존재하지만 OpenCode의 Glob 탐색에서는 보이지 않았던 문제를 기록합니다.</p></header>
+
+<section><h2>1. 실제 증상</h2><pre>Glob "data_smoke/knowledge_input/.../issues/AI5-2.json" 0 matches
+Glob "data_smoke/knowledge_input/**" 0 matches
+Glob "data_smoke/**" 0 matches
+
+find ... data_smoke ...
+→ bash permission deny
+
+INPUT_ERROR AI5-2</pre><div class="card warn"><strong>중요</strong><p>이 로그만 보면 파일이 없는 것처럼 보이지만, Python Source/Knowledge Worker가 사용한 실제 경로에는 파일이 존재했습니다. 문제는 파일 생성이 아니라 <strong>OpenCode 탐색 visibility</strong>였습니다.</p></div></section>
+
+<section><h2>2. 원인</h2><div class="flow">.gitignore
+├─ data/
+└─ data_smoke/
+      ↓
+Git에는 둘 다 넣지 않음
+      ↓
+OpenCode/ripgrep 탐색도 ignore 영향을 받음
+
+기존 .ignore
+└─ data/knowledge_input + data/knowledge만 다시 노출
+
+빠진 것
+└─ data_smoke/knowledge_input + data_smoke/knowledge</div><p>과거 M4 파일럿에서도 <code>data/</code>가 같은 이유로 Glob에서 보이지 않았고, root <code>.ignore</code>로 Knowledge 경로만 다시 열어 해결했습니다. Smoke root를 새로 추가하면서 동일한 visibility 계약을 확장하지 않은 것이 재발 원인입니다.</p></section>
+
+<section><h2>3. 수정된 .ignore 계약</h2><pre># Formal / normal data root
+!data/
+data/*
+!data/knowledge_input/
+!data/knowledge_input/**
+!data/knowledge/
+!data/knowledge/**
+
+# Isolated smoke data root
+!data_smoke/
+data_smoke/*
+!data_smoke/knowledge_input/
+!data_smoke/knowledge_input/**
+!data_smoke/knowledge/
+!data_smoke/knowledge/**</pre><p><code>.gitignore</code>의 <code>data/</code>, <code>data_smoke/</code> 제외는 그대로 유지합니다. 즉 <strong>Git에는 올리지 않지만 OpenCode에는 필요한 Knowledge 경로만 보이게</strong> 합니다.</p></section>
+
+<section><h2>4. 왜 data_smoke 전체를 열지 않았나?</h2><table><thead><tr><th>경로</th><th>OpenCode Knowledge Agent에 필요?</th><th>정책</th></tr></thead><tbody>
+<tr><td><code>data_smoke/raw</code></td><td>아니오</td><td>계속 숨김</td></tr>
+<tr><td><code>data_smoke/analysis</code></td><td>아니오</td><td>계속 숨김</td></tr>
+<tr><td><code>data_smoke/state</code></td><td>아니오</td><td>계속 숨김</td></tr>
+<tr><td><code>data_smoke/knowledge_input</code></td><td>예</td><td>노출</td></tr>
+<tr><td><code>data_smoke/knowledge</code></td><td>예</td><td>노출</td></tr>
+</tbody></table><p>Local-only 경계를 유지하면서 필요한 최소 경로만 노출하는 원칙입니다.</p></section>
+
+<section><h2>5. Per-Work Orchestrator도 함께 단순화</h2><div class="flow">Python runner
+→ 이미 정확한 INPUT/OUTPUT/REVIEW 경로 계산
+→ 디렉터리도 미리 생성
+
+Orchestrator
+이전: exact path를 다시 Glob/List로 탐색
+현재: 전달받은 exact path를 authoritative로 사용
+      → workspace preflight 없음
+      → Glob/List 재탐색 없음
+      → Bash 없음
+      → Worker에 exact path 바로 전달
+
+Worker
+→ exact path를 직접 read
+→ 읽기 실패 시에만 INPUT_ERROR</div><p>Per-Work 모드에서는 탐색 자체가 불필요합니다. Python이 이미 Work와 경로를 결정했기 때문에 Orchestrator는 다시 “찾는” 일을 하지 않습니다.</p></section>
+
+<section><h2>6. 재발 방지 테스트</h2><div class="card good"><p><code>tests/test_opencode_ignore_contract.py</code>를 추가했습니다. <code>data/</code>와 <code>data_smoke/</code>의 Knowledge 경로가 모두 <code>.ignore</code>에서 노출되고, 동시에 두 runtime root가 <code>.gitignore</code>에는 계속 남아 있는지 검사합니다.</p></div></section>
+
+<section><h2>7. 운영 체크리스트</h2><div class="flow">새 runtime data root를 추가한다
+예: data_smoke / data_test / data_stage
+        ↓
+.gitignore 추가
+        ↓
+OpenCode가 읽어야 하는가?
+        ├─ NO → 끝
+        └─ YES
+            ↓
+          .ignore에 최소 경로만 예외 노출
+            ↓
+          CI contract test 추가
+            ↓
+          Agent는 가능하면 exact path 사용</div></section>
+
+<section><h2>8. 상태 판정</h2><table><thead><tr><th>항목</th><th>상태</th></tr></thead><tbody>
+<tr><td>원인 분석</td><td><strong>CONFIRMED</strong></td></tr>
+<tr><td><code>.ignore</code> smoke 경로 수정</td><td><strong>IMPLEMENTED</strong></td></tr>
+<tr><td>Per-Work exact-path Orchestrator 보강</td><td><strong>IMPLEMENTED</strong></td></tr>
+<tr><td>회귀 테스트</td><td><strong>IMPLEMENTED / CI 확인 대상</strong></td></tr>
+<tr><td>Real Linux OpenCode 재실행</td><td><strong>PENDING</strong></td></tr>
+</tbody></table></section>
+
+<footer>OpenCode Smoke Visibility Troubleshooting · data_smoke ignore contract · 2026-09-01</footer>
+</main></body></html>
