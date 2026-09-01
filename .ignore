@@ -1,7 +1,8 @@
 # OpenCode/ripgrep 탐색용 예외 규칙
-# Git에서는 .gitignore의 data/ 규칙을 그대로 유지한다.
-# M4 Knowledge Extraction에 필요한 로컬 입력/출력만 검색 가능하게 연다.
+# Git에서는 .gitignore의 data/ 및 data_smoke/ 규칙을 그대로 유지한다.
+# OpenCode에는 Knowledge 처리에 필요한 입력/출력 경로만 다시 노출한다.
 
+# Formal / normal data root
 !data/
 data/*
 
@@ -10,3 +11,13 @@ data/*
 
 !data/knowledge/
 !data/knowledge/**
+
+# Isolated smoke data root
+!data_smoke/
+data_smoke/*
+
+!data_smoke/knowledge_input/
+!data_smoke/knowledge_input/**
+
+!data_smoke/knowledge/
+!data_smoke/knowledge/**
