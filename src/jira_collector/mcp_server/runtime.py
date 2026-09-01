@@ -8,6 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from jira_collector.embedding.config import load_embedding_settings
+from jira_collector.knowledge_db import KnowledgeDbError
 from jira_collector.publishing import active_retrieval_artifact_dir
 from jira_collector.retrieval import embed_query_text, load_retrieval_searcher
 
@@ -53,7 +54,7 @@ def _resolve_retrieval_dir(
             )
         try:
             return active_retrieval_artifact_dir(knowledge_db_path, root)
-        except Exception as exc:
+        except (KnowledgeDbError, sqlite3.Error, OSError) as exc:
             raise McpRuntimeSettingsError(
                 "현재 active Knowledge Generation 집합과 일치하는 Retrieval bundle을 "
                 f"찾지 못했습니다: {exc}"
