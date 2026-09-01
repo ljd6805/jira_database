@@ -85,14 +85,18 @@ class OpenCodeKnowledgeProcessor:
         *,
         binary: str = "opencode",
         agent: str = "jira-knowledge-orchestrator",
+        model: str | None = None,
         attach_url: str | None = None,
         timeout_seconds: int = 3600,
     ) -> None:
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds는 1 이상이어야 합니다.")
+        if model is not None and not model.strip():
+            raise ValueError("OpenCode model은 비어 있지 않은 문자열이어야 합니다.")
         self.project_root = Path(project_root).resolve()
         self.binary = binary
         self.agent = agent
+        self.model = model.strip() if model is not None else None
         self.attach_url = attach_url
         self.timeout_seconds = timeout_seconds
 
@@ -110,11 +114,21 @@ class OpenCodeKnowledgeProcessor:
         review_dir.mkdir(parents=True, exist_ok=True)
 
         prompt = self._prompt(input_path, output_path, review_dir)
-        command = [self.binary, "run", "--agent", self.agent]
+        command = [self.binary, "run"]
+        if self.model:
+            command.extend(["--model", self.model])
+        command.extend(["--agent", self.agent])
         if self.attach_url:
             command.extend(["--attach", self.attach_url])
         command.append(prompt)
 
+        LOGGER.info(
+            "opencode_event=knowledge_run_started issue_key=%s agent=%s model=%s timeout_seconds=%s",
+            work_item.observed_issue_key,
+            self.agent,
+            self.model or "session-default",
+            self.timeout_seconds,
+        )
         try:
             completed = subprocess.run(
                 command,
@@ -133,6 +147,13 @@ class OpenCodeKnowledgeProcessor:
                 f"OpenCode Knowledge 처리 timeout: {self.timeout_seconds}s"
             ) from exc
 
+        LOGGER.info(
+            "opencode_event=knowledge_run_finished issue_key=%s agent=%s model=%s returncode=%s",
+            work_item.observed_issue_key,
+            self.agent,
+            self.model or "session-default",
+            completed.returncode,
+        )
         if completed.returncode != 0:
             stderr = (completed.stderr or "").strip()[-2000:]
             raise KnowledgeProcessingError(
@@ -165,6 +186,8 @@ class OpenCodeKnowledgeProcessor:
             f"[KNOWLEDGE INPUT]\n{self._display_path(input_path)}\n\n"
             f"[KNOWLEDGE OUTPUT]\n{self._display_path(output_path)}\n\n"
             f"[KNOWLEDGE REVIEW]\n{self._display_path(review_dir)}\n\n"
+            "Per-Work 단일 Issue 모드다. workspace 진단이나 batch 집계를 하지 마. "
+            "echo/pwd/ls/cat/find/test/mkdir 등 shell 탐색을 하지 말고, "
             "지정한 로컬 INPUT FILE만 사실 근거로 사용해 기존 Worker→Validator→Reviewer 규칙대로 처리해. "
             "외부 Jira/Web/MCP를 조회하지 말고, 최종 Knowledge와 Attempt별 Review JSON을 반드시 지정 경로에 저장해."
         )
