@@ -18,16 +18,19 @@
 <body><main class="wrap">
 <nav class="top">
   <a href="../index.html">← 문서 허브</a>
+  <a href="../architecture/jira_operational_fresh_bootstrap_smoke_policy.html">Fresh Bootstrap / Smoke Policy</a>
   <a href="REAL_LOOP_A_OPENCODE_SMOKE_GUIDE.html">★ Real Smoke Guide</a>
-  <a href="OPENCODE_SMOKE_IGNORE_VISIBILITY_FIX.html">OpenCode Smoke Troubleshooting</a>
+  <a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A</a>
+  <a href="../architecture/jira_loop_b_opencode_automation_easy_guide.html">OpenCode 자동화 쉬운 가이드</a>
   <a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge</a>
+  <a href="OPENCODE_SMOKE_IGNORE_VISIBILITY_FIX.html">OpenCode Smoke Troubleshooting</a>
   <a href="OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html">Embedding</a>
 </nav>
 
 <header class="hero">
   <span class="eyebrow">CURRENT SOURCE OF TRUTH · 2026-09-01</span>
   <h1>Real Loop A와 Real OpenCode Knowledge까지<br>실제 사내 환경에서 통과했습니다.</h1>
-  <p>M0~M11 Functional MVP는 <strong>DONE / PASS</strong>입니다. 운영 구조는 <strong>Two-Loop + D10 Latest-Only + State Schema v3</strong>이며, 2026-09-01 Linux Smoke에서 실제 Jira Source Sync와 실제 OpenCode Knowledge checkpoint까지 확인했습니다.</p>
+  <p>M0~M11 Functional MVP는 <strong>DONE / PASS</strong>입니다. 운영 구조는 <strong>Two-Loop + D10 Latest-Only + Operational State 개정 3</strong>이며, 공식 운영 검증 정책은 <strong>Fresh Bootstrap</strong>입니다. 2026-09-01 Linux Smoke에서 실제 Jira Source Sync와 실제 OpenCode Knowledge checkpoint까지 확인했습니다.</p>
   <span class="state">G1 REAL LOOP A PASS · G2 KNOWLEDGE PATH PASS · SKILL TRACE PENDING · REAL BGE-M3 NEXT</span>
 </header>
 
@@ -42,7 +45,14 @@
 <tr><td>Continuous Scheduling</td><td>사람이 runner를 실행하지 않아도 두 Loop를 자동 기동</td><td><strong>NOT IMPLEMENTED</strong></td></tr>
 </tbody></table></section>
 
-<section><h2>2. 2026-09-01 Real Knowledge Smoke 실제 결과</h2>
+<section><h2>2. 시작 정책 · Fresh Bootstrap</h2>
+<div class="grid2">
+  <div class="box good"><b>Smoke</b><p><code>config/settings.smoke.yaml</code> + <code>data_smoke/</code>를 사용합니다. 운영 데이터와 격리하며 Migration하지 않습니다.</p></div>
+  <div class="box good"><b>Formal Real Test</b><p>기존 파일럿 DB/Index를 승계하지 않고 깨끗한 <code>data/</code>에서 Full Initial Ingest로 시작합니다.</p></div>
+</div>
+<p><a href="../architecture/jira_operational_fresh_bootstrap_smoke_policy.html">Fresh Bootstrap / Smoke 정책 상세</a></p></section>
+
+<section><h2>3. 2026-09-01 Real Knowledge Smoke 실제 결과</h2>
 <div class="flow">KNOWLEDGE_WORKER = CHECKPOINTED
 processing_run_id = pr_46868fc5384a4f6692ce2181a24a02a0
 stale_after_seconds = 0
@@ -64,7 +74,7 @@ next_stage = Embedding / Publish</div>
   <div class="box warn"><b>아직 증명하지 않은 것</b><p>Worker 정의상 Skill 사용은 REQUIRED지만, 실제 OpenCode trace에서 <code>jira-knowledge-extraction</code> load를 별도 증거로 보존하지 않았습니다.</p></div>
 </div></section>
 
-<section><h2>3. Smoke 중 실제로 발견하고 고친 운영 문제</h2>
+<section><h2>4. Smoke 중 실제로 발견하고 고친 운영 문제</h2>
 <div class="flow">① python-dotenv stdin 자동탐색 문제
 → .env 경로 명시
 
@@ -87,17 +97,17 @@ next_stage = Embedding / Publish</div>
 → Per-Work Orchestrator의 input rediscovery 제거</div>
 <p>이 문제들은 단순 테스트 편의 수정이 아니라 <strong>정식 운영 전에 필요한 복구성·재현성·보안 경계</strong>를 실제 Smoke에서 검증한 결과입니다.</p></section>
 
-<section><h2>4. model_profile과 opencode_model</h2>
+<section><h2>5. model_profile과 opencode_model</h2>
 <div class="grid2">
   <div class="box"><b>model_profile</b><p><code>internal-opencode-knowledge-v1</code></p><p>Knowledge Generation의 논리적 구성 identity입니다. Skill / Agent / Schema / Runtime 계약을 묶어 표현합니다.</p></div>
   <div class="box"><b>opencode_model</b><p><code>codemate/CodeLLMPro</code></p><p>실제 <code>opencode run --model</code>에 전달되는 Runtime LLM ID입니다.</p></div>
 </div></section>
 
-<section><h2>5. 현재 구현 경로</h2>
+<section><h2>6. 현재 구현 경로</h2>
 <div class="flow">Loop A · IMPLEMENTED / CI PASS / REAL SMOKE PASS
 Jira → Delta / semantic_v2 → SOURCE_COMMITTED
 → Watermark + Source Ready
-→ latest-only sync_issue_change backlog
+→ Latest-Only sync_issue_change backlog
 
 Loop B Knowledge · IMPLEMENTED / CI PASS / REAL KNOWLEDGE PATH PASS
 latest Work → stale recovery → OpenCode CodeLLMPro
@@ -117,11 +127,12 @@ NEXT REAL GATE
 NEXT IMPLEMENTATION
 → FAISS / mapping / manifest staging
 → coherent Atomic Publish
-→ State published</div></section>
+→ State published</div>
+<p><a href="LOOP_A_DELTA_SOURCE_SYNC_IMPLEMENTATION.html">Loop A 구현 보고서</a> · <a href="LOOP_B_KNOWLEDGE_WORKER_IMPLEMENTATION.html">Loop B Knowledge 구현 보고서</a> · <a href="../architecture/jira_loop_b_opencode_automation_easy_guide.html">Loop B OpenCode 자동화 쉬운 가이드</a></p></section>
 
-<section><h2>6. 다음 액션</h2>
+<section><h2>7. 다음 액션</h2>
 <div class="box next"><b>다음은 G3 · Real Incremental BGE-M3</b><p>현재 <code>data_smoke</code>와 완료된 Knowledge checkpoint를 그대로 유지한 채, 실제 사내 BGE-M3 endpoint로 Incremental Embedding 1건을 실행합니다. 성공하면 corpus / embedding artifact / <code>embedding_status=completed</code>를 확인합니다.</p></div>
 <div class="box warn"><b>주의</b><p>아직 Atomic Publish가 없으므로 G3가 성공해도 “운영 서비스 전체 완료”라고 표현하지 않습니다.</p></div></section>
 
-<footer>Current Status · G1 PASS · Real OpenCode Knowledge Path PASS · Skill trace PENDING · Real BGE-M3 NEXT · 2026-09-01</footer>
+<footer>Current Status · Fresh Bootstrap · State Schema 개정 3 · G1 PASS · Real OpenCode Knowledge Path PASS · Skill trace PENDING · Real BGE-M3 NEXT · 2026-09-01</footer>
 </main></body></html>
