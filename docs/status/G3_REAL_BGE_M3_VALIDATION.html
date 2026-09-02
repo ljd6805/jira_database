@@ -1,0 +1,119 @@
+<!doctype html>
+<html data-doc-shell="v1" lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="data_smoke에서 실제 사내 BGE-M3를 호출한 G3 검증 결과와 Candidate/State/Embedding 정합성 확인 기록.">
+  <title>G3 Real BGE-M3 Validation · PASS</title>
+  <link rel="stylesheet" href="milestone.css">
+  <style>
+    .grid2,.grid4{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}
+    .box{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}.good{border-left:5px solid #16805d;background:#eef9f4}.warn{border-left:5px solid #a86500;background:#fff7e9}.flow{white-space:pre-wrap}
+    table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eef3f9}
+    .big{font-size:1.6rem;font-weight:800}.arrow{text-align:center;font-size:1.4rem}@media(max-width:800px){.grid2,.grid4{grid-template-columns:1fr}}
+  </style>
+  <link rel="stylesheet" href="../assets/document-shell.css" data-doc-shell="v1">
+  <script defer src="../assets/document-navigation.js" data-doc-shell="v1"></script>
+</head>
+<body><main class="wrap">
+<nav class="top">
+  <a href="../index.html">← 문서 허브</a>
+  <a href="jira_knowledge_db_current_status.html">Current Status</a>
+  <a href="OPERATIONAL_INCREMENTAL_EMBEDDING_IMPLEMENTATION.html">Embedding 구현</a>
+  <a href="../architecture/G4_ATOMIC_PUBLISH_PROTOCOL.html">다음: G4 Atomic Publish →</a>
+</nav>
+<header class="hero">
+  <span class="eyebrow">REAL ENVIRONMENT GATE · 2026-09-01</span>
+  <h1>G3 Real BGE-M3<br>최종 PASS</h1>
+  <p><code>data_smoke</code>의 실제 G2 Knowledge checkpoint에서 candidate Knowledge DB를 만들고, 실제 사내 <strong>BAAI/bge-m3</strong> endpoint를 호출해 1024차원 Embedding artifact와 State checkpoint까지 끝까지 검증했습니다.</p>
+  <span class="state">CANDIDATE GATE PASS · REAL BGE-M3 PASS · 1024 DIM · PUBLISH STILL PENDING</span>
+</header>
+
+<section><h2>1. 이번 G3가 실제로 증명한 것</h2>
+<div class="grid4">
+  <div class="box good"><div class="big">1</div><b>Candidate 생성</b><p>Incremental materializer가 실제 <code>data_smoke</code>에서 candidate Generation을 만들었습니다.</p></div>
+  <div class="box good"><div class="big">1</div><b>실제 API 호출</b><p>가짜 client가 아니라 사내 <code>BAAI/bge-m3</code> endpoint 호출이 완료됐습니다.</p></div>
+  <div class="box good"><div class="big">1024</div><b>실제 Vector 차원</b><p>artifact metadata와 모든 vector 길이가 1024로 일치했습니다.</p></div>
+  <div class="box good"><div class="big">0</div><b>실패</b><p>Embedding worker의 <code>failed_count</code>는 0이었습니다.</p></div>
+</div></section>
+
+<section><h2>2. 실제 실행 결과</h2>
+<div class="flow">EMBEDDING_WORKER = CHECKPOINTED
+processing_run_id = pr_6237ead6ee92424ba2fb27a57f6605a9
+stale_after_seconds = 3600
+stale_recovered_work_count = 0
+stale_recovered_processing_run_count = 0
+selected_count = 1
+embedding_completed_count = 1
+failed_count = 0
+superseded_count = 0
+embedding_backlog_before = 1
+embedding_backlog_after = 0
+embedding_model = BAAI/bge-m3
+embedding_dimension = 1024
+next_stage = Retrieval staging / Atomic Publish</div>
+<div class="box good"><b>핵심 해석</b><p>Backlog 1건이 실제 모델 호출을 거쳐 정상 완료됐고 backlog는 0으로 줄었습니다. 이전 G3가 <em>BGE-M3 호출 전에</em> 막혔던 것과 달리 이번에는 실제 Embedding 경계를 통과했습니다.</p></div></section>
+
+<section><h2>3. BGE-M3 성공만으로 PASS라고 하지 않은 이유</h2>
+<p>API가 정상 응답하는 것만으로는 충분하지 않습니다. 잘못된 Generation을 embed했거나, vector가 1024가 아니거나, Publish가 실수로 먼저 실행됐다면 운영 계약은 깨집니다. 그래서 아래 상태를 함께 확인했습니다.</p>
+<table><thead><tr><th>검사</th><th>기대값</th><th>실제</th></tr></thead><tbody>
+<tr><td>Knowledge Generation</td><td><code>candidate</code></td><td><strong>candidate · PASS</strong></td></tr>
+<tr><td>Work</td><td><code>pending</code></td><td><strong>pending · PASS</strong></td></tr>
+<tr><td>Knowledge stage</td><td><code>completed</code></td><td><strong>completed · PASS</strong></td></tr>
+<tr><td>Embedding stage</td><td><code>completed</code></td><td><strong>completed · PASS</strong></td></tr>
+<tr><td>Publish stage</td><td><code>pending</code></td><td><strong>pending · PASS</strong></td></tr>
+<tr><td>Corpus / Embedding rows</td><td>같은 개수, 0보다 큼</td><td><strong>PASS</strong></td></tr>
+<tr><td>Embedding dimension</td><td>1024</td><td><strong>1024 · PASS</strong></td></tr>
+<tr><td>각 vector 길이</td><td>1024</td><td><strong>1024 · PASS</strong></td></tr>
+<tr><td>Artifact Generation identity</td><td>State Generation과 동일</td><td><strong>PASS</strong></td></tr>
+</tbody></table></section>
+
+<section><h2>4. 최종 사후검사 결과</h2>
+<div class="flow">===================================
+G3_REAL_BGE_M3 = PASS
+===================================
+model = BAAI/bge-m3
+dimension = 1024
+generation_state = candidate
+work_status = pending
+publish_status = pending
+next = G4 Atomic Publish</div>
+<div class="box good"><b>G3 종료 조건 충족</b><p>G3의 책임은 <strong>Knowledge를 실제 vector까지 만들되 아직 서비스에 노출하지 않는 것</strong>입니다. 이 경계가 정확히 지켜졌으므로 G4 Atomic Publish 구현을 시작할 수 있게 됐습니다.</p></div></section>
+
+<section><h2>5. 한 그림으로 보면</h2>
+<div class="flow">G2 PASS
+Source Ready
+   │
+   ▼
+OpenCode Knowledge
+   │
+   ▼
+Knowledge DB
+candidate + accepted_attempt_id
+   │
+   │  Candidate Gate PASS
+   ▼
+BAAI/bge-m3  ← 실제 사내 API
+   │
+   ▼
+1024-d vector artifact
+   │
+   ▼
+embedding_status = completed
+work_status      = pending
+publish_status   = pending
+Generation       = candidate
+   │
+   └────────────── G3 PASS
+                     │
+                     ▼
+              G4 Atomic Publish</div></section>
+
+<section><h2>6. 데이터 보존 원칙</h2>
+<div class="grid2">
+  <div class="box good"><b><code>data_smoke</code> 유지</b><p>G1 → G2 → G3가 실제로 이어진 동일 checkpoint를 G4에서도 그대로 사용합니다. 성공 증거를 지우고 다시 만들지 않습니다.</p></div>
+  <div class="box warn"><b>Batch materializer 금지 유지</b><p>기존 batch materializer는 PASS Generation을 바로 active로 만들 수 있으므로 G3/G4 운영 경계 검증에는 사용하지 않습니다.</p></div>
+</div></section>
+
+<footer>G3 Real BGE-M3 Validation · Candidate preserved · BAAI/bge-m3 · 1024 dimensions · PASS · 2026-09-01</footer>
+</main></body></html>

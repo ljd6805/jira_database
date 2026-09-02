@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Callable, Sequence
-from dataclasses import asdict
-from typing import Protocol
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass
+from typing import Iterator, Protocol
 
 from jira_collector.evidence import CandidateEvidenceBuilder, EvidenceResolver
 from jira_collector.retrieval import RetrievalCandidate
@@ -21,23 +22,44 @@ class VectorSearcher(Protocol):
     ) -> tuple[RetrievalCandidate, ...]: ...
 
 
+@dataclass(frozen=True)
+class SearchHead:
+    """한 MCP 요청이 끝날 때까지 함께 고정되는 query embedder + vector searcher입니다."""
+
+    searcher: VectorSearcher
+    query_embedder: QueryEmbedder
+
+
+SearchHeadProvider = Callable[[sqlite3.Connection], SearchHead]
+
+
 class JiraKnowledgeService:
     """M9 Retrieval과 M10 Evidence를 MCP가 호출하기 좋은 읽기 API로 묶습니다."""
 
     def __init__(
         self,
         connection: sqlite3.Connection,
-        searcher: VectorSearcher,
-        query_embedder: QueryEmbedder,
+        searcher: VectorSearcher | None = None,
+        query_embedder: QueryEmbedder | None = None,
+        *,
+        search_head_provider: SearchHeadProvider | None = None,
     ) -> None:
         connection.row_factory = sqlite3.Row
+        if search_head_provider is None and (searcher is None or query_embedder is None):
+            raise ValueError(
+                "static searcher/query_embedder 또는 search_head_provider가 필요합니다."
+            )
         self._connection = connection
-        self._searcher = searcher
-        self._query_embedder = query_embedder
+        self._static_head = (
+            SearchHead(searcher, query_embedder)
+            if searcher is not None and query_embedder is not None
+            else None
+        )
+        self._search_head_provider = search_head_provider
         self._evidence_builder = CandidateEvidenceBuilder(EvidenceResolver(connection))
 
     def search_jira_knowledge(self, query: str, top_k: int = 3) -> dict[str, object]:
-        """자연어 질문을 Top-k Evidence Package로 변환합니다."""
+        """한 read snapshot에 Retrieval head와 Evidence를 pin해 Top-k를 반환합니다."""
 
         normalized = query.strip()
         if not normalized:
@@ -45,31 +67,54 @@ class JiraKnowledgeService:
         if not isinstance(top_k, int) or isinstance(top_k, bool) or top_k < 1:
             raise ValueError("top_k는 1 이상의 정수여야 합니다.")
 
-        vector = self._query_embedder(normalized)
-        candidates = self._searcher.search_vector(vector, top_k=top_k)
-        built = self._evidence_builder.build(candidates)
-        return {
-            "query": normalized,
-            "results": [asdict(package) for package in built.results],
-            "warnings": [asdict(warning) for warning in built.warnings],
-        }
+        with self._read_snapshot():
+            head = self._search_head()
+            vector = head.query_embedder(normalized)
+            candidates = head.searcher.search_vector(vector, top_k=top_k)
+            built = self._evidence_builder.build(candidates)
+            return {
+                "query": normalized,
+                "results": [asdict(package) for package in built.results],
+                "warnings": [asdict(warning) for warning in built.warnings],
+            }
 
     def get_jira_issue(self, issue_key: str) -> dict[str, object]:
-        """현재 active Knowledge가 가리키는 Jira Issue snapshot을 읽습니다."""
+        """한 read snapshot에서 현재 active Knowledge의 Jira Issue 원본을 읽습니다."""
 
         normalized = issue_key.strip()
         if not normalized:
             raise ValueError("issue_key는 비어 있을 수 없습니다.")
-        issue = self._load_active_issue(normalized)
-        source_run_id = str(issue["source_run_id"])
-        source_issue_key = str(issue["source_issue_key"])
-        return {
-            "issue": _issue_payload(issue),
-            "comments": self._load_comments(source_run_id, source_issue_key),
-            "attachments": self._load_attachments(source_run_id, source_issue_key),
-            "relationships": self._load_relationships(source_run_id, source_issue_key),
-            "custom_fields": self._load_custom_fields(source_run_id, source_issue_key),
-        }
+        with self._read_snapshot():
+            issue = self._load_active_issue(normalized)
+            source_run_id = str(issue["source_run_id"])
+            source_issue_key = str(issue["source_issue_key"])
+            return {
+                "issue": _issue_payload(issue),
+                "comments": self._load_comments(source_run_id, source_issue_key),
+                "attachments": self._load_attachments(source_run_id, source_issue_key),
+                "relationships": self._load_relationships(source_run_id, source_issue_key),
+                "custom_fields": self._load_custom_fields(source_run_id, source_issue_key),
+            }
+
+    def _search_head(self) -> SearchHead:
+        if self._search_head_provider is not None:
+            return self._search_head_provider(self._connection)
+        if self._static_head is None:
+            raise RuntimeError("MCP Retrieval head가 구성되지 않았습니다.")
+        return self._static_head
+
+    @contextmanager
+    def _read_snapshot(self) -> Iterator[None]:
+        """Provider의 active-set 조회와 이후 Evidence SELECT를 같은 SQLite snapshot에 묶습니다."""
+
+        owns_transaction = not self._connection.in_transaction
+        if owns_transaction:
+            self._connection.execute("BEGIN")
+        try:
+            yield
+        finally:
+            if owns_transaction and self._connection.in_transaction:
+                self._connection.rollback()
 
     def _load_active_issue(self, issue_key: str) -> sqlite3.Row:
         row = self._connection.execute(
